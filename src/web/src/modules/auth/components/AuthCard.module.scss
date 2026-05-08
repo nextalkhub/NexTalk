@@ -183,3 +183,13 @@
     text-align: justify;
   }
 }
+
+.submitBtnDisabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+
+  &:hover {
+    transform: none;
+    filter: none;
+  }
+}
