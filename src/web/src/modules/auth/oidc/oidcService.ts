@@ -133,7 +133,7 @@ class OidcService {
             throw new Error('No access token')
         }
 
-        const response = await fetch(`${this.config.authority}/oauth/v2/userinfo`, {
+        const response = await fetch(`${this.config.authority}/oidc/v1/userinfo`, {
             headers: {
                 'Authorization': `Bearer ${this.tokens.access_token}`,
             },

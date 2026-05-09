@@ -28,7 +28,7 @@ const initialState: AuthState = {
 
 export const login = createAsyncThunk(
     'auth/login',
-    async ({ email, password }: { email: string, password: string }) => {
+    async () => {
 
         if (import.meta.env.VITE_USE_AUTH_MOCK === 'true') {
             await new Promise(res => setTimeout(res, 300))
@@ -41,9 +41,9 @@ export const login = createAsyncThunk(
 
             const user = JSON.parse(storedUser)
 
-            if (user.email !== email) {
-                throw new Error('Неверный email')
-            }
+            // if (user.email !== email) {
+            //     throw new Error('Неверный email')
+            // }
 
             return {
                 user,
@@ -62,41 +62,30 @@ export const login = createAsyncThunk(
 
 export const register = createAsyncThunk(
     'auth/register',
-    async ({
-               name,
-               nickname,
-               email,
-               password
-           }: {
-        name: string
-        nickname: string
-        email: string
-        password: string
-    }) => {
-
-        if (import.meta.env.VITE_USE_AUTH_MOCK === 'true') {
-            await new Promise(res => setTimeout(res, 300))
-
-            const newUser = {
-                id: Date.now().toString(),
-                name,
-                nickname,
-                email,
-                createdAt: new Date(Date.now())
-            }
-
-            localStorage.setItem('mock_user', JSON.stringify(newUser))
-
-            return {
-                user: newUser,
-                tokens: {
-                    access_token: 'mock-token',
-                    expires_in: 3600,
-                },
-            }
-        }
-
-        throw new Error('Register not implemented')
+    async () => {
+        // if (import.meta.env.VITE_USE_AUTH_MOCK === 'true') {
+        //     await new Promise(res => setTimeout(res, 300))
+        //
+        //     const newUser = {
+        //         id: Date.now().toString(),
+        //         name,
+        //         nickname,
+        //         email,
+        //         createdAt: new Date(Date.now())
+        //     }
+        //
+        //     localStorage.setItem('mock_user', JSON.stringify(newUser))
+        //
+        //     return {
+        //         user: newUser,
+        //         tokens: {
+        //             access_token: 'mock-token',
+        //             expires_in: 3600,
+        //         },
+        //     }
+        // }
+        //
+        // throw new Error('Register not implemented')
     }
 )
 
@@ -122,7 +111,7 @@ export const initializeAuth = createAsyncThunk(
                     name: 'Mock User',
                     email: 'mock@example.com',
                     nickname: 'mockuser',
-                    createdAt: new Date(Date.now())
+                    createdAt: new Date().toISOString()
                 },
                 tokens: {
                     access_token: 'mock-token',
@@ -139,10 +128,10 @@ export const initializeAuth = createAsyncThunk(
             return {
                 user: {
                     id: userInfo.sub,
-                    name: userInfo.preferred_username,
+                    name: userInfo.name,
                     email: userInfo.email,
-                    nickname: userInfo.name,
-                    createdAt: new Date(Date.now()),
+                    nickname: userInfo.preferred_username,
+                    createdAt: new Date().toISOString(),
                 },
                 tokens: {
                     access_token: accessToken,
@@ -177,10 +166,10 @@ export const handleAuthCallback = createAsyncThunk(
         return {
             user: {
                 id: userInfo.sub,
-                name: userInfo.preferred_username,
+                name: userInfo.name,
                 email: userInfo.email,
-                nickname: userInfo.name,
-                createdAt: new Date(Date.now()),
+                nickname: userInfo.preferred_username,
+                createdAt: new Date().toISOString(),
             },
             tokens: {
                 access_token: tokens?.access_token,

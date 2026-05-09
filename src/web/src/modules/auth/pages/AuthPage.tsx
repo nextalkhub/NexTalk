@@ -21,7 +21,7 @@ export const AuthPage: React.FC = () => {
     }, [isAuthenticated])
 
 
-    const handleLogin = async (email: string, password: string) => {
+    const handleLogin = async () => {
         // 🟢 MOCK
         // login() возвращает пользователя → делаем navigate('/servers')
         //
@@ -33,7 +33,7 @@ export const AuthPage: React.FC = () => {
         // oidc → null → редиректа нет
 
         try {
-            await dispatch(login({ email, password })).unwrap()
+            await dispatch(login()).unwrap()
 
             if (import.meta.env.VITE_USE_AUTH_MOCK === 'true') {
                 navigate('/servers')
@@ -43,15 +43,10 @@ export const AuthPage: React.FC = () => {
         }
     }
 
-    const handleRegister = async (
-        name: string,
-        nickname: string,
-        email: string,
-        password: string
-    ) => {
+    const handleRegister = async () => {
         if (import.meta.env.VITE_USE_AUTH_MOCK === 'true') {
             try {
-                await dispatch(register({ name, nickname, email, password })).unwrap()
+                await dispatch(register()).unwrap()
                 navigate('/servers')
             } catch (e) {
                 console.error(e)
@@ -66,6 +61,7 @@ export const AuthPage: React.FC = () => {
         authUrl.searchParams.set('response_type', 'code')
         authUrl.searchParams.set('scope', 'openid profile email offline_access')
         authUrl.searchParams.set('prompt', 'create')
+        authUrl.searchParams.set('email.isVerified', 'true')
 
         window.location.href = authUrl.toString()
     }
