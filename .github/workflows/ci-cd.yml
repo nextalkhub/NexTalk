@@ -44,7 +44,7 @@ jobs:
   # Docker build & push (only on target branches)
   docker:
     needs: build
-    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/sre/k8s-manifests')
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     permissions:
       contents: read
