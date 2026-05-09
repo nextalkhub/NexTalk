@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Distributed;
 using NexTalk.Guild.Service.Features.Channels.CreateChannel;
 using NexTalk.Guild.Service.Features.Channels.DeleteChannel;
 using NexTalk.Guild.Service.Features.Channels.GetChannels;
@@ -19,6 +20,7 @@ using NexTalk.Guild.Service.Features.Members.KickMember;
 using NexTalk.Guild.Service.Infrastructure;
 using NexTalk.Guild.Service.Shared;
 using NexTalk.Guild.Service.Shared.Exceptions;
+using Prometheus;
 using Serilog;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -90,6 +92,8 @@ app.UseExceptionHandler(exApp => exApp.Run(async ctx =>
     await ctx.Response.WriteAsJsonAsync(new { error = message });
 }));
 
+app.UseHttpMetrics();
+
 app.UseSerilogRequestLogging(opts =>
     opts.EnrichDiagnosticContext = (dc, ctx) =>
         dc.Set("CorrelationId",
@@ -127,5 +131,33 @@ app.MapHealthChecks("/readyz", new HealthCheckOptions
 {
     Predicate = check => check.Tags.Contains("ready")
 });
+app.MapMetrics();
+
+// multiple guild-service replicas share the same Redis db=1.
+//
+// Positive case (cache hit):  key exists → returns cached value from Redis.
+// Negative case (cache miss): key absent → origin computes value, stores in Redis,
+//                              next request (even on another pod) gets cache hit.
+app.MapGet("/api/guilds/probe", async (IDistributedCache cache, ILogger<Program> logger) =>
+{
+    const string key = "guild:probe";
+
+    var cached = await cache.GetStringAsync(key);
+    if (cached is not null)
+    {
+        logger.LogInformation("Cache hit for key {Key}: {Value}", key, cached);
+        return Results.Ok(new { source = "cache", value = cached });
+    }
+
+    var value = $"set by {Environment.MachineName} at {DateTime.UtcNow:O}";
+    await cache.SetStringAsync(key, value, new DistributedCacheEntryOptions
+    {
+        AbsoluteExpirationRelativeToNow = TimeSpan.FromSeconds(30)
+    });
+
+    logger.LogInformation("Cache miss for key {Key}, stored by {Instance}", key, Environment.MachineName);
+    return Results.Ok(new { source = "origin", value });
+});
+
 
 app.Run();

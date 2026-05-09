@@ -7,8 +7,8 @@ spec:
   project: nextalk
 
   source:
-    repoURL: https://github.com/GaraevIldar/NexTalk.git
-    targetRevision: sre/k8s-manifests
+    repoURL: https://github.com/nextalkhub/NexTalk.git
+    targetRevision: main
     path: charts/nextalk
     helm:
       releaseName: nextalk

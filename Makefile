@@ -7,54 +7,54 @@ NODE_IP     ?= $(shell kubectl get nodes -o jsonpath='{.items[0].status.addresse
 .PHONY: help deploy wait status logs images import probe \
         helm-install helm-upgrade helm-uninstall teardown
 
-help: ## Show this help
+help: ## Показать эту справку
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) \
 	  | awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-18s\033[0m %s\n", $$1, $$2}'
 
-# ── Kubernetes (raw manifests) ────────────────────────────────────────
+# ── Kubernetes (сырые манифесты) ────────────────────────────────────────
 
-deploy: ## Apply all k8s manifests (kubectl apply -f k8s/)
+deploy: ## Применить все k8s манифесты (kubectl apply -f k8s/)
 	kubectl apply -f k8s/
 
-wait: ## Wait until all pods in namespace are Ready
+wait: ## Дождаться, пока все pod'ы в namespace станут Ready
 	kubectl wait --namespace $(NAMESPACE) \
 	  --for=condition=ready pod --selector=app --timeout=300s
 
-status: ## Show pod / service status
+status: ## Показать статус pod'ов и сервисов
 	kubectl get pods,svc -n $(NAMESPACE)
 
-logs: ## Tail logs for a service  →  make logs SERVICE=guild-service
+logs: ## Смотреть логи сервиса → make logs SERVICE=guild-service
 	kubectl logs -n $(NAMESPACE) -l app=$(SERVICE) -f --tail=100
 
-teardown: ## Delete the entire namespace (destructive!)
+teardown: ## Удалить весь namespace (ОПАСНО!)
 	kubectl delete namespace $(NAMESPACE)
 
 # ── Helm ─────────────────────────────────────────────────────────────
 
-helm-install: ## Install via Helm (first time)
+helm-install: ## Установить через Helm (первый запуск)
 	helm install nextalk charts/nextalk/ \
 	  --namespace $(NAMESPACE) --create-namespace
 
-helm-upgrade: ## Upgrade existing Helm release
+helm-upgrade: ## Обновить существующий Helm релиз
 	helm upgrade nextalk charts/nextalk/ --namespace $(NAMESPACE)
 
-helm-uninstall: ## Uninstall Helm release
+helm-uninstall: ## Удалить Helm релиз
 	helm uninstall nextalk -n $(NAMESPACE)
 
-# ── Local image build & k3s import ───────────────────────────────────
+# ── Сборка локальных образов и импорт в k3s ───────────────────────────
 
-images: ## Build all Docker images locally
+images: ## Собрать все Docker-образы локально
 	$(foreach svc,$(SERVICES),docker build -t nextalk/$(svc):latest ./src/$(svc);)
 
-import: images ## Build + import images into k3s containerd (no registry needed)
+import: images ## Собрать + импортировать образы в k3s containerd (без registry)
 	$(foreach svc,$(SERVICES),docker save nextalk/$(svc):latest | sudo k3s ctr images import -;)
 
-# ── Smoke test ───────────────────────────────────────────────────────
+# ── Смоук-тест ───────────────────────────────────────────────────────
 
-probe: ## Test Redis cache hit/miss endpoint  (requires NODE_IP or pass NODE_IP=x.x.x.x)
-	@echo "--- request 1 (expect: source=origin) ---"
+probe: ## Проверить endpoint Redis cache hit/miss (нужен NODE_IP или NODE_IP=x.x.x.x)
+	@echo "--- запрос 1 (ожидается: источник=origin) ---"
 	curl -s http://$(NODE_IP)/api/guilds/probe
 	@echo ""
-	@echo "--- request 2 (expect: source=cache) ---"
+	@echo "--- запрос 2 (ожидается: источник=cache) ---"
 	curl -s http://$(NODE_IP)/api/guilds/probe
 	@echo ""

@@ -5,9 +5,8 @@ metadata:
   namespace: argocd
 spec:
   description: NexTalk - real-time messaging platform
-  # Allow ArgoCD to sync from any repo (change to specific URL in production)
   sourceRepos:
-    - '*'
+    - 'https://github.com/nextalkhub/NexTalk.git'
   destinations:
     - namespace: nextalk
       server: https://kubernetes.default.svc
