@@ -1,4 +1,11 @@
-# NexTalk — Kubernetes (k3s) Deployment
+# Kubernetes (k3s) Raw Manifests
+
+> **Набор сырых K8s-манифестов для ознакомления.** Реальный деплой осуществляется через Helm-чарт: [`charts/nextalk/`](../charts/nextalk/).
+> 
+> Эти манифесты показывают структуру каждого ресурса (Deployment, Service, ConfigMap) и применяются командой `kubectl apply -f k8s/`. Для production-деплоя используется Helm:
+> ```bash
+> helm install nextalk charts/nextalk/ --namespace nextalk --create-namespace
+> ```
 
 ## Требования
 
@@ -10,7 +17,7 @@
 
 ---
 
-## Шаг 1 — Установка k3s (Traefik отключён)
+## Шаг 1 - Установка k3s (без Traefik)
 
 ```bash
 curl -sfL https://get.k3s.io | INSTALL_K3S_EXEC="--disable=traefik" sh -
@@ -19,10 +26,9 @@ curl -sfL https://get.k3s.io | INSTALL_K3S_EXEC="--disable=traefik" sh -
 Проверка:
 ```bash
 sudo kubectl get nodes
-# → STATUS: Ready
 ```
 
-Для работы без `sudo` скопируй kubeconfig:
+Для работы без `sudo` нужно скопировать kubeconfig:
 ```bash
 mkdir -p ~/.kube
 sudo cp /etc/rancher/k3s/k3s.yaml ~/.kube/config
@@ -31,7 +37,7 @@ sudo chown $(id -u):$(id -g) ~/.kube/config
 
 ---
 
-## Шаг 2 — Nginx Ingress Controller
+## Шаг 2 - Nginx Ingress Controller
 
 ```bash
 kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/controller-v1.11.0/deploy/static/provider/cloud/deploy.yaml
@@ -47,9 +53,9 @@ kubectl wait --namespace ingress-nginx \
 
 ---
 
-## Шаг 3 — Сборка и загрузка образов
+## Шаг 3 - Сборка и загрузка образов
 
-Собери образы и импортируй в k3s (без отдельного registry):
+Сборка образов и импорт в k3s (без отдельного registry):
 ```bash
 docker build -t nextalk/guild-service:latest      ./src/guild-service
 docker build -t nextalk/messaging-service:latest  ./src/messaging-service
@@ -62,20 +68,20 @@ for svc in guild-service messaging-service voice-service websocket-gateway; do
 done
 ```
 
-> Альтернатива: пушни в Docker Hub и убери `imagePullPolicy: IfNotPresent` из манифестов.
+> Альтернатива: запушить в Docker Hub и убрать `imagePullPolicy: IfNotPresent` из манифестов.
 
 ---
 
-## Шаг 4 — Конфигурация окружения
+## Шаг 4 - Конфигурация окружения
 
-Отредактируй `k8s/01-configmap.yaml` — задай внешний адрес узла:
+Изменить `k8s/01-configmap.yaml` - задать внешний адрес узла:
 ```yaml
 data:
   ZITADEL_DOMAIN: "192.168.1.100"   # IP или hostname k3s-узла
   ZITADEL_EXTERNALPORT: "80"        # порт Nginx Ingress (по умолчанию 80)
 ```
 
-Отредактируй `k8s/01-secrets.yaml` — замени дев-значения на продакшн (если нужно):
+Отредактировать `k8s/01-secrets.yaml` - заменить дев-значения на продакшн:
 ```yaml
 stringData:
   postgres-password: "<strong-password>"
@@ -84,7 +90,7 @@ stringData:
 
 ---
 
-## Шаг 5 — Деплой
+## Шаг 5 - Деплой
 
 ```bash
 kubectl apply -f k8s/
@@ -99,11 +105,10 @@ kubectl get pods -n nextalk -w
 
 ---
 
-## Шаг 6 — Проверка
+## Шаг 6 - Проверка
 
 ### Health checks
 ```bash
-# Все сервисы
 for port in 5001 5002 5003 5004; do
   kubectl exec -n nextalk deploy/guild-service -- curl -s http://localhost:$port/healthz 2>/dev/null || true
 done
@@ -114,7 +119,7 @@ curl http://localhost/.well-known/openid-configuration
 ```
 
 ### Grafana
-Открой в браузере: `http://<ZITADEL_DOMAIN>/monitoring/grafana`  
+Открыть в браузере: `http://<ZITADEL_DOMAIN>/monitoring/grafana`  
 Логин: `admin` / `admin` (из secrets)
 
 ### Prometheus
@@ -160,39 +165,6 @@ kubectl port-forward -n nextalk svc/prometheus 9090:9090
 | `10-prometheus.yaml` | Prometheus ConfigMap + PVC + Deployment + Service |
 | `11-grafana.yaml` | Grafana ConfigMap + PVC + Deployment + Service |
 | `12-ingress.yaml` | Nginx Ingress (все маршруты) |
-
----
-
-## SRE: Redis distributed cache
-
-`guild-service` запускается в **2 репликах** — обе используют одну и ту же базу Redis (db=1).  
-Это демонстрирует распределённый кеш: запрос к любому поду попадает в общий IDistributedCache.
-
-```bash
-# Убедись что оба пода используют Redis
-kubectl get pods -n nextalk -l app=guild-service
-# → 2 пода Running
-
-# Проверь readiness (Redis health check входит в /readyz)
-kubectl exec -n nextalk deploy/guild-service -- curl -s http://localhost:5001/readyz
-```
-
----
-
-## SRE: JSON-логи
-
-Все сервисы пишут JSON-логи через Serilog + CompactJsonFormatter:
-
-```bash
-# Просмотр логов guild-service (оба пода)
-kubectl logs -n nextalk -l app=guild-service --all-containers --follow
-
-# Пример лога (позитивный — запрос выполнен):
-# {"@t":"2026-01-01T12:00:00.000Z","@mt":"HTTP GET /api/guilds responded 200 in 12.3ms","CorrelationId":"req-abc","MachineName":"guild-service-7d4b-xk9p",...}
-
-# Пример лога (негативный — ошибка):
-# {"@t":"2026-01-01T12:00:01.000Z","@l":"Error","@mt":"Unhandled exception","@x":"System.Exception: ...","MachineName":"guild-service-7d4b-xk9p",...}
-```
 
 ---
 

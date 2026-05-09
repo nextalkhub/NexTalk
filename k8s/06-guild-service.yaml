@@ -1,5 +1,4 @@
 ---
-# replicas: 2 — required for SRE: multiple instances sharing Redis distributed cache.
 # IDistributedCache (StackExchange.Redis) is registered in Program.cs; all replicas
 # read/write the same db=1 in Redis, demonstrating cache coherence across pods.
 apiVersion: apps/v1

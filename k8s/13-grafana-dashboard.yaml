@@ -355,7 +355,7 @@ data:
       "time": { "from": "now-1h", "to": "now" },
       "timepicker": {},
       "timezone": "browser",
-      "title": "NexTalk SRE",
+      "title": "NexTalk",
       "uid": "nextalk-sre-v1",
       "version": 1
     }

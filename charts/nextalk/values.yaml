@@ -38,24 +38,24 @@ grafana:
 # Application services
 # -----------------------------------------------------------------------
 guildService:
-  replicas: 2                             # 2 replicas share Redis cache
+  replicas: 2
   image: "nextalk/guild-service:latest"
-  imagePullPolicy: IfNotPresent
+  imagePullPolicy: Always
 
 messagingService:
   replicas: 1
   image: "nextalk/messaging-service:latest"
-  imagePullPolicy: IfNotPresent
+  imagePullPolicy: Always
 
 voiceService:
   replicas: 1
   image: "nextalk/voice-service:latest"
-  imagePullPolicy: IfNotPresent
+  imagePullPolicy: Always
 
 websocketGateway:
   replicas: 1
   image: "nextalk/websocket-gateway:latest"
-  imagePullPolicy: IfNotPresent
+  imagePullPolicy: Always
 
 # -----------------------------------------------------------------------
 # ELK stack (log aggregation)

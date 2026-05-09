@@ -1,5 +1,5 @@
 ---
-# Dashboard provider — tells Grafana to load dashboards from /etc/grafana/provisioning/dashboards/
+# Dashboard provider - tells Grafana to load dashboards from /etc/grafana/provisioning/dashboards/
 apiVersion: v1
 kind: ConfigMap
 metadata:

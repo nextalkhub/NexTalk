@@ -13,7 +13,7 @@
 #   /monitoring/grafana         → grafana:3000            (optional, for demo access)
 #   /monitoring/kibana          → kibana:5601             (optional, for demo access)
 #
-# NOTE: /internal/* is blocked — no backend configured, returns 404.
+# NOTE: /internal/* is blocked - no backend configured, returns 404.
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:

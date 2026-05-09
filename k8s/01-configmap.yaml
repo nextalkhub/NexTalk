@@ -1,6 +1,6 @@
 # Non-sensitive application configuration.
 # Sensitive values are in 01-secrets.yaml.
-# IMPORTANT: Change ZITADEL_DOMAIN and ZITADEL_EXTERNALPORT to match your environment.
+# Change ZITADEL_DOMAIN and ZITADEL_EXTERNALPORT to match your node.
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -9,8 +9,8 @@ metadata:
 data:
   ASPNETCORE_ENVIRONMENT: Production
 
-  # --- Zitadel external address (must be reachable by browser) ---
-  # For local k3s: set to your node IP or hostname
+  # Zitadel needs a public address reachable from the browser.
+  # On a local k3s node, use the node IP or keep localhost.
   ZITADEL_DOMAIN: "localhost"
   ZITADEL_EXTERNALPORT: "80"
   ZITADEL_PUBLIC_SCHEME: http

@@ -1,7 +1,7 @@
 ---
 # Prometheus scrape config.
 # /metrics endpoints are exposed after adding prometheus-net.AspNetCore to each service.
-# Until then Prometheus records scrape failures — no data loss, just empty metrics.
+# Until then Prometheus records scrape failures - no data loss, just empty metrics.
 apiVersion: v1
 kind: ConfigMap
 metadata:
