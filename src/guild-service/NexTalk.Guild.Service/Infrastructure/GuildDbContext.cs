@@ -1,11 +1,15 @@
 using Microsoft.EntityFrameworkCore;
-using NexTalk.Guild.Service.Domain;
+using NexTalk.Guild.Service.Domain; // provides Channel, Member, Invite, Ban, MemberRole
+// CS0118: 'Guild' resolves to the NexTalk.Guild *namespace* via enclosing-namespace lookup
+// (C# spec: namespace found in enclosing scope beats using-imported types, and a using alias
+// with the same name as an enclosing namespace is also rejected). Use a distinct alias.
+using GuildAggregate = global::NexTalk.Guild.Service.Domain.Guild;
 
 namespace NexTalk.Guild.Service.Infrastructure;
 
 public class GuildDbContext(DbContextOptions<GuildDbContext> options) : DbContext(options)
 {
-    public DbSet<Guild> Guilds => Set<Guild>();
+    public DbSet<GuildAggregate> Guilds => Set<GuildAggregate>();
     public DbSet<Channel> Channels => Set<Channel>();
     public DbSet<Member> Members => Set<Member>();
     public DbSet<Invite> Invites => Set<Invite>();
@@ -15,7 +19,7 @@ public class GuildDbContext(DbContextOptions<GuildDbContext> options) : DbContex
     {
         modelBuilder.HasDefaultSchema("guild");
 
-        modelBuilder.Entity<Guild>(e =>
+        modelBuilder.Entity<GuildAggregate>(e =>
         {
             e.ToTable("guilds");
             e.HasKey(g => g.Id);

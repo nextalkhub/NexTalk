@@ -1,0 +1,214 @@
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: zitadel
+  namespace: {{ .Values.namespace }}
+spec:
+  serviceName: zitadel
+  replicas: 1
+  selector:
+    matchLabels:
+      app: zitadel
+  template:
+    metadata:
+      labels:
+        app: zitadel
+    spec:
+      securityContext:
+        runAsUser: 0
+      initContainers:
+        - name: wait-for-postgres
+          image: postgres:17-alpine
+          command:
+            - sh
+            - -c
+            - until pg_isready -h postgres -p 5432 -U postgres; do echo "waiting for postgres..."; sleep 3; done
+          env:
+            - name: PGPASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: nextalk-secrets
+                  key: postgres-password
+      containers:
+        - name: api
+          image: ghcr.io/zitadel/zitadel:v4.13.1
+          command:
+            - zitadel
+            - start-from-init
+            - --masterkey
+            - $(ZITADEL_MASTERKEY)
+          ports:
+            - containerPort: 8080
+              name: api
+          env:
+            - name: ZITADEL_MASTERKEY
+              valueFrom:
+                secretKeyRef:
+                  name: nextalk-secrets
+                  key: zitadel-masterkey
+            - name: ZITADEL_DOMAIN
+              valueFrom:
+                configMapKeyRef:
+                  name: nextalk-config
+                  key: ZITADEL_DOMAIN
+            - name: ZITADEL_EXTERNALPORT
+              valueFrom:
+                configMapKeyRef:
+                  name: nextalk-config
+                  key: ZITADEL_EXTERNALPORT
+            - name: ZITADEL_PUBLIC_SCHEME
+              valueFrom:
+                configMapKeyRef:
+                  name: nextalk-config
+                  key: ZITADEL_PUBLIC_SCHEME
+            - name: ZITADEL_PORT
+              value: "8080"
+            - name: ZITADEL_EXTERNALDOMAIN
+              value: "$(ZITADEL_DOMAIN)"
+            - name: ZITADEL_EXTERNALSECURE
+              valueFrom:
+                configMapKeyRef:
+                  name: nextalk-config
+                  key: ZITADEL_EXTERNALSECURE
+            - name: ZITADEL_TLS_ENABLED
+              value: "false"
+            - name: ZITADEL_DATABASE_POSTGRES_DSN
+              valueFrom:
+                secretKeyRef:
+                  name: nextalk-secrets
+                  key: postgres-dsn-zitadel
+            - name: ZITADEL_FIRSTINSTANCE_ORG_HUMAN_PASSWORDCHANGEREQUIRED
+              value: "false"
+            - name: ZITADEL_FIRSTINSTANCE_LOGINCLIENTPATPATH
+              value: /zitadel/bootstrap/login-client.pat
+            - name: ZITADEL_FIRSTINSTANCE_ORG_LOGINCLIENT_MACHINE_USERNAME
+              value: login-client
+            - name: ZITADEL_FIRSTINSTANCE_ORG_LOGINCLIENT_MACHINE_NAME
+              value: Login Client
+            - name: ZITADEL_FIRSTINSTANCE_ORG_LOGINCLIENT_PAT_EXPIRATIONDATE
+              valueFrom:
+                configMapKeyRef:
+                  name: nextalk-config
+                  key: LOGIN_CLIENT_PAT_EXPIRATION
+            - name: ZITADEL_DEFAULTINSTANCE_FEATURES_LOGINV2_REQUIRED
+              value: "true"
+            - name: ZITADEL_DEFAULTINSTANCE_FEATURES_LOGINV2_BASEURI
+              value: "$(ZITADEL_PUBLIC_SCHEME)://$(ZITADEL_DOMAIN):$(ZITADEL_EXTERNALPORT)/ui/v2/login/"
+            - name: ZITADEL_OIDC_DEFAULTLOGINURLV2
+              value: "$(ZITADEL_PUBLIC_SCHEME)://$(ZITADEL_DOMAIN):$(ZITADEL_EXTERNALPORT)/ui/v2/login/login?authRequest="
+            - name: ZITADEL_OIDC_DEFAULTLOGOUTURLV2
+              value: "$(ZITADEL_PUBLIC_SCHEME)://$(ZITADEL_DOMAIN):$(ZITADEL_EXTERNALPORT)/ui/v2/login/logout?post_logout_redirect="
+            - name: ZITADEL_SAML_DEFAULTLOGINURLV2
+              value: "$(ZITADEL_PUBLIC_SCHEME)://$(ZITADEL_DOMAIN):$(ZITADEL_EXTERNALPORT)/ui/v2/login/login?samlRequest="
+            - name: ZITADEL_LOGSTORE_ACCESS_STDOUT_ENABLED
+              valueFrom:
+                configMapKeyRef:
+                  name: nextalk-config
+                  key: ZITADEL_ACCESS_LOG_STDOUT_ENABLED
+          volumeMounts:
+            - name: bootstrap
+              mountPath: /zitadel/bootstrap
+          readinessProbe:
+            exec:
+              command: ["/app/zitadel", "ready"]
+            initialDelaySeconds: 20
+            periodSeconds: 10
+            failureThreshold: 12
+          livenessProbe:
+            exec:
+              command: ["/app/zitadel", "ready"]
+            initialDelaySeconds: 60
+            periodSeconds: 20
+            failureThreshold: 3
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+
+        - name: login
+          image: ghcr.io/zitadel/zitadel-login:v4.13.1
+          ports:
+            - containerPort: 3000
+              name: login
+          env:
+            - name: ZITADEL_API_URL
+              value: http://localhost:8080
+            - name: NEXT_PUBLIC_BASE_PATH
+              value: /ui/v2/login
+            - name: ZITADEL_SERVICE_USER_TOKEN_FILE
+              value: /zitadel/bootstrap/login-client.pat
+            - name: ZITADEL_DOMAIN
+              valueFrom:
+                configMapKeyRef:
+                  name: nextalk-config
+                  key: ZITADEL_DOMAIN
+            - name: ZITADEL_EXTERNALPORT
+              valueFrom:
+                configMapKeyRef:
+                  name: nextalk-config
+                  key: ZITADEL_EXTERNALPORT
+            - name: ZITADEL_PUBLIC_SCHEME
+              valueFrom:
+                configMapKeyRef:
+                  name: nextalk-config
+                  key: ZITADEL_PUBLIC_SCHEME
+            - name: CUSTOM_REQUEST_HEADERS
+              value: "Host:$(ZITADEL_DOMAIN):$(ZITADEL_EXTERNALPORT),X-Forwarded-Proto:$(ZITADEL_PUBLIC_SCHEME)"
+          volumeMounts:
+            - name: bootstrap
+              mountPath: /zitadel/bootstrap
+          startupProbe:
+            exec:
+              command: ["node", "/app/healthcheck.mjs", "http://localhost:3000/ui/v2/login/healthy"]
+            failureThreshold: 30
+            periodSeconds: 5
+          readinessProbe:
+            exec:
+              command: ["node", "/app/healthcheck.mjs", "http://localhost:3000/ui/v2/login/healthy"]
+            periodSeconds: 10
+            failureThreshold: 3
+          livenessProbe:
+            exec:
+              command: ["node", "/app/healthcheck.mjs", "http://localhost:3000/ui/v2/login/healthy"]
+            periodSeconds: 20
+            failureThreshold: 3
+          resources:
+            requests:
+              cpu: 50m
+              memory: 128Mi
+            limits:
+              cpu: 300m
+              memory: 256Mi
+
+      volumes: []
+
+  volumeClaimTemplates:
+    - metadata:
+        name: bootstrap
+      spec:
+        accessModes:
+          - ReadWriteOnce
+        resources:
+          requests:
+            storage: 100Mi
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: zitadel
+  namespace: {{ .Values.namespace }}
+spec:
+  selector:
+    app: zitadel
+  ports:
+    - name: api
+      port: 8080
+      targetPort: 8080
+    - name: login
+      port: 3000
+      targetPort: 3000

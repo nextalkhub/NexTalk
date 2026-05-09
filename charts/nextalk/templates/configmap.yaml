@@ -1,0 +1,13 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: nextalk-config
+  namespace: {{ .Values.namespace }}
+data:
+  ASPNETCORE_ENVIRONMENT: Production
+  ZITADEL_DOMAIN: {{ .Values.zitadel.domain | quote }}
+  ZITADEL_EXTERNALPORT: {{ .Values.zitadel.externalPort | quote }}
+  ZITADEL_PUBLIC_SCHEME: http
+  ZITADEL_EXTERNALSECURE: "false"
+  ZITADEL_ACCESS_LOG_STDOUT_ENABLED: "true"
+  LOGIN_CLIENT_PAT_EXPIRATION: "2099-12-31T23:59:59Z"

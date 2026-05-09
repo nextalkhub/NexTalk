@@ -1,0 +1,71 @@
+# -----------------------------------------------------------------------
+# Global
+# -----------------------------------------------------------------------
+namespace: nextalk
+
+# -----------------------------------------------------------------------
+# Zitadel (OIDC identity provider)
+# -----------------------------------------------------------------------
+zitadel:
+  domain: "localhost"
+  externalPort: "80"
+  # Must be exactly 32 characters
+  masterkey: "MasterkeyNeedsToHave32Characters"
+
+# -----------------------------------------------------------------------
+# PostgreSQL
+# -----------------------------------------------------------------------
+postgres:
+  user: "postgres"
+  password: "postgres"
+  db: "nextalk"
+
+# -----------------------------------------------------------------------
+# LiveKit (voice/video SFU)
+# -----------------------------------------------------------------------
+livekit:
+  apiKey: "devkey"
+  secretKey: "devsecret"
+
+# -----------------------------------------------------------------------
+# Grafana
+# -----------------------------------------------------------------------
+grafana:
+  adminUser: "admin"
+  adminPassword: "admin"
+
+# -----------------------------------------------------------------------
+# Application services
+# -----------------------------------------------------------------------
+guildService:
+  replicas: 2
+  image: "nextalk/guild-service:latest"
+  imagePullPolicy: Always
+
+messagingService:
+  replicas: 1
+  image: "nextalk/messaging-service:latest"
+  imagePullPolicy: Always
+
+voiceService:
+  replicas: 1
+  image: "nextalk/voice-service:latest"
+  imagePullPolicy: Always
+
+websocketGateway:
+  replicas: 1
+  image: "nextalk/websocket-gateway:latest"
+  imagePullPolicy: Always
+
+# -----------------------------------------------------------------------
+# ELK stack (log aggregation)
+# -----------------------------------------------------------------------
+elasticsearch:
+  image: "elasticsearch:8.13.0"
+  storage: "10Gi"
+
+kibana:
+  image: "kibana:8.13.0"
+
+filebeat:
+  image: "elastic/filebeat:8.13.0"

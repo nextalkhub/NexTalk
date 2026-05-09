@@ -1,5 +1,7 @@
 using NexTalk.Guild.Service.Domain;
 using NexTalk.Guild.Service.Infrastructure;
+// CS0118: 'Guild' resolves to NexTalk.Guild namespace via enclosing-namespace lookup.
+using GuildAggregate = global::NexTalk.Guild.Service.Domain.Guild;
 
 namespace NexTalk.Guild.Service.Features.Guilds.CreateGuild;
 
@@ -7,7 +9,7 @@ public class CreateGuildHandler(GuildDbContext db)
 {
     public async Task<Guid> HandleAsync(CreateGuildCommand cmd, CancellationToken ct = default)
     {
-        var guild = new Guild
+        var guild = new GuildAggregate
         {
             Id = Guid.NewGuid(),
             Name = cmd.Name,

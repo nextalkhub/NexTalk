@@ -1,0 +1,93 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: guild-service
+  namespace: {{ .Values.namespace }}
+spec:
+  replicas: {{ .Values.guildService.replicas }}
+  selector:
+    matchLabels:
+      app: guild-service
+  template:
+    metadata:
+      labels:
+        app: guild-service
+    spec:
+      containers:
+        - name: guild-service
+          image: {{ .Values.guildService.image }}
+          imagePullPolicy: {{ .Values.guildService.imagePullPolicy }}
+          ports:
+            - containerPort: 5001
+          env:
+            - name: ASPNETCORE_ENVIRONMENT
+              valueFrom:
+                configMapKeyRef:
+                  name: nextalk-config
+                  key: ASPNETCORE_ENVIRONMENT
+            - name: ASPNETCORE_URLS
+              value: http://+:5001
+            - name: ConnectionStrings__PostgresConnection
+              valueFrom:
+                secretKeyRef:
+                  name: nextalk-secrets
+                  key: postgres-dsn-nextalk
+            - name: ConnectionStrings__Redis
+              value: redis:6379,defaultDatabase=1
+            - name: ZITADEL_DOMAIN
+              valueFrom:
+                configMapKeyRef:
+                  name: nextalk-config
+                  key: ZITADEL_DOMAIN
+            - name: ZITADEL_EXTERNALPORT
+              valueFrom:
+                configMapKeyRef:
+                  name: nextalk-config
+                  key: ZITADEL_EXTERNALPORT
+            - name: Zitadel__Authority
+              value: "http://$(ZITADEL_DOMAIN):$(ZITADEL_EXTERNALPORT)"
+            - name: Zitadel__MetadataAddress
+              value: http://zitadel:8080/.well-known/openid-configuration
+            - name: Services__WebSocketGateway
+              value: http://websocket-gateway:5004
+            - name: Services__VoiceService
+              value: http://voice-service:5003
+          startupProbe:
+            httpGet:
+              path: /healthz
+              port: 5001
+            failureThreshold: 30
+            periodSeconds: 5
+          readinessProbe:
+            httpGet:
+              path: /readyz
+              port: 5001
+            periodSeconds: 10
+            failureThreshold: 3
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: 5001
+            periodSeconds: 15
+            failureThreshold: 3
+          resources:
+            requests:
+              cpu: 50m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: guild-service
+  namespace: {{ .Values.namespace }}
+spec:
+  selector:
+    app: guild-service
+  ports:
+    - port: 5001
+      targetPort: 5001
