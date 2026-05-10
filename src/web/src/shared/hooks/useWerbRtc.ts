@@ -262,6 +262,42 @@ export function useWebRTC(
         return pc;
     }, [setupDataChannel]);
 
+    const initiateConnection = useCallback(async () => {
+        if (isInitiating || peerConnectionRef.current?.signalingState === 'have-local-offer') {
+            return;
+        }
+
+        setIsInitiating(true);
+
+        try {
+            const socket = socketRef.current;
+            if(!socket) return;
+
+            const pc = createPeerConnection();
+            peerConnectionRef.current = pc;
+
+            const dataChannel = pc.createDataChannel('chat', {ordered: true});
+            setupDataChannel(dataChannel);
+
+            try {
+                const offer = await pc.createOffer();
+                await pc.setLocalDescription(offer);
+
+                socket.emit('offer', {
+                    roomId: currentRoomRef.current,
+                    offer: pc.localDescription,
+                    from: socket.id
+                });
+            } catch(error) {
+                console.error('Failed to create offer:', error);
+                setConnectionStatus('failed');
+            }
+        } finally {
+            setIsInitiating(false);
+        }
+    }, [isInitiating, createPeerConnection, setupDataChannel]);
+
+
     const joinRoom = useCallback(async (roomId: string, username: string) => {
         setConnectionStatus('idle');
         setLocalUsername(username);
@@ -380,41 +416,6 @@ export function useWebRTC(
             throw error;
         }
     }, [config.signalingServerUrl, createPeerConnection, initiateConnection]);
-
-    const initiateConnection = useCallback(async () => {
-        if (isInitiating || peerConnectionRef.current?.signalingState === 'have-local-offer') {
-            return;
-        }
-
-        setIsInitiating(true);
-
-        try {
-            const socket = socketRef.current;
-            if(!socket) return;
-
-            const pc = createPeerConnection();
-            peerConnectionRef.current = pc;
-
-            const dataChannel = pc.createDataChannel('chat', {ordered: true});
-            setupDataChannel(dataChannel);
-
-            try {
-                const offer = await pc.createOffer();
-                await pc.setLocalDescription(offer);
-
-                socket.emit('offer', {
-                    roomId: currentRoomRef.current,
-                    offer: pc.localDescription,
-                    from: socket.id
-                });
-            } catch(error) {
-                console.error('Failed to create offer:', error);
-                setConnectionStatus('failed');
-            }
-        } finally {
-            setIsInitiating(false);
-        }
-    }, [isInitiating, createPeerConnection, setupDataChannel]);
 
     useEffect(() => {
         return () => {
