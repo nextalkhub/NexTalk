@@ -23,7 +23,7 @@ export const useAuthStore = create<AuthState>()(
             token: 'demo-token',
             isAuthenticated: true,
 
-            login: async (email: string, password: string) => {
+            login: async (email: string, _password: string) => {
                 const username = email.split('@')[0]
                 set({
                     user: { id: '1', username, email },
