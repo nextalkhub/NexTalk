@@ -5,7 +5,7 @@ import { Invite, CreateInviteRequest } from '../types'
 const USE_MOCK = import.meta.env.VITE_USE_AUTH_MOCK === 'true'
 
 // 🔴 мок-хранилище
-let mockInvites: Record<string, Invite[]> = {}
+const mockInvites: Record<string, Invite[]> = {}
 
 interface InviteState {
     invites: Record<string, Invite[]> // guildId -> invites[]
