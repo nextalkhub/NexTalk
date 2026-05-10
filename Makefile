@@ -4,17 +4,14 @@ NODE_IP     ?= $(shell kubectl get nodes -o jsonpath='{.items[0].status.addresse
 
 .DEFAULT_GOAL := help
 
-.PHONY: help deploy wait status logs images import probe \
+.PHONY: help wait status logs images import probe \
         helm-install helm-upgrade helm-uninstall teardown
 
 help: ## Показать эту справку
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) \
 	  | awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-18s\033[0m %s\n", $$1, $$2}'
 
-# ── Kubernetes (сырые манифесты) ────────────────────────────────────────
-
-deploy: ## Применить все k8s манифесты (kubectl apply -f k8s/)
-	kubectl apply -f k8s/
+# ── Kubernetes ────────────────────────────────────────
 
 wait: ## Дождаться, пока все pod'ы в namespace станут Ready
 	kubectl wait --namespace $(NAMESPACE) \

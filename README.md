@@ -123,31 +123,6 @@ kubectl wait --namespace ingress-nginx --for=condition=ready pod \
   --selector=app.kubernetes.io/component=controller --timeout=120s
 ```
 
-#### Запуск через raw-манифесты
-
-```bash
-git clone <repo-url>
-cd NexTalk
-
-# Применить все манифесты по порядку
-kubectl apply -f k8s/
-
-# Дождаться готовности всех подов
-kubectl wait --namespace nextalk --for=condition=ready pod \
-  --selector=app --timeout=300s
-
-# Проверить статус
-kubectl get pods -n nextalk
-```
-
-Или через `make`:
-
-```bash
-make deploy   # kubectl apply -f k8s/
-make wait     # дождаться Ready
-make status   # kubectl get pods,svc -n nextalk
-```
-
 #### Запуск через Helm
 
 ```bash
