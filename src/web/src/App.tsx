@@ -14,7 +14,7 @@ import {store, useAppSelector} from "./store.ts";
 import {Provider} from "react-redux";
 import React from "react";
 import {selectIsAuthenticated, selectIsLoading} from "./shared/slices/authSlice.ts";
-import {SignalRProvider} from "./SignalrContext.tsx";
+// import {SignalRProvider} from "./SignalrContext.tsx";
 import {OidcCallback} from "./modules/auth/oidc/OidcCallback.tsx";
 
 export const ProtectedRoute: React.FC = () => {

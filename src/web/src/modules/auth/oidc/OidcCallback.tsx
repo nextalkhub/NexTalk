@@ -1,15 +1,14 @@
 import React, { useEffect, useState } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
-import { handleAuthCallback, selectIsLoading } from '../../../shared/slices/authSlice.ts'
+import { handleAuthCallback } from '../../../shared/slices/authSlice.ts'
 import { GradientBackground } from '../../../shared/components/GradientBackground/GradientBackground'
 import styles from './OidcCallback.module.scss'
-import {useAppDispatch, useAppSelector} from "../../../store.ts";
+import {useAppDispatch} from "../../../store.ts";
 
 export const OidcCallback: React.FC = () => {
     const navigate = useNavigate()
     const location = useLocation()
     const dispatch = useAppDispatch()
-    const isLoading = useAppSelector(selectIsLoading)
     const [error, setError] = useState<string | null>(null)
 
     useEffect(() => {
@@ -32,7 +31,7 @@ export const OidcCallback: React.FC = () => {
 
             try {
                 // Используем Redux thunk
-                const result = await dispatch(handleAuthCallback({ code, state })).unwrap()
+                await dispatch(handleAuthCallback({ code, state })).unwrap()
 
                 // Редирект на главную или предыдущую страницу
                 const returnUrl = sessionStorage.getItem('return_url') || '/servers'

@@ -1,11 +1,11 @@
 import React, { useRef, useEffect } from 'react'
-import { Message as MessageType } from '../stores/chatStore'
 import { Message } from './Message'
 import { Icon } from '../../../shared/components/Icon/Icon'
 import styles from './MessageList.module.scss'
+import {MessageInterface} from "../../../shared/slices/chatSlice.ts";
 
 interface MessageListProps {
-    messages: MessageType[]
+    messages: MessageInterface[]
 }
 
 export const MessageList: React.FC<MessageListProps> = ({ messages }) => {
@@ -17,7 +17,7 @@ export const MessageList: React.FC<MessageListProps> = ({ messages }) => {
     }, [messages])
 
     const groupMessagesByDate = () => {
-        const groups: { date: string; messages: MessageType[] }[] = []
+        const groups: { date: string; messages: MessageInterface[] }[] = []
 
         messages.forEach((message) => {
             const date = new Date(message.createdAt).toLocaleDateString('ru-RU', {

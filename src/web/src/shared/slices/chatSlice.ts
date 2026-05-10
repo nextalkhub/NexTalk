@@ -1,7 +1,7 @@
 import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit'
 import { axiosInstance } from '../../processes/axiosInstance.ts'
 
-export interface Message {
+export interface MessageInterface {
     id: string
     channelId: string
     authorId: string
@@ -11,7 +11,7 @@ export interface Message {
 }
 
 interface ChatState {
-    messages: Record<string, Message[]>
+    messages: Record<string, MessageInterface[]>
 }
 
 const initialState: ChatState = {
@@ -20,7 +20,7 @@ const initialState: ChatState = {
 
 const USE_MOCK = import.meta.env.VITE_USE_AUTH_MOCK === 'true'
 
-let mockMessages: Record<string, Message[]> = {
+let mockMessages: Record<string, MessageInterface[]> = {
     '1': [
         {
             id: '1',
@@ -50,7 +50,7 @@ const chatSlice = createSlice({
     name: 'chat',
     initialState,
     reducers: {
-        sendMessage: (state, action: PayloadAction<Message>) => {
+        sendMessage: (state, action: PayloadAction<MessageInterface>) => {
             const msg = action.payload
 
             if (!state.messages[msg.channelId]) {

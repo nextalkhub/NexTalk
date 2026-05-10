@@ -20,7 +20,12 @@ export const VoiceChannelPage: React.FC = () => {
   useEffect(() => {
     if (!channelId || !user) return
 
-    voice.joinVoice(channelId, user.name)
+    const userArgs = {
+      id: user.id,
+      name: user.name
+    }
+
+    voice.joinVoice(channelId, userArgs)
 
     return () => {
       voice.leaveVoice(channelId)

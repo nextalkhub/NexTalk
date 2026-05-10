@@ -1,9 +1,9 @@
 import React from 'react'
-import { Message as MessageType } from '../stores/chatStore'
 import styles from './Message.module.scss'
+import {MessageInterface} from "../../../shared/slices/chatSlice.ts";
 
 interface MessageProps {
-    message: MessageType
+    message: MessageInterface
     showAvatar?: boolean
     showAuthor?: boolean
     isOwn?: boolean
@@ -15,7 +15,7 @@ export const Message: React.FC<MessageProps> = ({
                                                     showAuthor = true,
                                                     isOwn = false
                                                 }) => {
-    const formatTime = (date: Date) => {
+    const formatTime = (date: string) => {
         return new Date(date).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })
     }
 

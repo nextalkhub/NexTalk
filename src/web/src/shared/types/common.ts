@@ -3,5 +3,5 @@
     name: string
     nickname: string
     email: string
-    createdAt: Date
+    createdAt: string
 }

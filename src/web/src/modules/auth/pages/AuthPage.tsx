@@ -1,4 +1,4 @@
-import React, {useEffect, useState} from 'react'
+import React, {useEffect} from 'react'
 import {login, selectIsLoading, selectAuthError, selectIsAuthenticated, register} from '../../../shared/slices/authSlice.ts'
 import { GradientBackground } from '../../../shared/components/GradientBackground/GradientBackground'
 import { AuthCard } from '../components/AuthCard'
@@ -10,7 +10,6 @@ export const AuthPage: React.FC = () => {
     const dispatch = useAppDispatch()
     const isLoading = useAppSelector(selectIsLoading)
     const error = useAppSelector(selectAuthError)
-    const [isLogin, setIsLogin] = useState(true)
     const navigate = useNavigate()
     const isAuthenticated = useAppSelector(selectIsAuthenticated)
 
@@ -22,16 +21,6 @@ export const AuthPage: React.FC = () => {
 
 
     const handleLogin = async () => {
-        // 🟢 MOCK
-        // login() возвращает пользователя → делаем navigate('/servers')
-        //
-        // 🔵 REAL (OIDC)
-        // login() делает redirect → navigate не нужен
-        //
-        // 👉 поэтому проверка if (result) — это как раз фильтр:
-        // mock → есть result → редирект
-        // oidc → null → редиректа нет
-
         try {
             await dispatch(login()).unwrap()
 
@@ -66,19 +55,12 @@ export const AuthPage: React.FC = () => {
         window.location.href = authUrl.toString()
     }
 
-    const toggleMode = () => {
-        setIsLogin(!isLogin)
-    }
-
-
     return (
         <GradientBackground>
             <div className={styles.container}>
                 <AuthCard
-                    isLogin={isLogin}
                     onLogin={handleLogin}
                     onRegister={handleRegister}
-                    onToggleMode={toggleMode}
                     isLoading={isLoading}
                     error={error || undefined}
                 />

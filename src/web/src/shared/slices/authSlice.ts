@@ -3,9 +3,9 @@ import {oidcService} from "../../modules/auth/oidc/oidcService.ts";
 import {User} from "../types";
 
 export interface Tokens {
-    access_token: string
+    access_token?: string
     refresh_token?: string
-    expires_in: number
+    expires_in?: number
     token_type?: string
     scope?: string
 }
@@ -237,12 +237,12 @@ const authSlice = createSlice({
             state.isLoading = true
             state.error = null
         })
-        builder.addCase(register.fulfilled, (state, action) => {
-            state.isLoading = false
-            state.user = action.payload.user
-            state.tokens = action.payload.tokens
-            state.isAuthenticated = true
-        })
+        // builder.addCase(register.fulfilled, (state, action) => {
+        //     state.isLoading = false
+        //     state.user = action.payload.user
+        //     state.tokens = action.payload.tokens
+        //     state.isAuthenticated = true
+        // })
         builder.addCase(register.rejected, (state, action) => {
             state.isLoading = false
             state.error = action.error.message || 'Register failed'
@@ -281,13 +281,12 @@ const authSlice = createSlice({
         })
 
         builder.addCase(refreshToken.fulfilled, (state, action) => {
-            if (state.tokens) {
-                state.tokens.access_token = action.payload.access_token
-                if (action.payload.refresh_token) {
-                    state.tokens.refresh_token = action.payload.refresh_token
-                }
-                state.tokens.expires_in = action.payload.expires_in
+            if (!action.payload || !state.tokens) return
+            state.tokens.access_token = action.payload.access_token
+            if (action.payload.refresh_token) {
+                state.tokens.refresh_token = action.payload.refresh_token
             }
+            state.tokens.expires_in = action.payload.expires_in
         })
         builder.addCase(refreshToken.rejected, (state) => {
             state.user = null

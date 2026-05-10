@@ -6,7 +6,7 @@ interface User {
     id: string
     name: string
     nickname: string
-    createdAt: Date
+    createdAt: string
     serversCount: number
 }
 

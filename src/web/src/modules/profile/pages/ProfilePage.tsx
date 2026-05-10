@@ -28,10 +28,6 @@ export const ProfilePage: React.FC = () => {
         console.log('Edit profile')
     }
 
-    const formatCreatedAt = (date: Date | undefined): Date => {
-        return date || new Date('2026-04-20')
-    }
-
     return (
         <GradientBackground>
             <div className={styles.container}>
@@ -40,7 +36,7 @@ export const ProfilePage: React.FC = () => {
                         id: user?.id || '1',
                         name: user?.name || 'User',
                         nickname: user?.nickname || 'user',
-                        createdAt: formatCreatedAt(user?.createdAt),
+                        createdAt: user?.createdAt || Date.now().toString(),
                         serversCount: serversCount,
                     }}
                     onEdit={handleEdit}
