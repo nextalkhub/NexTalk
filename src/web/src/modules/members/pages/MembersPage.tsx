@@ -31,7 +31,7 @@ export const MembersPage: React.FC = () => {
       if (serverId) {
         dispatch(fetchMembers(serverId))
       }
-  }, [serverId])
+  }, [serverId, dispatch])
 
   const handleKick = async (id: string, name: string) => {
     if (!window.confirm(`Исключить ${name}?`)) return

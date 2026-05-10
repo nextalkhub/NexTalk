@@ -17,7 +17,7 @@ export const MembersSidebar: React.FC = () => {
         if (serverId) {
             dispatch(fetchMembers(serverId))
         }
-    }, [serverId])
+    }, [serverId, dispatch])
 
     return (
         <div className={styles.sidebar}>

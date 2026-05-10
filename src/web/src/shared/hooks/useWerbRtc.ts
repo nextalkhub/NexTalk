@@ -131,7 +131,7 @@ export function useWebRTC(
     const addMessage = useCallback((message: ChatMessage) => {
         setMessages(prev => [...prev, message]);
         console.log("messages: ", messages);
-    }, []);
+    }, [messages]);
 
     const sendMessage = useCallback((text: string) => {
 
@@ -379,7 +379,7 @@ export function useWebRTC(
             socket.disconnect();
             throw error;
         }
-    }, [config.signalingServerUrl, createPeerConnection]);
+    }, [config.signalingServerUrl, createPeerConnection, initiateConnection]);
 
     const initiateConnection = useCallback(async () => {
         if (isInitiating || peerConnectionRef.current?.signalingState === 'have-local-offer') {

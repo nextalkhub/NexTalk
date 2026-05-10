@@ -22,7 +22,7 @@ export const ServersPage: React.FC = () => {
         if (!isAuthenticated) {
             navigate('/auth')
         }
-    }, [isAuthenticated])
+    }, [isAuthenticated, navigate])
 
     useEffect(() => {
         dispatch(fetchServers())

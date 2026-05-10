@@ -17,7 +17,7 @@ export const AuthPage: React.FC = () => {
         if (isAuthenticated) {
             navigate('/servers')
         }
-    }, [isAuthenticated])
+    }, [isAuthenticated, navigate])
 
 
     const handleLogin = async () => {

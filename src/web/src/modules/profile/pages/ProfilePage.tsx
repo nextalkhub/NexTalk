@@ -15,7 +15,7 @@ export const ProfilePage: React.FC = () => {
 
     useEffect(() => {
         dispatch(fetchServers())
-    }, [])
+    }, [dispatch])
 
     const serversCount = servers.length
 
