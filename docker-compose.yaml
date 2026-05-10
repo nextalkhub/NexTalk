@@ -24,6 +24,8 @@ services:
         condition: service_healthy
       websocket-gateway:
         condition: service_healthy
+      web-spa:
+        condition: service_healthy
     networks:
       - nextalk
       - zitadel
@@ -33,6 +35,26 @@ services:
       timeout: 5s
       retries: 3
       start_period: 10s
+
+  web-spa:
+    build:
+      context: ./src/web
+      dockerfile: Dockerfile
+      args:
+        VITE_OIDC_AUTHORITY: ${ZITADEL_PUBLIC_SCHEME}://${ZITADEL_DOMAIN}:${ZITADEL_EXTERNALPORT}
+        VITE_OIDC_CLIENT_ID: ${VITE_OIDC_CLIENT_ID:-}
+        VITE_OIDC_REDIRECT_URI: ${ZITADEL_PUBLIC_SCHEME}://${ZITADEL_DOMAIN}:${PROXY_HTTP_PUBLISHED_PORT}/callback
+        VITE_LIVEKIT_URL: ws://${ZITADEL_DOMAIN}:${PROXY_HTTP_PUBLISHED_PORT}/livekit
+        VITE_USE_AUTH_MOCK: ${VITE_USE_AUTH_MOCK:-false}
+    restart: unless-stopped
+    networks:
+      - nextalk
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost/"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
 
   guild-service:
     build:
