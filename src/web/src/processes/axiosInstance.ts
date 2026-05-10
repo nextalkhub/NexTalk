@@ -1,7 +1,9 @@
 import axios from 'axios';
 
-const API_URL = 'https://localhost:5073';
-
+// Пустая строка = относительные пути → same-origin через nginx/vite-proxy
 export const axiosInstance = axios.create({
-    baseURL: API_URL,
+    baseURL: import.meta.env.VITE_API_URL ?? '',
+    headers: {
+        'Content-Type': 'application/json',
+    },
 });
