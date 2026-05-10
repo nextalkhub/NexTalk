@@ -57,6 +57,11 @@ websocketGateway:
   image: "nextalk/websocket-gateway:latest"
   imagePullPolicy: Always
 
+webSpa:
+  replicas: 1
+  image: "nextalk/web-spa:latest"
+  imagePullPolicy: Always
+
 # -----------------------------------------------------------------------
 # ELK stack (log aggregation)
 # -----------------------------------------------------------------------

@@ -80,6 +80,6 @@ spec:
             pathType: Prefix
             backend:
               service:
-                name: zitadel
+                name: web-spa
                 port:
-                  number: 8080
+                  number: 80
