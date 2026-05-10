@@ -77,7 +77,7 @@ docker compose --env-file=.env.example up -d --wait
 | http://localhost:8080/api/channels | Messaging Service (требует JWT) |
 | http://localhost:8080/api/voice | Voice Service (требует JWT) |
 | http://localhost:8080/ws | WebSocket Gateway (SignalR) |
-| http://localhost:7880 | LiveKit SFU - HTTP API |
+| http://localhost:8080/livekit | LiveKit SFU - HTTP API |
 
 #### Проверка
 
@@ -121,31 +121,6 @@ sudo chown $USER ~/.kube/config
 kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/controller-v1.11.0/deploy/static/provider/cloud/deploy.yaml
 kubectl wait --namespace ingress-nginx --for=condition=ready pod \
   --selector=app.kubernetes.io/component=controller --timeout=120s
-```
-
-#### Запуск через raw-манифесты
-
-```bash
-git clone <repo-url>
-cd NexTalk
-
-# Применить все манифесты по порядку
-kubectl apply -f k8s/
-
-# Дождаться готовности всех подов
-kubectl wait --namespace nextalk --for=condition=ready pod \
-  --selector=app --timeout=300s
-
-# Проверить статус
-kubectl get pods -n nextalk
-```
-
-Или через `make`:
-
-```bash
-make deploy   # kubectl apply -f k8s/
-make wait     # дождаться Ready
-make status   # kubectl get pods,svc -n nextalk
 ```
 
 #### Запуск через Helm

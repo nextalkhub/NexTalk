@@ -243,8 +243,8 @@ modelObjects:
   name: React SPA
   type: app
   parentId: system-nextalk
-  description: 'UI: OIDC-клиент (oidc-client-ts), SignalR, LiveKit-клиент'
-  caption: React + TypeScript
+  description: 'UI: OIDC-клиент (PKCE), SignalR, LiveKit-клиент. Раздается nginx как статика (production) или Vite dev-server (development).'
+  caption: React + TypeScript + Vite
   tagIds: [tag-frontend, tag-react]
 
 # --- Nginx ---
@@ -252,7 +252,7 @@ modelObjects:
   name: Nginx
   type: app
   parentId: system-nextalk
-  description: 'Reverse proxy. Rate limiting (100 RPS/IP). Routing, WebSocket upgrade, Correlation ID.'
+  description: 'Reverse proxy. Rate limiting (100 RPS/IP). Routing, WebSocket upgrade, Correlation ID. Раздает React SPA (статика). Проксирует LiveKit :7880 (WS signaling) по /livekit/ для SSL-терминации.'
   caption: Nginx / Ingress Controller
   tagIds: [tag-gateway, tag-nginx]
 
@@ -512,7 +512,7 @@ modelConnections:
   originId: app-spa
   targetId: app-nginx
   direction: outgoing
-  description: Все REST-запросы и WebSocket через Nginx
+  description: 'SPA получена с nginx (статика). Все REST/WS/OIDC запросы идут через nginx (same-origin — CORS не нужен).'
 
 # --- SPA → Zitadel (через Nginx) ---
 - id: conn-spa-zitadel
@@ -528,7 +528,7 @@ modelConnections:
   originId: app-spa
   targetId: app-livekit
   direction: bidirectional
-  description: Голосовые SRTP-потоки
+  description: 'WS signaling: ws://nginx/livekit/ → livekit:7880 (через nginx для SSL-терминации). UDP media (50000-50200): напрямую браузер → LiveKit, nginx UDP не проксирует.'
 
 # --- nginx → Services ---
 - id: conn-nginx-guild

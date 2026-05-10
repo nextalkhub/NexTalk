@@ -12,7 +12,7 @@ interface VoiceParticipantListProps {
 
 export const VoiceParticipantList: React.FC<VoiceParticipantListProps> = ({
                                                                               participants,
-                                                                              currentUserId,
+                                                                              currentUserId: _currentUserId,
                                                                               onMuteUser,
                                                                               onKickUser,
                                                                           }) => {
