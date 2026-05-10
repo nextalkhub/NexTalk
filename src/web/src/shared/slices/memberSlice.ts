@@ -7,7 +7,7 @@ import {banMember} from "../../processes/guild/banMember.ts";
 const USE_MOCK = import.meta.env.VITE_USE_AUTH_MOCK === 'true'
 
 // 🔴 общий мок (как у тебя)
-export  const mockMembers: Record<string, Member[]> = {
+export const mockMembers: Record<string, Member[]> = {
     '1': [
         { id: '1', name: 'Иван', avatar: 'И', role: 'owner', username: '@ivan', userId: '1' },
         { id: '2', name: 'Мария', avatar: 'М', role: 'admin', username: '@maria', userId: '2' },

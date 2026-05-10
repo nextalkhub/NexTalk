@@ -7,11 +7,12 @@ import { VoiceParticipantList } from '../components/VoiceParticipantList'
 import styles from './VoiceChannelPage.module.scss'
 import { useAppSelector } from "../../../store.ts"
 import { selectUser } from "../../../shared/slices/authSlice.ts"
-import {useVoice} from "../../../shared/hooks/useVoice.ts";
+import { useVoice } from "../../../shared/hooks/useVoice.ts"
+import type { VoiceParticipantProps } from '../components/VoiceParticipant'
 
 export const VoiceChannelPage: React.FC = () => {
   const navigate = useNavigate()
-  const { serverId, channelId } = useParams()
+  const { serverId, channelId } = useParams<{ serverId: string; channelId: string }>()
   const user = useAppSelector(selectUser)
   const voice = useVoice()
 
@@ -30,7 +31,7 @@ export const VoiceChannelPage: React.FC = () => {
     return () => {
       voice.leaveVoice(channelId)
     }
-  }, [channelId, user])
+  }, [channelId, user, voice])
 
   const handleDisconnect = () => {
     if (channelId) {
@@ -39,19 +40,36 @@ export const VoiceChannelPage: React.FC = () => {
     navigate(`/servers/${serverId}/channels`)
   }
 
-  const participantsWithCurrent = user
+  const participantsWithCurrent: VoiceParticipantProps[] = user
       ? [
-        ...voice.participants,
+        ...voice.participants.map(p => ({
+          id: p.userId,
+          name: p.displayName || p.username,
+          avatar: p.avatar || p.username[0].toUpperCase(),
+          isSpeaking: false,
+          isMuted: p.isMuted,
+          isDeafened: p.isDeafened,
+          isCurrentUser: false,
+        })),
         {
           id: user.id,
           name: user.name,
           avatar: user.name[0].toUpperCase(),
           isSpeaking: false,
           isMuted: voice.isMuted,
+          isDeafened: isDeafened,
           isCurrentUser: true,
         },
       ]
-      : voice.participants
+      : voice.participants.map(p => ({
+        id: p.userId,
+        name: p.displayName || p.username,
+        avatar: p.avatar || p.username[0].toUpperCase(),
+        isSpeaking: false,
+        isMuted: p.isMuted,
+        isDeafened: p.isDeafened,
+        isCurrentUser: false,
+      }))
 
   return (
       <div className={styles.layout}>

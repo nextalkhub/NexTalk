@@ -61,7 +61,6 @@ export const VoiceParticipant: React.FC<VoiceParticipantProps> = ({
                         <span className={styles.idle}>В сети</span>
                     )}
                 </div>
-
             </div>
 
             {showActions && !isCurrentUser && (
