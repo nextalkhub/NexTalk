@@ -31,7 +31,6 @@ async function fetchIceConfig(serverUrl: string) {
 
 export function useWebRTC(
     config: UseWebRTCConfig = {
-        // Сигнальный сервер — VITE_LIVEKIT_URL или LiveKit через nginx
         signalingServerUrl: import.meta.env.VITE_LIVEKIT_URL || 'ws://localhost:8080/livekit',
         iceServers: FALLBACK_ICE_SERVERS
     }
