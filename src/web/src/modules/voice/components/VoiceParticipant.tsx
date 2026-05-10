@@ -20,7 +20,7 @@ export const VoiceParticipant: React.FC<VoiceParticipantProps> = ({
                                                                       avatar,
                                                                       isSpeaking,
                                                                       isMuted,
-                                                                      isDeafened = false,
+                                                                      isDeafened: _isDeafened = false,
                                                                       isCurrentUser = false,
                                                                       onMute,
                                                                       onKick,

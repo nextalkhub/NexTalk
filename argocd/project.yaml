@@ -1,0 +1,15 @@
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: nextalk
+  namespace: argocd
+spec:
+  description: NexTalk - real-time messaging platform
+  sourceRepos:
+    - 'https://github.com/nextalkhub/NexTalk.git'
+  destinations:
+    - namespace: nextalk
+      server: https://kubernetes.default.svc
+  clusterResourceWhitelist:
+    - group: ''
+      kind: Namespace

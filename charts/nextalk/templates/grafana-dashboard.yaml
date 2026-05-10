@@ -1,0 +1,8 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: grafana-dashboard-nextalk
+  namespace: {{ .Values.namespace }}
+data:
+  nextalk-dashboard.json: |
+{{ .Files.Get "files/nextalk-dashboard.json" | indent 4 }}

@@ -1,0 +1,90 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: websocket-gateway
+  namespace: {{ .Values.namespace }}
+spec:
+  replicas: {{ .Values.websocketGateway.replicas }}
+  selector:
+    matchLabels:
+      app: websocket-gateway
+  template:
+    metadata:
+      labels:
+        app: websocket-gateway
+    spec:
+      containers:
+        - name: websocket-gateway
+          image: {{ .Values.websocketGateway.image }}
+          imagePullPolicy: {{ .Values.websocketGateway.imagePullPolicy }}
+          ports:
+            - containerPort: 5004
+          env:
+            - name: ASPNETCORE_ENVIRONMENT
+              valueFrom:
+                configMapKeyRef:
+                  name: nextalk-config
+                  key: ASPNETCORE_ENVIRONMENT
+            - name: ASPNETCORE_URLS
+              value: http://+:5004
+            - name: ZITADEL_DOMAIN
+              valueFrom:
+                configMapKeyRef:
+                  name: nextalk-config
+                  key: ZITADEL_DOMAIN
+            - name: ZITADEL_EXTERNALPORT
+              valueFrom:
+                configMapKeyRef:
+                  name: nextalk-config
+                  key: ZITADEL_EXTERNALPORT
+            - name: Zitadel__Authority
+              value: "http://$(ZITADEL_DOMAIN):$(ZITADEL_EXTERNALPORT)"
+            - name: Zitadel__MetadataAddress
+              value: http://zitadel:8080/.well-known/openid-configuration
+            - name: Services__GuildService
+              value: http://guild-service:5001
+            - name: Services__MessagingService
+              value: http://messaging-service:5002
+            - name: Presence__HeartbeatInterval
+              value: "20"
+            - name: Presence__OfflineTimeout
+              value: "30"
+          startupProbe:
+            httpGet:
+              path: /healthz
+              port: 5004
+            failureThreshold: 30
+            periodSeconds: 5
+          readinessProbe:
+            httpGet:
+              path: /readyz
+              port: 5004
+            periodSeconds: 10
+            failureThreshold: 3
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: 5004
+            periodSeconds: 15
+            failureThreshold: 3
+          resources:
+            requests:
+              cpu: 50m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: websocket-gateway
+  namespace: {{ .Values.namespace }}
+spec:
+  selector:
+    app: websocket-gateway
+  ports:
+    - port: 5004
+      targetPort: 5004

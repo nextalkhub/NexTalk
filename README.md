@@ -43,60 +43,171 @@
 
 ## 0. Быстрый старт
 
-### Требования
+Два способа запуска: **docker-compose** (локально, минута до старта) и **Kubernetes** (продакшн-подобная среда, k3s).
+
+---
+
+### Вариант A - Docker Compose
+
+#### Требования
 
 | Инструмент | Версия | Зачем |
 |:--|:--|:--|
-| Docker | 24+ | Запуск всех сервисов |
+| Docker | 25+ | Запуск всех сервисов |
 | Docker Compose | v2 (plugin) | Оркестрация контейнеров локально |
 | Git | любая | Клонирование репозитория |
 
-### Запуск
+#### Запуск
 
 ```bash
-# 1. Клонировать репозиторий
 git clone <repo-url>
 cd NexTalk
 
-# 2. Запустить все сервисы (дождаться healthy-статуса всех контейнеров)
+# Запустить все сервисы (дождаться healthy-статуса всех контейнеров)
 docker compose --env-file=.env.example up -d --wait
 ```
 
-После успешного запуска будут доступны:
+После успешного запуска:
 
 | Адрес | Что там |
 |:--|:--|
-| http://localhost:8080 | Nginx - точка входа, редирект на страницу входа |
+| http://localhost:8080 | Nginx - точка входа |
 | http://localhost:8080/ui/v2/login | Zitadel - регистрация и логин |
-| http://localhost:8080/.well-known/openid-configuration | Zitadel OIDC Discovery |
 | http://localhost:8080/api/guilds | Guild Service (требует JWT) |
 | http://localhost:8080/api/channels | Messaging Service (требует JWT) |
 | http://localhost:8080/api/voice | Voice Service (требует JWT) |
 | http://localhost:8080/ws | WebSocket Gateway (SignalR) |
-| http://localhost:7880 | LiveKit SFU - HTTP API |
+| http://localhost:8080/livekit | LiveKit SFU - HTTP API |
 
-### Проверка работоспособности
+#### Проверка
 
 ```bash
-# Убедиться, что все контейнеры healthy
-docker compose ps
-
-# Health-эндпоинт nginx (публичный порт)
+docker compose ps                              # все контейнеры healthy
+docker compose logs guild-service | head -20   # JSON-логи
 curl http://localhost:8080/health
-
-# Логи всех сервисов в JSON-формате
-docker compose logs guild-service | head -20
 ```
 
-### Остановка
+#### Остановка
 
 ```bash
-# Остановить контейнеры
-docker compose down
-
-# Остановить и удалить все данные
-docker compose down -v
+docker compose down        # остановить
+docker compose down -v     # остановить + удалить данные
 ```
+
+---
+
+### Вариант B - Kubernetes (k3s)
+
+#### Требования
+
+| Инструмент | Версия | Зачем |
+|:--|:--|:--|
+| k3s | v1.30+ | Легкий кластер (1 нода) |
+| kubectl | 1.30+ | Управление кластером |
+| Git | любая | Клонирование репозитория |
+
+#### Установка k3s (если еще нет)
+
+```bash
+# Установить k3s без Traefik (используем Nginx Ingress Controller)
+curl -sfL https://get.k3s.io | INSTALL_K3S_EXEC="--disable=traefik" sh -
+
+# Настроить kubeconfig
+mkdir -p ~/.kube
+sudo cp /etc/rancher/k3s/k3s.yaml ~/.kube/config
+sudo chown $USER ~/.kube/config
+
+# Установить Nginx Ingress Controller
+kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/controller-v1.11.0/deploy/static/provider/cloud/deploy.yaml
+kubectl wait --namespace ingress-nginx --for=condition=ready pod \
+  --selector=app.kubernetes.io/component=controller --timeout=120s
+```
+
+#### Запуск через Helm
+
+```bash
+helm install nextalk charts/nextalk/ \
+  --namespace nextalk --create-namespace \
+  --set zitadel.domain=<ваш-домен> \
+  --set postgres.password=<пароль>
+
+helm status nextalk -n nextalk
+```
+
+Или через `make`:
+
+```bash
+make helm-install
+make helm-upgrade   # при обновлении values
+```
+
+#### Без внешнего registry (локально / k3s без интернета)
+
+```bash
+# Собрать образы и импортировать прямо в containerd k3s
+make import
+
+# Затем деплоить
+make deploy
+```
+
+#### Полезные команды Makefile
+
+```bash
+make                          # список всех команд
+make logs SERVICE=guild-service   # tail логов конкретного сервиса
+make probe                    # тест Redis cache hit/miss (авто-определяет NODE_IP)
+make probe NODE_IP=1.2.3.4    # то же, но с явным IP
+make teardown                 # удалить весь namespace (деструктивно!)
+```
+
+После запуска (NODE_IP - IP вашей k3s-ноды):
+
+| Адрес | Что там |
+|:--|:--|
+| http://`<NODE_IP>`/ui/v2/login | Zitadel - логин |
+| http://`<NODE_IP>`/api/guilds | Guild Service |
+| http://`<NODE_IP>`/monitoring/grafana | Grafana дашборды |
+| http://`<NODE_IP>`/monitoring/kibana | Kibana (логи) |
+
+#### Проверка Redis-кэша между репликами Guild Service
+
+Guild Service работает в 2 репликах, общий кэш через Redis. Демонстрация cache hit/miss:
+
+```bash
+# Первый запрос - cache miss (Redis пустой, Pod сохраняет значение)
+curl http://<NODE_IP>/api/guilds/probe
+# {"source":"redis","value":"set by guild-service-abc at 2026-..."}
+
+# Второй запрос (в течение 30 сек) - cache hit (может попасть на другой Pod)
+curl http://<NODE_IP>/api/guilds/probe
+# {"source":"cache","value":"set by guild-service-abc at 2026-..."}
+```
+
+Запросы проходят через Nginx Ingress → балансируются между Pod-ами → оба читают одно значение из Redis.
+
+#### Удаление
+
+```bash
+kubectl delete namespace nextalk      # через манифесты
+# или
+helm uninstall nextalk -n nextalk      # через Helm
+```
+
+---
+
+### Наблюдаемость
+
+| Инструмент | Что делает |
+|:--|:--|
+| **Prometheus** | Scrape `/metrics` со всех .NET-сервисов каждые 15 сек |
+| **Grafana** | Дашборд: RPS, latency p50/p95, error rate 4xx/5xx, requests in flight |
+| **Serilog** | JSON-логи на stdout, поле `MachineName` идентифицирует Pod |
+| **Filebeat** | DaemonSet, собирает JSON-логи с нод, шипит в Elasticsearch |
+| **Kibana** | Поиск и фильтрация логов; Elastic Alert при `log.level: error` → email |
+
+Настройка Elastic Alert: [docs/elk-alert-setup.md](docs/elk-alert-setup.md)  
+Grafana дашборд: [grafana/nextalk-dashboard.json](grafana/nextalk-dashboard.json)
 
 ---
 

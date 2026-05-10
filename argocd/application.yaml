@@ -1,0 +1,31 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: nextalk
+  namespace: argocd
+spec:
+  project: nextalk
+
+  source:
+    repoURL: https://github.com/nextalkhub/NexTalk.git
+    targetRevision: main
+    path: charts/nextalk
+    helm:
+      releaseName: nextalk
+      # Override values for the target environment.
+      # Secrets should be managed via Sealed Secrets or external-secrets, not here.
+      values: |
+        zitadel:
+          domain: "localhost"
+          externalPort: "80"
+
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: nextalk
+
+  syncPolicy:
+    automated:
+      prune: true       # delete k8s resources removed from the chart
+      selfHeal: true    # revert manual changes in the cluster
+    syncOptions:
+      - CreateNamespace=true

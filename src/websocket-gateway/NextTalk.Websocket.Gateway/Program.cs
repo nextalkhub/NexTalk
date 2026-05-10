@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
+using Prometheus;
 using Serilog;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -9,6 +10,8 @@ builder.Services.AddHealthChecks();
 
 var app = builder.Build();
 
+app.UseHttpMetrics();
+
 app.UseSerilogRequestLogging(opts =>
     opts.EnrichDiagnosticContext = (dc, ctx) =>
         dc.Set("CorrelationId",
@@ -18,5 +21,6 @@ app.UseSerilogRequestLogging(opts =>
 
 app.MapHealthChecks("/healthz", new HealthCheckOptions { Predicate = _ => false });
 app.MapHealthChecks("/readyz", new HealthCheckOptions { Predicate = _ => false });
+app.MapMetrics();
 
 app.Run();

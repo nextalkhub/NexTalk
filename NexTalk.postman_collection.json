@@ -1,0 +1,2269 @@
+{
+	"info": {
+		"_postman_id": "nextalk-api-collection",
+		"name": "NexTalk API",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "health",
+			"item": [
+				{
+					"name": "Проверка доступности",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/health",
+							"host": ["{{baseUrl}}"],
+							"path": ["health"]
+						},
+						"description": "Проверка работоспособности Nginx"
+					},
+					"response": [
+						{
+							"name": "ok",
+							"originalRequest": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{baseUrl}}/health",
+									"host": ["{{baseUrl}}"],
+									"path": ["health"]
+								}
+							},
+							"status": "OK",
+							"code": 200,
+							"_postman_previewlanguage": "text",
+							"header": [],
+							"cookie": [],
+							"body": ""
+						}
+					]
+				}
+			]
+		},
+		{
+			"name": "api",
+			"item": [
+				{
+					"name": "guilds",
+					"item": [
+						{
+							"name": "Получить мои серверы",
+							"request": {
+								"method": "GET",
+								"header": [
+									{"key": "Accept", "value": "application/json"},
+									{"key": "Authorization", "value": "Bearer {{access_token}}"}
+								],
+								"url": {
+									"raw": "{{baseUrl}}/api/guilds",
+									"host": ["{{baseUrl}}"],
+									"path": ["api", "guilds"]
+								},
+								"description": "Получить список всех серверов текущего пользователя"
+							},
+							"response": [
+								{
+									"name": "ok",
+									"originalRequest": {
+										"method": "GET",
+										"header": [{"key": "Accept", "value": "application/json"}],
+										"url": {"raw": "{{baseUrl}}/api/guilds", "host": ["{{baseUrl}}"], "path": ["api", "guilds"]}
+									},
+									"status": "OK",
+									"code": 200,
+									"_postman_previewlanguage": "json",
+									"header": [{"key": "Content-Type", "value": "application/json"}],
+									"cookie": [],
+									"body": "[\n  {\n    \"id\": \"<string>\",\n    \"name\": \"<string>\",\n    \"description\": \"<string>\",\n    \"icon\": \"<string>\",\n    \"ownerId\": \"<string>\",\n    \"createdAt\": \"<string>\",\n    \"updatedAt\": \"<string>\",\n    \"memberCount\": \"<integer>\"\n  }\n]"
+								},
+								{
+									"name": "Unauthorized",
+									"originalRequest": {
+										"method": "GET",
+										"header": [{"key": "Accept", "value": "application/json"}],
+										"url": {"raw": "{{baseUrl}}/api/guilds", "host": ["{{baseUrl}}"], "path": ["api", "guilds"]}
+									},
+									"status": "Unauthorized",
+									"code": 401,
+									"_postman_previewlanguage": "json",
+									"header": [{"key": "Content-Type", "value": "application/json"}],
+									"cookie": [],
+									"body": "{\n  \"error\": \"Unauthorized\",\n  \"message\": \"Missing or invalid authentication token\"\n}"
+								},
+								{
+									"name": "Server error",
+									"originalRequest": {
+										"method": "GET",
+										"header": [{"key": "Accept", "value": "application/json"}],
+										"url": {"raw": "{{baseUrl}}/api/guilds", "host": ["{{baseUrl}}"], "path": ["api", "guilds"]}
+									},
+									"status": "Internal Server Error",
+									"code": 500,
+									"_postman_previewlanguage": "json",
+									"header": [{"key": "Content-Type", "value": "application/json"}],
+									"cookie": [],
+									"body": "{\n  \"error\": \"Internal Server Error\",\n  \"message\": \"<string>\"\n}"
+								}
+							]
+						},
+						{
+							"name": "Создать сервер",
+							"request": {
+								"method": "POST",
+								"header": [
+									{"key": "Content-Type", "value": "application/json"},
+									{"key": "Accept", "value": "application/json"},
+									{"key": "Authorization", "value": "Bearer {{access_token}}"}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"name\": \"<string>\",\n  \"description\": \"<string>\",\n  \"icon\": \"<string>\"\n}",
+									"options": {"raw": {"headerFamily": "json", "language": "json"}}
+								},
+								"url": {
+									"raw": "{{baseUrl}}/api/guilds",
+									"host": ["{{baseUrl}}"],
+									"path": ["api", "guilds"]
+								},
+								"description": "Создать новый сервер. Создатель становится владельцем (Owner)"
+							},
+							"response": [
+								{
+									"name": "ok",
+									"originalRequest": {
+										"method": "POST",
+										"header": [
+											{"key": "Content-Type", "value": "application/json"},
+											{"key": "Accept", "value": "application/json"}
+										],
+										"body": {
+											"mode": "raw",
+											"raw": "{\n  \"name\": \"<string>\",\n  \"description\": \"<string>\",\n  \"icon\": \"<string>\"\n}",
+											"options": {"raw": {"headerFamily": "json", "language": "json"}}
+										},
+										"url": {"raw": "{{baseUrl}}/api/guilds", "host": ["{{baseUrl}}"], "path": ["api", "guilds"]}
+									},
+									"status": "OK",
+									"code": 200,
+									"_postman_previewlanguage": "json",
+									"header": [{"key": "Content-Type", "value": "application/json"}],
+									"cookie": [],
+									"body": "{\n  \"id\": \"<string>\",\n  \"name\": \"<string>\",\n  \"description\": \"<string>\",\n  \"icon\": \"<string>\",\n  \"ownerId\": \"<string>\",\n  \"createdAt\": \"<string>\",\n  \"updatedAt\": \"<string>\",\n  \"memberCount\": 1\n}"
+								},
+								{
+									"name": "Bad request",
+									"originalRequest": {
+										"method": "POST",
+										"header": [
+											{"key": "Content-Type", "value": "application/json"},
+											{"key": "Accept", "value": "application/json"}
+										],
+										"body": {
+											"mode": "raw",
+											"raw": "{\n  \"name\": \"<string>\",\n  \"description\": \"<string>\",\n  \"icon\": \"<string>\"\n}",
+											"options": {"raw": {"headerFamily": "json", "language": "json"}}
+										},
+										"url": {"raw": "{{baseUrl}}/api/guilds", "host": ["{{baseUrl}}"], "path": ["api", "guilds"]}
+									},
+									"status": "Bad Request",
+									"code": 400,
+									"_postman_previewlanguage": "json",
+									"header": [{"key": "Content-Type", "value": "application/json"}],
+									"cookie": [],
+									"body": "{\n  \"error\": \"Bad Request\",\n  \"message\": \"<string>\"\n}"
+								},
+								{
+									"name": "Unauthorized",
+									"originalRequest": {
+										"method": "POST",
+										"header": [
+											{"key": "Content-Type", "value": "application/json"},
+											{"key": "Accept", "value": "application/json"}
+										],
+										"body": {
+											"mode": "raw",
+											"raw": "{\n  \"name\": \"<string>\",\n  \"description\": \"<string>\",\n  \"icon\": \"<string>\"\n}",
+											"options": {"raw": {"headerFamily": "json", "language": "json"}}
+										},
+										"url": {"raw": "{{baseUrl}}/api/guilds", "host": ["{{baseUrl}}"], "path": ["api", "guilds"]}
+									},
+									"status": "Unauthorized",
+									"code": 401,
+									"_postman_previewlanguage": "json",
+									"header": [{"key": "Content-Type", "value": "application/json"}],
+									"cookie": [],
+									"body": "{\n  \"error\": \"Unauthorized\",\n  \"message\": \"Missing or invalid authentication token\"\n}"
+								},
+								{
+									"name": "Server error",
+									"originalRequest": {
+										"method": "POST",
+										"header": [
+											{"key": "Content-Type", "value": "application/json"},
+											{"key": "Accept", "value": "application/json"}
+										],
+										"body": {
+											"mode": "raw",
+											"raw": "{\n  \"name\": \"<string>\",\n  \"description\": \"<string>\",\n  \"icon\": \"<string>\"\n}",
+											"options": {"raw": {"headerFamily": "json", "language": "json"}}
+										},
+										"url": {"raw": "{{baseUrl}}/api/guilds", "host": ["{{baseUrl}}"], "path": ["api", "guilds"]}
+									},
+									"status": "Internal Server Error",
+									"code": 500,
+									"_postman_previewlanguage": "json",
+									"header": [{"key": "Content-Type", "value": "application/json"}],
+									"cookie": [],
+									"body": "{\n  \"error\": \"Internal Server Error\",\n  \"message\": \"<string>\"\n}"
+								}
+							]
+						},
+						{
+							"name": "{id}",
+							"item": [
+								{
+									"name": "Получить сервер по идентификатору",
+									"request": {
+										"method": "GET",
+										"header": [
+											{"key": "Accept", "value": "application/json"},
+											{"key": "Authorization", "value": "Bearer {{access_token}}"}
+										],
+										"url": {
+											"raw": "{{baseUrl}}/api/guilds/:id",
+											"host": ["{{baseUrl}}"],
+											"path": ["api", "guilds", ":id"],
+											"variable": [{"key": "id", "value": "<string>", "description": "(Required) идентификатор сервера"}]
+										},
+										"description": "Получить сервер по идентификатору"
+									},
+									"response": [
+										{
+											"name": "ok",
+											"originalRequest": {
+												"method": "GET",
+												"header": [{"key": "Accept", "value": "application/json"}],
+												"url": {"raw": "{{baseUrl}}/api/guilds/:id", "host": ["{{baseUrl}}"], "path": ["api", "guilds", ":id"], "variable": [{"key": "id"}]}
+											},
+											"status": "OK",
+											"code": 200,
+											"_postman_previewlanguage": "json",
+											"header": [{"key": "Content-Type", "value": "application/json"}],
+											"cookie": [],
+											"body": "{\n  \"id\": \"<string>\",\n  \"name\": \"<string>\",\n  \"description\": \"<string>\",\n  \"icon\": \"<string>\",\n  \"ownerId\": \"<string>\",\n  \"createdAt\": \"<string>\",\n  \"updatedAt\": \"<string>\",\n  \"memberCount\": \"<integer>\"\n}"
+										},
+										{
+											"name": "Unauthorized",
+											"originalRequest": {
+												"method": "GET",
+												"header": [{"key": "Accept", "value": "application/json"}],
+												"url": {"raw": "{{baseUrl}}/api/guilds/:id", "host": ["{{baseUrl}}"], "path": ["api", "guilds", ":id"], "variable": [{"key": "id"}]}
+											},
+											"status": "Unauthorized",
+											"code": 401,
+											"_postman_previewlanguage": "json",
+											"header": [{"key": "Content-Type", "value": "application/json"}],
+											"cookie": [],
+											"body": "{\n  \"error\": \"Unauthorized\",\n  \"message\": \"Missing or invalid authentication token\"\n}"
+										},
+										{
+											"name": "Not Found",
+											"originalRequest": {
+												"method": "GET",
+												"header": [{"key": "Accept", "value": "application/json"}],
+												"url": {"raw": "{{baseUrl}}/api/guilds/:id", "host": ["{{baseUrl}}"], "path": ["api", "guilds", ":id"], "variable": [{"key": "id"}]}
+											},
+											"status": "Not Found",
+											"code": 404,
+											"_postman_previewlanguage": "json",
+											"header": [{"key": "Content-Type", "value": "application/json"}],
+											"cookie": [],
+											"body": "{\n  \"error\": \"Not Found\",\n  \"message\": \"<string>\"\n}"
+										},
+										{
+											"name": "Server error",
+											"originalRequest": {
+												"method": "GET",
+												"header": [{"key": "Accept", "value": "application/json"}],
+												"url": {"raw": "{{baseUrl}}/api/guilds/:id", "host": ["{{baseUrl}}"], "path": ["api", "guilds", ":id"], "variable": [{"key": "id"}]}
+											},
+											"status": "Internal Server Error",
+											"code": 500,
+											"_postman_previewlanguage": "json",
+											"header": [{"key": "Content-Type", "value": "application/json"}],
+											"cookie": [],
+											"body": "{\n  \"error\": \"Internal Server Error\",\n  \"message\": \"<string>\"\n}"
+										}
+									]
+								},
+								{
+									"name": "Обновить сервер",
+									"request": {
+										"method": "PUT",
+										"header": [
+											{"key": "Content-Type", "value": "application/json"},
+											{"key": "Accept", "value": "application/json"},
+											{"key": "Authorization", "value": "Bearer {{access_token}}"}
+										],
+										"body": {
+											"mode": "raw",
+											"raw": "{\n  \"name\": \"<string>\",\n  \"description\": \"<string>\",\n  \"icon\": \"<string>\"\n}",
+											"options": {"raw": {"headerFamily": "json", "language": "json"}}
+										},
+										"url": {
+											"raw": "{{baseUrl}}/api/guilds/:id",
+											"host": ["{{baseUrl}}"],
+											"path": ["api", "guilds", ":id"],
+											"variable": [{"key": "id", "value": "<string>", "description": "(Required) идентификатор сервера"}]
+										},
+										"description": "Обновить название или описание сервера. Требуется роль Owner"
+									},
+									"response": [
+										{
+											"name": "ok",
+											"originalRequest": {
+												"method": "PUT",
+												"header": [
+													{"key": "Content-Type", "value": "application/json"},
+													{"key": "Accept", "value": "application/json"}
+												],
+												"body": {
+													"mode": "raw",
+													"raw": "{\n  \"name\": \"<string>\",\n  \"description\": \"<string>\",\n  \"icon\": \"<string>\"\n}",
+													"options": {"raw": {"headerFamily": "json", "language": "json"}}
+												},
+												"url": {"raw": "{{baseUrl}}/api/guilds/:id", "host": ["{{baseUrl}}"], "path": ["api", "guilds", ":id"], "variable": [{"key": "id"}]}
+											},
+											"status": "OK",
+											"code": 200,
+											"_postman_previewlanguage": "json",
+											"header": [{"key": "Content-Type", "value": "application/json"}],
+											"cookie": [],
+											"body": "{\n  \"id\": \"<string>\",\n  \"name\": \"<string>\",\n  \"description\": \"<string>\",\n  \"icon\": \"<string>\",\n  \"ownerId\": \"<string>\",\n  \"createdAt\": \"<string>\",\n  \"updatedAt\": \"<string>\",\n  \"memberCount\": \"<integer>\"\n}"
+										},
+										{
+											"name": "Bad request",
+											"originalRequest": {
+												"method": "PUT",
+												"header": [
+													{"key": "Content-Type", "value": "application/json"},
+													{"key": "Accept", "value": "application/json"}
+												],
+												"body": {
+													"mode": "raw",
+													"raw": "{\n  \"name\": \"<string>\",\n  \"description\": \"<string>\",\n  \"icon\": \"<string>\"\n}",
+													"options": {"raw": {"headerFamily": "json", "language": "json"}}
+												},
+												"url": {"raw": "{{baseUrl}}/api/guilds/:id", "host": ["{{baseUrl}}"], "path": ["api", "guilds", ":id"], "variable": [{"key": "id"}]}
+											},
+											"status": "Bad Request",
+											"code": 400,
+											"_postman_previewlanguage": "json",
+											"header": [{"key": "Content-Type", "value": "application/json"}],
+											"cookie": [],
+											"body": "{\n  \"error\": \"Bad Request\",\n  \"message\": \"<string>\"\n}"
+										},
+										{
+											"name": "Unauthorized",
+											"originalRequest": {
+												"method": "PUT",
+												"header": [
+													{"key": "Content-Type", "value": "application/json"},
+													{"key": "Accept", "value": "application/json"}
+												],
+												"body": {
+													"mode": "raw",
+													"raw": "{\n  \"name\": \"<string>\",\n  \"description\": \"<string>\",\n  \"icon\": \"<string>\"\n}",
+													"options": {"raw": {"headerFamily": "json", "language": "json"}}
+												},
+												"url": {"raw": "{{baseUrl}}/api/guilds/:id", "host": ["{{baseUrl}}"], "path": ["api", "guilds", ":id"], "variable": [{"key": "id"}]}
+											},
+											"status": "Unauthorized",
+											"code": 401,
+											"_postman_previewlanguage": "json",
+											"header": [{"key": "Content-Type", "value": "application/json"}],
+											"cookie": [],
+											"body": "{\n  \"error\": \"Unauthorized\",\n  \"message\": \"Missing or invalid authentication token\"\n}"
+										},
+										{
+											"name": "Forbidden",
+											"originalRequest": {
+												"method": "PUT",
+												"header": [
+													{"key": "Content-Type", "value": "application/json"},
+													{"key": "Accept", "value": "application/json"}
+												],
+												"body": {
+													"mode": "raw",
+													"raw": "{\n  \"name\": \"<string>\",\n  \"description\": \"<string>\",\n  \"icon\": \"<string>\"\n}",
+													"options": {"raw": {"headerFamily": "json", "language": "json"}}
+												},
+												"url": {"raw": "{{baseUrl}}/api/guilds/:id", "host": ["{{baseUrl}}"], "path": ["api", "guilds", ":id"], "variable": [{"key": "id"}]}
+											},
+											"status": "Forbidden",
+											"code": 403,
+											"_postman_previewlanguage": "json",
+											"header": [{"key": "Content-Type", "value": "application/json"}],
+											"cookie": [],
+											"body": "{\n  \"error\": \"Forbidden\",\n  \"message\": \"Insufficient permissions\"\n}"
+										},
+										{
+											"name": "Not Found",
+											"originalRequest": {
+												"method": "PUT",
+												"header": [
+													{"key": "Content-Type", "value": "application/json"},
+													{"key": "Accept", "value": "application/json"}
+												],
+												"body": {
+													"mode": "raw",
+													"raw": "{\n  \"name\": \"<string>\",\n  \"description\": \"<string>\",\n  \"icon\": \"<string>\"\n}",
+													"options": {"raw": {"headerFamily": "json", "language": "json"}}
+												},
+												"url": {"raw": "{{baseUrl}}/api/guilds/:id", "host": ["{{baseUrl}}"], "path": ["api", "guilds", ":id"], "variable": [{"key": "id"}]}
+											},
+											"status": "Not Found",
+											"code": 404,
+											"_postman_previewlanguage": "json",
+											"header": [{"key": "Content-Type", "value": "application/json"}],
+											"cookie": [],
+											"body": "{\n  \"error\": \"Not Found\",\n  \"message\": \"<string>\"\n}"
+										},
+										{
+											"name": "Server error",
+											"originalRequest": {
+												"method": "PUT",
+												"header": [
+													{"key": "Content-Type", "value": "application/json"},
+													{"key": "Accept", "value": "application/json"}
+												],
+												"body": {
+													"mode": "raw",
+													"raw": "{\n  \"name\": \"<string>\",\n  \"description\": \"<string>\",\n  \"icon\": \"<string>\"\n}",
+													"options": {"raw": {"headerFamily": "json", "language": "json"}}
+												},
+												"url": {"raw": "{{baseUrl}}/api/guilds/:id", "host": ["{{baseUrl}}"], "path": ["api", "guilds", ":id"], "variable": [{"key": "id"}]}
+											},
+											"status": "Internal Server Error",
+											"code": 500,
+											"_postman_previewlanguage": "json",
+											"header": [{"key": "Content-Type", "value": "application/json"}],
+											"cookie": [],
+											"body": "{\n  \"error\": \"Internal Server Error\",\n  \"message\": \"<string>\"\n}"
+										}
+									]
+								},
+								{
+									"name": "Удалить сервер",
+									"request": {
+										"method": "DELETE",
+										"header": [
+											{"key": "Accept", "value": "application/json"},
+											{"key": "Authorization", "value": "Bearer {{access_token}}"}
+										],
+										"url": {
+											"raw": "{{baseUrl}}/api/guilds/:id",
+											"host": ["{{baseUrl}}"],
+											"path": ["api", "guilds", ":id"],
+											"variable": [{"key": "id", "value": "<string>", "description": "(Required) идентификатор сервера"}]
+										},
+										"description": "Удалить сервер. Требуется роль Owner"
+									},
+									"response": [
+										{
+											"name": "ok",
+											"originalRequest": {
+												"method": "DELETE",
+												"header": [],
+												"url": {"raw": "{{baseUrl}}/api/guilds/:id", "host": ["{{baseUrl}}"], "path": ["api", "guilds", ":id"], "variable": [{"key": "id"}]}
+											},
+											"status": "OK",
+											"code": 200,
+											"_postman_previewlanguage": "text",
+											"header": [],
+											"cookie": [],
+											"body": ""
+										},
+										{
+											"name": "Unauthorized",
+											"originalRequest": {
+												"method": "DELETE",
+												"header": [{"key": "Accept", "value": "application/json"}],
+												"url": {"raw": "{{baseUrl}}/api/guilds/:id", "host": ["{{baseUrl}}"], "path": ["api", "guilds", ":id"], "variable": [{"key": "id"}]}
+											},
+											"status": "Unauthorized",
+											"code": 401,
+											"_postman_previewlanguage": "json",
+											"header": [{"key": "Content-Type", "value": "application/json"}],
+											"cookie": [],
+											"body": "{\n  \"error\": \"Unauthorized\",\n  \"message\": \"Missing or invalid authentication token\"\n}"
+										},
+										{
+											"name": "Forbidden",
+											"originalRequest": {
+												"method": "DELETE",
+												"header": [{"key": "Accept", "value": "application/json"}],
+												"url": {"raw": "{{baseUrl}}/api/guilds/:id", "host": ["{{baseUrl}}"], "path": ["api", "guilds", ":id"], "variable": [{"key": "id"}]}
+											},
+											"status": "Forbidden",
+											"code": 403,
+											"_postman_previewlanguage": "json",
+											"header": [{"key": "Content-Type", "value": "application/json"}],
+											"cookie": [],
+											"body": "{\n  \"error\": \"Forbidden\",\n  \"message\": \"Insufficient permissions\"\n}"
+										},
+										{
+											"name": "Not Found",
+											"originalRequest": {
+												"method": "DELETE",
+												"header": [{"key": "Accept", "value": "application/json"}],
+												"url": {"raw": "{{baseUrl}}/api/guilds/:id", "host": ["{{baseUrl}}"], "path": ["api", "guilds", ":id"], "variable": [{"key": "id"}]}
+											},
+											"status": "Not Found",
+											"code": 404,
+											"_postman_previewlanguage": "json",
+											"header": [{"key": "Content-Type", "value": "application/json"}],
+											"cookie": [],
+											"body": "{\n  \"error\": \"Not Found\",\n  \"message\": \"<string>\"\n}"
+										},
+										{
+											"name": "Server error",
+											"originalRequest": {
+												"method": "DELETE",
+												"header": [{"key": "Accept", "value": "application/json"}],
+												"url": {"raw": "{{baseUrl}}/api/guilds/:id", "host": ["{{baseUrl}}"], "path": ["api", "guilds", ":id"], "variable": [{"key": "id"}]}
+											},
+											"status": "Internal Server Error",
+											"code": 500,
+											"_postman_previewlanguage": "json",
+											"header": [{"key": "Content-Type", "value": "application/json"}],
+											"cookie": [],
+											"body": "{\n  \"error\": \"Internal Server Error\",\n  \"message\": \"<string>\"\n}"
+										}
+									]
+								},
+								{
+									"name": "channels",
+									"item": [
+										{
+											"name": "Получить каналы сервера",
+											"request": {
+												"method": "GET",
+												"header": [
+													{"key": "Accept", "value": "application/json"},
+													{"key": "Authorization", "value": "Bearer {{access_token}}"}
+												],
+												"url": {
+													"raw": "{{baseUrl}}/api/guilds/:id/channels",
+													"host": ["{{baseUrl}}"],
+													"path": ["api", "guilds", ":id", "channels"],
+													"variable": [{"key": "id", "value": "<string>", "description": "(Required) идентификатор сервера"}]
+												},
+												"description": "Получить список каналов сервера"
+											},
+											"response": [
+												{
+													"name": "ok",
+													"originalRequest": {
+														"method": "GET",
+														"header": [{"key": "Accept", "value": "application/json"}],
+														"url": {"raw": "{{baseUrl}}/api/guilds/:id/channels", "host": ["{{baseUrl}}"], "path": ["api", "guilds", ":id", "channels"], "variable": [{"key": "id"}]}
+													},
+													"status": "OK",
+													"code": 200,
+													"_postman_previewlanguage": "json",
+													"header": [{"key": "Content-Type", "value": "application/json"}],
+													"cookie": [],
+													"body": "[\n  {\n    \"id\": \"<string>\",\n    \"guildId\": \"<string>\",\n    \"name\": \"<string>\",\n    \"type\": \"text\",\n    \"position\": \"<integer>\",\n    \"createdAt\": \"<string>\"\n  }\n]"
+												},
+												{
+													"name": "Unauthorized",
+													"originalRequest": {
+														"method": "GET",
+														"header": [{"key": "Accept", "value": "application/json"}],
+														"url": {"raw": "{{baseUrl}}/api/guilds/:id/channels", "host": ["{{baseUrl}}"], "path": ["api", "guilds", ":id", "channels"], "variable": [{"key": "id"}]}
+													},
+													"status": "Unauthorized",
+													"code": 401,
+													"_postman_previewlanguage": "json",
+													"header": [{"key": "Content-Type", "value": "application/json"}],
+													"cookie": [],
+													"body": "{\n  \"error\": \"Unauthorized\",\n  \"message\": \"Missing or invalid authentication token\"\n}"
+												},
+												{
+													"name": "Not Found",
+													"originalRequest": {
+														"method": "GET",
+														"header": [{"key": "Accept", "value": "application/json"}],
+														"url": {"raw": "{{baseUrl}}/api/guilds/:id/channels", "host": ["{{baseUrl}}"], "path": ["api", "guilds", ":id", "channels"], "variable": [{"key": "id"}]}
+													},
+													"status": "Not Found",
+													"code": 404,
+													"_postman_previewlanguage": "json",
+													"header": [{"key": "Content-Type", "value": "application/json"}],
+													"cookie": [],
+													"body": "{\n  \"error\": \"Not Found\",\n  \"message\": \"<string>\"\n}"
+												},
+												{
+													"name": "Server error",
+													"originalRequest": {
+														"method": "GET",
+														"header": [{"key": "Accept", "value": "application/json"}],
+														"url": {"raw": "{{baseUrl}}/api/guilds/:id/channels", "host": ["{{baseUrl}}"], "path": ["api", "guilds", ":id", "channels"], "variable": [{"key": "id"}]}
+													},
+													"status": "Internal Server Error",
+													"code": 500,
+													"_postman_previewlanguage": "json",
+													"header": [{"key": "Content-Type", "value": "application/json"}],
+													"cookie": [],
+													"body": "{\n  \"error\": \"Internal Server Error\",\n  \"message\": \"<string>\"\n}"
+												}
+											]
+										},
+										{
+											"name": "Создать канал",
+											"request": {
+												"method": "POST",
+												"header": [
+													{"key": "Content-Type", "value": "application/json"},
+													{"key": "Accept", "value": "application/json"},
+													{"key": "Authorization", "value": "Bearer {{access_token}}"}
+												],
+												"body": {
+													"mode": "raw",
+													"raw": "{\n  \"name\": \"<string>\",\n  \"type\": \"text\"\n}",
+													"options": {"raw": {"headerFamily": "json", "language": "json"}}
+												},
+												"url": {
+													"raw": "{{baseUrl}}/api/guilds/:id/channels",
+													"host": ["{{baseUrl}}"],
+													"path": ["api", "guilds", ":id", "channels"],
+													"variable": [{"key": "id", "value": "<string>", "description": "(Required) идентификатор сервера"}]
+												},
+												"description": "Создать канал. Доступные типы: text, voice, announcement. Требуется роль Owner или Admin"
+											},
+											"response": [
+												{
+													"name": "ok",
+													"originalRequest": {
+														"method": "POST",
+														"header": [
+															{"key": "Content-Type", "value": "application/json"},
+															{"key": "Accept", "value": "application/json"}
+														],
+														"body": {
+															"mode": "raw",
+															"raw": "{\n  \"name\": \"<string>\",\n  \"type\": \"text\"\n}",
+															"options": {"raw": {"headerFamily": "json", "language": "json"}}
+														},
+														"url": {"raw": "{{baseUrl}}/api/guilds/:id/channels", "host": ["{{baseUrl}}"], "path": ["api", "guilds", ":id", "channels"], "variable": [{"key": "id"}]}
+													},
+													"status": "OK",
+													"code": 200,
+													"_postman_previewlanguage": "json",
+													"header": [{"key": "Content-Type", "value": "application/json"}],
+													"cookie": [],
+													"body": "{\n  \"id\": \"<string>\",\n  \"guildId\": \"<string>\",\n  \"name\": \"<string>\",\n  \"type\": \"text\",\n  \"position\": \"<integer>\",\n  \"createdAt\": \"<string>\"\n}"
+												},
+												{
+													"name": "Bad request",
+													"originalRequest": {
+														"method": "POST",
+														"header": [
+															{"key": "Content-Type", "value": "application/json"},
+															{"key": "Accept", "value": "application/json"}
+														],
+														"body": {
+															"mode": "raw",
+															"raw": "{\n  \"name\": \"<string>\",\n  \"type\": \"text\"\n}",
+															"options": {"raw": {"headerFamily": "json", "language": "json"}}
+														},
+														"url": {"raw": "{{baseUrl}}/api/guilds/:id/channels", "host": ["{{baseUrl}}"], "path": ["api", "guilds", ":id", "channels"], "variable": [{"key": "id"}]}
+													},
+													"status": "Bad Request",
+													"code": 400,
+													"_postman_previewlanguage": "json",
+													"header": [{"key": "Content-Type", "value": "application/json"}],
+													"cookie": [],
+													"body": "{\n  \"error\": \"Bad Request\",\n  \"message\": \"<string>\"\n}"
+												},
+												{
+													"name": "Forbidden",
+													"originalRequest": {
+														"method": "POST",
+														"header": [
+															{"key": "Content-Type", "value": "application/json"},
+															{"key": "Accept", "value": "application/json"}
+														],
+														"body": {
+															"mode": "raw",
+															"raw": "{\n  \"name\": \"<string>\",\n  \"type\": \"text\"\n}",
+															"options": {"raw": {"headerFamily": "json", "language": "json"}}
+														},
+														"url": {"raw": "{{baseUrl}}/api/guilds/:id/channels", "host": ["{{baseUrl}}"], "path": ["api", "guilds", ":id", "channels"], "variable": [{"key": "id"}]}
+													},
+													"status": "Forbidden",
+													"code": 403,
+													"_postman_previewlanguage": "json",
+													"header": [{"key": "Content-Type", "value": "application/json"}],
+													"cookie": [],
+													"body": "{\n  \"error\": \"Forbidden\",\n  \"message\": \"Insufficient permissions\"\n}"
+												},
+												{
+													"name": "Server error",
+													"originalRequest": {
+														"method": "POST",
+														"header": [
+															{"key": "Content-Type", "value": "application/json"},
+															{"key": "Accept", "value": "application/json"}
+														],
+														"body": {
+															"mode": "raw",
+															"raw": "{\n  \"name\": \"<string>\",\n  \"type\": \"text\"\n}",
+															"options": {"raw": {"headerFamily": "json", "language": "json"}}
+														},
+														"url": {"raw": "{{baseUrl}}/api/guilds/:id/channels", "host": ["{{baseUrl}}"], "path": ["api", "guilds", ":id", "channels"], "variable": [{"key": "id"}]}
+													},
+													"status": "Internal Server Error",
+													"code": 500,
+													"_postman_previewlanguage": "json",
+													"header": [{"key": "Content-Type", "value": "application/json"}],
+													"cookie": [],
+													"body": "{\n  \"error\": \"Internal Server Error\",\n  \"message\": \"<string>\"\n}"
+												}
+											]
+										},
+										{
+											"name": "{channelId}",
+											"item": [
+												{
+													"name": "Обновить канал",
+													"request": {
+														"method": "PUT",
+														"header": [
+															{"key": "Content-Type", "value": "application/json"},
+															{"key": "Accept", "value": "application/json"},
+															{"key": "Authorization", "value": "Bearer {{access_token}}"}
+														],
+														"body": {
+															"mode": "raw",
+															"raw": "{\n  \"name\": \"<string>\"\n}",
+															"options": {"raw": {"headerFamily": "json", "language": "json"}}
+														},
+														"url": {
+															"raw": "{{baseUrl}}/api/guilds/:id/channels/:channelId",
+															"host": ["{{baseUrl}}"],
+															"path": ["api", "guilds", ":id", "channels", ":channelId"],
+															"variable": [
+																{"key": "id", "value": "<string>", "description": "(Required) идентификатор сервера"},
+																{"key": "channelId", "value": "<string>", "description": "(Required) идентификатор канала"}
+															]
+														},
+														"description": "Обновить свойства канала. Требуется роль Owner или Admin"
+													},
+													"response": [
+														{
+															"name": "ok",
+															"originalRequest": {
+																"method": "PUT",
+																"header": [
+																	{"key": "Content-Type", "value": "application/json"},
+																	{"key": "Accept", "value": "application/json"}
+																],
+																"body": {
+																	"mode": "raw",
+																	"raw": "{\n  \"name\": \"<string>\"\n}",
+																	"options": {"raw": {"headerFamily": "json", "language": "json"}}
+																},
+																"url": {"raw": "{{baseUrl}}/api/guilds/:id/channels/:channelId", "host": ["{{baseUrl}}"], "path": ["api", "guilds", ":id", "channels", ":channelId"], "variable": [{"key": "id"}, {"key": "channelId"}]}
+															},
+															"status": "OK",
+															"code": 200,
+															"_postman_previewlanguage": "json",
+															"header": [{"key": "Content-Type", "value": "application/json"}],
+															"cookie": [],
+															"body": "{\n  \"id\": \"<string>\",\n  \"guildId\": \"<string>\",\n  \"name\": \"<string>\",\n  \"type\": \"text\",\n  \"position\": \"<integer>\",\n  \"createdAt\": \"<string>\"\n}"
+														},
+														{
+															"name": "Bad request",
+															"originalRequest": {
+																"method": "PUT",
+																"header": [
+																	{"key": "Content-Type", "value": "application/json"},
+																	{"key": "Accept", "value": "application/json"}
+																],
+																"body": {
+																	"mode": "raw",
+																	"raw": "{\n  \"name\": \"<string>\"\n}",
+																	"options": {"raw": {"headerFamily": "json", "language": "json"}}
+																},
+																"url": {"raw": "{{baseUrl}}/api/guilds/:id/channels/:channelId", "host": ["{{baseUrl}}"], "path": ["api", "guilds", ":id", "channels", ":channelId"], "variable": [{"key": "id"}, {"key": "channelId"}]}
+															},
+															"status": "Bad Request",
+															"code": 400,
+															"_postman_previewlanguage": "json",
+															"header": [{"key": "Content-Type", "value": "application/json"}],
+															"cookie": [],
+															"body": "{\n  \"error\": \"Bad Request\",\n  \"message\": \"<string>\"\n}"
+														},
+														{
+															"name": "Forbidden",
+															"originalRequest": {
+																"method": "PUT",
+																"header": [
+																	{"key": "Content-Type", "value": "application/json"},
+																	{"key": "Accept", "value": "application/json"}
+																],
+																"body": {
+																	"mode": "raw",
+																	"raw": "{\n  \"name\": \"<string>\"\n}",
+																	"options": {"raw": {"headerFamily": "json", "language": "json"}}
+																},
+																"url": {"raw": "{{baseUrl}}/api/guilds/:id/channels/:channelId", "host": ["{{baseUrl}}"], "path": ["api", "guilds", ":id", "channels", ":channelId"], "variable": [{"key": "id"}, {"key": "channelId"}]}
+															},
+															"status": "Forbidden",
+															"code": 403,
+															"_postman_previewlanguage": "json",
+															"header": [{"key": "Content-Type", "value": "application/json"}],
+															"cookie": [],
+															"body": "{\n  \"error\": \"Forbidden\",\n  \"message\": \"Insufficient permissions\"\n}"
+														},
+														{
+															"name": "Not Found",
+															"originalRequest": {
+																"method": "PUT",
+																"header": [
+																	{"key": "Content-Type", "value": "application/json"},
+																	{"key": "Accept", "value": "application/json"}
+																],
+																"body": {
+																	"mode": "raw",
+																	"raw": "{\n  \"name\": \"<string>\"\n}",
+																	"options": {"raw": {"headerFamily": "json", "language": "json"}}
+																},
+																"url": {"raw": "{{baseUrl}}/api/guilds/:id/channels/:channelId", "host": ["{{baseUrl}}"], "path": ["api", "guilds", ":id", "channels", ":channelId"], "variable": [{"key": "id"}, {"key": "channelId"}]}
+															},
+															"status": "Not Found",
+															"code": 404,
+															"_postman_previewlanguage": "json",
+															"header": [{"key": "Content-Type", "value": "application/json"}],
+															"cookie": [],
+															"body": "{\n  \"error\": \"Not Found\",\n  \"message\": \"<string>\"\n}"
+														},
+														{
+															"name": "Server error",
+															"originalRequest": {
+																"method": "PUT",
+																"header": [
+																	{"key": "Content-Type", "value": "application/json"},
+																	{"key": "Accept", "value": "application/json"}
+																],
+																"body": {
+																	"mode": "raw",
+																	"raw": "{\n  \"name\": \"<string>\"\n}",
+																	"options": {"raw": {"headerFamily": "json", "language": "json"}}
+																},
+																"url": {"raw": "{{baseUrl}}/api/guilds/:id/channels/:channelId", "host": ["{{baseUrl}}"], "path": ["api", "guilds", ":id", "channels", ":channelId"], "variable": [{"key": "id"}, {"key": "channelId"}]}
+															},
+															"status": "Internal Server Error",
+															"code": 500,
+															"_postman_previewlanguage": "json",
+															"header": [{"key": "Content-Type", "value": "application/json"}],
+															"cookie": [],
+															"body": "{\n  \"error\": \"Internal Server Error\",\n  \"message\": \"<string>\"\n}"
+														}
+													]
+												},
+												{
+													"name": "Удалить канал",
+													"request": {
+														"method": "DELETE",
+														"header": [
+															{"key": "Accept", "value": "application/json"},
+															{"key": "Authorization", "value": "Bearer {{access_token}}"}
+														],
+														"url": {
+															"raw": "{{baseUrl}}/api/guilds/:id/channels/:channelId",
+															"host": ["{{baseUrl}}"],
+															"path": ["api", "guilds", ":id", "channels", ":channelId"],
+															"variable": [
+																{"key": "id", "value": "<string>", "description": "(Required) идентификатор сервера"},
+																{"key": "channelId", "value": "<string>", "description": "(Required) идентификатор канала"}
+															]
+														},
+														"description": "Удалить канал. Требуется роль Owner или Admin"
+													},
+													"response": [
+														{
+															"name": "ok",
+															"originalRequest": {
+																"method": "DELETE",
+																"header": [],
+																"url": {"raw": "{{baseUrl}}/api/guilds/:id/channels/:channelId", "host": ["{{baseUrl}}"], "path": ["api", "guilds", ":id", "channels", ":channelId"], "variable": [{"key": "id"}, {"key": "channelId"}]}
+															},
+															"status": "OK",
+															"code": 200,
+															"_postman_previewlanguage": "text",
+															"header": [],
+															"cookie": [],
+															"body": ""
+														},
+														{
+															"name": "Forbidden",
+															"originalRequest": {
+																"method": "DELETE",
+																"header": [{"key": "Accept", "value": "application/json"}],
+																"url": {"raw": "{{baseUrl}}/api/guilds/:id/channels/:channelId", "host": ["{{baseUrl}}"], "path": ["api", "guilds", ":id", "channels", ":channelId"], "variable": [{"key": "id"}, {"key": "channelId"}]}
+															},
+															"status": "Forbidden",
+															"code": 403,
+															"_postman_previewlanguage": "json",
+															"header": [{"key": "Content-Type", "value": "application/json"}],
+															"cookie": [],
+															"body": "{\n  \"error\": \"Forbidden\",\n  \"message\": \"Insufficient permissions\"\n}"
+														},
+														{
+															"name": "Not Found",
+															"originalRequest": {
+																"method": "DELETE",
+																"header": [{"key": "Accept", "value": "application/json"}],
+																"url": {"raw": "{{baseUrl}}/api/guilds/:id/channels/:channelId", "host": ["{{baseUrl}}"], "path": ["api", "guilds", ":id", "channels", ":channelId"], "variable": [{"key": "id"}, {"key": "channelId"}]}
+															},
+															"status": "Not Found",
+															"code": 404,
+															"_postman_previewlanguage": "json",
+															"header": [{"key": "Content-Type", "value": "application/json"}],
+															"cookie": [],
+															"body": "{\n  \"error\": \"Not Found\",\n  \"message\": \"<string>\"\n}"
+														},
+														{
+															"name": "Server error",
+															"originalRequest": {
+																"method": "DELETE",
+																"header": [{"key": "Accept", "value": "application/json"}],
+																"url": {"raw": "{{baseUrl}}/api/guilds/:id/channels/:channelId", "host": ["{{baseUrl}}"], "path": ["api", "guilds", ":id", "channels", ":channelId"], "variable": [{"key": "id"}, {"key": "channelId"}]}
+															},
+															"status": "Internal Server Error",
+															"code": 500,
+															"_postman_previewlanguage": "json",
+															"header": [{"key": "Content-Type", "value": "application/json"}],
+															"cookie": [],
+															"body": "{\n  \"error\": \"Internal Server Error\",\n  \"message\": \"<string>\"\n}"
+														}
+													]
+												}
+											]
+										}
+									]
+								},
+								{
+									"name": "members",
+									"item": [
+										{
+											"name": "Получить участников сервера",
+											"request": {
+												"method": "GET",
+												"header": [
+													{"key": "Accept", "value": "application/json"},
+													{"key": "Authorization", "value": "Bearer {{access_token}}"}
+												],
+												"url": {
+													"raw": "{{baseUrl}}/api/guilds/:id/members",
+													"host": ["{{baseUrl}}"],
+													"path": ["api", "guilds", ":id", "members"],
+													"variable": [{"key": "id", "value": "<string>", "description": "(Required) идентификатор сервера"}]
+												},
+												"description": "Получить список участников сервера с их ролями"
+											},
+											"response": [
+												{
+													"name": "ok",
+													"originalRequest": {
+														"method": "GET",
+														"header": [{"key": "Accept", "value": "application/json"}],
+														"url": {"raw": "{{baseUrl}}/api/guilds/:id/members", "host": ["{{baseUrl}}"], "path": ["api", "guilds", ":id", "members"], "variable": [{"key": "id"}]}
+													},
+													"status": "OK",
+													"code": 200,
+													"_postman_previewlanguage": "json",
+													"header": [{"key": "Content-Type", "value": "application/json"}],
+													"cookie": [],
+													"body": "[\n  {\n    \"id\": \"<string>\",\n    \"guildId\": \"<string>\",\n    \"userId\": \"<string>\",\n    \"username\": \"<string>\",\n    \"displayName\": \"<string>\",\n    \"role\": \"member\",\n    \"joinedAt\": \"<string>\",\n    \"avatar\": \"<string>\"\n  }\n]"
+												},
+												{
+													"name": "Unauthorized",
+													"originalRequest": {
+														"method": "GET",
+														"header": [{"key": "Accept", "value": "application/json"}],
+														"url": {"raw": "{{baseUrl}}/api/guilds/:id/members", "host": ["{{baseUrl}}"], "path": ["api", "guilds", ":id", "members"], "variable": [{"key": "id"}]}
+													},
+													"status": "Unauthorized",
+													"code": 401,
+													"_postman_previewlanguage": "json",
+													"header": [{"key": "Content-Type", "value": "application/json"}],
+													"cookie": [],
+													"body": "{\n  \"error\": \"Unauthorized\",\n  \"message\": \"Missing or invalid authentication token\"\n}"
+												},
+												{
+													"name": "Not Found",
+													"originalRequest": {
+														"method": "GET",
+														"header": [{"key": "Accept", "value": "application/json"}],
+														"url": {"raw": "{{baseUrl}}/api/guilds/:id/members", "host": ["{{baseUrl}}"], "path": ["api", "guilds", ":id", "members"], "variable": [{"key": "id"}]}
+													},
+													"status": "Not Found",
+													"code": 404,
+													"_postman_previewlanguage": "json",
+													"header": [{"key": "Content-Type", "value": "application/json"}],
+													"cookie": [],
+													"body": "{\n  \"error\": \"Not Found\",\n  \"message\": \"<string>\"\n}"
+												},
+												{
+													"name": "Server error",
+													"originalRequest": {
+														"method": "GET",
+														"header": [{"key": "Accept", "value": "application/json"}],
+														"url": {"raw": "{{baseUrl}}/api/guilds/:id/members", "host": ["{{baseUrl}}"], "path": ["api", "guilds", ":id", "members"], "variable": [{"key": "id"}]}
+													},
+													"status": "Internal Server Error",
+													"code": 500,
+													"_postman_previewlanguage": "json",
+													"header": [{"key": "Content-Type", "value": "application/json"}],
+													"cookie": [],
+													"body": "{\n  \"error\": \"Internal Server Error\",\n  \"message\": \"<string>\"\n}"
+												}
+											]
+										},
+										{
+											"name": "{userId}",
+											"item": [
+												{
+													"name": "Получить участника по идентификатору",
+													"request": {
+														"method": "GET",
+														"header": [
+															{"key": "Accept", "value": "application/json"},
+															{"key": "Authorization", "value": "Bearer {{access_token}}"}
+														],
+														"url": {
+															"raw": "{{baseUrl}}/api/guilds/:id/members/:userId",
+															"host": ["{{baseUrl}}"],
+															"path": ["api", "guilds", ":id", "members", ":userId"],
+															"variable": [
+																{"key": "id", "value": "<string>", "description": "(Required) идентификатор сервера"},
+																{"key": "userId", "value": "<string>", "description": "(Required) идентификатор пользователя"}
+															]
+														},
+														"description": "Получить участника сервера по идентификатору"
+													},
+													"response": [
+														{
+															"name": "ok",
+															"originalRequest": {
+																"method": "GET",
+																"header": [{"key": "Accept", "value": "application/json"}],
+																"url": {"raw": "{{baseUrl}}/api/guilds/:id/members/:userId", "host": ["{{baseUrl}}"], "path": ["api", "guilds", ":id", "members", ":userId"], "variable": [{"key": "id"}, {"key": "userId"}]}
+															},
+															"status": "OK",
+															"code": 200,
+															"_postman_previewlanguage": "json",
+															"header": [{"key": "Content-Type", "value": "application/json"}],
+															"cookie": [],
+															"body": "{\n  \"id\": \"<string>\",\n  \"guildId\": \"<string>\",\n  \"userId\": \"<string>\",\n  \"username\": \"<string>\",\n  \"displayName\": \"<string>\",\n  \"role\": \"member\",\n  \"joinedAt\": \"<string>\",\n  \"avatar\": \"<string>\"\n}"
+														},
+														{
+															"name": "Unauthorized",
+															"originalRequest": {
+																"method": "GET",
+																"header": [{"key": "Accept", "value": "application/json"}],
+																"url": {"raw": "{{baseUrl}}/api/guilds/:id/members/:userId", "host": ["{{baseUrl}}"], "path": ["api", "guilds", ":id", "members", ":userId"], "variable": [{"key": "id"}, {"key": "userId"}]}
+															},
+															"status": "Unauthorized",
+															"code": 401,
+															"_postman_previewlanguage": "json",
+															"header": [{"key": "Content-Type", "value": "application/json"}],
+															"cookie": [],
+															"body": "{\n  \"error\": \"Unauthorized\",\n  \"message\": \"Missing or invalid authentication token\"\n}"
+														},
+														{
+															"name": "Not Found",
+															"originalRequest": {
+																"method": "GET",
+																"header": [{"key": "Accept", "value": "application/json"}],
+																"url": {"raw": "{{baseUrl}}/api/guilds/:id/members/:userId", "host": ["{{baseUrl}}"], "path": ["api", "guilds", ":id", "members", ":userId"], "variable": [{"key": "id"}, {"key": "userId"}]}
+															},
+															"status": "Not Found",
+															"code": 404,
+															"_postman_previewlanguage": "json",
+															"header": [{"key": "Content-Type", "value": "application/json"}],
+															"cookie": [],
+															"body": "{\n  \"error\": \"Not Found\",\n  \"message\": \"<string>\"\n}"
+														},
+														{
+															"name": "Server error",
+															"originalRequest": {
+																"method": "GET",
+																"header": [{"key": "Accept", "value": "application/json"}],
+																"url": {"raw": "{{baseUrl}}/api/guilds/:id/members/:userId", "host": ["{{baseUrl}}"], "path": ["api", "guilds", ":id", "members", ":userId"], "variable": [{"key": "id"}, {"key": "userId"}]}
+															},
+															"status": "Internal Server Error",
+															"code": 500,
+															"_postman_previewlanguage": "json",
+															"header": [{"key": "Content-Type", "value": "application/json"}],
+															"cookie": [],
+															"body": "{\n  \"error\": \"Internal Server Error\",\n  \"message\": \"<string>\"\n}"
+														}
+													]
+												},
+												{
+													"name": "role",
+													"item": [
+														{
+															"name": "Изменить роль участника",
+															"request": {
+																"method": "PUT",
+																"header": [
+																	{"key": "Content-Type", "value": "application/json"},
+																	{"key": "Accept", "value": "application/json"},
+																	{"key": "Authorization", "value": "Bearer {{access_token}}"}
+																],
+																"body": {
+																	"mode": "raw",
+																	"raw": "{\n  \"role\": \"admin\"\n}",
+																	"options": {"raw": {"headerFamily": "json", "language": "json"}}
+																},
+																"url": {
+																	"raw": "{{baseUrl}}/api/guilds/:id/members/:userId/role",
+																	"host": ["{{baseUrl}}"],
+																	"path": ["api", "guilds", ":id", "members", ":userId", "role"],
+																	"variable": [
+																		{"key": "id", "value": "<string>", "description": "(Required) идентификатор сервера"},
+																		{"key": "userId", "value": "<string>", "description": "(Required) идентификатор пользователя"}
+																	]
+																},
+																"description": "Изменить роль участника. Допустимые значения: admin, moderator, member. Требуется роль Owner"
+															},
+															"response": [
+																{
+																	"name": "ok",
+																	"originalRequest": {
+																		"method": "PUT",
+																		"header": [
+																			{"key": "Content-Type", "value": "application/json"},
+																			{"key": "Accept", "value": "application/json"}
+																		],
+																		"body": {
+																			"mode": "raw",
+																			"raw": "{\n  \"role\": \"admin\"\n}",
+																			"options": {"raw": {"headerFamily": "json", "language": "json"}}
+																		},
+																		"url": {"raw": "{{baseUrl}}/api/guilds/:id/members/:userId/role", "host": ["{{baseUrl}}"], "path": ["api", "guilds", ":id", "members", ":userId", "role"], "variable": [{"key": "id"}, {"key": "userId"}]}
+																	},
+																	"status": "OK",
+																	"code": 200,
+																	"_postman_previewlanguage": "json",
+																	"header": [{"key": "Content-Type", "value": "application/json"}],
+																	"cookie": [],
+																	"body": "{\n  \"id\": \"<string>\",\n  \"guildId\": \"<string>\",\n  \"userId\": \"<string>\",\n  \"username\": \"<string>\",\n  \"displayName\": \"<string>\",\n  \"role\": \"admin\",\n  \"joinedAt\": \"<string>\",\n  \"avatar\": \"<string>\"\n}"
+																},
+																{
+																	"name": "Bad request",
+																	"originalRequest": {
+																		"method": "PUT",
+																		"header": [
+																			{"key": "Content-Type", "value": "application/json"},
+																			{"key": "Accept", "value": "application/json"}
+																		],
+																		"body": {
+																			"mode": "raw",
+																			"raw": "{\n  \"role\": \"admin\"\n}",
+																			"options": {"raw": {"headerFamily": "json", "language": "json"}}
+																		},
+																		"url": {"raw": "{{baseUrl}}/api/guilds/:id/members/:userId/role", "host": ["{{baseUrl}}"], "path": ["api", "guilds", ":id", "members", ":userId", "role"], "variable": [{"key": "id"}, {"key": "userId"}]}
+																	},
+																	"status": "Bad Request",
+																	"code": 400,
+																	"_postman_previewlanguage": "json",
+																	"header": [{"key": "Content-Type", "value": "application/json"}],
+																	"cookie": [],
+																	"body": "{\n  \"error\": \"Bad Request\",\n  \"message\": \"<string>\"\n}"
+																},
+																{
+																	"name": "Forbidden",
+																	"originalRequest": {
+																		"method": "PUT",
+																		"header": [
+																			{"key": "Content-Type", "value": "application/json"},
+																			{"key": "Accept", "value": "application/json"}
+																		],
+																		"body": {
+																			"mode": "raw",
+																			"raw": "{\n  \"role\": \"admin\"\n}",
+																			"options": {"raw": {"headerFamily": "json", "language": "json"}}
+																		},
+																		"url": {"raw": "{{baseUrl}}/api/guilds/:id/members/:userId/role", "host": ["{{baseUrl}}"], "path": ["api", "guilds", ":id", "members", ":userId", "role"], "variable": [{"key": "id"}, {"key": "userId"}]}
+																	},
+																	"status": "Forbidden",
+																	"code": 403,
+																	"_postman_previewlanguage": "json",
+																	"header": [{"key": "Content-Type", "value": "application/json"}],
+																	"cookie": [],
+																	"body": "{\n  \"error\": \"Forbidden\",\n  \"message\": \"Insufficient permissions\"\n}"
+																},
+																{
+																	"name": "Not Found",
+																	"originalRequest": {
+																		"method": "PUT",
+																		"header": [
+																			{"key": "Content-Type", "value": "application/json"},
+																			{"key": "Accept", "value": "application/json"}
+																		],
+																		"body": {
+																			"mode": "raw",
+																			"raw": "{\n  \"role\": \"admin\"\n}",
+																			"options": {"raw": {"headerFamily": "json", "language": "json"}}
+																		},
+																		"url": {"raw": "{{baseUrl}}/api/guilds/:id/members/:userId/role", "host": ["{{baseUrl}}"], "path": ["api", "guilds", ":id", "members", ":userId", "role"], "variable": [{"key": "id"}, {"key": "userId"}]}
+																	},
+																	"status": "Not Found",
+																	"code": 404,
+																	"_postman_previewlanguage": "json",
+																	"header": [{"key": "Content-Type", "value": "application/json"}],
+																	"cookie": [],
+																	"body": "{\n  \"error\": \"Not Found\",\n  \"message\": \"<string>\"\n}"
+																},
+																{
+																	"name": "Server error",
+																	"originalRequest": {
+																		"method": "PUT",
+																		"header": [
+																			{"key": "Content-Type", "value": "application/json"},
+																			{"key": "Accept", "value": "application/json"}
+																		],
+																		"body": {
+																			"mode": "raw",
+																			"raw": "{\n  \"role\": \"admin\"\n}",
+																			"options": {"raw": {"headerFamily": "json", "language": "json"}}
+																		},
+																		"url": {"raw": "{{baseUrl}}/api/guilds/:id/members/:userId/role", "host": ["{{baseUrl}}"], "path": ["api", "guilds", ":id", "members", ":userId", "role"], "variable": [{"key": "id"}, {"key": "userId"}]}
+																	},
+																	"status": "Internal Server Error",
+																	"code": 500,
+																	"_postman_previewlanguage": "json",
+																	"header": [{"key": "Content-Type", "value": "application/json"}],
+																	"cookie": [],
+																	"body": "{\n  \"error\": \"Internal Server Error\",\n  \"message\": \"<string>\"\n}"
+																}
+															]
+														}
+													]
+												},
+												{
+													"name": "kick",
+													"item": [
+														{
+															"name": "Исключить участника",
+															"request": {
+																"method": "POST",
+																"header": [
+																	{"key": "Accept", "value": "application/json"},
+																	{"key": "Authorization", "value": "Bearer {{access_token}}"}
+																],
+																"url": {
+																	"raw": "{{baseUrl}}/api/guilds/:id/members/:userId/kick",
+																	"host": ["{{baseUrl}}"],
+																	"path": ["api", "guilds", ":id", "members", ":userId", "kick"],
+																	"variable": [
+																		{"key": "id", "value": "<string>", "description": "(Required) идентификатор сервера"},
+																		{"key": "userId", "value": "<string>", "description": "(Required) идентификатор пользователя"}
+																	]
+																},
+																"description": "Исключить участника из сервера. Требуется роль Owner или Admin"
+															},
+															"response": [
+																{
+																	"name": "ok",
+																	"originalRequest": {
+																		"method": "POST",
+																		"header": [],
+																		"url": {"raw": "{{baseUrl}}/api/guilds/:id/members/:userId/kick", "host": ["{{baseUrl}}"], "path": ["api", "guilds", ":id", "members", ":userId", "kick"], "variable": [{"key": "id"}, {"key": "userId"}]}
+																	},
+																	"status": "OK",
+																	"code": 200,
+																	"_postman_previewlanguage": "text",
+																	"header": [],
+																	"cookie": [],
+																	"body": ""
+																},
+																{
+																	"name": "Forbidden",
+																	"originalRequest": {
+																		"method": "POST",
+																		"header": [{"key": "Accept", "value": "application/json"}],
+																		"url": {"raw": "{{baseUrl}}/api/guilds/:id/members/:userId/kick", "host": ["{{baseUrl}}"], "path": ["api", "guilds", ":id", "members", ":userId", "kick"], "variable": [{"key": "id"}, {"key": "userId"}]}
+																	},
+																	"status": "Forbidden",
+																	"code": 403,
+																	"_postman_previewlanguage": "json",
+																	"header": [{"key": "Content-Type", "value": "application/json"}],
+																	"cookie": [],
+																	"body": "{\n  \"error\": \"Forbidden\",\n  \"message\": \"Insufficient permissions\"\n}"
+																},
+																{
+																	"name": "Not Found",
+																	"originalRequest": {
+																		"method": "POST",
+																		"header": [{"key": "Accept", "value": "application/json"}],
+																		"url": {"raw": "{{baseUrl}}/api/guilds/:id/members/:userId/kick", "host": ["{{baseUrl}}"], "path": ["api", "guilds", ":id", "members", ":userId", "kick"], "variable": [{"key": "id"}, {"key": "userId"}]}
+																	},
+																	"status": "Not Found",
+																	"code": 404,
+																	"_postman_previewlanguage": "json",
+																	"header": [{"key": "Content-Type", "value": "application/json"}],
+																	"cookie": [],
+																	"body": "{\n  \"error\": \"Not Found\",\n  \"message\": \"<string>\"\n}"
+																},
+																{
+																	"name": "Server error",
+																	"originalRequest": {
+																		"method": "POST",
+																		"header": [{"key": "Accept", "value": "application/json"}],
+																		"url": {"raw": "{{baseUrl}}/api/guilds/:id/members/:userId/kick", "host": ["{{baseUrl}}"], "path": ["api", "guilds", ":id", "members", ":userId", "kick"], "variable": [{"key": "id"}, {"key": "userId"}]}
+																	},
+																	"status": "Internal Server Error",
+																	"code": 500,
+																	"_postman_previewlanguage": "json",
+																	"header": [{"key": "Content-Type", "value": "application/json"}],
+																	"cookie": [],
+																	"body": "{\n  \"error\": \"Internal Server Error\",\n  \"message\": \"<string>\"\n}"
+																}
+															]
+														}
+													]
+												},
+												{
+													"name": "ban",
+													"item": [
+														{
+															"name": "Заблокировать участника",
+															"request": {
+																"method": "POST",
+																"header": [
+																	{"key": "Accept", "value": "application/json"},
+																	{"key": "Authorization", "value": "Bearer {{access_token}}"}
+																],
+																"url": {
+																	"raw": "{{baseUrl}}/api/guilds/:id/members/:userId/ban",
+																	"host": ["{{baseUrl}}"],
+																	"path": ["api", "guilds", ":id", "members", ":userId", "ban"],
+																	"variable": [
+																		{"key": "id", "value": "<string>", "description": "(Required) идентификатор сервера"},
+																		{"key": "userId", "value": "<string>", "description": "(Required) идентификатор пользователя"}
+																	]
+																},
+																"description": "Забанить участника. Требуется роль Owner или Admin. Также отключает пользователя от голоса и WebSocket"
+															},
+															"response": [
+																{
+																	"name": "ok",
+																	"originalRequest": {
+																		"method": "POST",
+																		"header": [],
+																		"url": {"raw": "{{baseUrl}}/api/guilds/:id/members/:userId/ban", "host": ["{{baseUrl}}"], "path": ["api", "guilds", ":id", "members", ":userId", "ban"], "variable": [{"key": "id"}, {"key": "userId"}]}
+																	},
+																	"status": "OK",
+																	"code": 200,
+																	"_postman_previewlanguage": "text",
+																	"header": [],
+																	"cookie": [],
+																	"body": ""
+																},
+																{
+																	"name": "Forbidden",
+																	"originalRequest": {
+																		"method": "POST",
+																		"header": [{"key": "Accept", "value": "application/json"}],
+																		"url": {"raw": "{{baseUrl}}/api/guilds/:id/members/:userId/ban", "host": ["{{baseUrl}}"], "path": ["api", "guilds", ":id", "members", ":userId", "ban"], "variable": [{"key": "id"}, {"key": "userId"}]}
+																	},
+																	"status": "Forbidden",
+																	"code": 403,
+																	"_postman_previewlanguage": "json",
+																	"header": [{"key": "Content-Type", "value": "application/json"}],
+																	"cookie": [],
+																	"body": "{\n  \"error\": \"Forbidden\",\n  \"message\": \"Insufficient permissions\"\n}"
+																},
+																{
+																	"name": "Not Found",
+																	"originalRequest": {
+																		"method": "POST",
+																		"header": [{"key": "Accept", "value": "application/json"}],
+																		"url": {"raw": "{{baseUrl}}/api/guilds/:id/members/:userId/ban", "host": ["{{baseUrl}}"], "path": ["api", "guilds", ":id", "members", ":userId", "ban"], "variable": [{"key": "id"}, {"key": "userId"}]}
+																	},
+																	"status": "Not Found",
+																	"code": 404,
+																	"_postman_previewlanguage": "json",
+																	"header": [{"key": "Content-Type", "value": "application/json"}],
+																	"cookie": [],
+																	"body": "{\n  \"error\": \"Not Found\",\n  \"message\": \"<string>\"\n}"
+																},
+																{
+																	"name": "Server error",
+																	"originalRequest": {
+																		"method": "POST",
+																		"header": [{"key": "Accept", "value": "application/json"}],
+																		"url": {"raw": "{{baseUrl}}/api/guilds/:id/members/:userId/ban", "host": ["{{baseUrl}}"], "path": ["api", "guilds", ":id", "members", ":userId", "ban"], "variable": [{"key": "id"}, {"key": "userId"}]}
+																	},
+																	"status": "Internal Server Error",
+																	"code": 500,
+																	"_postman_previewlanguage": "json",
+																	"header": [{"key": "Content-Type", "value": "application/json"}],
+																	"cookie": [],
+																	"body": "{\n  \"error\": \"Internal Server Error\",\n  \"message\": \"<string>\"\n}"
+																}
+															]
+														}
+													]
+												}
+											]
+										}
+									]
+								},
+								{
+									"name": "invites",
+									"item": [
+										{
+											"name": "Получить приглашения сервера",
+											"request": {
+												"method": "GET",
+												"header": [
+													{"key": "Accept", "value": "application/json"},
+													{"key": "Authorization", "value": "Bearer {{access_token}}"}
+												],
+												"url": {
+													"raw": "{{baseUrl}}/api/guilds/:id/invites",
+													"host": ["{{baseUrl}}"],
+													"path": ["api", "guilds", ":id", "invites"],
+													"variable": [{"key": "id", "value": "<string>", "description": "(Required) идентификатор сервера"}]
+												},
+												"description": "Получить список активных приглашений сервера. Требуется роль Owner"
+											},
+											"response": [
+												{
+													"name": "ok",
+													"originalRequest": {
+														"method": "GET",
+														"header": [{"key": "Accept", "value": "application/json"}],
+														"url": {"raw": "{{baseUrl}}/api/guilds/:id/invites", "host": ["{{baseUrl}}"], "path": ["api", "guilds", ":id", "invites"], "variable": [{"key": "id"}]}
+													},
+													"status": "OK",
+													"code": 200,
+													"_postman_previewlanguage": "json",
+													"header": [{"key": "Content-Type", "value": "application/json"}],
+													"cookie": [],
+													"body": "[\n  {\n    \"code\": \"<string>\",\n    \"guildId\": \"<string>\",\n    \"channelId\": \"<string>\",\n    \"inviterId\": \"<string>\",\n    \"maxUses\": \"<integer>\",\n    \"uses\": \"<integer>\",\n    \"expiresAt\": \"<string>\",\n    \"createdAt\": \"<string>\"\n  }\n]"
+												},
+												{
+													"name": "Forbidden",
+													"originalRequest": {
+														"method": "GET",
+														"header": [{"key": "Accept", "value": "application/json"}],
+														"url": {"raw": "{{baseUrl}}/api/guilds/:id/invites", "host": ["{{baseUrl}}"], "path": ["api", "guilds", ":id", "invites"], "variable": [{"key": "id"}]}
+													},
+													"status": "Forbidden",
+													"code": 403,
+													"_postman_previewlanguage": "json",
+													"header": [{"key": "Content-Type", "value": "application/json"}],
+													"cookie": [],
+													"body": "{\n  \"error\": \"Forbidden\",\n  \"message\": \"Insufficient permissions\"\n}"
+												},
+												{
+													"name": "Not Found",
+													"originalRequest": {
+														"method": "GET",
+														"header": [{"key": "Accept", "value": "application/json"}],
+														"url": {"raw": "{{baseUrl}}/api/guilds/:id/invites", "host": ["{{baseUrl}}"], "path": ["api", "guilds", ":id", "invites"], "variable": [{"key": "id"}]}
+													},
+													"status": "Not Found",
+													"code": 404,
+													"_postman_previewlanguage": "json",
+													"header": [{"key": "Content-Type", "value": "application/json"}],
+													"cookie": [],
+													"body": "{\n  \"error\": \"Not Found\",\n  \"message\": \"<string>\"\n}"
+												},
+												{
+													"name": "Server error",
+													"originalRequest": {
+														"method": "GET",
+														"header": [{"key": "Accept", "value": "application/json"}],
+														"url": {"raw": "{{baseUrl}}/api/guilds/:id/invites", "host": ["{{baseUrl}}"], "path": ["api", "guilds", ":id", "invites"], "variable": [{"key": "id"}]}
+													},
+													"status": "Internal Server Error",
+													"code": 500,
+													"_postman_previewlanguage": "json",
+													"header": [{"key": "Content-Type", "value": "application/json"}],
+													"cookie": [],
+													"body": "{\n  \"error\": \"Internal Server Error\",\n  \"message\": \"<string>\"\n}"
+												}
+											]
+										},
+										{
+											"name": "Создать приглашение",
+											"request": {
+												"method": "POST",
+												"header": [
+													{"key": "Content-Type", "value": "application/json"},
+													{"key": "Accept", "value": "application/json"},
+													{"key": "Authorization", "value": "Bearer {{access_token}}"}
+												],
+												"body": {
+													"mode": "raw",
+													"raw": "{\n  \"channelId\": \"<string>\",\n  \"maxUses\": \"<integer>\",\n  \"expiresIn\": \"<integer>\"\n}",
+													"options": {"raw": {"headerFamily": "json", "language": "json"}}
+												},
+												"url": {
+													"raw": "{{baseUrl}}/api/guilds/:id/invites",
+													"host": ["{{baseUrl}}"],
+													"path": ["api", "guilds", ":id", "invites"],
+													"variable": [{"key": "id", "value": "<string>", "description": "(Required) идентификатор сервера"}]
+												},
+												"description": "Создать ссылку-приглашение. expiresIn — срок действия в секундах (необязательно)"
+											},
+											"response": [
+												{
+													"name": "ok",
+													"originalRequest": {
+														"method": "POST",
+														"header": [
+															{"key": "Content-Type", "value": "application/json"},
+															{"key": "Accept", "value": "application/json"}
+														],
+														"body": {
+															"mode": "raw",
+															"raw": "{\n  \"channelId\": \"<string>\",\n  \"maxUses\": \"<integer>\",\n  \"expiresIn\": \"<integer>\"\n}",
+															"options": {"raw": {"headerFamily": "json", "language": "json"}}
+														},
+														"url": {"raw": "{{baseUrl}}/api/guilds/:id/invites", "host": ["{{baseUrl}}"], "path": ["api", "guilds", ":id", "invites"], "variable": [{"key": "id"}]}
+													},
+													"status": "OK",
+													"code": 200,
+													"_postman_previewlanguage": "json",
+													"header": [{"key": "Content-Type", "value": "application/json"}],
+													"cookie": [],
+													"body": "{\n  \"code\": \"<string>\",\n  \"guildId\": \"<string>\",\n  \"channelId\": \"<string>\",\n  \"inviterId\": \"<string>\",\n  \"maxUses\": \"<integer>\",\n  \"uses\": 0,\n  \"expiresAt\": \"<string>\",\n  \"createdAt\": \"<string>\"\n}"
+												},
+												{
+													"name": "Bad request",
+													"originalRequest": {
+														"method": "POST",
+														"header": [
+															{"key": "Content-Type", "value": "application/json"},
+															{"key": "Accept", "value": "application/json"}
+														],
+														"body": {
+															"mode": "raw",
+															"raw": "{\n  \"channelId\": \"<string>\",\n  \"maxUses\": \"<integer>\",\n  \"expiresIn\": \"<integer>\"\n}",
+															"options": {"raw": {"headerFamily": "json", "language": "json"}}
+														},
+														"url": {"raw": "{{baseUrl}}/api/guilds/:id/invites", "host": ["{{baseUrl}}"], "path": ["api", "guilds", ":id", "invites"], "variable": [{"key": "id"}]}
+													},
+													"status": "Bad Request",
+													"code": 400,
+													"_postman_previewlanguage": "json",
+													"header": [{"key": "Content-Type", "value": "application/json"}],
+													"cookie": [],
+													"body": "{\n  \"error\": \"Bad Request\",\n  \"message\": \"<string>\"\n}"
+												},
+												{
+													"name": "Server error",
+													"originalRequest": {
+														"method": "POST",
+														"header": [
+															{"key": "Content-Type", "value": "application/json"},
+															{"key": "Accept", "value": "application/json"}
+														],
+														"body": {
+															"mode": "raw",
+															"raw": "{\n  \"channelId\": \"<string>\",\n  \"maxUses\": \"<integer>\",\n  \"expiresIn\": \"<integer>\"\n}",
+															"options": {"raw": {"headerFamily": "json", "language": "json"}}
+														},
+														"url": {"raw": "{{baseUrl}}/api/guilds/:id/invites", "host": ["{{baseUrl}}"], "path": ["api", "guilds", ":id", "invites"], "variable": [{"key": "id"}]}
+													},
+													"status": "Internal Server Error",
+													"code": 500,
+													"_postman_previewlanguage": "json",
+													"header": [{"key": "Content-Type", "value": "application/json"}],
+													"cookie": [],
+													"body": "{\n  \"error\": \"Internal Server Error\",\n  \"message\": \"<string>\"\n}"
+												}
+											]
+										},
+										{
+											"name": "{code}",
+											"item": [
+												{
+													"name": "Отозвать приглашение",
+													"request": {
+														"method": "DELETE",
+														"header": [
+															{"key": "Accept", "value": "application/json"},
+															{"key": "Authorization", "value": "Bearer {{access_token}}"}
+														],
+														"url": {
+															"raw": "{{baseUrl}}/api/guilds/:id/invites/:code",
+															"host": ["{{baseUrl}}"],
+															"path": ["api", "guilds", ":id", "invites", ":code"],
+															"variable": [
+																{"key": "id", "value": "<string>", "description": "(Required) идентификатор сервера"},
+																{"key": "code", "value": "<string>", "description": "(Required) код приглашения"}
+															]
+														},
+														"description": "Отозвать приглашение. Требуется роль Owner"
+													},
+													"response": [
+														{
+															"name": "ok",
+															"originalRequest": {
+																"method": "DELETE",
+																"header": [],
+																"url": {"raw": "{{baseUrl}}/api/guilds/:id/invites/:code", "host": ["{{baseUrl}}"], "path": ["api", "guilds", ":id", "invites", ":code"], "variable": [{"key": "id"}, {"key": "code"}]}
+															},
+															"status": "OK",
+															"code": 200,
+															"_postman_previewlanguage": "text",
+															"header": [],
+															"cookie": [],
+															"body": ""
+														},
+														{
+															"name": "Forbidden",
+															"originalRequest": {
+																"method": "DELETE",
+																"header": [{"key": "Accept", "value": "application/json"}],
+																"url": {"raw": "{{baseUrl}}/api/guilds/:id/invites/:code", "host": ["{{baseUrl}}"], "path": ["api", "guilds", ":id", "invites", ":code"], "variable": [{"key": "id"}, {"key": "code"}]}
+															},
+															"status": "Forbidden",
+															"code": 403,
+															"_postman_previewlanguage": "json",
+															"header": [{"key": "Content-Type", "value": "application/json"}],
+															"cookie": [],
+															"body": "{\n  \"error\": \"Forbidden\",\n  \"message\": \"Insufficient permissions\"\n}"
+														},
+														{
+															"name": "Not Found",
+															"originalRequest": {
+																"method": "DELETE",
+																"header": [{"key": "Accept", "value": "application/json"}],
+																"url": {"raw": "{{baseUrl}}/api/guilds/:id/invites/:code", "host": ["{{baseUrl}}"], "path": ["api", "guilds", ":id", "invites", ":code"], "variable": [{"key": "id"}, {"key": "code"}]}
+															},
+															"status": "Not Found",
+															"code": 404,
+															"_postman_previewlanguage": "json",
+															"header": [{"key": "Content-Type", "value": "application/json"}],
+															"cookie": [],
+															"body": "{\n  \"error\": \"Not Found\",\n  \"message\": \"<string>\"\n}"
+														},
+														{
+															"name": "Server error",
+															"originalRequest": {
+																"method": "DELETE",
+																"header": [{"key": "Accept", "value": "application/json"}],
+																"url": {"raw": "{{baseUrl}}/api/guilds/:id/invites/:code", "host": ["{{baseUrl}}"], "path": ["api", "guilds", ":id", "invites", ":code"], "variable": [{"key": "id"}, {"key": "code"}]}
+															},
+															"status": "Internal Server Error",
+															"code": 500,
+															"_postman_previewlanguage": "json",
+															"header": [{"key": "Content-Type", "value": "application/json"}],
+															"cookie": [],
+															"body": "{\n  \"error\": \"Internal Server Error\",\n  \"message\": \"<string>\"\n}"
+														}
+													]
+												}
+											]
+										}
+									]
+								}
+							]
+						}
+					]
+				},
+				{
+					"name": "invites",
+					"item": [
+						{
+							"name": "{code}",
+							"item": [
+								{
+									"name": "Получить информацию о приглашении",
+									"request": {
+										"method": "GET",
+										"header": [
+											{"key": "Accept", "value": "application/json"}
+										],
+										"url": {
+											"raw": "{{baseUrl}}/api/invites/:code",
+											"host": ["{{baseUrl}}"],
+											"path": ["api", "invites", ":code"],
+											"variable": [{"key": "code", "value": "<string>", "description": "(Required) код приглашения"}]
+										},
+										"description": "Получить информацию о приглашении без аутентификации (превью сервера)"
+									},
+									"response": [
+										{
+											"name": "ok",
+											"originalRequest": {
+												"method": "GET",
+												"header": [{"key": "Accept", "value": "application/json"}],
+												"url": {"raw": "{{baseUrl}}/api/invites/:code", "host": ["{{baseUrl}}"], "path": ["api", "invites", ":code"], "variable": [{"key": "code"}]}
+											},
+											"status": "OK",
+											"code": 200,
+											"_postman_previewlanguage": "json",
+											"header": [{"key": "Content-Type", "value": "application/json"}],
+											"cookie": [],
+											"body": "{\n  \"code\": \"<string>\",\n  \"guildId\": \"<string>\",\n  \"guildName\": \"<string>\",\n  \"channelId\": \"<string>\",\n  \"inviterId\": \"<string>\",\n  \"maxUses\": \"<integer>\",\n  \"uses\": \"<integer>\",\n  \"expiresAt\": \"<string>\",\n  \"createdAt\": \"<string>\"\n}"
+										},
+										{
+											"name": "Not Found",
+											"originalRequest": {
+												"method": "GET",
+												"header": [{"key": "Accept", "value": "application/json"}],
+												"url": {"raw": "{{baseUrl}}/api/invites/:code", "host": ["{{baseUrl}}"], "path": ["api", "invites", ":code"], "variable": [{"key": "code"}]}
+											},
+											"status": "Not Found",
+											"code": 404,
+											"_postman_previewlanguage": "json",
+											"header": [{"key": "Content-Type", "value": "application/json"}],
+											"cookie": [],
+											"body": "{\n  \"error\": \"Not Found\",\n  \"message\": \"<string>\"\n}"
+										},
+										{
+											"name": "Server error",
+											"originalRequest": {
+												"method": "GET",
+												"header": [{"key": "Accept", "value": "application/json"}],
+												"url": {"raw": "{{baseUrl}}/api/invites/:code", "host": ["{{baseUrl}}"], "path": ["api", "invites", ":code"], "variable": [{"key": "code"}]}
+											},
+											"status": "Internal Server Error",
+											"code": 500,
+											"_postman_previewlanguage": "json",
+											"header": [{"key": "Content-Type", "value": "application/json"}],
+											"cookie": [],
+											"body": "{\n  \"error\": \"Internal Server Error\",\n  \"message\": \"<string>\"\n}"
+										}
+									]
+								},
+								{
+									"name": "accept",
+									"item": [
+										{
+											"name": "Принять приглашение",
+											"request": {
+												"method": "POST",
+												"header": [
+													{"key": "Accept", "value": "application/json"},
+													{"key": "Authorization", "value": "Bearer {{access_token}}"}
+												],
+												"url": {
+													"raw": "{{baseUrl}}/api/invites/:code/accept",
+													"host": ["{{baseUrl}}"],
+													"path": ["api", "invites", ":code", "accept"],
+													"variable": [{"key": "code", "value": "<string>", "description": "(Required) код приглашения"}]
+												},
+												"description": "Принять приглашение и вступить на сервер"
+											},
+											"response": [
+												{
+													"name": "ok",
+													"originalRequest": {
+														"method": "POST",
+														"header": [{"key": "Accept", "value": "application/json"}],
+														"url": {"raw": "{{baseUrl}}/api/invites/:code/accept", "host": ["{{baseUrl}}"], "path": ["api", "invites", ":code", "accept"], "variable": [{"key": "code"}]}
+													},
+													"status": "OK",
+													"code": 200,
+													"_postman_previewlanguage": "json",
+													"header": [{"key": "Content-Type", "value": "application/json"}],
+													"cookie": [],
+													"body": "{\n  \"guildId\": \"<string>\",\n  \"channelId\": \"<string>\"\n}"
+												},
+												{
+													"name": "Unauthorized",
+													"originalRequest": {
+														"method": "POST",
+														"header": [{"key": "Accept", "value": "application/json"}],
+														"url": {"raw": "{{baseUrl}}/api/invites/:code/accept", "host": ["{{baseUrl}}"], "path": ["api", "invites", ":code", "accept"], "variable": [{"key": "code"}]}
+													},
+													"status": "Unauthorized",
+													"code": 401,
+													"_postman_previewlanguage": "json",
+													"header": [{"key": "Content-Type", "value": "application/json"}],
+													"cookie": [],
+													"body": "{\n  \"error\": \"Unauthorized\",\n  \"message\": \"Missing or invalid authentication token\"\n}"
+												},
+												{
+													"name": "Not Found",
+													"originalRequest": {
+														"method": "POST",
+														"header": [{"key": "Accept", "value": "application/json"}],
+														"url": {"raw": "{{baseUrl}}/api/invites/:code/accept", "host": ["{{baseUrl}}"], "path": ["api", "invites", ":code", "accept"], "variable": [{"key": "code"}]}
+													},
+													"status": "Not Found",
+													"code": 404,
+													"_postman_previewlanguage": "json",
+													"header": [{"key": "Content-Type", "value": "application/json"}],
+													"cookie": [],
+													"body": "{\n  \"error\": \"Not Found\",\n  \"message\": \"Invite not found or expired\"\n}"
+												},
+												{
+													"name": "Server error",
+													"originalRequest": {
+														"method": "POST",
+														"header": [{"key": "Accept", "value": "application/json"}],
+														"url": {"raw": "{{baseUrl}}/api/invites/:code/accept", "host": ["{{baseUrl}}"], "path": ["api", "invites", ":code", "accept"], "variable": [{"key": "code"}]}
+													},
+													"status": "Internal Server Error",
+													"code": 500,
+													"_postman_previewlanguage": "json",
+													"header": [{"key": "Content-Type", "value": "application/json"}],
+													"cookie": [],
+													"body": "{\n  \"error\": \"Internal Server Error\",\n  \"message\": \"<string>\"\n}"
+												}
+											]
+										}
+									]
+								}
+							]
+						}
+					]
+				},
+				{
+					"name": "channels",
+					"item": [
+						{
+							"name": "{id}",
+							"item": [
+								{
+									"name": "messages",
+									"item": [
+										{
+											"name": "Получить историю сообщений",
+											"request": {
+												"method": "GET",
+												"header": [
+													{"key": "Accept", "value": "application/json"},
+													{"key": "Authorization", "value": "Bearer {{access_token}}"}
+												],
+												"url": {
+													"raw": "{{baseUrl}}/api/channels/:id/messages?limit=50",
+													"host": ["{{baseUrl}}"],
+													"path": ["api", "channels", ":id", "messages"],
+													"query": [
+														{"key": "limit", "value": "50", "description": "Количество сообщений (по умолчанию 50)"},
+														{"key": "cursor", "value": "", "description": "ID последнего сообщения для постраничной загрузки", "disabled": true}
+													],
+													"variable": [{"key": "id", "value": "<string>", "description": "(Required) идентификатор канала"}]
+												},
+												"description": "Получить историю сообщений канала с курсорной пагинацией"
+											},
+											"response": [
+												{
+													"name": "ok",
+													"originalRequest": {
+														"method": "GET",
+														"header": [{"key": "Accept", "value": "application/json"}],
+														"url": {"raw": "{{baseUrl}}/api/channels/:id/messages?limit=50", "host": ["{{baseUrl}}"], "path": ["api", "channels", ":id", "messages"], "query": [{"key": "limit", "value": "50"}], "variable": [{"key": "id"}]}
+													},
+													"status": "OK",
+													"code": 200,
+													"_postman_previewlanguage": "json",
+													"header": [{"key": "Content-Type", "value": "application/json"}],
+													"cookie": [],
+													"body": "[\n  {\n    \"id\": \"<string>\",\n    \"channelId\": \"<string>\",\n    \"authorId\": \"<string>\",\n    \"authorUsername\": \"<string>\",\n    \"text\": \"<string>\",\n    \"createdAt\": \"<string>\"\n  }\n]"
+												},
+												{
+													"name": "Unauthorized",
+													"originalRequest": {
+														"method": "GET",
+														"header": [{"key": "Accept", "value": "application/json"}],
+														"url": {"raw": "{{baseUrl}}/api/channels/:id/messages?limit=50", "host": ["{{baseUrl}}"], "path": ["api", "channels", ":id", "messages"], "query": [{"key": "limit", "value": "50"}], "variable": [{"key": "id"}]}
+													},
+													"status": "Unauthorized",
+													"code": 401,
+													"_postman_previewlanguage": "json",
+													"header": [{"key": "Content-Type", "value": "application/json"}],
+													"cookie": [],
+													"body": "{\n  \"error\": \"Unauthorized\",\n  \"message\": \"Missing or invalid authentication token\"\n}"
+												},
+												{
+													"name": "Forbidden",
+													"originalRequest": {
+														"method": "GET",
+														"header": [{"key": "Accept", "value": "application/json"}],
+														"url": {"raw": "{{baseUrl}}/api/channels/:id/messages?limit=50", "host": ["{{baseUrl}}"], "path": ["api", "channels", ":id", "messages"], "query": [{"key": "limit", "value": "50"}], "variable": [{"key": "id"}]}
+													},
+													"status": "Forbidden",
+													"code": 403,
+													"_postman_previewlanguage": "json",
+													"header": [{"key": "Content-Type", "value": "application/json"}],
+													"cookie": [],
+													"body": "{\n  \"error\": \"Forbidden\",\n  \"message\": \"Insufficient permissions\"\n}"
+												},
+												{
+													"name": "Not Found",
+													"originalRequest": {
+														"method": "GET",
+														"header": [{"key": "Accept", "value": "application/json"}],
+														"url": {"raw": "{{baseUrl}}/api/channels/:id/messages?limit=50", "host": ["{{baseUrl}}"], "path": ["api", "channels", ":id", "messages"], "query": [{"key": "limit", "value": "50"}], "variable": [{"key": "id"}]}
+													},
+													"status": "Not Found",
+													"code": 404,
+													"_postman_previewlanguage": "json",
+													"header": [{"key": "Content-Type", "value": "application/json"}],
+													"cookie": [],
+													"body": "{\n  \"error\": \"Not Found\",\n  \"message\": \"<string>\"\n}"
+												},
+												{
+													"name": "Server error",
+													"originalRequest": {
+														"method": "GET",
+														"header": [{"key": "Accept", "value": "application/json"}],
+														"url": {"raw": "{{baseUrl}}/api/channels/:id/messages?limit=50", "host": ["{{baseUrl}}"], "path": ["api", "channels", ":id", "messages"], "query": [{"key": "limit", "value": "50"}], "variable": [{"key": "id"}]}
+													},
+													"status": "Internal Server Error",
+													"code": 500,
+													"_postman_previewlanguage": "json",
+													"header": [{"key": "Content-Type", "value": "application/json"}],
+													"cookie": [],
+													"body": "{\n  \"error\": \"Internal Server Error\",\n  \"message\": \"<string>\"\n}"
+												}
+											]
+										}
+									]
+								}
+							]
+						}
+					]
+				},
+				{
+					"name": "messages",
+					"item": [
+						{
+							"name": "{id}",
+							"item": [
+								{
+									"name": "Удалить сообщение по идентификатору",
+									"request": {
+										"method": "DELETE",
+										"header": [
+											{"key": "Accept", "value": "application/json"},
+											{"key": "Authorization", "value": "Bearer {{access_token}}"}
+										],
+										"url": {
+											"raw": "{{baseUrl}}/api/messages/:id",
+											"host": ["{{baseUrl}}"],
+											"path": ["api", "messages", ":id"],
+											"variable": [{"key": "id", "value": "<string>", "description": "(Required) идентификатор сообщения"}]
+										},
+										"description": "Удалить сообщение. Доступно автору сообщения, Admin или Owner сервера"
+									},
+									"response": [
+										{
+											"name": "ok",
+											"originalRequest": {
+												"method": "DELETE",
+												"header": [],
+												"url": {"raw": "{{baseUrl}}/api/messages/:id", "host": ["{{baseUrl}}"], "path": ["api", "messages", ":id"], "variable": [{"key": "id"}]}
+											},
+											"status": "OK",
+											"code": 200,
+											"_postman_previewlanguage": "text",
+											"header": [],
+											"cookie": [],
+											"body": ""
+										},
+										{
+											"name": "Unauthorized",
+											"originalRequest": {
+												"method": "DELETE",
+												"header": [{"key": "Accept", "value": "application/json"}],
+												"url": {"raw": "{{baseUrl}}/api/messages/:id", "host": ["{{baseUrl}}"], "path": ["api", "messages", ":id"], "variable": [{"key": "id"}]}
+											},
+											"status": "Unauthorized",
+											"code": 401,
+											"_postman_previewlanguage": "json",
+											"header": [{"key": "Content-Type", "value": "application/json"}],
+											"cookie": [],
+											"body": "{\n  \"error\": \"Unauthorized\",\n  \"message\": \"Missing or invalid authentication token\"\n}"
+										},
+										{
+											"name": "Forbidden",
+											"originalRequest": {
+												"method": "DELETE",
+												"header": [{"key": "Accept", "value": "application/json"}],
+												"url": {"raw": "{{baseUrl}}/api/messages/:id", "host": ["{{baseUrl}}"], "path": ["api", "messages", ":id"], "variable": [{"key": "id"}]}
+											},
+											"status": "Forbidden",
+											"code": 403,
+											"_postman_previewlanguage": "json",
+											"header": [{"key": "Content-Type", "value": "application/json"}],
+											"cookie": [],
+											"body": "{\n  \"error\": \"Forbidden\",\n  \"message\": \"Insufficient permissions\"\n}"
+										},
+										{
+											"name": "Not Found",
+											"originalRequest": {
+												"method": "DELETE",
+												"header": [{"key": "Accept", "value": "application/json"}],
+												"url": {"raw": "{{baseUrl}}/api/messages/:id", "host": ["{{baseUrl}}"], "path": ["api", "messages", ":id"], "variable": [{"key": "id"}]}
+											},
+											"status": "Not Found",
+											"code": 404,
+											"_postman_previewlanguage": "json",
+											"header": [{"key": "Content-Type", "value": "application/json"}],
+											"cookie": [],
+											"body": "{\n  \"error\": \"Not Found\",\n  \"message\": \"<string>\"\n}"
+										},
+										{
+											"name": "Server error",
+											"originalRequest": {
+												"method": "DELETE",
+												"header": [{"key": "Accept", "value": "application/json"}],
+												"url": {"raw": "{{baseUrl}}/api/messages/:id", "host": ["{{baseUrl}}"], "path": ["api", "messages", ":id"], "variable": [{"key": "id"}]}
+											},
+											"status": "Internal Server Error",
+											"code": 500,
+											"_postman_previewlanguage": "json",
+											"header": [{"key": "Content-Type", "value": "application/json"}],
+											"cookie": [],
+											"body": "{\n  \"error\": \"Internal Server Error\",\n  \"message\": \"<string>\"\n}"
+										}
+									]
+								}
+							]
+						}
+					]
+				},
+				{
+					"name": "voice",
+					"item": [
+						{
+							"name": "{channelId}",
+							"item": [
+								{
+									"name": "join",
+									"item": [
+										{
+											"name": "Войти в голосовой канал",
+											"request": {
+												"method": "POST",
+												"header": [
+													{"key": "Accept", "value": "application/json"},
+													{"key": "Authorization", "value": "Bearer {{access_token}}"}
+												],
+												"url": {
+													"raw": "{{baseUrl}}/api/voice/:channelId/join",
+													"host": ["{{baseUrl}}"],
+													"path": ["api", "voice", ":channelId", "join"],
+													"variable": [{"key": "channelId", "value": "<string>", "description": "(Required) идентификатор голосового канала"}]
+												},
+												"description": "Войти в голосовой канал. Возвращает LiveKit JWT-токен и URL сервера"
+											},
+											"response": [
+												{
+													"name": "ok",
+													"originalRequest": {
+														"method": "POST",
+														"header": [{"key": "Accept", "value": "application/json"}],
+														"url": {"raw": "{{baseUrl}}/api/voice/:channelId/join", "host": ["{{baseUrl}}"], "path": ["api", "voice", ":channelId", "join"], "variable": [{"key": "channelId"}]}
+													},
+													"status": "OK",
+													"code": 200,
+													"_postman_previewlanguage": "json",
+													"header": [{"key": "Content-Type", "value": "application/json"}],
+													"cookie": [],
+													"body": "{\n  \"token\": \"<string>\",\n  \"url\": \"<string>\"\n}"
+												},
+												{
+													"name": "Unauthorized",
+													"originalRequest": {
+														"method": "POST",
+														"header": [{"key": "Accept", "value": "application/json"}],
+														"url": {"raw": "{{baseUrl}}/api/voice/:channelId/join", "host": ["{{baseUrl}}"], "path": ["api", "voice", ":channelId", "join"], "variable": [{"key": "channelId"}]}
+													},
+													"status": "Unauthorized",
+													"code": 401,
+													"_postman_previewlanguage": "json",
+													"header": [{"key": "Content-Type", "value": "application/json"}],
+													"cookie": [],
+													"body": "{\n  \"error\": \"Unauthorized\",\n  \"message\": \"Missing or invalid authentication token\"\n}"
+												},
+												{
+													"name": "Forbidden",
+													"originalRequest": {
+														"method": "POST",
+														"header": [{"key": "Accept", "value": "application/json"}],
+														"url": {"raw": "{{baseUrl}}/api/voice/:channelId/join", "host": ["{{baseUrl}}"], "path": ["api", "voice", ":channelId", "join"], "variable": [{"key": "channelId"}]}
+													},
+													"status": "Forbidden",
+													"code": 403,
+													"_postman_previewlanguage": "json",
+													"header": [{"key": "Content-Type", "value": "application/json"}],
+													"cookie": [],
+													"body": "{\n  \"error\": \"Forbidden\",\n  \"message\": \"Insufficient permissions\"\n}"
+												},
+												{
+													"name": "Not Found",
+													"originalRequest": {
+														"method": "POST",
+														"header": [{"key": "Accept", "value": "application/json"}],
+														"url": {"raw": "{{baseUrl}}/api/voice/:channelId/join", "host": ["{{baseUrl}}"], "path": ["api", "voice", ":channelId", "join"], "variable": [{"key": "channelId"}]}
+													},
+													"status": "Not Found",
+													"code": 404,
+													"_postman_previewlanguage": "json",
+													"header": [{"key": "Content-Type", "value": "application/json"}],
+													"cookie": [],
+													"body": "{\n  \"error\": \"Not Found\",\n  \"message\": \"<string>\"\n}"
+												},
+												{
+													"name": "Server error",
+													"originalRequest": {
+														"method": "POST",
+														"header": [{"key": "Accept", "value": "application/json"}],
+														"url": {"raw": "{{baseUrl}}/api/voice/:channelId/join", "host": ["{{baseUrl}}"], "path": ["api", "voice", ":channelId", "join"], "variable": [{"key": "channelId"}]}
+													},
+													"status": "Internal Server Error",
+													"code": 500,
+													"_postman_previewlanguage": "json",
+													"header": [{"key": "Content-Type", "value": "application/json"}],
+													"cookie": [],
+													"body": "{\n  \"error\": \"Internal Server Error\",\n  \"message\": \"<string>\"\n}"
+												}
+											]
+										}
+									]
+								},
+								{
+									"name": "leave",
+									"item": [
+										{
+											"name": "Покинуть голосовой канал",
+											"request": {
+												"method": "POST",
+												"header": [
+													{"key": "Accept", "value": "application/json"},
+													{"key": "Authorization", "value": "Bearer {{access_token}}"}
+												],
+												"url": {
+													"raw": "{{baseUrl}}/api/voice/:channelId/leave",
+													"host": ["{{baseUrl}}"],
+													"path": ["api", "voice", ":channelId", "leave"],
+													"variable": [{"key": "channelId", "value": "<string>", "description": "(Required) идентификатор голосового канала"}]
+												},
+												"description": "Покинуть голосовой канал и уведомить остальных участников"
+											},
+											"response": [
+												{
+													"name": "ok",
+													"originalRequest": {
+														"method": "POST",
+														"header": [{"key": "Accept", "value": "application/json"}],
+														"url": {"raw": "{{baseUrl}}/api/voice/:channelId/leave", "host": ["{{baseUrl}}"], "path": ["api", "voice", ":channelId", "leave"], "variable": [{"key": "channelId"}]}
+													},
+													"status": "OK",
+													"code": 200,
+													"_postman_previewlanguage": "text",
+													"header": [],
+													"cookie": [],
+													"body": ""
+												},
+												{
+													"name": "Unauthorized",
+													"originalRequest": {
+														"method": "POST",
+														"header": [{"key": "Accept", "value": "application/json"}],
+														"url": {"raw": "{{baseUrl}}/api/voice/:channelId/leave", "host": ["{{baseUrl}}"], "path": ["api", "voice", ":channelId", "leave"], "variable": [{"key": "channelId"}]}
+													},
+													"status": "Unauthorized",
+													"code": 401,
+													"_postman_previewlanguage": "json",
+													"header": [{"key": "Content-Type", "value": "application/json"}],
+													"cookie": [],
+													"body": "{\n  \"error\": \"Unauthorized\",\n  \"message\": \"Missing or invalid authentication token\"\n}"
+												},
+												{
+													"name": "Not Found",
+													"originalRequest": {
+														"method": "POST",
+														"header": [{"key": "Accept", "value": "application/json"}],
+														"url": {"raw": "{{baseUrl}}/api/voice/:channelId/leave", "host": ["{{baseUrl}}"], "path": ["api", "voice", ":channelId", "leave"], "variable": [{"key": "channelId"}]}
+													},
+													"status": "Not Found",
+													"code": 404,
+													"_postman_previewlanguage": "json",
+													"header": [{"key": "Content-Type", "value": "application/json"}],
+													"cookie": [],
+													"body": "{\n  \"error\": \"Not Found\",\n  \"message\": \"<string>\"\n}"
+												},
+												{
+													"name": "Server error",
+													"originalRequest": {
+														"method": "POST",
+														"header": [{"key": "Accept", "value": "application/json"}],
+														"url": {"raw": "{{baseUrl}}/api/voice/:channelId/leave", "host": ["{{baseUrl}}"], "path": ["api", "voice", ":channelId", "leave"], "variable": [{"key": "channelId"}]}
+													},
+													"status": "Internal Server Error",
+													"code": 500,
+													"_postman_previewlanguage": "json",
+													"header": [{"key": "Content-Type", "value": "application/json"}],
+													"cookie": [],
+													"body": "{\n  \"error\": \"Internal Server Error\",\n  \"message\": \"<string>\"\n}"
+												}
+											]
+										}
+									]
+								}
+							]
+						}
+					]
+				}
+			]
+		}
+	],
+	"event": [
+		{
+			"listen": "prerequest",
+			"script": {
+				"type": "text/javascript",
+				"packages": {},
+				"exec": [""]
+			}
+		},
+		{
+			"listen": "test",
+			"script": {
+				"type": "text/javascript",
+				"packages": {},
+				"exec": [""]
+			}
+		}
+	],
+	"variable": [
+		{
+			"key": "baseUrl",
+			"value": "http://localhost:8080"
+		},
+		{
+			"key": "access_token",
+			"value": ""
+		}
+	]
+}
