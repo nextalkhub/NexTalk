@@ -77,7 +77,7 @@ docker compose --env-file=.env.example up -d --wait
 | http://localhost:8080/api/channels | Messaging Service (требует JWT) |
 | http://localhost:8080/api/voice | Voice Service (требует JWT) |
 | http://localhost:8080/ws | WebSocket Gateway (SignalR) |
-| http://localhost:7880 | LiveKit SFU - HTTP API |
+| http://localhost:8080/livekit | LiveKit SFU - HTTP API |
 
 #### Проверка
 
