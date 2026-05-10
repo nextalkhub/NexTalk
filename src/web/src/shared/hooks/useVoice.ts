@@ -3,8 +3,7 @@ import { useWebRTC } from "./useWerbRtc.ts"
 import { joinVoiceChannel } from "../../processes/voice/joinVoiceChannel.ts"
 import { leaveVoiceChannel } from "../../processes/voice/leaveVoiceChannel.ts"
 import { getVoiceChannelParticipants } from "../../processes/voice/getVoiceChannelParticipants.ts"
-
-const USE_MOCK = import.meta.env.VITE_USE_AUTH_MOCK === 'true'
+import {VoiceParticipant} from "../types";
 
 export const useVoice = () => {
     const webrtc = useWebRTC({
@@ -14,29 +13,14 @@ export const useVoice = () => {
         ]
     })
 
-    // ===== MOCK STATE =====
-    const [mockConnected, setMockConnected] = useState(false)
-    const [mockMuted, setMockMuted] = useState(false)
-    const [mockParticipants, setMockParticipants] = useState<any[]>([])
-
     // ===== REAL STATE =====
-    const [participants, setParticipants] = useState<any[]>([])
+    const [participants, setParticipants] = useState<VoiceParticipant[]>([])
 
     // ===== JOIN =====
     const joinVoice = async (
             channelId: string,
             user: { id: string; name: string }
         ) => {
-        if (USE_MOCK) {
-            setMockConnected(true)
-
-            setMockParticipants([
-                { id: '1', name: 'Алексей', avatar: 'А', isSpeaking: true, isMuted: false },
-                { id: '2', name: 'Мария', avatar: 'М', isSpeaking: false, isMuted: false },
-            ])
-
-            return
-        }
 
         // 1. JOIN API
         await joinVoiceChannel(channelId, {
@@ -50,11 +34,14 @@ export const useVoice = () => {
 
         setParticipants(
             users.map(u => ({
-                id: u.userId,
-                name: u.username,
+                userId: u.userId,
+                username: u.username,
+                displayName: u.displayName,
+                joinedAt: u.joinedAt,
                 avatar: u.username[0].toUpperCase(),
                 isSpeaking: false,
                 isMuted: false,
+                isDeafened: false,
             }))
         )
 
@@ -65,12 +52,6 @@ export const useVoice = () => {
 
     // ===== LEAVE =====
     const leaveVoice = async (channelId: string, userId?: string) => {
-        if (USE_MOCK) {
-            setMockConnected(false)
-            setMockParticipants([])
-            return
-        }
-
         await leaveVoiceChannel(channelId, userId || '')
         webrtc.stopVoice()
         setParticipants([])
@@ -78,25 +59,7 @@ export const useVoice = () => {
 
     // ===== MIC =====
     const toggleMic = () => {
-        if (USE_MOCK) {
-            setMockMuted(prev => !prev)
-            return
-        }
-
         webrtc.toggleMic()
-    }
-
-    // ===== RETURN =====
-    if (USE_MOCK) {
-        return {
-            isConnected: mockConnected,
-            isMuted: mockMuted,
-            participants: mockParticipants,
-
-            joinVoice,
-            leaveVoice,
-            toggleMic,
-        }
     }
 
     return {

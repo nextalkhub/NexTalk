@@ -6,7 +6,7 @@ export async function getVoiceChannelParticipants(
 ): Promise<VoiceParticipant[]> {
     try {
         const response = await axiosInstance.get(`/api/voice/${channelId}/participants`)
-        return response.data.map((p: any) => ({
+        return response.data.map((p: VoiceParticipant) => ({
             ...p,
             joinedAt: new Date(p.joinedAt)
         }))

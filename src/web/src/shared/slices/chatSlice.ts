@@ -20,7 +20,7 @@ const initialState: ChatState = {
 
 const USE_MOCK = import.meta.env.VITE_USE_AUTH_MOCK === 'true'
 
-let mockMessages: Record<string, MessageInterface[]> = {
+const mockMessages: Record<string, MessageInterface[]> = {
     '1': [
         {
             id: '1',

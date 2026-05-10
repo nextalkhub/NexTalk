@@ -8,6 +8,7 @@ import {
     fetchChannels,
     setCurrentChannel
 } from '../../../shared/slices/channelSlice.ts'
+import {Channel} from "../../../shared/types";
 
 export const ChannelSidebar: React.FC = () => {
     const navigate = useNavigate()
@@ -21,7 +22,7 @@ export const ChannelSidebar: React.FC = () => {
     const textChannels = channels.filter(c => c.type === 'text')
     const voiceChannels = channels.filter(c => c.type === 'voice')
 
-    const handleChannelClick = (channel: any) => {
+    const handleChannelClick = (channel: Channel) => {
         dispatch(setCurrentChannel(channel.id))
 
         if (channel.type === 'text') {

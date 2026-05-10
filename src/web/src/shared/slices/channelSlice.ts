@@ -1,12 +1,6 @@
 import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit'
 import { axiosInstance } from '../../processes/axiosInstance.ts'
-
-export interface Channel {
-    id: string
-    serverId: string
-    name: string
-    type: 'text' | 'voice'
-}
+import {Channel} from "../types";
 
 interface ChannelState {
     channels: Channel[]
@@ -22,7 +16,7 @@ const initialState: ChannelState = {
 
 const USE_MOCK = import.meta.env.VITE_USE_AUTH_MOCK === 'true'
 
-let mockChannels: Channel[] = [
+const mockChannels: Channel[] = [
     { id: '1', serverId: '1', name: 'general', type: 'text' },
     { id: '2', serverId: '1', name: 'valorant', type: 'text' },
 ]

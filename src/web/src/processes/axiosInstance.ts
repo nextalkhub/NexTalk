@@ -1,10 +1,10 @@
 import axios from 'axios'
 import { logout, refreshToken, selectAccessToken } from "../shared/slices/authSlice.ts"
+import {AppStore} from "../store.ts";
 
-// 👇 вместо прямого импорта store
-let _store: any = null
+let _store: AppStore | null = null
 
-export const injectStore = (store: any) => {
+export const injectStore = (store: AppStore) => {
     _store = store
 }
 

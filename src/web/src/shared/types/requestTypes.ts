@@ -10,11 +10,9 @@ export interface Guild {
 
 export interface Channel {
     id: string
-    guildId: string
+    serverId: string
     name: string
-    type: 'text' | 'voice' | 'announcement'
-    position: number
-    createdAt: Date
+    type: 'text' | 'voice'
 }
 
 export interface Member {
