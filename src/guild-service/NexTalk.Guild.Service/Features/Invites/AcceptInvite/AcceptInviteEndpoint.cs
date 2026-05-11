@@ -13,7 +13,7 @@ public static class AcceptInviteEndpoint
             AcceptInviteHandler handler,
             CancellationToken ct) =>
         {
-            await handler.HandleAsync(new AcceptInviteCommand(code, userId, displayName, username), ct);
-            return Results.NoContent();
+            var guild = await handler.HandleAsync(new AcceptInviteCommand(code, userId, displayName, username), ct);
+            return Results.Ok(guild);
         });
 }
