@@ -1,5 +1,7 @@
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
+using Microsoft.IdentityModel.Tokens;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Distributed;
 using NexTalk.Guild.Service.Features.Channels.CreateChannel;
@@ -26,6 +28,28 @@ using Serilog;
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddSerilog((_, lc) => lc.ReadFrom.Configuration(builder.Configuration));
+
+var zitadelAuthority = builder.Configuration["Zitadel:Authority"]!;
+var zitadelMetadata = builder.Configuration["Zitadel:MetadataAddress"]!;
+
+builder.Services
+    .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+    .AddJwtBearer(opts =>
+    {
+        opts.Authority = zitadelAuthority;
+        opts.MetadataAddress = zitadelMetadata;
+        opts.RequireHttpsMetadata = false;
+        opts.TokenValidationParameters = new TokenValidationParameters
+        {
+            ValidateIssuer = true,
+            ValidIssuer = zitadelAuthority,
+            ValidateAudience = false,
+            ValidateLifetime = true,
+            ClockSkew = TimeSpan.FromSeconds(5)
+        };
+    });
+
+builder.Services.AddAuthorization();
 
 var redisConnectionString = builder.Configuration.GetConnectionString("Redis")!;
 var pgConnectionString = builder.Configuration.GetConnectionString("PostgresConnection")!;
@@ -93,6 +117,23 @@ app.UseExceptionHandler(exApp => exApp.Run(async ctx =>
 }));
 
 app.UseHttpMetrics();
+app.UseAuthentication();
+
+// Propagate JWT claims as internal headers so endpoints can bind [FromHeader]
+app.Use(async (ctx, next) =>
+{
+    if (ctx.User.Identity?.IsAuthenticated == true)
+    {
+        var sub = ctx.User.FindFirst("sub")?.Value;
+        var name = ctx.User.FindFirst("name")?.Value;
+        var username = ctx.User.FindFirst("preferred_username")?.Value;
+
+        if (sub is not null) ctx.Request.Headers["X-User-Id"] = sub;
+        if (name is not null) ctx.Request.Headers["X-Display-Name"] = name;
+        if (username is not null) ctx.Request.Headers["X-Username"] = username;
+    }
+    await next();
+});
 
 app.UseSerilogRequestLogging(opts =>
     opts.EnrichDiagnosticContext = (dc, ctx) =>
@@ -101,27 +142,26 @@ app.UseSerilogRequestLogging(opts =>
             ?? ctx.Request.Headers["X-Correlation-Id"].FirstOrDefault()
             ?? ctx.TraceIdentifier));
 
-// Guild endpoints
-CreateGuildEndpoint.Map(app);
-GetUserGuildsEndpoint.Map(app);
-DeleteGuildEndpoint.Map(app);
+// Business endpoints — require valid JWT
+var api = app.MapGroup("").RequireAuthorization();
 
-// Channel endpoints
-CreateChannelEndpoint.Map(app);
-DeleteChannelEndpoint.Map(app);
-GetChannelsEndpoint.Map(app);
+CreateGuildEndpoint.Map(api);
+GetUserGuildsEndpoint.Map(api);
+DeleteGuildEndpoint.Map(api);
 
-// Invite endpoints
-CreateInviteEndpoint.Map(app);
-AcceptInviteEndpoint.Map(app);
+CreateChannelEndpoint.Map(api);
+DeleteChannelEndpoint.Map(api);
+GetChannelsEndpoint.Map(api);
 
-// Member endpoints
-GetMembersEndpoint.Map(app);
-AssignRoleEndpoint.Map(app);
-KickMemberEndpoint.Map(app);
-BanMemberEndpoint.Map(app);
+CreateInviteEndpoint.Map(api);
+AcceptInviteEndpoint.Map(api);
 
-// Internal endpoints
+GetMembersEndpoint.Map(api);
+AssignRoleEndpoint.Map(api);
+KickMemberEndpoint.Map(api);
+BanMemberEndpoint.Map(api);
+
+// Internal endpoints — no JWT, protected at network level (nginx: deny all)
 CheckAccessEndpoint.Map(app);
 GetGuildMembersEndpoint.Map(app);
 GetUserGuildsInternalEndpoint.Map(app);
