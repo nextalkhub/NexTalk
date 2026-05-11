@@ -58,6 +58,7 @@ builder.Services.AddScoped<DeleteChannelHandler>();
 builder.Services.AddScoped<GetChannelsHandler>();
 
 // Invite handlers
+builder.Services.AddScoped<IInviteRepository, InviteRepository>();
 builder.Services.AddScoped<CreateInviteHandler>();
 builder.Services.AddScoped<AcceptInviteHandler>();
 
