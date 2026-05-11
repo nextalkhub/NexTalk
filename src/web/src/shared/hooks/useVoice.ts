@@ -7,7 +7,7 @@ import {VoiceParticipant} from "../types";
 
 export const useVoice = () => {
     const webrtc = useWebRTC({
-        signalingServerUrl: 'http://localhost:3001',
+        signalingServerUrl: import.meta.env.VITE_LIVEKIT_URL || 'http://localhost:3000/livekit',
         iceServers: [
             { urls: 'stun:stun.l.google.com:19302' },
         ]
