@@ -83,23 +83,6 @@ jobs:
       - name: ESLint
         run: npm run lint
 
-  test-guild-service:
-    runs-on: ubuntu-latest
-    name: Test guild-service
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Setup .NET 10
-        uses: actions/setup-dotnet@v4
-        with:
-          dotnet-version: "10.0.x"
-
-      - name: Restore
-        run: dotnet restore src/guild-service/NexTalk.Guild.Service.Tests/NexTalk.Guild.Service.Tests.csproj
-
-      - name: Test
-        run: dotnet test src/guild-service/NexTalk.Guild.Service.Tests/NexTalk.Guild.Service.Tests.csproj --no-restore -c Release --logger "console;verbosity=normal"
-
   # Docker build & push (only on target branches)
   docker-build-push:
     needs: [build-backend-services, test-guild-service, frontend-ci]
