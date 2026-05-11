@@ -7,7 +7,7 @@ public class InviteRepository(GuildDbContext db) : IInviteRepository
 {
     public async Task<bool> TryClaimAsync(Guid inviteId, CancellationToken ct = default)
     {
-        var updated = await db.Database.ExecuteSqlRёawAsync("""
+        var updated = await db.Database.ExecuteSqlRawAsync("""
             UPDATE guild.invites
             SET uses_count = uses_count + 1
             WHERE id = {0}
