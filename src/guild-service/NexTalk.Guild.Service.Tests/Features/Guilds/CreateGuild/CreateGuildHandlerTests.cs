@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using NexTalk.Guild.Service.Domain;
 using NexTalk.Guild.Service.Features.Guilds.CreateGuild;
 using NexTalk.Guild.Service.Infrastructure;
+using Xunit;
 
 namespace NexTalk.Guild.Service.Tests.Features.Guilds.CreateGuild;
 

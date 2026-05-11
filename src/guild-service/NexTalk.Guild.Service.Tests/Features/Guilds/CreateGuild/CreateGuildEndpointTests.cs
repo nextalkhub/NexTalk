@@ -5,6 +5,7 @@ using Microsoft.Extensions.DependencyInjection;
 using NexTalk.Guild.Service.Domain;
 using NexTalk.Guild.Service.Infrastructure;
 using NexTalk.Guild.Service.Tests.Infrastructure;
+using Xunit;
 
 namespace NexTalk.Guild.Service.Tests.Features.Guilds.CreateGuild;
 

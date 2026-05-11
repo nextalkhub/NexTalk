@@ -5,6 +5,7 @@ using NexTalk.Guild.Service.Infrastructure;
 using NexTalk.Guild.Service.Shared;
 using NexTalk.Guild.Service.Tests.Infrastructure;
 using System.Net;
+using Xunit;
 using GuildAggregate = NexTalk.Guild.Service.Domain.Guild;
 
 namespace NexTalk.Guild.Service.Tests.Features.Invites.AcceptInvite;
