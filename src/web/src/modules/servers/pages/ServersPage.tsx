@@ -70,7 +70,7 @@ export const ServersPage: React.FC = () => {
                 </div>
 
                 <div className={styles.grid}>
-                    {servers.map((server) => (
+                    {servers.length > 0 && servers.map((server) => (
                         <ServerCard
                             key={server.id}
                             server={server}
