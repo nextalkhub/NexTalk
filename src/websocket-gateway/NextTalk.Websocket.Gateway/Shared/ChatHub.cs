@@ -87,6 +87,10 @@ public sealed class ChatHub : Hub
     /// <summary>
     /// Отправляет сообщение в текстовый канал.
     /// </summary>
+    /// <param name="channelId"></param>
+    /// <param name="guildId"></param>
+    /// <param name="content"></param>
+    /// <param name="idempotencyKey"></param>
     public async Task SendMessage(Guid channelId, Guid guildId, string content, string idempotencyKey)
     {
         var userId = GetUserId();
@@ -101,7 +105,7 @@ public sealed class ChatHub : Hub
             channelId, guildId, content, idempotencyKey,
             userId, GetDisplayName(), correlationId);
         
-        var result = await _sendMessageHandler.HandleAsync(command, Context.ConnectionAborted);
+        var result = await _sendMessageHandler.HandleAsync(command);
 
         if (!result.Success)
         {

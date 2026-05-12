@@ -4,17 +4,17 @@ using NextTalk.Websocket.Gateway.Shared;
 namespace NextTalk.Websocket.Gateway.Features.Disconnect;
 
 /// <summary>
-/// Internal эндпоинты дл принудительного отключения
+/// Internal disconnect endpoints — NOT exposed via Nginx.
 ///
-/// Соответствуют контракту WsGatewayClient.cs, используемому Guild Service:
+/// Matching the actual WsGatewayClient.cs contract used by Guild Service:
 ///
 ///   POST /internal/disconnect/user/{userId}
-///     Вызывает: Guild Service (kick - полное отключение)
-///     Действие: отправляет событие force.disconnect на соединение пользователя
+///     Called by: Guild Service (kick — global disconnect)
+///     Action: sends force.disconnect GatewayEvent to the user's connection
 ///
 ///   POST /internal/disconnect/guild/{guildId}/user/{userId}
-///     Вызывает: Guild Service (ban - отключение от конкретной гильдии)
-///     Действие: отправляет событие guild.force.disconnect с Id забаненной гильдии
+///     Called by: Guild Service (ban — guild-scoped disconnect)
+///     Action: sends guild.force.disconnect GatewayEvent with the banned guildId
 /// </summary>
 public static class DisconnectEndpoints
 {
