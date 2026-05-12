@@ -34,9 +34,9 @@ export const createInviteThunk = createAsyncThunk(
                 maxUses: data.maxUses,
                 uses: 0,
                 expiresAt: data.expiresIn
-                    ? new Date(Date.now() + data.expiresIn * 1000)
+                    ? new Date(Date.now() + data.expiresIn * 1000).toISOString()
                     : undefined,
-                createdAt: new Date(),
+                createdAt: new Date().toISOString(),
             }
 
             if (!mockInvites[guildId]) {

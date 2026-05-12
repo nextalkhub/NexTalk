@@ -23,11 +23,7 @@ export const useVoice = () => {
     ) => {
 
         // 1. JOIN API
-        await joinVoiceChannel(channelId, {
-            userId: user.id,
-            username: user.name,
-            displayName: user.name,
-        })
+        await joinVoiceChannel(channelId)
 
         // 2. GET PARTICIPANTS
         const users = await getVoiceChannelParticipants(channelId)
@@ -51,8 +47,8 @@ export const useVoice = () => {
     }
 
     // ===== LEAVE =====
-    const leaveVoice = async (channelId: string, userId?: string) => {
-        await leaveVoiceChannel(channelId, userId || '')
+    const leaveVoice = async (channelId: string) => {
+        await leaveVoiceChannel(channelId)
         webrtc.stopVoice()
         setParticipants([])
     }
@@ -66,7 +62,6 @@ export const useVoice = () => {
         isConnected: webrtc.connectionStatus === 'connected',
         isMuted: webrtc.isMuted,
         participants,
-
         joinVoice,
         leaveVoice,
         toggleMic,

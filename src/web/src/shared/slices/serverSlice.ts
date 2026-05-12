@@ -28,6 +28,7 @@ const mockServers: Guild[] = [
         memberCount: 5,
         description: 'Тестовый сервер',
         createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
     },
     {
         ownerId: '2',
@@ -37,6 +38,7 @@ const mockServers: Guild[] = [
         memberCount: 12,
         description: 'Разработка',
         createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
     },
 ]
 
@@ -67,6 +69,7 @@ export const createServer = createAsyncThunk(
                 memberCount: 1,
                 description: data.description || '',
                 createdAt: new Date().toISOString(),
+                updatedAt: new Date().toISOString()
             }
 
             mockServers.push(newServer)
