@@ -1,5 +1,5 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit'
-import { createInvite } from '../../processes/guild/createInvite'
+import { createInvite } from '../../processes/invites/createInvite.ts'
 import { Invite, CreateInviteRequest } from '../types'
 
 const USE_MOCK = import.meta.env.VITE_USE_AUTH_MOCK === 'true'

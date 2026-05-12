@@ -1,5 +1,5 @@
 import {axiosInstance} from "../axiosInstance.ts";
-import {Invite} from "../../shared/types/requestTypes.ts";
+import {Invite} from "../../shared/types";
 
 export async function getInviteInfo(code: string): Promise<Invite & { guildName: string }> {
     try {

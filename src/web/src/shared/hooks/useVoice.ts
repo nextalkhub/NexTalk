@@ -18,9 +18,9 @@ export const useVoice = () => {
 
     // ===== JOIN =====
     const joinVoice = async (
-            channelId: string,
-            user: { id: string; name: string }
-        ) => {
+        channelId: string,
+        user: { id: string; name: string }
+    ) => {
 
         // 1. JOIN API
         await joinVoiceChannel(channelId, {

@@ -5,6 +5,7 @@ export interface Guild {
     icon?: string
     ownerId: string
     createdAt: string
+    updatedAt: string
     memberCount: number
 }
 
@@ -31,8 +32,8 @@ export interface Invite {
     inviterId: string
     maxUses?: number
     uses: number
-    expiresAt?: Date
-    createdAt: Date
+    expiresAt?: string
+    createdAt: string
 }
 
 export interface CreateGuildRequest {
@@ -61,17 +62,17 @@ export interface Message {
     channelId: string
     guildId: string
     authorId: string
-    authorUsername: string    // для @упоминаний, из members таблицы
-    authorDisplayName: string  // отображаемое имя
+    authorUsername: string
+    authorDisplayName: string
     authorAvatar?: string
     content: string
-    createdAt: Date
-    updatedAt?: Date
+    createdAt: string
+    updatedAt?: string
     isEdited: boolean
     isDeleted: boolean
     replyToId?: string
     attachments?: MessageAttachment[]
-    mentions?: string[]        // массив userId, которые упомянуты
+    mentions?: string[]
 }
 
 export interface MessageAttachment {
@@ -135,11 +136,7 @@ export interface IdempotencyKey {
 
 export interface JoinVoiceResponse {
     token: string
-    roomName: string
-    wsUrl: string
-    participantId: string
-    participantName: string
-    joinAt: Date
+    url: string
 }
 
 export interface VoiceParticipant {

@@ -1,14 +1,8 @@
 import {axiosInstance} from "../axiosInstance.ts";
 
-export async function deleteMessage(
-    messageId: string,
-    reason?: string
-): Promise<{ success: boolean; messageId: string }> {
+export async function deleteMessage(messageId: string): Promise<void> {
     try {
-        const response = await axiosInstance.delete(`/api/messages/${messageId}`, {
-            data: { reason }
-        })
-        return response.data
+        await axiosInstance.delete(`/api/messages/${messageId}`)
     } catch (error) {
         console.error('Ошибка удаления сообщения:', error)
         throw error

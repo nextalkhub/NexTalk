@@ -11,6 +11,7 @@ export const injectStore = (store: AppStore) => {
 export const axiosInstance = axios.create({
     baseURL: import.meta.env.VITE_API_URL,
     headers: {
+        'Accept': 'application/json',
         'Content-Type': 'application/json',
     },
 })
@@ -24,6 +25,10 @@ axiosInstance.interceptors.request.use(
 
             if (token) {
                 config.headers.Authorization = `Bearer ${token}`
+            }
+
+            if (state.auth.user?.id) {
+                config.headers['X-User-Id'] = state.auth.user.id
             }
         }
 
