@@ -16,16 +16,6 @@ public class AcceptInviteEndpointTests(GuildServiceFactory factory) : IClassFixt
 {
     private HttpClient NewClient() => factory.CreateClient();
 
-    private HttpClient NewClient(bool claimSucceeds) =>
-        factory.WithWebHostBuilder(b =>
-            b.ConfigureTestServices(s =>
-            {
-                var existing = s.Where(d => d.ServiceType == typeof(IInviteRepository)).ToList();
-                foreach (var d in existing) s.Remove(d);
-                s.AddScoped<IInviteRepository>(_ => new FakeInviteRepository(claimSucceeds));
-            }))
-        .CreateClient();
-
     private static void Authorize(HttpClient client, Guid userId, string name = "Test", string username = "test") =>
         client.DefaultRequestHeaders.Authorization =
             new AuthenticationHeaderValue("Bearer", TestJwt.Generate(userId, name, username));
@@ -121,9 +111,36 @@ public class AcceptInviteEndpointTests(GuildServiceFactory factory) : IClassFixt
     public async Task PostAcceptInvite_WhenClaimFails_Returns400()
     {
         var code = $"EXP{Guid.NewGuid():N}"[..10];
-        await SeedInviteAsync(code);
 
-        var client = NewClient(claimSucceeds: false);
+        // Derived factory with a failing IInviteRepository. Seed data goes into THIS factory's
+        // in-memory database so the handler can find the invite before the claim check.
+        using var failFactory = factory.WithWebHostBuilder(b =>
+            b.ConfigureTestServices(s =>
+            {
+                var existing = s.Where(d => d.ServiceType == typeof(IInviteRepository)).ToList();
+                foreach (var d in existing) s.Remove(d);
+                s.AddScoped<IInviteRepository>(_ => new FakeInviteRepository(claimSucceeds: false));
+            }));
+
+        using (var scope = failFactory.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<GuildDbContext>();
+            var ownerId = Guid.NewGuid();
+            var guildId = Guid.NewGuid();
+            db.Guilds.Add(new GuildAggregate
+            {
+                Id = guildId, Name = "Invite Test Guild", DisplayName = "Invite Test Guild",
+                OwnerId = ownerId, CreatedAt = DateTime.UtcNow
+            });
+            db.Invites.Add(new Invite
+            {
+                Id = Guid.NewGuid(), GuildId = guildId, Code = code,
+                CreatedBy = ownerId, CreatedAt = DateTime.UtcNow
+            });
+            await db.SaveChangesAsync();
+        }
+
+        var client = failFactory.CreateClient();
         Authorize(client, Guid.NewGuid());
 
         var response = await client.PostAsync($"/invites/{code}/accept", null);

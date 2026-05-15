@@ -24,7 +24,12 @@ public sealed class JwtSubToHeaderMiddleware
                       ?? ctx.User.FindFirstValue(ClaimTypes.NameIdentifier);
 
             if (!string.IsNullOrEmpty(sub))
-                ctx.Request.Headers["X-User-Id"] = DeriveGuid(sub).ToString();
+            {
+                // Если sub уже является Guid (например, в тестах) — используем напрямую.
+                // Zitadel выдает snowflake-идентификаторы (не Guid),- поэтому DeriveGuid
+                var userId = Guid.TryParse(sub, out var g) ? g : DeriveGuid(sub);
+                ctx.Request.Headers["X-User-Id"] = userId.ToString();
+            }
 
             var displayName = ctx.User.FindFirstValue("name");
             var username    = ctx.User.FindFirstValue("preferred_username");
