@@ -113,9 +113,43 @@ http {
             add_header Content-Type application/json;
         }
 
-        # ^~ останавливает проверку regex при совпадении prefix:
-        # без него location ~ ^/(ui/|...) перехватывал бы /ui/v2/login
-        # и отправлял на grpc_pass вместо zitadel-login
+        # Единый Swagger UI
+        location ~* ^/swagger/?$ {
+            root /etc/nginx/swagger;
+            try_files /swagger.html =404;
+            default_type text/html;
+            add_header Cache-Control "no-cache";
+        }
+
+        location = /swagger/oauth2-redirect.html {
+            proxy_pass http://guild-service/swagger/oauth2-redirect.html;
+        }
+
+        location = /swagger/config.json {
+            root /etc/nginx/swagger-config;
+            try_files /swagger-config.json =404;
+            default_type application/json;
+            add_header Cache-Control "no-cache";
+            add_header Access-Control-Allow-Origin "*";
+        }
+
+        location /swagger/guild/ {
+            proxy_pass http://guild-service/swagger/;
+        }
+
+        location /swagger/messaging/ {
+            proxy_pass http://messaging-service/swagger/;
+        }
+
+        location /swagger/voice/ {
+            proxy_pass http://voice-service/swagger/;
+        }
+
+        location /swagger/websocket/ {
+            proxy_pass http://websocket-gateway/swagger/;
+        }
+
+        # Login UI
         location ^~ /ui/v2/login {
             limit_req zone=auth_limit burst=10 nodelay;
             proxy_pass http://zitadel-login;
@@ -125,55 +159,78 @@ http {
             proxy_set_header X-Real-IP $remote_addr;
         }
 
+        # OIDC / OAuth2
         location ^~ /.well-known/ {
+            proxy_pass http://zitadel-api;
+            proxy_set_header Host $http_host;
+        }
+
+        location ~ ^/(oauth|oidc|openidconnect|saml)/ {
+            limit_req zone=auth_limit burst=20 nodelay;
+            proxy_pass http://zitadel-api;
+            proxy_set_header Host $http_host;
+            proxy_set_header X-Forwarded-Proto $scheme;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        }
+
+        # Zitadel Console UI
+        location ^~ /ui/ {
+            proxy_pass http://zitadel-api;
+            proxy_set_header Host $http_host;
+            proxy_set_header X-Forwarded-Proto $scheme;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        }
+
+        # Zitadel REST Management APIs
+        location ~ ^/(auth/|management/|admin/|system/|v2/) {
+            proxy_pass http://zitadel-api;
+            proxy_set_header Host $http_host;
+            proxy_set_header X-Forwarded-Proto $scheme;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        }
+
+        # Zitadel native gRPC
+        location ~ ^/zitadel\. {
             grpc_pass grpc://zitadel-api;
             grpc_set_header Host $http_host;
         }
 
-        # Zitadel API
-        location ~ ^/(ui/|auth/|management/|admin/|system/|v2/|oidc/|openidconnect/|oauth/|saml/|debug/|zitadel\.) {
-            grpc_pass grpc://zitadel-api;
-            grpc_set_header Host $http_host;
-        }
-
+        # Guild service
         location /api/guilds {
             limit_req zone=api_limit burst=50 nodelay;
-            proxy_pass http://guild-service;
-
+            proxy_pass http://guild-service/guilds;
             add_header X-Upstream-Service "guild-service" always;
         }
 
         location /api/invites {
             limit_req zone=api_limit burst=50 nodelay;
-            proxy_pass http://guild-service;
-
+            proxy_pass http://guild-service/guilds;
             add_header X-Upstream-Service "guild-service" always;
         }
 
+        # Messaging service:
         location /api/channels {
             limit_req zone=api_limit burst=50 nodelay;
-            proxy_pass http://messaging-service;
-
+            proxy_pass http://messaging-service/channels;
             add_header X-Upstream-Service "messaging-service" always;
         }
 
         location /api/messages {
             limit_req zone=api_limit burst=50 nodelay;
-            proxy_pass http://messaging-service;
-
+            proxy_pass http://messaging-service/channels;
             add_header X-Upstream-Service "messaging-service" always;
         }
 
+        # Voice service
         location /api/voice {
             limit_req zone=api_limit burst=50 nodelay;
-            proxy_pass http://voice-service;
-
+            proxy_pass http://voice-service/voice;
             add_header X-Upstream-Service "voice-service" always;
         }
 
         location /ws {
             limit_req zone=api_limit burst=100 nodelay;
-            proxy_pass http://websocket-gateway;
+            proxy_pass http://websocket-gateway/ws;
             proxy_http_version 1.1;
             proxy_set_header Host $http_host;
             proxy_set_header X-Forwarded-Proto $scheme;
