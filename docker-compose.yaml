@@ -12,6 +12,8 @@ services:
     volumes:
       - ./infra/nginx/nginx.conf.template:/etc/nginx/templates/nginx.conf.template:ro
       - ./infra/nginx/swagger.html:/etc/nginx/swagger/swagger.html:ro
+      - ./infra/nginx/oauth2-redirect.html:/etc/nginx/swagger/oauth2-redirect.html:ro
+      - ./infra/nginx/oauth2-redirect.js:/etc/nginx/swagger/oauth2-redirect.js:ro
       - zitadel-output:/etc/nginx/swagger-config:ro
     depends_on:
       zitadel-api:

@@ -122,7 +122,17 @@ http {
         }
 
         location = /swagger/oauth2-redirect.html {
-            proxy_pass http://guild-service/swagger/oauth2-redirect.html;
+            root /etc/nginx;
+            try_files $uri =404;
+            default_type text/html;
+            add_header Cache-Control "no-cache";
+        }
+
+        location = /swagger/oauth2-redirect.js {
+            root /etc/nginx;
+            try_files $uri =404;
+            default_type application/javascript;
+            add_header Cache-Control "no-cache";
         }
 
         location = /swagger/config.json {
