@@ -1,7 +1,15 @@
+using System;
+using System.Linq;
+using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
+using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Distributed;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 using NexTalk.Guild.Service.Features.Channels.CreateChannel;
 using NexTalk.Guild.Service.Features.Channels.DeleteChannel;
 using NexTalk.Guild.Service.Features.Channels.GetChannels;
@@ -89,13 +97,12 @@ var app = builder.Build();
 app.UseExceptionHandler(exApp => exApp.Run(async ctx =>
 {
     var ex = ctx.Features.Get<IExceptionHandlerFeature>()?.Error;
-    var (status, message) = ex switch
-    {
-        NotFoundException e => (StatusCodes.Status404NotFound, e.Message),
-        ForbiddenException e => (StatusCodes.Status403Forbidden, e.Message),
-        BadRequestException e => (StatusCodes.Status400BadRequest, e.Message),
-        _ => (StatusCodes.Status500InternalServerError, "An unexpected error occurred.")
-    };
+    var (status, message) =
+        ex is NotFoundException ? (StatusCodes.Status404NotFound, ex.Message) :
+        ex is ForbiddenException ? (StatusCodes.Status403Forbidden, ex.Message) :
+        ex is BadRequestException ? (StatusCodes.Status400BadRequest, ex.Message) :
+        (StatusCodes.Status500InternalServerError, "An unexpected error occurred.");
+
     ctx.Response.StatusCode = status;
     await ctx.Response.WriteAsJsonAsync(new { error = message });
 }));
@@ -173,3 +180,5 @@ app.MapGet("/api/guilds/probe", async (IDistributedCache cache, ILogger<Program>
 
 
 app.Run();
+
+public partial class Program { }

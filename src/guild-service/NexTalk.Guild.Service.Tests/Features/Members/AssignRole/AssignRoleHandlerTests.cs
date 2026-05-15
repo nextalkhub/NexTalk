@@ -6,6 +6,7 @@ using NexTalk.Guild.Service.Infrastructure;
 using NexTalk.Guild.Service.Shared;
 using NexTalk.Guild.Service.Shared.Exceptions;
 using Xunit;
+using System.Net.Http;
 using GuildDomain = NexTalk.Guild.Service.Domain.Guild;
 
 namespace NexTalk.Guild.Service.Tests.Features.Members.AssignRole;
@@ -25,7 +26,8 @@ public class AssignRoleHandlerTests
 
         _db = new GuildDbContext(options);
         _rbac = new RbacService(_db);
-        _wsGatewayMock = new Mock<WsGatewayClient>();
+        var httpClient = new HttpClient(new MockHttpMessageHandler());
+        _wsGatewayMock = new Mock<WsGatewayClient>(httpClient);
         _handler = new AssignRoleHandler(_db, _rbac, _wsGatewayMock.Object);
     }
 
@@ -94,7 +96,7 @@ public class AssignRoleHandlerTests
                 guild.Id,
                 "role-assigned",
                 It.IsAny<object>(),
-                CancellationToken.None),
+                It.IsAny<CancellationToken>()),
             Times.Once);
     }
 
@@ -165,6 +167,8 @@ public class AssignRoleHandlerTests
     {
         var (guild, owner, target) = await SetupGuildWithMembersAsync();
 
+        // Broadcast is already set to return 200 OK by default MockHttpMessageHandler,
+        // so we need to configure it to throw
         _wsGatewayMock
             .Setup(x => x.BroadcastToGuildAsync(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<object>(), It.IsAny<CancellationToken>()))
             .ThrowsAsync(new HttpRequestException("Gateway unavailable"));
@@ -176,5 +180,13 @@ public class AssignRoleHandlerTests
 
         var updated = await _db.Members.FirstAsync(m => m.UserId == target.UserId && m.GuildId == guild.Id);
         Assert.Equal(MemberRole.Admin, updated.Role);
+    }
+}
+
+public class MockHttpMessageHandler : HttpMessageHandler
+{
+    protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+    {
+        return Task.FromResult(new HttpResponseMessage { StatusCode = System.Net.HttpStatusCode.OK });
     }
 }

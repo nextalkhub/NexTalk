@@ -1,3 +1,4 @@
+using System.Threading;
 using Microsoft.EntityFrameworkCore;
 using NexTalk.Guild.Service.Domain;
 using NexTalk.Guild.Service.Infrastructure;
@@ -8,7 +9,8 @@ namespace NexTalk.Guild.Service.Features.Invites.AcceptInvite;
 
 public class AcceptInviteHandler(GuildDbContext db, WsGatewayClient wsGateway)
 {
-    public async Task HandleAsync(AcceptInviteCommand cmd, CancellationToken ct = default)
+    public async Task HandleAsync(AcceptInviteCommand cmd, CancellationToken cancellationToken,
+        CancellationToken ct = default)
     {
         var invite = await db.Invites.FirstOrDefaultAsync(i => i.Code == cmd.Code, ct)
             ?? throw new NotFoundException("Invite not found.");
