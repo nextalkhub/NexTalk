@@ -41,6 +41,38 @@ jobs:
       - name: Build
         run: dotnet build ${{ matrix.project }} -c Release --no-restore
 
+  test-backend-services:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          - name: guild-service
+            project: src/guild-service/NexTalk.Guild.Service.Tests/NexTalk.Guild.Service.Tests.csproj
+          - name: messaging-service
+            project: src/messaging-service/NexTalk.Messaging.Service.Tests/NexTalk.Messaging.Service.Tests.csproj
+
+    name: Test ${{ matrix.name }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup .NET 10
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "10.0.x"
+
+      - name: Restore
+        run: dotnet restore ${{ matrix.project }}
+
+      - name: Test
+        run: dotnet test ${{ matrix.project }} -c Release --no-restore --logger "trx;LogFileName=test-results.trx" --logger "console;verbosity=normal"
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results-${{ matrix.name }}
+          path: "**/test-results.trx"
+
   frontend-ci:
     runs-on: ubuntu-latest
     name: frontend lint & typecheck
@@ -68,7 +100,7 @@ jobs:
 
   # Docker build & push (only on target branches)
   docker-build-push:
-    needs: [build-backend-services, frontend-ci]
+    needs: [build-backend-services, test-backend-services, frontend-ci]
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     permissions:
