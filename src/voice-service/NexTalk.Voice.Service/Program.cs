@@ -116,7 +116,7 @@ if (app.Environment.IsDevelopment())
         c.OAuthClientId(swaggerClientId);
         c.OAuthScopes("openid", "profile", "email");
         c.OAuthUsePkce();
-        c.SwaggerEndpoint("/swagger/v1/swagger.json", "Voice Service v1");
+        c.SwaggerEndpoint("v1/swagger.json", "Voice Service v1");
         c.RoutePrefix = "swagger";
         c.DocumentTitle = "Voice Service API";
     });
