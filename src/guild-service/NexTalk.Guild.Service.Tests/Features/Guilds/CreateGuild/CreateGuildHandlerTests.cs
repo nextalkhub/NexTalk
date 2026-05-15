@@ -58,7 +58,7 @@ public class CreateGuildHandlerTests
     }
 
     [Fact]
-    public async Task Handle_SavesAllThreeEntitiesAtOnce()
+    public async Task Handle_CreatesGuildMemberAndChannel()
     {
         await using var db = CreateDb();
         var cmd = new CreateGuildCommand("Test", "Test", Guid.NewGuid(), "User", "user");
