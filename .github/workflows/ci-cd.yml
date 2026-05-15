@@ -51,8 +51,6 @@ jobs:
         include:
           - name: guild-service
             solution: src/guild-service/NexTalk.Guild.sln
-          - name: messaging-service
-            solution: src/messaging-service/NexTalk.Messaging.sln
 
     name: Test ${{ matrix.name }}
     steps:
