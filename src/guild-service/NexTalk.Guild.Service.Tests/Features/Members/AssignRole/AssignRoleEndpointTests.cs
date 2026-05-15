@@ -66,6 +66,9 @@ public class AssignRoleEndpointTests : IAsyncLifetime
         _db.Members.AddRange(owner, target);
         await _db.SaveChangesAsync();
 
+        // Detach from context so changes are committed to InMemory store
+        _db.ChangeTracker.Clear();
+
         return (guild, owner, target);
     }
 
@@ -83,7 +86,8 @@ public class AssignRoleEndpointTests : IAsyncLifetime
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
 
         var json = await response.Content.ReadAsStringAsync();
-        var result = JsonSerializer.Deserialize<AssignRoleEndpoint.Response>(json);
+        var options = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
+        var result = JsonSerializer.Deserialize<AssignRoleEndpoint.Response>(json, options);
         Assert.NotNull(result);
         Assert.Equal(target.UserId, result.UserId);
         Assert.Equal("Admin", result.Role);

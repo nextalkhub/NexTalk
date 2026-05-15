@@ -16,7 +16,7 @@ namespace NexTalk.Guild.Service.Tests.Infrastructure;
 
 public class GuildServiceFactory : WebApplicationFactory<Program>
 {
-    private string _dbName = $"test-db-{Guid.NewGuid()}";
+    private readonly string _dbName = Guid.NewGuid().ToString();
 
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
@@ -50,15 +50,14 @@ public class GuildServiceFactory : WebApplicationFactory<Program>
                     services.Remove(d);
 
                 // Add empty health checks service to satisfy Program.cs
-                // but remove the database-specific checks
                 if (!services.Any(d => d.ServiceType.Name.Contains("HealthCheckService")))
                 {
                     services.AddHealthChecks();
                 }
 
-                // Add InMemory database
+                // Add InMemory database with named instance to persist data across requests
                 services.AddDbContext<GuildDbContext>(opts =>
-                    opts.UseInMemoryDatabase(_dbName), ServiceLifetime.Transient);
+                    opts.UseInMemoryDatabase(_dbName), ServiceLifetime.Scoped);
 
                 // Add a null implementation of IDistributedCache
                 services.AddSingleton<IDistributedCache>(new NullDistributedCache());

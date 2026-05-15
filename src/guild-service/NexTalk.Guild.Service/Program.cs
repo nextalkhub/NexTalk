@@ -72,9 +72,17 @@ builder.Services.AddScoped<CheckAccessHandler>();
 builder.Services.AddScoped<GetGuildMembersHandler>();
 builder.Services.AddScoped<GetUserGuildsInternalHandler>();
 
-builder.Services.AddHealthChecks()
-    .AddNpgSql(pgConnectionString, tags: ["ready"])
-    .AddRedis(redisConnectionString, tags: ["ready"]);
+// Health checks (skip external providers in test environment)
+if (!builder.Environment.IsEnvironment("Test"))
+{
+    builder.Services.AddHealthChecks()
+        .AddNpgSql(pgConnectionString, tags: ["ready"])
+        .AddRedis(redisConnectionString, tags: ["ready"]);
+}
+else
+{
+    builder.Services.AddHealthChecks();
+}
 
 var app = builder.Build();
 
@@ -126,12 +134,16 @@ CheckAccessEndpoint.Map(app);
 GetGuildMembersEndpoint.Map(app);
 GetUserGuildsInternalEndpoint.Map(app);
 
-app.MapHealthChecks("/healthz", new HealthCheckOptions { Predicate = _ => false });
-app.MapHealthChecks("/readyz", new HealthCheckOptions
+// Health checks and metrics (skip in test environment)
+if (!app.Environment.IsEnvironment("Test"))
 {
-    Predicate = check => check.Tags.Contains("ready")
-});
-app.MapMetrics();
+    app.MapHealthChecks("/healthz", new HealthCheckOptions { Predicate = _ => false });
+    app.MapHealthChecks("/readyz", new HealthCheckOptions
+    {
+        Predicate = check => check.Tags.Contains("ready")
+    });
+    app.MapMetrics();
+}
 
 // multiple guild-service replicas share the same Redis db=1.
 //
