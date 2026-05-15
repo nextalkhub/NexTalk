@@ -6,6 +6,7 @@ namespace NexTalk.Guild.Service.Features.Members.AssignRole;
 public static class AssignRoleEndpoint
 {
     public record Request(string Role);
+    public record Response(Guid UserId, string Role);
 
     public static void Map(IEndpointRouteBuilder app) =>
         app.MapPut("/guilds/{guildId:guid}/members/{targetUserId:guid}/role", async (
@@ -20,6 +21,6 @@ public static class AssignRoleEndpoint
                 return Results.BadRequest(new { error = "Invalid role value." });
 
             await handler.HandleAsync(new AssignRoleCommand(guildId, targetUserId, role, userId), ct);
-            return Results.NoContent();
+            return Results.Ok(new Response(targetUserId, req.Role));
         });
 }
