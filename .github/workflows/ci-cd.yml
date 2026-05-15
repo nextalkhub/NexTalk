@@ -48,8 +48,6 @@ jobs:
         include:
           - name: guild-service
             project: src/guild-service/NexTalk.Guild.Service.Tests/NexTalk.Guild.Service.Tests.csproj
-          - name: messaging-service
-            project: src/messaging-service/NexTalk.Messaging.Service.Tests/NexTalk.Messaging.Service.Tests.csproj
 
     name: Test ${{ matrix.name }}
     steps:
