@@ -1,7 +1,11 @@
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Distributed;
+using Microsoft.IdentityModel.Tokens;
+using Microsoft.OpenApi.Models;
 using NexTalk.Guild.Service.Features.Channels.CreateChannel;
 using NexTalk.Guild.Service.Features.Channels.DeleteChannel;
 using NexTalk.Guild.Service.Features.Channels.GetChannels;
@@ -22,8 +26,15 @@ using NexTalk.Guild.Service.Shared;
 using NexTalk.Guild.Service.Shared.Exceptions;
 using Prometheus;
 using Serilog;
+using Swashbuckle.AspNetCore.SwaggerGen;
 
 var builder = WebApplication.CreateBuilder(args);
+
+// Результат работы bootstrap'а: projectId и client ID'ы, созданные контейнером zitadel-bootstrap.
+// Файл появляется как только bootstrap завершается; мы зависим от него в docker-compose.
+// Плоские ключи ("projectId" и др.) читаются единым Swagger UI напрямую.
+// Вложенный объект "Zitadel" используется здесь через IConfiguration -> Zitadel:ProjectId и т.д.
+builder.Configuration.AddJsonFile("/zitadel-config/swagger-config.json", optional: true, reloadOnChange: true);
 
 builder.Services.AddSerilog((_, lc) => lc.ReadFrom.Configuration(builder.Configuration));
 
@@ -40,10 +51,10 @@ builder.Services.AddDbContext<GuildDbContext>(opts =>
     opts.UseNpgsql(pgConnectionString));
 
 builder.Services.AddHttpClient<WsGatewayClient>(c =>
-    c.BaseAddress = new Uri(builder.Configuration["WsGateway:BaseUrl"]!));
+    c.BaseAddress = new Uri(builder.Configuration["Services:WebSocketGateway"] ?? throw new InvalidOperationException("Services:WebSocketGateway is not configured")));
 
 builder.Services.AddHttpClient<VoiceServiceClient>(c =>
-    c.BaseAddress = new Uri(builder.Configuration["VoiceService:BaseUrl"]!));
+    c.BaseAddress = new Uri(builder.Configuration["Services:VoiceService"] ?? throw new InvalidOperationException("Services:VoiceService is not configured")));
 
 builder.Services.AddScoped<RbacService>();
 
@@ -72,11 +83,127 @@ builder.Services.AddScoped<CheckAccessHandler>();
 builder.Services.AddScoped<GetGuildMembersHandler>();
 builder.Services.AddScoped<GetUserGuildsInternalHandler>();
 
+// Аутентификация: проверка JWT access-токенов, выпущенных Zitadel.
+var zitadelAuthority = builder.Configuration["Zitadel:Authority"] ?? throw new InvalidOperationException("Zitadel:Authority is not configured");
+var zitadelMetadata = builder.Configuration["Zitadel:MetadataAddress"] ?? throw new InvalidOperationException("Zitadel:MetadataAddress is not configured");
+var zitadelProjectId = builder.Configuration["Zitadel:ProjectId"];
+var swaggerClientId = builder.Configuration["Zitadel:SwaggerClientId"];
+
+builder.Services
+    .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+    .AddJwtBearer(o =>
+    {
+        o.Authority = zitadelAuthority;
+        o.MetadataAddress = zitadelMetadata;
+        o.RequireHttpsMetadata = false;
+        o.TokenValidationParameters = new TokenValidationParameters
+        {
+            ValidateIssuer = true,
+            ValidIssuer = zitadelAuthority,
+            ValidateAudience = !string.IsNullOrEmpty(zitadelProjectId),
+            ValidAudiences = string.IsNullOrEmpty(zitadelProjectId)
+                ? null
+                : new[] { zitadelProjectId },
+            ValidateLifetime = true,
+            NameClaimType = "preferred_username",
+        };
+    });
+
+// По умолчанию каждый эндпоинт требует аутентифицированного пользователя 
+builder.Services.AddAuthorizationBuilder()
+    .SetFallbackPolicy(new AuthorizationPolicyBuilder()
+        .RequireAuthenticatedUser()
+        .Build());
+
+builder.Services.AddEndpointsApiExplorer();
+builder.Services.AddSwaggerGen(c =>
+{
+    c.SwaggerDoc("v1", new OpenApiInfo
+    {
+        Title = "Guild Service",
+        Version = "v1",
+        Description = "Управление серверами (гильдиями), каналами, участниками и приглашениями."
+    });
+    c.AddServer(new OpenApiServer { Url = "/api", Description = "Через Nginx" });
+    c.AddServer(new OpenApiServer { Url = "/",    Description = "Прямой доступ к сервису" });
+    c.CustomSchemaIds(type => type.FullName?.Replace("+", ".") ?? type.Name);
+    c.DocumentFilter<ExcludeNonPublicEndpointsFilter>();
+
+    var xmlPath = Path.Combine(AppContext.BaseDirectory, "NexTalk.Guild.Service.xml");
+    if (File.Exists(xmlPath))
+        c.IncludeXmlComments(xmlPath);
+    
+    c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
+    {
+        Description = "JWT Authorization header using the Bearer scheme. Example: 'Bearer {token}'",
+        Name = "Authorization",
+        In = ParameterLocation.Header,
+        Type = SecuritySchemeType.Http,
+        Scheme = "bearer",
+        BearerFormat = "JWT"
+    });
+
+    c.AddSecurityDefinition("oauth2", new OpenApiSecurityScheme
+    {
+        Type = SecuritySchemeType.OAuth2,
+        Flows = new OpenApiOAuthFlows
+        {
+            AuthorizationCode = new OpenApiOAuthFlow
+            {
+                AuthorizationUrl = new Uri($"{zitadelAuthority}/oauth/v2/authorize"),
+                TokenUrl = new Uri($"{zitadelAuthority}/oauth/v2/token"),
+                Scopes = new Dictionary<string, string>
+                {
+                    { "openid", "OpenID" },
+                    { "profile", "Profile" },
+                    { "email", "Email" },
+                    { "offline_access", "Refresh token" }
+                }
+            }
+        }
+    });
+    c.AddSecurityRequirement(new OpenApiSecurityRequirement
+    {
+        {
+            new OpenApiSecurityScheme
+            {
+                Reference = new OpenApiReference
+                {
+                    Type = ReferenceType.SecurityScheme,
+                    Id = "oauth2"
+                }
+            },
+            ["openid", "profile", "email"]
+        }
+    });
+});
+
 builder.Services.AddHealthChecks()
     .AddNpgSql(pgConnectionString, tags: ["ready"])
     .AddRedis(redisConnectionString, tags: ["ready"]);
 
 var app = builder.Build();
+
+if (app.Environment.IsDevelopment())
+{
+    app.UseSwagger();
+    app.UseSwaggerUI(c =>
+    {
+        c.OAuthClientId(swaggerClientId);
+        c.OAuthScopes("openid", "profile", "email");
+        c.OAuthUsePkce();
+        c.SwaggerEndpoint("v1/swagger.json", "Guild Service v1");
+        c.RoutePrefix = "swagger";
+        c.DocumentTitle = "Guild Service API";
+    });
+}
+
+app.UseAuthentication();
+app.UseAuthorization();
+
+// Вычисляет X-User-Id из JWT sub (UUIDv5), чтобы эндпоинты не могли доверять заголовку от клиента.
+// Internal-эндпоинты (AllowAnonymous, без JWT) сохраняют входящий заголовок - они доверяют сети.
+app.UseMiddleware<JwtSubToHeaderMiddleware>();
 
 app.UseExceptionHandler(exApp => exApp.Run(async ctx =>
 {
@@ -121,24 +248,26 @@ AssignRoleEndpoint.Map(app);
 KickMemberEndpoint.Map(app);
 BanMemberEndpoint.Map(app);
 
-// Internal endpoints
-CheckAccessEndpoint.Map(app);
-GetGuildMembersEndpoint.Map(app);
-GetUserGuildsInternalEndpoint.Map(app);
+// Internal-эндпоинты
+var internalEndpoints = app.MapGroup("").AllowAnonymous();
+CheckAccessEndpoint.Map(internalEndpoints);
+GetGuildMembersEndpoint.Map(internalEndpoints);
+GetUserGuildsInternalEndpoint.Map(internalEndpoints);
 
-app.MapHealthChecks("/healthz", new HealthCheckOptions { Predicate = _ => false });
+app.MapHealthChecks("/healthz", new HealthCheckOptions { Predicate = _ => false })
+    .AllowAnonymous();
 app.MapHealthChecks("/readyz", new HealthCheckOptions
 {
     Predicate = check => check.Tags.Contains("ready")
-});
-app.MapMetrics();
+}).AllowAnonymous();
+app.MapMetrics().AllowAnonymous();
 
 // multiple guild-service replicas share the same Redis db=1.
 //
 // Positive case (cache hit):  key exists → returns cached value from Redis.
 // Negative case (cache miss): key absent → origin computes value, stores in Redis,
 //                              next request (even on another pod) gets cache hit.
-app.MapGet("/api/guilds/probe", async (IDistributedCache cache, ILogger<Program> logger) =>
+app.MapGet("/guilds/probe", async (IDistributedCache cache, ILogger<Program> logger) =>
 {
     const string key = "guild:probe";
 
@@ -157,7 +286,23 @@ app.MapGet("/api/guilds/probe", async (IDistributedCache cache, ILogger<Program>
 
     logger.LogInformation("Cache miss for key {Key}, stored by {Instance}", key, Environment.MachineName);
     return Results.Ok(new { source = "origin", value });
-});
+}).ExcludeFromDescription().AllowAnonymous();
 
 
 app.Run();
+
+internal sealed class ExcludeNonPublicEndpointsFilter : IDocumentFilter
+{
+    private static readonly string[] ExcludedPrefixes =
+        ["/internal", "/metrics", "/healthz", "/readyz", "/guilds/probe"];
+
+    public void Apply(OpenApiDocument swaggerDoc, DocumentFilterContext context)
+    {
+        var toRemove = swaggerDoc.Paths.Keys
+            .Where(p => ExcludedPrefixes.Any(prefix => p.StartsWith(prefix, StringComparison.OrdinalIgnoreCase)))
+            .ToList();
+
+        foreach (var path in toRemove)
+            swaggerDoc.Paths.Remove(path);
+    }
+}
