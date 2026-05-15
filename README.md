@@ -113,7 +113,7 @@ curl -s http://localhost:8080/.well-known/openid-configuration | jq .issuer
 > файл рождается в shared docker volume `zitadel-output` (заполняется
 > `zitadel-bootstrap` через Management API при первом старте).
 
-> **Swagger не грузит спецификацию или выдаёт "Unable to render":**  
+> **Swagger не грузит спецификацию или выдает "Unable to render":**  
 > после запуска проекта nginx может кэшировать старые IP контейнеров.  
 > Решение: перезапустить nginx или **Ctrl+Shift+R** в браузере.
 
@@ -536,10 +536,10 @@ docker-compose → k8s. Те же Docker-образы, другой оркест
 | Маршрутизация API | `/api/guilds/*`, `/api/invites/*` → guild-service; `/api/channels/*`, `/api/messages/*` → messaging-service; `/api/voice/*` → voice-service |
 | WebSocket proxy | `/ws/*` → websocket-gateway (rewrite `/ws` → `/hubs`, заголовки `Upgrade`, `Connection`) |
 | Swagger UI | `/swagger` → статический HTML с CDN; `/swagger/{service}/` → проксирует в сервис |
-| Rate Limiting | `limit_req_zone` — 100 RPS/IP для API, 20 RPS/IP для auth |
+| Rate Limiting | `limit_req_zone` - 100 RPS/IP для API, 20 RPS/IP для auth |
 | Correlation ID | `proxy_set_header X-Request-Id $request_id` |
-| Internal API | `/internal/*` — `deny all` (доступно только внутри Docker/k8s сети) |
-| TLS | Терминация HTTPS (в k8s — на Ingress) |
+| Internal API | `/internal/*` - `deny all` (доступно только внутри Docker/k8s сети) |
+| TLS | Терминация HTTPS (в k8s - на Ingress) |
 
 > `/api/` префикс стрипается перед проксированием. Например, `GET /api/guilds` → guild-service получает `GET /guilds`.
 
@@ -669,16 +669,16 @@ Outbox Pattern: в одной транзакции `INSERT message + INSERT outb
 |:--|:--|:--|
 | WebSocket | `/ws/chat` | SignalR Hub для real-time событий |
 
-> Auth: токен передаётся query-параметром `?access_token=<jwt>` — браузер не поддерживает кастомные заголовки при WS-handshake.
+> Auth: токен передается query-параметром `?access_token=<jwt>` - браузер не поддерживает кастомные заголовки при WS-handshake.
 
-#### SignalR Hub — методы клиент → сервер
+#### SignalR Hub - методы клиент → сервер
 
 | Метод | Параметры | Назначение |
 |:--|:--|:--|
 | `SendMessage` | `channelId, content, idempotencyKey` | Отправить сообщение → POST `/internal/messages` в Messaging Service |
-| `Heartbeat` | — | Обновить presence. Вызывается каждые 20 сек |
+| `Heartbeat` | - | Обновить presence. Вызывается каждые 20 сек |
 
-#### SignalR Hub — события сервер → клиент
+#### SignalR Hub - события сервер → клиент
 
 | Событие | Payload | Источник |
 |:--|:--|:--|
@@ -689,11 +689,11 @@ Outbox Pattern: в одной транзакции `INSERT message + INSERT outb
 | `MemberBanned` | `{ guildId, userId }` | Участник забанен |
 | `RoleUpdated` | `{ guildId, userId, role }` | Роль изменена |
 | `ChannelCreated` | `{ guildId, channelId, name, type }` | Создан канал |
-| `ChannelDeleted` | `{ guildId, channelId }` | Канал удалён |
-| `GuildDeleted` | `{ guildId }` | Сервер удалён |
+| `ChannelDeleted` | `{ guildId, channelId }` | Канал удален |
+| `GuildDeleted` | `{ guildId }` | Сервер удален |
 | `UserOnline` | `{ guildId, userId }` | Участник онлайн (получен Heartbeat) |
 | `UserOffline` | `{ guildId, userId }` | Участник офлайн (30 сек без Heartbeat) |
-| `VoiceJoined` | `{ channelId, userId }` | Вошёл в голосовой канал |
+| `VoiceJoined` | `{ channelId, userId }` | Вошел в голосовой канал |
 | `VoiceLeft` | `{ channelId, userId }` | Вышел из голосового канала |
 
 #### Internal эндпоинты
