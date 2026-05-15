@@ -25,6 +25,12 @@ public sealed class JwtSubToHeaderMiddleware
 
             if (!string.IsNullOrEmpty(sub))
                 ctx.Request.Headers["X-User-Id"] = DeriveGuid(sub).ToString();
+
+            var displayName = ctx.User.FindFirstValue("name");
+            var username    = ctx.User.FindFirstValue("preferred_username");
+
+            if (displayName is not null) ctx.Request.Headers["X-Display-Name"] = displayName;
+            if (username    is not null) ctx.Request.Headers["X-Username"]      = username;
         }
 
         await _next(ctx);

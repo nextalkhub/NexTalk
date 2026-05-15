@@ -202,8 +202,9 @@ if (app.Environment.IsDevelopment())
 app.UseAuthentication();
 app.UseAuthorization();
 
-// Вычисляет X-User-Id из JWT sub (UUIDv5), чтобы эндпоинты не могли доверять заголовку от клиента.
-// Internal-эндпоинты (AllowAnonymous, без JWT) сохраняют входящий заголовок - они доверяют сети.
+// Пробрасывает JWT-клеймы как заголовки: X-User-Id (UUIDv5 из sub), X-Display-Name, X-Username.
+// Эндпоинты не могут доверять заголовкам от клиента — middleware перезаписывает их из токена.
+// Internal-эндпоинты (AllowAnonymous, без JWT) сохраняют входящий заголовок — доверяют сети.
 app.UseMiddleware<JwtSubToHeaderMiddleware>();
 
 app.UseExceptionHandler(exApp => exApp.Run(async ctx =>
