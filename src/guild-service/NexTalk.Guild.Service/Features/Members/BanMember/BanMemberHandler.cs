@@ -6,7 +6,7 @@ using NexTalk.Guild.Service.Shared.Exceptions;
 
 namespace NexTalk.Guild.Service.Features.Members.BanMember;
 
-public class BanMemberHandler(GuildDbContext db, RbacService rbac, WsGatewayClient wsGateway)
+public class BanMemberHandler(GuildDbContext db, RbacService rbac, WsGatewayClient wsGateway, VoiceServiceClient voiceService)
 {
     public async Task HandleAsync(BanMemberCommand cmd, CancellationToken ct = default)
     {
@@ -33,12 +33,11 @@ public class BanMemberHandler(GuildDbContext db, RbacService rbac, WsGatewayClie
         db.Members.Remove(target);
         await db.SaveChangesAsync(ct);
 
-        try
-        {
-            await wsGateway.BroadcastToGuildAsync(cmd.GuildId, "member-banned",
-                new { UserId = cmd.TargetUserId, cmd.GuildId }, ct);
-            await wsGateway.DisconnectUserFromGuildAsync(cmd.GuildId, cmd.TargetUserId, ct);
-        }
-        catch { /* best-effort */ }
+        // Все вызовы — best-effort: сбой не откатывает бан.
+        // Каждый вызов независим: сбой WS Gateway не должен блокировать отключение от голоса.
+        try { await wsGateway.BroadcastToGuildAsync(cmd.GuildId, "member.banned",
+            new { UserId = cmd.TargetUserId, cmd.GuildId }, ct); } catch { }
+        try { await wsGateway.DisconnectUserFromGuildAsync(cmd.GuildId, cmd.TargetUserId, ct); } catch { }
+        try { await voiceService.DisconnectUserAsync(cmd.TargetUserId, ct); } catch { }
     }
 }

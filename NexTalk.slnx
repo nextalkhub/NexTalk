@@ -5,6 +5,7 @@
   </Folder>
   <Folder Name="/services/" />
   <Folder Name="/services/guild/">
+    <Project Path="src/guild-service/NexTalk.Guild.Service.Tests/NexTalk.Guild.Service.Tests.csproj" />
     <Project Path="src/guild-service/NexTalk.Guild.Service/NexTalk.Guild.Service.csproj" />
   </Folder>
   <Folder Name="/services/messaging/">

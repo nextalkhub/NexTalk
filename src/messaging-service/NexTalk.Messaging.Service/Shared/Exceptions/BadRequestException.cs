@@ -1,3 +1,3 @@
 namespace NexTalk.Messaging.Service.Shared.Exceptions;
 
-public class BadRequestException(string message) : Exception(message);
+public sealed class BadRequestException(string message) : Exception(message);

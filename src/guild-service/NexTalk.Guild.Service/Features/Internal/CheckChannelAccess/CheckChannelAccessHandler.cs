@@ -3,21 +3,22 @@ using NexTalk.Guild.Service.Infrastructure;
 
 namespace NexTalk.Guild.Service.Features.Internal.CheckChannelAccess;
 
-public class CheckChannelAccessHandler(GuildDbContext db)
+public sealed class CheckChannelAccessHandler(GuildDbContext db)
 {
-    public async Task<CheckChannelAccessResult> HandleAsync(CheckChannelAccessQuery query, CancellationToken ct = default)
+    public record AccessResult(bool HasAccess, Guid GuildId, string ChannelType, string? Role);
+
+    public async Task<AccessResult?> HandleAsync(CheckChannelAccessQuery query, CancellationToken ct = default)
     {
-        var guildId = await db.Channels
-            .Where(c => c.Id == query.ChannelId)
-            .Select(c => (Guid?)c.GuildId)
-            .FirstOrDefaultAsync(ct);
+        var channel = await db.Channels
+            .FirstOrDefaultAsync(c => c.Id == query.ChannelId, ct);
 
-        if (guildId is null)
-            return new CheckChannelAccessResult(false, null);
+        if (channel is null)
+            return null;
 
-        var isMember = await db.Members
-            .AnyAsync(m => m.GuildId == guildId.Value && m.UserId == query.UserId, ct);
+        var member = await db.Members
+            .FirstOrDefaultAsync(m => m.GuildId == channel.GuildId && m.UserId == query.UserId, ct);
 
-        return new CheckChannelAccessResult(isMember, guildId);
+        var hasAccess = member is not null;
+        return new AccessResult(hasAccess, channel.GuildId, channel.Type, member?.Role.ToString());
     }
 }

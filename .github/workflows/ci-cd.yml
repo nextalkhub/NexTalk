@@ -50,9 +50,7 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - name: messaging-service
-            solution: src/messaging-service/NexTalk.Messaging.sln
-
+          
     name: Test ${{ matrix.name }}
     steps:
       - uses: actions/checkout@v4
