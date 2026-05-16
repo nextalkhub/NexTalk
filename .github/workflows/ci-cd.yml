@@ -15,6 +15,7 @@ jobs:
   build-backend-services:
     runs-on: ubuntu-latest
     strategy:
+      fail-fast: false
       matrix:
         include:
           - name: guild-service
@@ -41,16 +42,18 @@ jobs:
       - name: Build
         run: dotnet build ${{ matrix.project }} -c Release --no-restore
 
-  # Run xUnit test suites for services that have them.
-  # Matrix is by-service so failures are attributed to the right component in the
-  # GitHub Actions UI. Add an entry here when a service ships its own test project.
   test-backend-services:
+    needs: [build-backend-services]
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
         include:
-          
+          - name: guild-service
+            solution: src/guild-service/NexTalk.Guild.Service.Tests/NexTalk.Guild.Service.Tests.csproj
+          - name: messaging-service
+            solution: src/messaging-service/NexTalk.Messaging.Service.Tests/NexTalk.Messaging.Service.Tests.csproj
+
     name: Test ${{ matrix.name }}
     steps:
       - uses: actions/checkout@v4
@@ -114,6 +117,7 @@ jobs:
       packages: write
 
     strategy:
+      fail-fast: false
       matrix:
         include:
           - name: guild-service
