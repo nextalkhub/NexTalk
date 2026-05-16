@@ -4,23 +4,6 @@ using System.Text.Json;
 
 namespace NextTalk.Websocket.Gateway.Features.Broadcast;
 
-/// <summary>
-/// Internal broadcast endpoints — NOT exposed via Nginx (see nginx.conf: "location /internal { deny all }").
-/// Accessible only from within the Docker/k8s network.
-///
-/// Two routes (matching the actual WsGatewayClient.cs contract in Guild Service):
-///
-///   POST /internal/broadcast/guild/{guildId}
-///     Called by: Guild Service, Voice Service
-///     Body: { "eventType": "member-kicked", "payload": { ... } }
-///     Action: broadcasts GatewayEvent to SignalR group "guild:{guildId}"
-///
-///   POST /internal/broadcast
-///     Called by: Messaging Service Outbox (BroadcastConsumer)
-///     Body: { "eventType": "message.created", "guildId": "...", "payload": { ... } }
-///     Action: broadcasts GatewayEvent to SignalR group "guild:{guildId}"
-///     NOTE: guildId must be included in the body so WS Gateway can route to the correct group.
-/// </summary>
 public static class BroadcastEndpoints
 {
     public static void Map(IEndpointRouteBuilder app)
@@ -32,7 +15,7 @@ public static class BroadcastEndpoints
                     .Group(ChatHub.GuildGroup(guildId))
                     .SendAsync("GatewayEvent", new { req.EventType, req.Payload });
                 return Results.NoContent();
-            });
+            }).AllowAnonymous().ExcludeFromDescription();
 
         app.MapPost("/internal/broadcast",
             async (BroadcastRequest req, IHubContext<ChatHub> hub) =>
@@ -44,7 +27,7 @@ public static class BroadcastEndpoints
                         .SendAsync("GatewayEvent", new { req.EventType, req.Payload });
                 }
                 return Results.NoContent();
-            });
+            }).AllowAnonymous().ExcludeFromDescription();
     }
 
     public record BroadcastGuildRequest(string EventType, JsonElement? Payload);

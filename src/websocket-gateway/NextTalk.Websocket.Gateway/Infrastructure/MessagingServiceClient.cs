@@ -49,6 +49,6 @@ public sealed class MessagingServiceClient(HttpClient http, ILogger<MessagingSer
     public record CreateMessageRequest(Guid ChannelId, Guid GuildId, Guid AuthorId, string AuthorName, string Content);
 
     public record MessageDto(
-        Guid Id, Guid ChannelId, Guid AuthorId,
+        Guid Id, Guid ChannelId, Guid GuildId, Guid AuthorId,
         string AuthorName, string Content, DateTime CreatedAt);
 }

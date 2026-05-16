@@ -158,10 +158,8 @@ builder.Services.AddHostedService<PresenceMonitor>();
 builder.Services.AddTransient<SendMessageHandler>();
 
 // HTTP clients — resilience via Polly
-var guildUrl = builder.Configuration["Services:GuildService"]
-    ?? throw new InvalidOperationException("Services:GuildService is not configured");
-var messagingUrl = builder.Configuration["Services:MessagingService"]
-    ?? throw new InvalidOperationException("Services:MessagingService is not configured");
+var guildUrl = builder.Configuration["Services:GuildService"] ?? throw new InvalidOperationException("Services:GuildService is not configured");
+var messagingUrl = builder.Configuration["Services:MessagingService"] ?? throw new InvalidOperationException("Services:MessagingService is not configured");
 
 builder.Services.AddHttpClient<GuildServiceClient>(c =>
     c.BaseAddress = new Uri(guildUrl))

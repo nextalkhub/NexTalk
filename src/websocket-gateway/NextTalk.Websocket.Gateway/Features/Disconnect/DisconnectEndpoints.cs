@@ -8,19 +8,19 @@ namespace NextTalk.Websocket.Gateway.Features.Disconnect;
 ///
 /// Matching the actual WsGatewayClient.cs contract used by Guild Service:
 ///
-///   POST /internal/disconnect/user/{userId}
-///     Called by: Guild Service (kick — global disconnect)
-///     Action: sends force.disconnect GatewayEvent to the user's connection
+///   POST /internal/disconnect/{userId}
+///     Called by: Guild Service (kick — полное отключение)
+///     Action: отправляет force.disconnect GatewayEvent в соединение пользователя
 ///
 ///   POST /internal/disconnect/guild/{guildId}/user/{userId}
-///     Called by: Guild Service (ban — guild-scoped disconnect)
-///     Action: sends guild.force.disconnect GatewayEvent with the banned guildId
+///     Called by: Guild Service (ban — отключение из конкретной гильдии)
+///     Action: отправляет guild.force.disconnect GatewayEvent с id забаненной гильдии
 /// </summary>
 public static class DisconnectEndpoints
 {
     public static void Map(IEndpointRouteBuilder app)
     {
-        app.MapPost("/internal/disconnect/user/{userId:guid}",
+        app.MapPost("/internal/disconnect/{userId:guid}",
             async (Guid userId, IHubContext<ChatHub> hub, ConnectionManager connections) =>
             {
                 var entry = connections.Get(userId);
@@ -31,7 +31,7 @@ public static class DisconnectEndpoints
                         .SendAsync("GatewayEvent", new { Type = "force.disconnect" });
                 }
                 return Results.NoContent();
-            });
+            }).AllowAnonymous().ExcludeFromDescription();
 
         app.MapPost("/internal/disconnect/guild/{guildId:guid}/user/{userId:guid}",
             async (Guid guildId, Guid userId, IHubContext<ChatHub> hub, ConnectionManager connections) =>
@@ -44,6 +44,6 @@ public static class DisconnectEndpoints
                         .SendAsync("GatewayEvent", new { Type = "guild.force.disconnect", GuildId = guildId });
                 }
                 return Results.NoContent();
-            });
+            }).AllowAnonymous().ExcludeFromDescription();
     }
 }

@@ -3,20 +3,19 @@ using System.Net.Http.Json;
 namespace NextTalk.Websocket.Gateway.Infrastructure;
 
 /// <summary>
-/// HTTP client for Guild Service internal endpoints.
-/// Resilience (Retry + Circuit Breaker) is configured on the IHttpClientBuilder in Program.cs.
+/// HTTP-клиент для внутренних эндпоинтов Guild Service.
+/// Resilience (Retry + Circuit Breaker) настраивается на IHttpClientBuilder в Program.cs.
 /// </summary>
 public sealed class GuildServiceClient(HttpClient http, ILogger<GuildServiceClient> logger)
 {
     /// <summary>
-    /// Checks whether a user has at least Member access to the given guild.
+    /// Проверяет, есть ли у пользователя хотя бы роль Member в указанной гильдии.
     ///
-    /// Endpoint: GET /internal/guilds/{guildId}/access?userId={userId}&amp;requiredRole=Member
+    /// Эндпоинт: GET /internal/guilds/{guildId}/access?userId={userId}&amp;requiredRole=Member
     ///
-    /// NOTE — discrepancy with README §6:
-    ///   README describes GET /internal/channels/{channelId}/check-access?userId={userId}
-    ///   returning { allowed, guildId }. The actual Guild Service endpoint operates on
-    ///   guildId, not channelId. WS Gateway therefore requires guildId from the caller.
+    /// Примечание: в README §6 описан эндпоинт GET /internal/channels/{channelId}/check-access,
+    /// но реальная реализация Guild Service работает с guildId, а не channelId.
+    /// WS Gateway поэтому требует guildId от вызывающей стороны.
     /// </summary>
     public async Task<(bool HasAccess, string? Role)> CheckAccessAsync(
         Guid guildId, Guid userId, string correlationId, CancellationToken ct = default)
@@ -41,7 +40,7 @@ public sealed class GuildServiceClient(HttpClient http, ILogger<GuildServiceClie
     }
 
     /// <summary>
-    /// Возвращает все серверы, в которых пользователь состоит. <br/>
+    /// Возвращает все серверы, в которых состоит пользователь.
     /// Эндпоинт: GET /internal/users/{userId}/guilds
     /// </summary>
     public async Task<IReadOnlyList<GuildDto>> GetUserGuildsAsync(

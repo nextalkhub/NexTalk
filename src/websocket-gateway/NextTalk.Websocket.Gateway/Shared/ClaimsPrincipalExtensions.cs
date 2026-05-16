@@ -4,8 +4,8 @@ namespace NextTalk.Websocket.Gateway.Shared;
 
 public static class ClaimsPrincipalExtensions
 {
-    // Fixed namespace for UUIDv5 derivation — MUST match guild-service exactly.
-    // Changing it breaks cross-service FK references (members.user_id vs messaging author_id).
+    // Фиксированный namespace для вывода UUIDv5 — должен совпадать с guild-service и messaging-service.
+    // Изменение сломает перекрёстные FK (members.user_id vs messages.author_id).
     private static readonly Guid Namespace = new("3f8a1b6c-2d4e-4f7a-9b1c-5e6d7f8a9b0c");
 
     public static Guid GetUserId(this ClaimsPrincipal? user)
@@ -21,7 +21,7 @@ public static class ClaimsPrincipalExtensions
         ?? user?.FindFirstValue("preferred_username")
         ?? "Unknown";
 
-    // UUIDv5 per RFC 4122 §4.3: SHA-1(namespace || name) with version/variant bits set.
+    // UUIDv5 по RFC 4122 §4.3: SHA-1(namespace || name) с выставленными битами версии и варианта.
     private static Guid DeriveGuid(string sub)
     {
         Span<byte> nsBytes = stackalloc byte[16];
