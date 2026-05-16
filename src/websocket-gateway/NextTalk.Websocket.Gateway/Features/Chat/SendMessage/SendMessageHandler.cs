@@ -32,7 +32,7 @@ public sealed class SendMessageHandler
         }
         
         var messageRequest = new MessagingServiceClient.CreateMessageRequest(
-            command.ChannelId, command.UserId, command.AuthorName, command.Content);
+            command.ChannelId, command.GuildId, command.UserId, command.AuthorName, command.Content);
         
         var (success, message, error) = await _messagingClient.CreateMessageAsync(
             messageRequest, command.IdempotencyKey, command.CorrelationId, cancellationToken);
