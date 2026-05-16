@@ -28,6 +28,7 @@ public class GetMessagesHandlerTests
         {
             Id = Guid.NewGuid(),
             ChannelId = channelId,
+            GuildId = Guid.NewGuid(),
             AuthorId = Guid.NewGuid(),
             AuthorName = "Author",
             Content = content,

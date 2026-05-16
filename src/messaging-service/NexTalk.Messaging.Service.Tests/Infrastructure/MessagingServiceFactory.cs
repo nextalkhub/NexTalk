@@ -6,8 +6,10 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 using Microsoft.IdentityModel.Tokens;
 using NexTalk.Messaging.Service.Infrastructure;
+using NexTalk.Messaging.Service.Infrastructure.Outbox;
 using NexTalk.Messaging.Service.Shared;
 using System.Text;
 
@@ -30,9 +32,19 @@ public class MessagingServiceFactory : WebApplicationFactory<Program>
         builder.UseSetting("Zitadel:Authority", "http://test-authority");
         builder.UseSetting("Zitadel:MetadataAddress", "http://test-authority/.well-known/openid-configuration");
         builder.UseSetting("Services:GuildService", "http://test-guild-service");
+        builder.UseSetting("Services:WebSocketGateway", "http://test-ws-gateway");
 
         builder.ConfigureTestServices(services =>
         {
+            // OutboxWorker и BroadcastConsumer не нужны в тестах: OutboxEvents пуст,
+            // HTTP-вызовов к WS Gateway не будет. Убираем, чтобы не засорять логи.
+            var backgroundServices = services
+                .Where(d => d.ServiceType == typeof(IHostedService) &&
+                            (d.ImplementationType == typeof(OutboxWorker) ||
+                             d.ImplementationType == typeof(BroadcastConsumer)))
+                .ToList();
+            foreach (var d in backgroundServices) services.Remove(d);
+
             // Replace Npgsql with InMemory EF Core. Same descriptor-stripping pattern as guild-service tests.
             var dbDescriptors = services
                 .Where(d =>

@@ -11,9 +11,9 @@ public static class TestJwt
 
     public static string Generate(Guid userId)
     {
-        // Use JsonWebTokenHandler (Microsoft.IdentityModel.JsonWebTokens) instead of the legacy
-        // JwtSecurityTokenHandler — this is what JwtBearer 9.0.0 uses for validation by default
-        // (Options.TokenHandlers). Using the same handler on both ends avoids encoding edge cases.
+        // HS256 symmetric-key JWT. MessagingServiceFactory переключает JwtBearer на легаси
+        // JwtSecurityTokenHandler (UseSecurityTokenValidators = true) из-за IDX14102 с newer handler.
+        // Оба хэндлера принимают стандартный JWT, поэтому токен, созданный здесь, проходит валидацию.
         var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(SigningKey));
         var descriptor = new SecurityTokenDescriptor
         {

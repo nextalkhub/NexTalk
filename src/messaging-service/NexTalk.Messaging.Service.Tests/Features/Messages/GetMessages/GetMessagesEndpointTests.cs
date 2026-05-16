@@ -36,7 +36,7 @@ public class GetMessagesEndpointTests(MessagingServiceFactory factory) : IClassF
                 CreatedAt = start.AddSeconds(i)
             });
         }
-        db.SaveChanges();
+        await db.SaveChangesAsync();
     }
 
     [Fact]
