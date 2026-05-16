@@ -11,11 +11,17 @@ services:
       - NGINX_ENVSUBST_OUTPUT_DIR=/etc/nginx
     volumes:
       - ./infra/nginx/nginx.conf.template:/etc/nginx/templates/nginx.conf.template:ro
+      - ./infra/nginx/swagger.html:/etc/nginx/swagger/swagger.html:ro
+      - ./infra/nginx/oauth2-redirect.html:/etc/nginx/swagger/oauth2-redirect.html:ro
+      - ./infra/nginx/oauth2-redirect.js:/etc/nginx/swagger/oauth2-redirect.js:ro
+      - zitadel-output:/etc/nginx/swagger-config:ro
     depends_on:
       zitadel-api:
         condition: service_healthy
       zitadel-login:
         condition: service_healthy
+      zitadel-bootstrap:
+        condition: service_completed_successfully
       guild-service:
         condition: service_healthy
       messaging-service:
@@ -71,6 +77,8 @@ services:
       Zitadel__MetadataAddress: http://zitadel-api:8080/.well-known/openid-configuration
       Services__WebSocketGateway: http://websocket-gateway:5004
       Services__VoiceService: http://voice-service:5003
+    volumes:
+      - zitadel-output:/zitadel-config:ro
     networks:
       - nextalk
     depends_on:
@@ -78,6 +86,8 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+      zitadel-bootstrap:
+        condition: service_completed_successfully
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:5001/readyz"]
       interval: 15s
@@ -99,11 +109,15 @@ services:
       Zitadel__MetadataAddress: http://zitadel-api:8080/.well-known/openid-configuration
       Services__WebSocketGateway: http://websocket-gateway:5004
       Services__GuildService: http://guild-service:5001
+    volumes:
+      - zitadel-output:/zitadel-config:ro
     networks:
       - nextalk
     depends_on:
       postgres:
         condition: service_healthy
+      zitadel-bootstrap:
+        condition: service_completed_successfully
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:5002/readyz"]
       interval: 15s
@@ -126,11 +140,15 @@ services:
       LiveKit__ApiKey: ${LIVEKIT_API_KEY}
       LiveKit__SecretKey: ${LIVEKIT_SECRET_KEY}
       Services__GuildService: http://guild-service:5001
+    volumes:
+      - zitadel-output:/zitadel-config:ro
     networks:
       - nextalk
     depends_on:
       livekit:
-        condition: service_started
+        condition: service_healthy
+      zitadel-bootstrap:
+        condition: service_completed_successfully
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:5003/readyz"]
       interval: 15s
@@ -153,8 +171,13 @@ services:
       Services__MessagingService: http://messaging-service:5002
       Presence__HeartbeatInterval: 20
       Presence__OfflineTimeout: 30
+    volumes:
+      - zitadel-output:/zitadel-config:ro
     networks:
       - nextalk
+    depends_on:
+      zitadel-bootstrap:
+        condition: service_completed_successfully
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:5004/readyz"]
       interval: 15s
@@ -193,6 +216,24 @@ services:
     networks:
       - nextalk
 
+  zitadel-bootstrap:
+    image: alpine:3.20
+    restart: "no"
+    command: sh /bootstrap/bootstrap.sh
+    environment:
+      ZITADEL_DOMAIN: ${ZITADEL_DOMAIN}
+      ZITADEL_EXTERNALPORT: ${ZITADEL_EXTERNALPORT}
+      ZITADEL_PUBLIC_SCHEME: ${ZITADEL_PUBLIC_SCHEME:-http}
+    volumes:
+      - ./infra/zitadel/bootstrap.sh:/bootstrap/bootstrap.sh:ro
+      - zitadel-bootstrap:/zitadel/bootstrap:ro
+      - zitadel-output:/output:rw
+    networks:
+      - zitadel
+    depends_on:
+      zitadel-api:
+        condition: service_healthy
+
   zitadel-api:
     image: ghcr.io/zitadel/zitadel:${ZITADEL_TAG}
     restart: unless-stopped
@@ -212,6 +253,11 @@ services:
       ZITADEL_FIRSTINSTANCE_ORG_LOGINCLIENT_MACHINE_USERNAME: login-client
       ZITADEL_FIRSTINSTANCE_ORG_LOGINCLIENT_MACHINE_NAME: Login Client
       ZITADEL_FIRSTINSTANCE_ORG_LOGINCLIENT_PAT_EXPIRATIONDATE: ${LOGIN_CLIENT_PAT_EXPIRATION}
+
+      ZITADEL_FIRSTINSTANCE_ORG_MACHINE_MACHINE_USERNAME: bootstrap-sa
+      ZITADEL_FIRSTINSTANCE_ORG_MACHINE_MACHINE_NAME: Bootstrap Service Account
+      ZITADEL_FIRSTINSTANCE_ORG_MACHINE_PAT_EXPIRATIONDATE: ${LOGIN_CLIENT_PAT_EXPIRATION}
+      ZITADEL_FIRSTINSTANCE_PATPATH: /zitadel/bootstrap/bootstrap-sa.pat
       
       ZITADEL_DEFAULTINSTANCE_FEATURES_LOGINV2_REQUIRED: true
       ZITADEL_DEFAULTINSTANCE_FEATURES_LOGINV2_BASEURI: ${ZITADEL_PUBLIC_SCHEME}://${ZITADEL_DOMAIN}:${ZITADEL_EXTERNALPORT}/ui/v2/login/
@@ -273,6 +319,12 @@ services:
     depends_on:
       redis:
         condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:7880"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
 
 networks:
   nextalk:
@@ -283,3 +335,4 @@ networks:
 volumes:
   postgres-data:
   zitadel-bootstrap:
+  zitadel-output:

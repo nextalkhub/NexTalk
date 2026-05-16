@@ -1,14 +1,156 @@
+using System.Net;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
+using Microsoft.AspNetCore.HttpOverrides;
+using Microsoft.IdentityModel.Tokens;
+using Microsoft.OpenApi.Models;
 using Prometheus;
 using Serilog;
+using IPNetwork = System.Net.IPNetwork;
 
 var builder = WebApplication.CreateBuilder(args);
 
+builder.Configuration.AddJsonFile("/zitadel-config/swagger-config.json", optional: true, reloadOnChange: true);
+
 builder.Services.AddSerilog((_, lc) => lc.ReadFrom.Configuration(builder.Configuration));
+
+builder.Services.Configure<ForwardedHeadersOptions>(options =>
+{
+    options.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
+
+    options.KnownIPNetworks.Add(new IPNetwork(IPAddress.Parse("172.16.0.0"), 12));
+    options.KnownIPNetworks.Add(new IPNetwork(IPAddress.Parse("10.0.0.0"), 8));
+});
+
 
 builder.Services.AddHealthChecks();
 
+var zitadelAuthority = builder.Configuration["Zitadel:Authority"] ?? throw new InvalidOperationException("Zitadel:Authority is not configured");
+var zitadelMetadata = builder.Configuration["Zitadel:MetadataAddress"] ?? throw new InvalidOperationException("Zitadel:MetadataAddress is not configured");
+var zitadelProjectId = builder.Configuration["Zitadel:ProjectId"];
+var swaggerClientId = builder.Configuration["Zitadel:SwaggerClientId"];
+
+builder.Services
+    .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+    .AddJwtBearer(o =>
+    {
+        o.Authority = zitadelAuthority;
+        o.MetadataAddress = zitadelMetadata;
+        o.RequireHttpsMetadata = false;
+        o.BackchannelHttpHandler = new ZitadelBackchannelHandler(
+            externalBase: zitadelAuthority,
+            internalBase: new Uri(zitadelMetadata).GetLeftPart(UriPartial.Authority));
+        o.TokenValidationParameters = new TokenValidationParameters
+        {
+            ValidateIssuer = true,
+            ValidIssuer = zitadelAuthority,
+            ValidateAudience = !string.IsNullOrEmpty(zitadelProjectId),
+            ValidAudiences = string.IsNullOrEmpty(zitadelProjectId)
+                ? null
+                : new[] { zitadelProjectId },
+            ValidateLifetime = true,
+            NameClaimType = "preferred_username",
+        };
+        o.Events = new JwtBearerEvents
+        {
+            OnMessageReceived = ctx =>
+            {
+                var accessToken = ctx.Request.Query["access_token"];
+                var path = ctx.HttpContext.Request.Path;
+                if (!string.IsNullOrEmpty(accessToken) && path.StartsWithSegments("/hubs"))
+                    ctx.Token = accessToken;
+                return Task.CompletedTask;
+            }
+        };
+    });
+
+builder.Services.AddAuthorizationBuilder()
+    .SetFallbackPolicy(new AuthorizationPolicyBuilder()
+        .RequireAuthenticatedUser()
+        .Build());
+
+builder.Services.AddEndpointsApiExplorer();
+builder.Services.AddSwaggerGen(c =>
+{
+    c.SwaggerDoc("v1", new OpenApiInfo
+    {
+        Title = "WebSocket Gateway",
+        Version = "v1",
+        Description = "SignalR Hub для real-time коммуникации: сообщения, presence, события."
+    });
+    c.AddServer(new OpenApiServer { Url = "/api", Description = "Через Nginx (unified)" });
+    c.AddServer(new OpenApiServer { Url = "/",    Description = "Прямой доступ к сервису" });
+    c.CustomSchemaIds(type => type.FullName?.Replace("+", ".") ?? type.Name);
+
+    var xmlPath = Path.Combine(AppContext.BaseDirectory, "NextTalk.Websocket.Gateway.xml");
+    if (File.Exists(xmlPath))
+        c.IncludeXmlComments(xmlPath);
+
+    c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
+    {
+        Description = "JWT Authorization header using the Bearer scheme. Example: 'Bearer {token}'",
+        Name = "Authorization",
+        In = ParameterLocation.Header,
+        Type = SecuritySchemeType.Http,
+        Scheme = "bearer",
+        BearerFormat = "JWT"
+    });
+
+    c.AddSecurityDefinition("oauth2", new OpenApiSecurityScheme
+    {
+        Type = SecuritySchemeType.OAuth2,
+        Flows = new OpenApiOAuthFlows
+        {
+            AuthorizationCode = new OpenApiOAuthFlow
+            {
+                AuthorizationUrl = new Uri($"{zitadelAuthority}/oauth/v2/authorize"),
+                TokenUrl = new Uri($"{zitadelAuthority}/oauth/v2/token"),
+                Scopes = new Dictionary<string, string>
+                {
+                    { "openid", "OpenID" },
+                    { "profile", "Profile" },
+                    { "email", "Email" },
+                    { "offline_access", "Refresh token" }
+                }
+            }
+        }
+    });
+    c.AddSecurityRequirement(new OpenApiSecurityRequirement
+    {
+        {
+            new OpenApiSecurityScheme
+            {
+                Reference = new OpenApiReference
+                {
+                    Type = ReferenceType.SecurityScheme,
+                    Id = "oauth2"
+                }
+            },
+            ["openid", "profile", "email"]
+        }
+    });
+});
+
 var app = builder.Build();
+
+if (app.Environment.IsDevelopment())
+{
+    app.UseSwagger();
+    app.UseSwaggerUI(c =>
+    {
+        c.OAuthClientId(swaggerClientId);
+        c.OAuthScopes("openid", "profile", "email");
+        c.OAuthUsePkce();
+        c.SwaggerEndpoint("v1/swagger.json", "WebSocket Gateway v1");
+        c.RoutePrefix = "swagger";
+        c.DocumentTitle = "WebSocket Gateway API";
+    });
+}
+
+app.UseForwardedHeaders();
+app.UseAuthentication();
+app.UseAuthorization();
 
 app.UseHttpMetrics();
 
@@ -19,8 +161,26 @@ app.UseSerilogRequestLogging(opts =>
             ?? ctx.Request.Headers["X-Correlation-Id"].FirstOrDefault()
             ?? ctx.TraceIdentifier));
 
-app.MapHealthChecks("/healthz", new HealthCheckOptions { Predicate = _ => false });
-app.MapHealthChecks("/readyz", new HealthCheckOptions { Predicate = _ => false });
-app.MapMetrics();
+app.MapHealthChecks("/healthz", new HealthCheckOptions { Predicate = _ => false })
+    .AllowAnonymous();
+app.MapHealthChecks("/readyz", new HealthCheckOptions { Predicate = _ => true })
+    .AllowAnonymous();
+app.MapMetrics().AllowAnonymous();
 
 app.Run();
+
+file sealed class ZitadelBackchannelHandler(string externalBase, string internalBase) : HttpClientHandler
+{
+    private readonly string _ext = externalBase.TrimEnd('/');
+    private readonly string _int = internalBase.TrimEnd('/');
+    private readonly string _host = new Uri(externalBase).Authority;
+
+    protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage req, CancellationToken ct)
+    {
+        var uri = req.RequestUri!.ToString();
+        if (uri.StartsWith(_ext, StringComparison.OrdinalIgnoreCase))
+            req.RequestUri = new Uri(_int + uri[_ext.Length..]);
+        req.Headers.Host = _host;
+        return base.SendAsync(req, ct);
+    }
+}
