@@ -220,11 +220,6 @@ app.UseForwardedHeaders();
 app.UseAuthentication();
 app.UseAuthorization();
 
-// Пробрасывает JWT-клеймы как заголовки: X-User-Id (UUIDv5 из sub), X-Display-Name, X-Username.
-// Эндпоинты не могут доверять заголовкам от клиента — middleware перезаписывает их из токена.
-// Internal-эндпоинты (AllowAnonymous, без JWT) сохраняют входящий заголовок — доверяют сети.
-app.UseMiddleware<JwtSubToHeaderMiddleware>();
-
 app.UseExceptionHandler(exApp => exApp.Run(async ctx =>
 {
     var ex = ctx.Features.Get<IExceptionHandlerFeature>()?.Error;
@@ -315,11 +310,14 @@ static void MigrateDatabase(WebApplication app)
 {
     using var scope = app.Services.CreateScope();
     var dbContext = scope.ServiceProvider.GetRequiredService<GuildDbContext>();
-    
+
+    // GetPendingMigrations() / Migrate() are relational-only. Integration tests swap the
+    // provider for EF Core InMemory, where calling them throws.
+    if (!dbContext.Database.IsRelational())
+        return;
+
     if (dbContext.Database.GetPendingMigrations().Any())
-    {
         dbContext.Database.Migrate();
-    }
 }
 
 internal sealed class ExcludeNonPublicEndpointsFilter : IDocumentFilter
