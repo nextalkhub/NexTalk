@@ -146,7 +146,7 @@ services:
       - nextalk
     depends_on:
       livekit:
-        condition: service_started
+        condition: service_healthy
       zitadel-bootstrap:
         condition: service_completed_successfully
     healthcheck:
@@ -319,6 +319,12 @@ services:
     depends_on:
       redis:
         condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:7880"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
 
 networks:
   nextalk:

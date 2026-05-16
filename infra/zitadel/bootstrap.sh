@@ -54,7 +54,7 @@ api_put() {
 
 # ── 1. Create or find project ─────────────────────────────────────────────────
 echo "[bootstrap] Resolving project 'NexTalk'..."
-EXISTING_PROJ=$(api_post "/management/v1/projects/_search" '{"queries":[{"nameQuery":{"name":"NexTalk","method":"TEXT_QUERY_METHOD_EQUALS"}}]}' 2>/dev/null || echo '{}')
+EXISTING_PROJ=$(api_post "/management/v1/projects/_search" '{"queries":[{"nameQuery":{"name":"NexTalk","method":"TEXT_QUERY_METHOD_EQUALS"}}]}')
 PROJECT_ID=$(echo "$EXISTING_PROJ" | jq -r '.result[0].id // empty')
 
 if [ -z "$PROJECT_ID" ]; then
@@ -72,8 +72,7 @@ resolve_oidc_app() {
     local post_logout_uri="$3"
 
     EXISTING_APPS=$(api_post "/management/v1/projects/${PROJECT_ID}/apps/_search" \
-        "{\"queries\":[{\"nameQuery\":{\"name\":\"${app_name}\",\"method\":\"TEXT_QUERY_METHOD_EQUALS\"}}]}" \
-        2>/dev/null || echo '{}')
+        "{\"queries\":[{\"nameQuery\":{\"name\":\"${app_name}\",\"method\":\"TEXT_QUERY_METHOD_EQUALS\"}}]}")
     EXISTING_ID=$(echo "$EXISTING_APPS" | jq -r '.result[0].oidcConfig.clientId // empty')
 
     if [ -n "$EXISTING_ID" ]; then
@@ -116,7 +115,7 @@ SWAGGER_CLIENT_ID=$(resolve_oidc_app \
 # Nested "Zitadel" object is read by .NET IConfiguration on backend services
 # (AddJsonFile populates Zitadel:ProjectId etc.).
 mkdir -p "$(dirname "$OUTPUT_FILE")"
-cat > "$OUTPUT_FILE" <<EOF
+cat > "${OUTPUT_FILE}.tmp" <<EOF
 {
   "projectId": "${PROJECT_ID}",
   "spaClientId": "${SPA_CLIENT_ID}",
@@ -128,6 +127,7 @@ cat > "$OUTPUT_FILE" <<EOF
   }
 }
 EOF
+mv "${OUTPUT_FILE}.tmp" "$OUTPUT_FILE"
 
 echo "[bootstrap] Done."
 cat "$OUTPUT_FILE"

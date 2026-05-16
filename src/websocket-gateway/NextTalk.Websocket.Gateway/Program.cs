@@ -150,7 +150,7 @@ app.UseSerilogRequestLogging(opts =>
 
 app.MapHealthChecks("/healthz", new HealthCheckOptions { Predicate = _ => false })
     .AllowAnonymous();
-app.MapHealthChecks("/readyz", new HealthCheckOptions { Predicate = _ => false })
+app.MapHealthChecks("/readyz", new HealthCheckOptions { Predicate = _ => true })
     .AllowAnonymous();
 app.MapMetrics().AllowAnonymous();
 
