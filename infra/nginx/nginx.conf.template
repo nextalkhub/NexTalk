@@ -136,28 +136,28 @@ http {
 
         location /swagger/guild/ {
             proxy_pass http://guild-service/swagger/;
-            proxy_set_header Host $http_host;
+            proxy_set_header Host $host;
             proxy_set_header Connection "";
             add_header Cache-Control "no-store" always;
         }
 
         location /swagger/messaging/ {
             proxy_pass http://messaging-service/swagger/;
-            proxy_set_header Host $http_host;
+            proxy_set_header Host $host;
             proxy_set_header Connection "";
             add_header Cache-Control "no-store" always;
         }
 
         location /swagger/voice/ {
             proxy_pass http://voice-service/swagger/;
-            proxy_set_header Host $http_host;
+            proxy_set_header Host $host;
             proxy_set_header Connection "";
             add_header Cache-Control "no-store" always;
         }
 
         location /swagger/websocket/ {
             proxy_pass http://websocket-gateway/swagger/;
-            proxy_set_header Host $http_host;
+            proxy_set_header Host $host;
             proxy_set_header Connection "";
             add_header Cache-Control "no-store" always;
         }
@@ -166,9 +166,9 @@ http {
         location ^~ /ui/v2/login {
             limit_req zone=auth_limit burst=30 nodelay;
             proxy_pass http://zitadel-login;
-            proxy_set_header Host $http_host;
+            proxy_set_header Host $host;
             proxy_set_header X-Forwarded-Proto $scheme;
-            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-For $remote_addr;
             proxy_set_header X-Real-IP $remote_addr;
             proxy_set_header Connection "";
         }
@@ -176,50 +176,50 @@ http {
         # OIDC / OAuth2
         location ^~ /.well-known/ {
             proxy_pass http://zitadel-api;
-            proxy_set_header Host $http_host;
+            proxy_set_header Host $host;
             proxy_set_header Connection "";
         }
 
         location ~ ^/(oauth|oidc|openidconnect|saml)/ {
             limit_req zone=auth_limit burst=20 nodelay;
             proxy_pass http://zitadel-api;
-            proxy_set_header Host $http_host;
+            proxy_set_header Host $host;
             proxy_set_header X-Forwarded-Proto $scheme;
-            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-For $remote_addr;
             proxy_set_header Connection "";
         }
 
         # Zitadel Console UI
         location ^~ /ui/ {
             proxy_pass http://zitadel-api;
-            proxy_set_header Host $http_host;
+            proxy_set_header Host $host;
             proxy_set_header X-Forwarded-Proto $scheme;
-            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-For $remote_addr;
             proxy_set_header Connection "";
         }
 
         # Zitadel REST Management APIs
         location ~ ^/(auth/|management/|admin/|system/|v2/) {
             proxy_pass http://zitadel-api;
-            proxy_set_header Host $http_host;
+            proxy_set_header Host $host;
             proxy_set_header X-Forwarded-Proto $scheme;
-            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-For $remote_addr;
             proxy_set_header Connection "";
         }
 
         # Zitadel native gRPC
         location ~ ^/zitadel\. {
             grpc_pass grpc://zitadel-api;
-            grpc_set_header Host $http_host;
+            grpc_set_header Host $host;
         }
 
         # Guild service
         location /api/guilds {
             limit_req zone=api_limit burst=50 nodelay;
             proxy_pass http://guild-service/guilds;
-            proxy_set_header Host $http_host;
+            proxy_set_header Host $host;
             proxy_set_header X-Forwarded-Proto $scheme;
-            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-For $remote_addr;
             proxy_set_header X-Real-IP $remote_addr;
             proxy_set_header X-Request-Id $request_id;
             proxy_set_header Connection "";
@@ -229,9 +229,9 @@ http {
         location /api/invites {
             limit_req zone=api_limit burst=50 nodelay;
             proxy_pass http://guild-service/invites;
-            proxy_set_header Host $http_host;
+            proxy_set_header Host $host;
             proxy_set_header X-Forwarded-Proto $scheme;
-            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-For $remote_addr;
             proxy_set_header X-Real-IP $remote_addr;
             proxy_set_header X-Request-Id $request_id;
             proxy_set_header Connection "";
@@ -242,9 +242,9 @@ http {
         location /api/channels {
             limit_req zone=api_limit burst=50 nodelay;
             proxy_pass http://messaging-service/channels;
-            proxy_set_header Host $http_host;
+            proxy_set_header Host $host;
             proxy_set_header X-Forwarded-Proto $scheme;
-            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-For $remote_addr;
             proxy_set_header X-Real-IP $remote_addr;
             proxy_set_header X-Request-Id $request_id;
             proxy_set_header Connection "";
@@ -254,9 +254,9 @@ http {
         location /api/messages {
             limit_req zone=api_limit burst=50 nodelay;
             proxy_pass http://messaging-service/messages;
-            proxy_set_header Host $http_host;
+            proxy_set_header Host $host;
             proxy_set_header X-Forwarded-Proto $scheme;
-            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-For $remote_addr;
             proxy_set_header X-Real-IP $remote_addr;
             proxy_set_header X-Request-Id $request_id;
             proxy_set_header Connection "";
@@ -267,9 +267,9 @@ http {
         location /api/voice {
             limit_req zone=api_limit burst=50 nodelay;
             proxy_pass http://voice-service/voice;
-            proxy_set_header Host $http_host;
+            proxy_set_header Host $host;
             proxy_set_header X-Forwarded-Proto $scheme;
-            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-For $remote_addr;
             proxy_set_header X-Real-IP $remote_addr;
             proxy_set_header X-Request-Id $request_id;
             proxy_set_header Connection "";
@@ -280,9 +280,9 @@ http {
             limit_req zone=api_limit burst=100 nodelay;
             proxy_pass http://websocket-gateway/ws;
             proxy_http_version 1.1;
-            proxy_set_header Host $http_host;
+            proxy_set_header Host $host;
             proxy_set_header X-Forwarded-Proto $scheme;
-            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-For $remote_addr;
             proxy_set_header X-Real-IP $remote_addr;
             proxy_set_header X-Request-Id $request_id;
             proxy_set_header Upgrade $http_upgrade;
@@ -306,11 +306,11 @@ http {
         location /livekit/ {
             proxy_pass http://livekit/;
             proxy_http_version 1.1;
-            proxy_set_header Host $http_host;
+            proxy_set_header Host $host;
             proxy_set_header Upgrade $http_upgrade;
             proxy_set_header Connection "upgrade";
             proxy_set_header X-Forwarded-Proto $scheme;
-            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-For $remote_addr;
             proxy_read_timeout 3600s;
             proxy_send_timeout 3600s;
             proxy_buffering off;
@@ -319,7 +319,7 @@ http {
         # React SPA
         location / {
             proxy_pass http://web-spa;
-            proxy_set_header Host $http_host;
+            proxy_set_header Host $host;
             proxy_set_header X-Forwarded-Proto $scheme;
             proxy_set_header Connection "";
         }
