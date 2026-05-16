@@ -26,6 +26,9 @@ builder.Services
         o.Authority = zitadelAuthority;
         o.MetadataAddress = zitadelMetadata;
         o.RequireHttpsMetadata = false;
+        o.BackchannelHttpHandler = new ZitadelBackchannelHandler(
+            externalBase: zitadelAuthority,
+            internalBase: new Uri(zitadelMetadata).GetLeftPart(UriPartial.Authority));
         o.TokenValidationParameters = new TokenValidationParameters
         {
             ValidateIssuer = true,
@@ -141,3 +144,19 @@ app.MapHealthChecks("/readyz", new HealthCheckOptions { Predicate = _ => false }
 app.MapMetrics().AllowAnonymous();
 
 app.Run();
+
+file sealed class ZitadelBackchannelHandler(string externalBase, string internalBase) : HttpClientHandler
+{
+    private readonly string _ext = externalBase.TrimEnd('/');
+    private readonly string _int = internalBase.TrimEnd('/');
+    private readonly string _host = new Uri(externalBase).Authority;
+
+    protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage req, CancellationToken ct)
+    {
+        var uri = req.RequestUri!.ToString();
+        if (uri.StartsWith(_ext, StringComparison.OrdinalIgnoreCase))
+            req.RequestUri = new Uri(_int + uri[_ext.Length..]);
+        req.Headers.Host = _host;
+        return base.SendAsync(req, ct);
+    }
+}
