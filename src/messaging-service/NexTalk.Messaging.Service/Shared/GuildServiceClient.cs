@@ -1,3 +1,4 @@
+using System.Net;
 using System.Net.Http.Json;
 using Microsoft.AspNetCore.Http;
 
@@ -5,10 +6,13 @@ namespace NexTalk.Messaging.Service.Shared;
 
 public class GuildServiceClient(HttpClient http, IHttpContextAccessor httpContextAccessor) : IGuildServiceClient
 {
+    // Локальный тип для десериализации ответа guild-service (имена совпадают с JSON).
+    private record GuildAccessResponse(bool HasAccess, Guid GuildId);
+
     public async Task<ChannelAccessResult> CheckChannelAccessAsync(Guid channelId, Guid userId, CancellationToken ct = default)
     {
         var req = new HttpRequestMessage(HttpMethod.Get,
-            $"/internal/channels/{channelId}/check-access?userId={userId}");
+            $"/internal/channels/{channelId}/access?userId={userId}");
 
         // Propagate correlation headers for distributed tracing (Flow 11 step 5).
         var ctx = httpContextAccessor.HttpContext;
@@ -25,9 +29,15 @@ public class GuildServiceClient(HttpClient http, IHttpContextAccessor httpContex
         }
 
         using var resp = await http.SendAsync(req, ct);
+
+        if (resp.StatusCode == HttpStatusCode.NotFound)
+            return new ChannelAccessResult(false, null);
+
         resp.EnsureSuccessStatusCode();
 
-        var result = await resp.Content.ReadFromJsonAsync<ChannelAccessResult>(ct);
-        return result ?? new ChannelAccessResult(false, null);
+        var body = await resp.Content.ReadFromJsonAsync<GuildAccessResponse>(ct);
+        return body is null
+            ? new ChannelAccessResult(false, null)
+            : new ChannelAccessResult(body.HasAccess, body.GuildId);
     }
 }

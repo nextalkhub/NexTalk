@@ -29,7 +29,7 @@ public class MessagingServiceFactory : WebApplicationFactory<Program>
         builder.UseSetting("ConnectionStrings:PostgresConnection", "Host=placeholder;Database=placeholder");
         builder.UseSetting("Zitadel:Authority", "http://test-authority");
         builder.UseSetting("Zitadel:MetadataAddress", "http://test-authority/.well-known/openid-configuration");
-        builder.UseSetting("GuildService:BaseUrl", "http://test-guild-service");
+        builder.UseSetting("Services:GuildService", "http://test-guild-service");
 
         builder.ConfigureTestServices(services =>
         {

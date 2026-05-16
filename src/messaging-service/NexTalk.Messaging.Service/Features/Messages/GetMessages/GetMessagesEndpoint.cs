@@ -9,7 +9,7 @@ public static class GetMessagesEndpoint
     private const int MaxLimit = 100;
 
     public static void Map(IEndpointRouteBuilder app) =>
-        app.MapGet("/api/channels/{channelId:guid}/messages", async (
+        app.MapGet("/channels/{channelId:guid}/messages", async (
             Guid channelId,
             [FromHeader(Name = "X-User-Id")] Guid userId,
             [FromQuery] Guid? cursor,
