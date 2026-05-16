@@ -3,8 +3,16 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.AspNetCore.HttpOverrides;
+using Microsoft.AspNetCore.SignalR;
+using Microsoft.Extensions.Http.Resilience;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
+using NextTalk.Websocket.Gateway.Features.Broadcast;
+using NextTalk.Websocket.Gateway.Features.Chat.SendMessage;
+using NextTalk.Websocket.Gateway.Features.Disconnect;
+using NextTalk.Websocket.Gateway.Infrastructure;
+using NextTalk.Websocket.Gateway.Shared;
+using Polly;
 using Prometheus;
 using Serilog;
 using IPNetwork = System.Net.IPNetwork;
@@ -15,22 +23,22 @@ builder.Configuration.AddJsonFile("/zitadel-config/swagger-config.json", optiona
 
 builder.Services.AddSerilog((_, lc) => lc.ReadFrom.Configuration(builder.Configuration));
 
+builder.Services.Configure<PresenceOptions>(builder.Configuration.GetSection("Presence"));
+
 builder.Services.Configure<ForwardedHeadersOptions>(options =>
 {
     options.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
-
     options.KnownIPNetworks.Add(new IPNetwork(IPAddress.Parse("172.16.0.0"), 12));
     options.KnownIPNetworks.Add(new IPNetwork(IPAddress.Parse("10.0.0.0"), 8));
 });
-
-
-builder.Services.AddHealthChecks();
 
 var zitadelAuthority = builder.Configuration["Zitadel:Authority"] ?? throw new InvalidOperationException("Zitadel:Authority is not configured");
 var zitadelMetadata = builder.Configuration["Zitadel:MetadataAddress"] ?? throw new InvalidOperationException("Zitadel:MetadataAddress is not configured");
 var zitadelProjectId = builder.Configuration["Zitadel:ProjectId"];
 var swaggerClientId = builder.Configuration["Zitadel:SwaggerClientId"];
 
+// JWT Bearer. SignalR-подключения передают токен через ?access_token= т.к. браузер
+// не поддерживает кастомные заголовки при WS-handshake.
 builder.Services
     .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(o =>
@@ -38,6 +46,10 @@ builder.Services
         o.Authority = zitadelAuthority;
         o.MetadataAddress = zitadelMetadata;
         o.RequireHttpsMetadata = false;
+        // Discovery doc возвращает jwks_uri с внешним hostname (http://localhost:8080/...).
+        // Изнутри Docker-контейнера localhost — это сам контейнер, а не nginx → Connection refused.
+        // Handler перенаправляет все backchannel-запросы на внутренний zitadel-api
+        // и проставляет Host: localhost:8080, чтобы Zitadel нашёл нужный инстанс.
         o.BackchannelHttpHandler = new ZitadelBackchannelHandler(
             externalBase: zitadelAuthority,
             internalBase: new Uri(zitadelMetadata).GetLeftPart(UriPartial.Authority));
@@ -56,10 +68,11 @@ builder.Services
         {
             OnMessageReceived = ctx =>
             {
-                var accessToken = ctx.Request.Query["access_token"];
-                var path = ctx.HttpContext.Request.Path;
-                if (!string.IsNullOrEmpty(accessToken) && path.StartsWithSegments("/hubs"))
-                    ctx.Token = accessToken;
+                // Nginx passes /ws/* through as-is to the service (no rewrite).
+                // Hub is mounted at /ws/chat, so we check for the /ws prefix here.
+                var token = ctx.Request.Query["access_token"];
+                if (!string.IsNullOrEmpty(token) && ctx.HttpContext.Request.Path.StartsWithSegments("/ws"))
+                    ctx.Token = token;
                 return Task.CompletedTask;
             }
         };
@@ -132,6 +145,68 @@ builder.Services.AddSwaggerGen(c =>
     });
 });
 
+// SignalR — userId маппинг из JWT sub claim через SubClaimUserIdProvider
+builder.Services.AddSignalR();
+builder.Services.AddSingleton<IUserIdProvider, SubClaimUserIdProvider>();
+
+// Presence state (in-memory, per-replica)
+builder.Services.AddSingleton<ConnectionManager>();
+builder.Services.AddSingleton<PresenceTracker>();
+builder.Services.AddHostedService<PresenceMonitor>();
+
+// ChatHub is transient (one instance per connection), handler must be stateless
+builder.Services.AddTransient<SendMessageHandler>();
+
+// HTTP clients — resilience via Polly
+var guildUrl = builder.Configuration["Services:GuildService"] ?? throw new InvalidOperationException("Services:GuildService is not configured");
+var messagingUrl = builder.Configuration["Services:MessagingService"] ?? throw new InvalidOperationException("Services:MessagingService is not configured");
+
+builder.Services.AddHttpClient<GuildServiceClient>(c =>
+    c.BaseAddress = new Uri(guildUrl))
+    .AddResilienceHandler("guild", pipeline =>
+    {
+        pipeline.AddRetry(new HttpRetryStrategyOptions
+        {
+            MaxRetryAttempts = 3,
+            Delay = TimeSpan.FromMilliseconds(200),
+            BackoffType = DelayBackoffType.Exponential,
+            UseJitter = true
+        });
+        pipeline.AddCircuitBreaker(new HttpCircuitBreakerStrategyOptions
+        {
+            SamplingDuration = TimeSpan.FromSeconds(30),
+            FailureRatio = 0.5,
+            MinimumThroughput = 5,
+            BreakDuration = TimeSpan.FromSeconds(15)
+        });
+        pipeline.AddTimeout(TimeSpan.FromSeconds(2));
+    });
+
+builder.Services.AddHttpClient<MessagingServiceClient>(c =>
+    c.BaseAddress = new Uri(messagingUrl))
+    .AddResilienceHandler("messaging", pipeline =>
+    {
+        pipeline.AddRetry(new HttpRetryStrategyOptions
+        {
+            MaxRetryAttempts = 3,
+            Delay = TimeSpan.FromMilliseconds(200),
+            BackoffType = DelayBackoffType.Exponential,
+            UseJitter = true
+        });
+        pipeline.AddCircuitBreaker(new HttpCircuitBreakerStrategyOptions
+        {
+            SamplingDuration = TimeSpan.FromSeconds(30),
+            FailureRatio = 0.5,
+            MinimumThroughput = 5,
+            BreakDuration = TimeSpan.FromSeconds(15)
+        });
+        pipeline.AddTimeout(TimeSpan.FromSeconds(2));
+    });
+
+builder.Services.AddHealthChecks()
+    .AddUrlGroup(new Uri($"{guildUrl}/healthz"), name: "guild-service", tags: ["ready"])
+    .AddUrlGroup(new Uri($"{messagingUrl}/healthz"), name: "messaging-service", tags: ["ready"]);
+
 var app = builder.Build();
 
 if (app.Environment.IsDevelopment())
@@ -163,9 +238,19 @@ app.UseSerilogRequestLogging(opts =>
 
 app.MapHealthChecks("/healthz", new HealthCheckOptions { Predicate = _ => false })
     .AllowAnonymous();
-app.MapHealthChecks("/readyz", new HealthCheckOptions { Predicate = _ => true })
-    .AllowAnonymous();
+app.MapHealthChecks("/readyz", new HealthCheckOptions
+{
+    Predicate = check => check.Tags.Contains("ready")
+}).AllowAnonymous();
 app.MapMetrics().AllowAnonymous();
+
+// Internal endpoints — accessible only within Docker/k8s network (nginx denies /internal externally)
+BroadcastEndpoints.Map(app);
+DisconnectEndpoints.Map(app);
+
+// Nginx passes /ws/* through unchanged (proxy_pass http://websocket-gateway/ws).
+// Hub must be mounted at the exact path the service receives.
+app.MapHub<ChatHub>("/ws/chat");
 
 app.Run();
 
