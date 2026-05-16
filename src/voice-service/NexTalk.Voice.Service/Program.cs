@@ -44,8 +44,12 @@ builder.Services.AddSingleton<SessionStore>();
 builder.Services.AddSingleton<LiveKitTokenGenerator>();
 builder.Services.AddSingleton<LiveKitRoomClient>();
 
+// DeadlineForwardingHandler добавляет X-Deadline к каждому запросу в Guild Service.
+builder.Services.AddTransient<DeadlineForwardingHandler>();
+
 // HTTP-клиент к Guild Service
 builder.Services.AddHttpClient<GuildServiceClient>(c => c.BaseAddress = new Uri(guildUrl))
+    .AddHttpMessageHandler<DeadlineForwardingHandler>()
     .AddResilienceHandler("guild", pipeline =>
     {
         pipeline.AddRetry(new HttpRetryStrategyOptions

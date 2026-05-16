@@ -1088,29 +1088,36 @@ modelConnections:
 ### Flow 16: Демонстрация Deadline (504)
 
 ```
-Сценарий: Messaging Service медленно отвечает Guild Service при удалении сообщения.
+Сценарий: Voice Service вызывает Guild Service (проверка доступа к каналу),
+          Guild Service отвечает слишком долго — дедлайн истекает.
 
-1. React SPA → Nginx → Messaging Service: DELETE /api/messages/{id} + JWT
-   Messaging Service: устанавливает X-Deadline = NOW() + 5 сек
+1. React SPA → Nginx → Voice Service: POST /api/voice/join/{channelId} + JWT
 
-2. Messaging Service → Guild Service (HTTP, Polly: CB + Deadline):
+2. Voice Service → Guild Service (HTTP):
    GET /internal/channels/{channelId}/access?userId=X
-   Headers: X-Deadline = <UTC timestamp>
+   DeadlineForwardingHandler добавляет: X-Deadline = UtcNow + 1.5 сек
 
-3. Guild Service: DeadlineMiddleware проверяет X-Deadline
-   Если дедлайн НЕ истек → обрабатывает запрос нормально
+3. Guild Service: DeadlineMiddleware читает X-Deadline
+   Если дедлайн уже истёк на входе → немедленно: 504 { error: "Request timeout", retryAfter: 5 }
+   Иначе → создаёт CancellationTokenSource(remaining), подменяет HttpContext.RequestAborted
 
-4. [Сценарий: Guild Service отвечает очень медленно (DB lock, GC pause и т.п.)]
-   CancellationToken, привязанный к X-Deadline, срабатывает
+4. [Сценарий: Guild Service отвечает очень медленно — DB lock, GC pause и т.п.]
+   CancellationToken, привязанный к X-Deadline, срабатывает →
+   OperationCanceledException в хендлере →
+   DeadlineMiddleware перехватывает → 504 { error: "Request timeout", retryAfter: 5 }
 
-5. Guild Service → Messaging Service: 504 Gateway Timeout
-   (или: Messaging Service сам обрывает запрос по CancellationToken до ответа)
+5. Voice Service получает 504 от Guild Service
+   Polly Retry срабатывает, но дедлайн уже истёк → повторные попытки тоже 504
 
-6. Messaging Service → Nginx → React SPA: 504 Gateway Timeout
-   Body: { error: "Request timeout", retryAfter: 5 }
+6. Voice Service → Nginx → React SPA: 504 Gateway Timeout
 
-7. React SPA: показывает пользователю "Не удалось выполнить действие. Попробуйте снова."
-   (в отличие от Circuit Breaker - это разовый сбой, не накопительный)
+7. React SPA: показывает пользователю "Не удалось подключиться. Попробуйте снова."
+   (в отличие от Circuit Breaker — это разовый сбой по тайм-ауту, не накопительный)
+
+Инфраструктура:
+  DeadlineMiddleware        — Guild Service, Messaging Service (ASP.NET Core middleware)
+  DeadlineForwardingHandler — Voice Service → Guild Service (DelegatingHandler, X-Deadline = UtcNow+1.5s)
+  Default budget            — 1.5 сек (< Polly Timeout 2s на том же клиенте — deadline срабатывает первым)
 ```
 
 ### Flow 17: Создание канала

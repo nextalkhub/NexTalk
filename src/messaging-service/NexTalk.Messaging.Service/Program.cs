@@ -11,6 +11,7 @@ using Microsoft.OpenApi.Models;
 using NexTalk.Messaging.Service.Features.Messages.CreateMessage;
 using NexTalk.Messaging.Service.Infrastructure;
 using NexTalk.Messaging.Service.Infrastructure.Outbox;
+using NexTalk.Messaging.Service.Shared;
 using NexTalk.Messaging.Service.Shared.Exceptions;
 using Polly;
 using Prometheus;
@@ -197,6 +198,8 @@ app.UseExceptionHandler(exApp => exApp.Run(async ctx =>
     ctx.Response.StatusCode = status;
     await ctx.Response.WriteAsJsonAsync(new { error = message });
 }));
+
+app.UseMiddleware<DeadlineMiddleware>();
 
 app.UseHttpMetrics();
 
