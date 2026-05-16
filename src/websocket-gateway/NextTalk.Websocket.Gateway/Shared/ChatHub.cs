@@ -55,7 +55,7 @@ public sealed class ChatHub : Hub
             foreach (var guildId in guildIds)
             {
                 await Clients.Group(GuildGroup(guildId))
-                    .SendAsync("GatewayEvent", new { Type = "presence.online", UserId = userId });
+                    .SendAsync("GatewayEvent", new { Type = "presence.online", Payload = new { UserId = userId } });
             }
         }
         
@@ -76,7 +76,7 @@ public sealed class ChatHub : Hub
             {
                 await Groups.RemoveFromGroupAsync(Context.ConnectionId, GuildGroup(guildId));
                 await Clients.Group(GuildGroup(guildId))
-                    .SendAsync("GatewayEvent", new { Type = "presence.offline", UserId = userId });
+                    .SendAsync("GatewayEvent", new { Type = "presence.offline", Payload = new { UserId = userId } });
             }
         }
         
