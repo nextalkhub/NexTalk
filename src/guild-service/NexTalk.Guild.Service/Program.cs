@@ -1,6 +1,8 @@
+using System.Net;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Diagnostics;
+using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Distributed;
@@ -27,6 +29,7 @@ using NexTalk.Guild.Service.Shared.Exceptions;
 using Prometheus;
 using Serilog;
 using Swashbuckle.AspNetCore.SwaggerGen;
+using IPNetwork = System.Net.IPNetwork;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -37,6 +40,14 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Configuration.AddJsonFile("/zitadel-config/swagger-config.json", optional: true, reloadOnChange: true);
 
 builder.Services.AddSerilog((_, lc) => lc.ReadFrom.Configuration(builder.Configuration));
+
+builder.Services.Configure<ForwardedHeadersOptions>(options =>
+{
+    options.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
+
+    options.KnownIPNetworks.Add(new IPNetwork(IPAddress.Parse("172.16.0.0"), 12));
+    options.KnownIPNetworks.Add(new IPNetwork(IPAddress.Parse("10.0.0.0"), 8));
+});
 
 var redisConnectionString = builder.Configuration.GetConnectionString("Redis")!;
 var pgConnectionString = builder.Configuration.GetConnectionString("PostgresConnection")!;
@@ -69,6 +80,7 @@ builder.Services.AddScoped<DeleteChannelHandler>();
 builder.Services.AddScoped<GetChannelsHandler>();
 
 // Invite handlers
+builder.Services.AddScoped<IInviteRepository, InviteRepository>();
 builder.Services.AddScoped<CreateInviteHandler>();
 builder.Services.AddScoped<AcceptInviteHandler>();
 
@@ -96,6 +108,13 @@ builder.Services
         o.Authority = zitadelAuthority;
         o.MetadataAddress = zitadelMetadata;
         o.RequireHttpsMetadata = false;
+        // Discovery doc возвращает jwks_uri с внешним hostname (http://localhost:8080/...).
+        // Изнутри Docker-контейнера localhost — это сам контейнер, а не nginx → Connection refused.
+        // Handler перенаправляет все backchannel-запросы на внутренний zitadel-api
+        // и проставляет Host: localhost:8080, чтобы Zitadel нашёл нужный инстанс.
+        o.BackchannelHttpHandler = new ZitadelBackchannelHandler(
+            externalBase: zitadelAuthority,
+            internalBase: new Uri(zitadelMetadata).GetLeftPart(UriPartial.Authority));
         o.TokenValidationParameters = new TokenValidationParameters
         {
             ValidateIssuer = true,
@@ -109,7 +128,7 @@ builder.Services
         };
     });
 
-// По умолчанию каждый эндпоинт требует аутентифицированного пользователя 
+// По умолчанию каждый эндпоинт требует аутентифицированного пользователя
 builder.Services.AddAuthorizationBuilder()
     .SetFallbackPolicy(new AuthorizationPolicyBuilder()
         .RequireAuthenticatedUser()
@@ -132,7 +151,7 @@ builder.Services.AddSwaggerGen(c =>
     var xmlPath = Path.Combine(AppContext.BaseDirectory, "NexTalk.Guild.Service.xml");
     if (File.Exists(xmlPath))
         c.IncludeXmlComments(xmlPath);
-    
+
     c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
     {
         Description = "JWT Authorization header using the Bearer scheme. Example: 'Bearer {token}'",
@@ -196,14 +215,13 @@ if (app.Environment.IsDevelopment())
         c.RoutePrefix = "swagger";
         c.DocumentTitle = "Guild Service API";
     });
+
+    MigrateDatabase(app);
 }
 
+app.UseForwardedHeaders();
 app.UseAuthentication();
 app.UseAuthorization();
-
-// Вычисляет X-User-Id из JWT sub (UUIDv5), чтобы эндпоинты не могли доверять заголовку от клиента.
-// Internal-эндпоинты (AllowAnonymous, без JWT) сохраняют входящий заголовок - они доверяют сети.
-app.UseMiddleware<JwtSubToHeaderMiddleware>();
 
 app.UseExceptionHandler(exApp => exApp.Run(async ctx =>
 {
@@ -291,6 +309,20 @@ app.MapGet("/guilds/probe", async (IDistributedCache cache, ILogger<Program> log
 
 app.Run();
 
+static void MigrateDatabase(WebApplication app)
+{
+    using var scope = app.Services.CreateScope();
+    var dbContext = scope.ServiceProvider.GetRequiredService<GuildDbContext>();
+
+    // GetPendingMigrations() / Migrate() are relational-only. Integration tests swap the
+    // provider for EF Core InMemory, where calling them throws.
+    if (!dbContext.Database.IsRelational())
+        return;
+
+    if (dbContext.Database.GetPendingMigrations().Any())
+        dbContext.Database.Migrate();
+}
+
 internal sealed class ExcludeNonPublicEndpointsFilter : IDocumentFilter
 {
     private static readonly string[] ExcludedPrefixes =
@@ -304,5 +336,21 @@ internal sealed class ExcludeNonPublicEndpointsFilter : IDocumentFilter
 
         foreach (var path in toRemove)
             swaggerDoc.Paths.Remove(path);
+    }
+}
+
+file sealed class ZitadelBackchannelHandler(string externalBase, string internalBase) : HttpClientHandler
+{
+    private readonly string _ext = externalBase.TrimEnd('/');
+    private readonly string _int = internalBase.TrimEnd('/');
+    private readonly string _host = new Uri(externalBase).Authority;
+
+    protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage req, CancellationToken ct)
+    {
+        var uri = req.RequestUri!.ToString();
+        if (uri.StartsWith(_ext, StringComparison.OrdinalIgnoreCase))
+            req.RequestUri = new Uri(_int + uri[_ext.Length..]);
+        req.Headers.Host = _host;
+        return base.SendAsync(req, ct);
     }
 }

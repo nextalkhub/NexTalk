@@ -1,16 +1,28 @@
+using System.Net;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
+using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using Prometheus;
 using Serilog;
+using IPNetwork = System.Net.IPNetwork;
 
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Configuration.AddJsonFile("/zitadel-config/swagger-config.json", optional: true, reloadOnChange: true);
 
 builder.Services.AddSerilog((_, lc) => lc.ReadFrom.Configuration(builder.Configuration));
+
+builder.Services.Configure<ForwardedHeadersOptions>(options =>
+{
+    options.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
+
+    options.KnownIPNetworks.Add(new IPNetwork(IPAddress.Parse("172.16.0.0"), 12));
+    options.KnownIPNetworks.Add(new IPNetwork(IPAddress.Parse("10.0.0.0"), 8));
+});
+
 
 builder.Services.AddHealthChecks();
 
@@ -26,6 +38,9 @@ builder.Services
         o.Authority = zitadelAuthority;
         o.MetadataAddress = zitadelMetadata;
         o.RequireHttpsMetadata = false;
+        o.BackchannelHttpHandler = new ZitadelBackchannelHandler(
+            externalBase: zitadelAuthority,
+            internalBase: new Uri(zitadelMetadata).GetLeftPart(UriPartial.Authority));
         o.TokenValidationParameters = new TokenValidationParameters
         {
             ValidateIssuer = true,
@@ -122,6 +137,7 @@ if (app.Environment.IsDevelopment())
     });
 }
 
+app.UseForwardedHeaders();
 app.UseAuthentication();
 app.UseAuthorization();
 
@@ -136,8 +152,24 @@ app.UseSerilogRequestLogging(opts =>
 
 app.MapHealthChecks("/healthz", new HealthCheckOptions { Predicate = _ => false })
     .AllowAnonymous();
-app.MapHealthChecks("/readyz", new HealthCheckOptions { Predicate = _ => false })
+app.MapHealthChecks("/readyz", new HealthCheckOptions { Predicate = _ => true })
     .AllowAnonymous();
 app.MapMetrics().AllowAnonymous();
 
 app.Run();
+
+file sealed class ZitadelBackchannelHandler(string externalBase, string internalBase) : HttpClientHandler
+{
+    private readonly string _ext = externalBase.TrimEnd('/');
+    private readonly string _int = internalBase.TrimEnd('/');
+    private readonly string _host = new Uri(externalBase).Authority;
+
+    protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage req, CancellationToken ct)
+    {
+        var uri = req.RequestUri!.ToString();
+        if (uri.StartsWith(_ext, StringComparison.OrdinalIgnoreCase))
+            req.RequestUri = new Uri(_int + uri[_ext.Length..]);
+        req.Headers.Host = _host;
+        return base.SendAsync(req, ct);
+    }
+}
