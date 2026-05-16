@@ -4,6 +4,6 @@ namespace NexTalk.Guild.Service.Shared;
 
 public class VoiceServiceClient(HttpClient http)
 {
-    public Task DisconnectAllFromChannelAsync(Guid channelId, CancellationToken ct = default) =>
+    public virtual Task DisconnectAllFromChannelAsync(Guid channelId, CancellationToken ct = default) =>
         http.PostAsJsonAsync($"/internal/channels/{channelId}/disconnect-all", new { }, ct);
 }
