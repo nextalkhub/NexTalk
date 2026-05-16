@@ -9,34 +9,31 @@ namespace NextTalk.Websocket.Gateway.Infrastructure;
 public sealed class GuildServiceClient(HttpClient http, ILogger<GuildServiceClient> logger)
 {
     /// <summary>
-    /// Проверяет, есть ли у пользователя хотя бы роль Member в указанной гильдии.
-    ///
-    /// Эндпоинт: GET /internal/guilds/{guildId}/access?userId={userId}&amp;requiredRole=Member
-    ///
-    /// Примечание: в README §6 описан эндпоинт GET /internal/channels/{channelId}/check-access,
-    /// но реальная реализация Guild Service работает с guildId, а не channelId.
-    /// WS Gateway поэтому требует guildId от вызывающей стороны.
+    /// Проверяет доступ пользователя к каналу и возвращает метаданные канала.
+    /// Эндпоинт: GET /internal/channels/{channelId}/access?userId={userId}
     /// </summary>
-    public async Task<(bool HasAccess, string? Role)> CheckAccessAsync(
-        Guid guildId, Guid userId, string correlationId, CancellationToken ct = default)
+    public async Task<ChannelAccessResult?> CheckChannelAccessAsync(
+        Guid channelId, Guid userId, string correlationId, CancellationToken ct = default)
     {
         using var request = new HttpRequestMessage(
             HttpMethod.Get,
-            $"/internal/guilds/{guildId}/access?userId={userId}&requiredRole=Member");
+            $"/internal/channels/{channelId}/access?userId={userId}");
         request.Headers.TryAddWithoutValidation("X-Correlation-Id", correlationId);
 
         using var response = await http.SendAsync(request, ct);
 
+        if (response.StatusCode == System.Net.HttpStatusCode.NotFound)
+            return null;
+
         if (!response.IsSuccessStatusCode)
         {
             logger.LogWarning(
-                "Guild check-access: guild={GuildId} user={UserId} status={Status} correlation={CorrelationId}",
-                guildId, userId, (int)response.StatusCode, correlationId);
-            return (false, null);
+                "Guild channel-access: channel={ChannelId} user={UserId} status={Status} correlation={CorrelationId}",
+                channelId, userId, (int)response.StatusCode, correlationId);
+            return null;
         }
 
-        var result = await response.Content.ReadFromJsonAsync<AccessResult>(ct);
-        return (result?.HasAccess ?? false, result?.Role);
+        return await response.Content.ReadFromJsonAsync<ChannelAccessResult>(ct);
     }
 
     /// <summary>
@@ -62,7 +59,7 @@ public sealed class GuildServiceClient(HttpClient http, ILogger<GuildServiceClie
         return await response.Content.ReadFromJsonAsync<List<GuildDto>>(ct) ?? [];
     }
 
-    private record AccessResult(bool HasAccess, string? Role);
+    public record ChannelAccessResult(bool HasAccess, Guid GuildId, string ChannelType, string? Role);
 
     public record GuildDto(Guid Id, string Name, string DisplayName, Guid OwnerId, DateTime CreatedAt);
 }
