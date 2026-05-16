@@ -24,7 +24,7 @@ public sealed class WsGatewayClient(HttpClient http, ILogger<WsGatewayClient> lo
             HttpMethod.Post,
             $"/internal/broadcast/guild/{guildId}")
         {
-            Content = JsonContent.Create(new { EventType = eventType, Payload = payload })
+            Content = JsonContent.Create(new { Type = eventType, Payload = payload })
         };
         request.Headers.TryAddWithoutValidation("X-Correlation-Id", correlationId);
 
