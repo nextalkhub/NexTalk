@@ -13,7 +13,7 @@ public static class BroadcastEndpoints
             {
                 await hub.Clients
                     .Group(ChatHub.GuildGroup(guildId))
-                    .SendAsync("GatewayEvent", new { req.EventType, req.Payload });
+                    .SendAsync("GatewayEvent", new { req.Type, req.Payload });
                 return Results.NoContent();
             }).AllowAnonymous().ExcludeFromDescription();
 
@@ -24,13 +24,13 @@ public static class BroadcastEndpoints
                 {
                     await hub.Clients
                         .Group(ChatHub.GuildGroup(req.GuildId.Value))
-                        .SendAsync("GatewayEvent", new { req.EventType, req.Payload });
+                        .SendAsync("GatewayEvent", new { req.Type, req.Payload });
                 }
                 return Results.NoContent();
             }).AllowAnonymous().ExcludeFromDescription();
     }
 
-    public record BroadcastGuildRequest(string EventType, JsonElement? Payload);
+    public record BroadcastGuildRequest(string Type, JsonElement? Payload);
 
-    public record BroadcastRequest(string EventType, Guid? GuildId, JsonElement? Payload);
+    public record BroadcastRequest(string Type, Guid? GuildId, JsonElement? Payload);
 }

@@ -6,15 +6,14 @@ namespace NextTalk.Websocket.Gateway.Features.Disconnect;
 /// <summary>
 /// Internal disconnect endpoints — NOT exposed via Nginx.
 ///
-/// Matching the actual WsGatewayClient.cs contract used by Guild Service:
-///
 ///   POST /internal/disconnect/{userId}
-///     Called by: Guild Service (kick — полное отключение)
-///     Action: отправляет force.disconnect GatewayEvent в соединение пользователя
+///     Полное отключение пользователя от WS Gateway (резерв для будущих сценариев).
+///     Action: отправляет force.disconnect GatewayEvent в соединение пользователя.
 ///
 ///   POST /internal/disconnect/guild/{guildId}/user/{userId}
-///     Called by: Guild Service (ban — отключение из конкретной гильдии)
-///     Action: отправляет guild.force.disconnect GatewayEvent с id забаненной гильдии
+///     Called by: Guild Service при бане или кике участника.
+///     Action: отправляет guild.force.disconnect пользователю,
+///             затем рассылает member.left всей гильдии.
 /// </summary>
 public static class DisconnectEndpoints
 {
@@ -28,7 +27,7 @@ public static class DisconnectEndpoints
                 {
                     await hub.Clients
                         .Client(entry.ConnectionId)
-                        .SendAsync("GatewayEvent", new { Type = "force.disconnect" });
+                        .SendAsync("GatewayEvent", new { Type = "force.disconnect", Payload = (object?)null });
                 }
                 return Results.NoContent();
             }).AllowAnonymous().ExcludeFromDescription();
@@ -39,10 +38,21 @@ public static class DisconnectEndpoints
                 var entry = connections.Get(userId);
                 if (entry is not null)
                 {
+                    // Уведомляем пользователя о бане — он должен покинуть гильдию на клиенте.
                     await hub.Clients
                         .Client(entry.ConnectionId)
-                        .SendAsync("GatewayEvent", new { Type = "guild.force.disconnect", GuildId = guildId });
+                        .SendAsync("GatewayEvent", new { Type = "guild.force.disconnect", Payload = new { GuildId = guildId } });
+
+                    // Удаляем из SignalR-группы сразу — иначе пользователь продолжит получать
+                    // события гильдии до физического разрыва соединения.
+                    await hub.Groups.RemoveFromGroupAsync(entry.ConnectionId, ChatHub.GuildGroup(guildId));
                 }
+
+                // Уведомляем участников гильдии — пользователь покинул сервер.
+                await hub.Clients
+                    .Group(ChatHub.GuildGroup(guildId))
+                    .SendAsync("GatewayEvent", new { Type = "member.left", Payload = new { UserId = userId, GuildId = guildId } });
+
                 return Results.NoContent();
             }).AllowAnonymous().ExcludeFromDescription();
     }
