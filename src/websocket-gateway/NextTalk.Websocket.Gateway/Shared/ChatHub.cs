@@ -105,7 +105,7 @@ public sealed class ChatHub : Hub
             channelId, guildId, content, idempotencyKey,
             userId, GetDisplayName(), correlationId);
         
-        var result = await _sendMessageHandler.HandleAsync(command);
+        var result = await _sendMessageHandler.HandleAsync(command, Context.ConnectionAborted);
 
         if (!result.Success)
         {
@@ -130,16 +130,7 @@ public sealed class ChatHub : Hub
         return Task.CompletedTask;
     }
     
-    private Guid GetUserId()
-    {
-        var sub = Context.UserIdentifier;
-        return Guid.TryParse(sub, out var id) ? id : Guid.Empty;
-    }
+    private Guid GetUserId() => Context.User.GetUserId();
 
-    private string GetDisplayName()
-    {
-        return Context.User?.FindFirstValue("name")
-            ?? Context.User?.FindFirstValue("preferred_username")
-            ?? "Unknown";
-    }
+    private string GetDisplayName() => Context.User.GetDisplayName();
 }

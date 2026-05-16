@@ -11,7 +11,7 @@ public sealed class GuildServiceClient(HttpClient http, ILogger<GuildServiceClie
     /// <summary>
     /// Checks whether a user has at least Member access to the given guild.
     ///
-    /// Endpoint: GET /internal/guilds/{guildId}/access?userId={userId}&requiredRole=Member
+    /// Endpoint: GET /internal/guilds/{guildId}/access?userId={userId}&amp;requiredRole=Member
     ///
     /// NOTE — discrepancy with README §6:
     ///   README describes GET /internal/channels/{channelId}/check-access?userId={userId}

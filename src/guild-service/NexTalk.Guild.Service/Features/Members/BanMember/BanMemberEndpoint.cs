@@ -1,4 +1,5 @@
-using Microsoft.AspNetCore.Mvc;
+using NexTalk.Guild.Service.Shared;
+using System.Security.Claims;
 
 namespace NexTalk.Guild.Service.Features.Members.BanMember;
 
@@ -8,11 +9,12 @@ public static class BanMemberEndpoint
         app.MapPost("/guilds/{guildId:guid}/members/{targetUserId:guid}/ban", async (
             Guid guildId,
             Guid targetUserId,
-            [FromHeader(Name = "X-User-Id")] Guid userId,
+            ClaimsPrincipal user,
             BanMemberHandler handler,
             CancellationToken ct) =>
         {
-            await handler.HandleAsync(new BanMemberCommand(guildId, targetUserId, userId), ct);
+            await handler.HandleAsync(
+                new BanMemberCommand(guildId, targetUserId, user.GetUserId()), ct);
             return Results.NoContent();
         });
 }

@@ -1,4 +1,5 @@
-using Microsoft.AspNetCore.Mvc;
+using NexTalk.Guild.Service.Shared;
+using System.Security.Claims;
 
 namespace NexTalk.Guild.Service.Features.Members.KickMember;
 
@@ -8,11 +9,12 @@ public static class KickMemberEndpoint
         app.MapDelete("/guilds/{guildId:guid}/members/{targetUserId:guid}", async (
             Guid guildId,
             Guid targetUserId,
-            [FromHeader(Name = "X-User-Id")] Guid userId,
+            ClaimsPrincipal user,
             KickMemberHandler handler,
             CancellationToken ct) =>
         {
-            await handler.HandleAsync(new KickMemberCommand(guildId, targetUserId, userId), ct);
+            await handler.HandleAsync(
+                new KickMemberCommand(guildId, targetUserId, user.GetUserId()), ct);
             return Results.NoContent();
         });
 }
