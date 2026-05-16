@@ -8,7 +8,7 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
 #nullable disable
 
-namespace NexTalk.Guild.Service.Infrastructure
+namespace NexTalk.Guild.Service.Infrastructure.Migrations
 {
     [DbContext(typeof(GuildDbContext))]
     partial class GuildDbContextModelSnapshot : ModelSnapshot

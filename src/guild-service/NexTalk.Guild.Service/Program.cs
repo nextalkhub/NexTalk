@@ -197,6 +197,8 @@ if (app.Environment.IsDevelopment())
         c.RoutePrefix = "swagger";
         c.DocumentTitle = "Guild Service API";
     });
+
+    MigrateDatabase(app);
 }
 
 app.UseAuthentication();
@@ -292,6 +294,17 @@ app.MapGet("/guilds/probe", async (IDistributedCache cache, ILogger<Program> log
 
 
 app.Run();
+
+static void MigrateDatabase(WebApplication app)
+{
+    using var scope = app.Services.CreateScope();
+    var dbContext = scope.ServiceProvider.GetRequiredService<GuildDbContext>();
+    
+    if (dbContext.Database.GetPendingMigrations().Any())
+    {
+        dbContext.Database.Migrate();
+    }
+}
 
 internal sealed class ExcludeNonPublicEndpointsFilter : IDocumentFilter
 {

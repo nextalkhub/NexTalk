@@ -3,7 +3,7 @@ using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
 
-namespace NexTalk.Guild.Service.Infrastructure
+namespace NexTalk.Guild.Service.Infrastructure.Migrations
 {
     /// <inheritdoc />
     public partial class Initial : Migration

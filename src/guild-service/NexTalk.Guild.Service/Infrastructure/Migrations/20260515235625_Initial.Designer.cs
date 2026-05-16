@@ -9,10 +9,10 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
 #nullable disable
 
-namespace NexTalk.Guild.Service.Infrastructure
+namespace NexTalk.Guild.Service.Infrastructure.Migrations
 {
     [DbContext(typeof(GuildDbContext))]
-    [Migration("20260515234903_Initial")]
+    [Migration("20260515235625_Initial")]
     partial class Initial
     {
         /// <inheritdoc />
