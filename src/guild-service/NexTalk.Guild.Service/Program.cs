@@ -14,7 +14,7 @@ using NexTalk.Guild.Service.Features.Channels.GetChannels;
 using NexTalk.Guild.Service.Features.Guilds.CreateGuild;
 using NexTalk.Guild.Service.Features.Guilds.DeleteGuild;
 using NexTalk.Guild.Service.Features.Guilds.GetUserGuilds;
-using NexTalk.Guild.Service.Features.Internal.CheckAccess;
+using NexTalk.Guild.Service.Features.Internal.CheckChannelAccess;
 using NexTalk.Guild.Service.Features.Internal.GetGuildMembers;
 using NexTalk.Guild.Service.Features.Internal.GetUserGuildsInternal;
 using NexTalk.Guild.Service.Features.Invites.AcceptInvite;
@@ -91,7 +91,7 @@ builder.Services.AddScoped<KickMemberHandler>();
 builder.Services.AddScoped<BanMemberHandler>();
 
 // Internal handlers
-builder.Services.AddScoped<CheckAccessHandler>();
+builder.Services.AddScoped<CheckChannelAccessHandler>();
 builder.Services.AddScoped<GetGuildMembersHandler>();
 builder.Services.AddScoped<GetUserGuildsInternalHandler>();
 
@@ -268,7 +268,7 @@ BanMemberEndpoint.Map(app);
 
 // Internal-эндпоинты
 var internalEndpoints = app.MapGroup("").AllowAnonymous();
-CheckAccessEndpoint.Map(internalEndpoints);
+CheckChannelAccessEndpoint.Map(internalEndpoints);
 GetGuildMembersEndpoint.Map(internalEndpoints);
 GetUserGuildsInternalEndpoint.Map(internalEndpoints);
 
