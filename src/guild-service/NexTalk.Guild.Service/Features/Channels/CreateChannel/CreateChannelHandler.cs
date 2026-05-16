@@ -30,7 +30,7 @@ public class CreateChannelHandler(GuildDbContext db, RbacService rbac, WsGateway
 
         try
         {
-            await wsGateway.BroadcastToGuildAsync(cmd.GuildId, "channel-created",
+            await wsGateway.BroadcastToGuildAsync(cmd.GuildId, "channel.created",
                 new { channel.Id, channel.GuildId, channel.Name, channel.Type }, ct);
         }
         catch { /* best-effort */ }
