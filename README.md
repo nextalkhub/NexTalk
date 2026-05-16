@@ -680,28 +680,36 @@ Outbox Pattern: в одной транзакции `INSERT message + INSERT outb
 
 #### SignalR Hub - события сервер → клиент
 
-| Событие | Payload | Источник |
+Все события приходят через один метод `GatewayEvent`.  
+Формат: `{ "type": "<event.type>", "payload": { ...поля } }`.
+
+| `type` | Поля в `payload` | Источник |
 |:--|:--|:--|
-| `ReceiveMessage` | `{ messageId, channelId, authorId, content, createdAt }` | Новое сообщение (из Outbox) |
-| `MessageDeleted` | `{ messageId, channelId }` | Сообщение удалено |
-| `MemberJoined` | `{ guildId, userId, username, displayName, role }` | Пользователь принял инвайт |
-| `MemberLeft` | `{ guildId, userId }` | Участник кикнут |
-| `MemberBanned` | `{ guildId, userId }` | Участник забанен |
-| `RoleUpdated` | `{ guildId, userId, role }` | Роль изменена |
-| `ChannelCreated` | `{ guildId, channelId, name, type }` | Создан канал |
-| `ChannelDeleted` | `{ guildId, channelId }` | Канал удален |
-| `GuildDeleted` | `{ guildId }` | Сервер удален |
-| `UserOnline` | `{ guildId, userId }` | Участник онлайн (получен Heartbeat) |
-| `UserOffline` | `{ guildId, userId }` | Участник офлайн (30 сек без Heartbeat) |
-| `VoiceJoined` | `{ channelId, userId }` | Вошел в голосовой канал |
-| `VoiceLeft` | `{ channelId, userId }` | Вышел из голосового канала |
+| `message.created` | `{ messageId, channelId, guildId, authorId, authorName, content, createdAt }` | Новое сообщение (Outbox → BroadcastConsumer) |
+| `message.deleted` | `{ messageId, channelId, guildId }` | Сообщение удалено |
+| `member.joined` | `{ id, userId, guildId, displayName, username }` | Пользователь принял инвайт |
+| `member.kicked` | `{ userId, guildId }` | Участник кикнут |
+| `member.banned` | `{ userId, guildId }` | Участник забанен |
+| `member.left` | `{ userId, guildId }` | Участник покинул гильдию (после кика/бана) |
+| `role.assigned` | `{ userId, guildId, role }` | Роль изменена |
+| `channel.created` | `{ id, guildId, name, type }` | Создан канал |
+| `channel.deleted` | `{ channelId, guildId }` | Канал удален |
+| `guild.deleted` | `{ guildId }` | Сервер удален |
+| `presence.online` | `{ userId }` | Участник онлайн |
+| `presence.offline` | `{ userId }` | Участник офлайн (30 сек без Heartbeat) |
+| `voice.joined` | `{ userId, channelId }` | Вошел в голосовой канал |
+| `voice.left` | `{ userId, channelId }` | Вышел из голосового канала |
+| `guild.force.disconnect` | `{ guildId }` | Принудительное отключение от гильдии (бан/кик) |
+
+> `MessageAck` и `Error` — прямые методы (не `GatewayEvent`), отправляются только инициатору действия.
 
 #### Internal эндпоинты
 
 | Метод | Путь | Назначение |
 |:--|:--|:--|
-| `POST` | `/internal/broadcast/guild/{guildId}` | Broadcast события клиентам гильдии. Body: `{ eventType, payload }` |
-| `POST` | `/internal/disconnect/guild/{guildId}/user/{userId}` | Принудительное отключение пользователя (при бане) |
+| `POST` | `/internal/broadcast/guild/{guildId}` | Broadcast события клиентам гильдии. Body: `{ type, payload }` |
+| `POST` | `/internal/disconnect/guild/{guildId}/user/{userId}` | Отключение из гильдии (кик/бан): шлёт `guild.force.disconnect` пользователю + `member.left` гильдии |
+| `POST` | `/internal/disconnect/{userId}` | Полное отключение пользователя: шлёт `force.disconnect` |
 
 In-memory: `ConcurrentDictionary` для presence (`userId → lastSeen`), ConnectionManager (`userId → connectionId`).
 

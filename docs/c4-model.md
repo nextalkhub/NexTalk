@@ -851,20 +851,23 @@ modelConnections:
    COMMIT
 
 6. Guild Service → WS Gateway (HTTP):
-   POST /internal/disconnect/X { guildId: Y, reason: 'banned' }
-7. WS Gateway (SignalR):
-   a. → React SPA (клиент X): { type: 'banned', guildId, reason }
-   b. WS Gateway: принудительно закрывает SignalR-соединение клиента X
-   c. → React SPA (остальные участники гильда): { type: 'member.left', userId: X }
+   POST /internal/broadcast/guild/{guildId} { type: 'member.banned', payload: { userId: X, guildId: Y } }
+7. Guild Service → WS Gateway (HTTP):
+   POST /internal/disconnect/guild/{guildId}/user/{userId}
+8. WS Gateway (SignalR):
+   a. → React SPA (клиент X): GatewayEvent { type: 'guild.force.disconnect', payload: { guildId: Y } }
+   b. WS Gateway удаляет X из SignalR-группы гильдии
+   c. → React SPA (участники гильдии, кроме X): GatewayEvent { type: 'member.left', payload: { userId: X, guildId: Y } }
 
-8. [Если X находился в голосовом канале] Guild Service → Voice Service (HTTP):
-   DELETE /internal/voice/X/disconnect
-9. Voice Service → LiveKit HTTP API: RemoveParticipant(identity=X)
-10. Voice Service → SessionStore: Удалить X из всех комнат гильда
-11. Voice Service → WS Gateway (HTTP):
-    POST /internal/broadcast { type: 'voice.left', userId, channelId }
-12. WS Gateway → React SPA (участники голосового канала, SignalR):
-    { type: 'voice.left', userId, channelId }
+9. Guild Service → Voice Service (HTTP):
+   DELETE /internal/voice/{userId}/disconnect
+   [идемпотентен: если X не был в голосе — 204 без ошибки]
+10. Voice Service → SessionStore: Удалить сессию X (получить channelId, guildId)
+11. Voice Service → LiveKit HTTP API: RemoveParticipant(identity=X)
+12. Voice Service → WS Gateway (HTTP):
+    POST /internal/broadcast/guild/{guildId} { type: 'voice.left', payload: { userId: X, channelId } }
+13. WS Gateway → React SPA (участники гильдии, SignalR):
+    GatewayEvent { type: 'voice.left', payload: { userId: X, channelId } }
 ```
 
 ### Flow 7: Heartbeat и Presence
