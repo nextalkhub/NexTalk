@@ -9,6 +9,7 @@ using Microsoft.Extensions.Http.Resilience;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using NexTalk.Messaging.Service.Features.Messages.CreateMessage;
+using NexTalk.Messaging.Service.Features.Messages.GetMessages;
 using NexTalk.Messaging.Service.Infrastructure;
 using NexTalk.Messaging.Service.Infrastructure.Outbox;
 using NexTalk.Messaging.Service.Shared;
@@ -58,7 +59,21 @@ builder.Services.AddHttpClient<WsGatewayClient>(c => c.BaseAddress = new Uri(wsG
         pipeline.AddTimeout(TimeSpan.FromSeconds(5));
     });
 
+builder.Services.AddHttpContextAccessor();
+
+// HTTP client to Guild Service для проверки доступа к каналу (Flow 11)
+builder.Services.AddHttpClient<IGuildServiceClient, GuildServiceClient>(c =>
+        c.BaseAddress = new Uri(builder.Configuration["Services:GuildService"]
+            ?? throw new InvalidOperationException("Services:GuildService is not configured")))
+    .AddStandardResilienceHandler(opts =>
+    {
+        opts.AttemptTimeout.Timeout = TimeSpan.FromSeconds(3);
+        opts.TotalRequestTimeout.Timeout = TimeSpan.FromSeconds(10);
+        opts.CircuitBreaker.SamplingDuration = TimeSpan.FromSeconds(30);
+    });
+
 builder.Services.AddScoped<CreateMessageHandler>();
+builder.Services.AddScoped<GetMessagesHandler>();
 
 // Аутентификация: проверка JWT access-токенов, выпущенных Zitadel.
 var zitadelAuthority = builder.Configuration["Zitadel:Authority"] ?? throw new InvalidOperationException("Zitadel:Authority is not configured");
@@ -74,7 +89,7 @@ builder.Services
         o.MetadataAddress = zitadelMetadata;
         o.RequireHttpsMetadata = false;
         // Discovery doc возвращает jwks_uri с внешним hostname (http://localhost:8080/...).
-        // Изнутри Docker-контейнера localhost - это сам контейнер, а не nginx -> Connection refused.
+        // Изнутри Docker-контейнера localhost — это сам контейнер, а не nginx → Connection refused.
         // Handler перенаправляет все backchannel-запросы на внутренний zitadel-api
         // и проставляет Host: localhost:8080, чтобы Zitadel нашёл нужный инстанс.
         o.BackchannelHttpHandler = new ZitadelBackchannelHandler(
@@ -203,6 +218,18 @@ app.UseMiddleware<DeadlineMiddleware>();
 
 app.UseHttpMetrics();
 
+// Propagate JWT "sub" claim as X-User-Id so GetMessages endpoint can bind [FromHeader] Guid userId.
+app.Use(async (ctx, next) =>
+{
+    if (ctx.User.Identity?.IsAuthenticated == true)
+    {
+        var sub = ctx.User.FindFirst("sub")?.Value
+            ?? ctx.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+        if (sub is not null) ctx.Request.Headers["X-User-Id"] = sub;
+    }
+    await next();
+});
+
 app.UseSerilogRequestLogging(opts =>
     opts.EnrichDiagnosticContext = (dc, ctx) =>
         dc.Set("CorrelationId",
@@ -210,8 +237,12 @@ app.UseSerilogRequestLogging(opts =>
             ?? ctx.Request.Headers["X-Correlation-Id"].FirstOrDefault()
             ?? ctx.TraceIdentifier));
 
-// Internal endpoints
+// Internal endpoint — вызывается WS Gateway, AllowAnonymous задан в эндпоинте
 CreateMessageEndpoint.Map(app);
+
+// Публичные эндпоинты — требуют валидного JWT
+var api = app.MapGroup("").RequireAuthorization();
+GetMessagesEndpoint.Map(api);
 
 app.MapHealthChecks("/healthz", new HealthCheckOptions { Predicate = _ => false })
     .AllowAnonymous();
@@ -250,3 +281,5 @@ file sealed class ZitadelBackchannelHandler(string externalBase, string internal
         return base.SendAsync(req, ct);
     }
 }
+
+public partial class Program;
