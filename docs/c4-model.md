@@ -117,7 +117,7 @@
 | ChannelController | CRUD каналов |
 | InviteController | Создание и принятие инвайтов |
 | MemberController | Список, кик, бан, назначение ролей |
-| InternalAccessController | GET /internal/channels/{id}/check-access |
+| InternalAccessController | GET /internal/channels/{id}/access |
 | InternalUserController | GET /internal/users/{userId}/guilds |
 | InternalMembersController | GET /internal/guilds/{id}/members |
 | RbacService | Проверка прав (3 фиксированные роли: Owner/Admin/Member) |
@@ -407,7 +407,7 @@ modelObjects:
   name: InternalAccessController
   type: component
   parentId: app-guild
-  description: GET /internal/channels/{id}/check-access
+  description: GET /internal/channels/{id}/access
 
 - id: comp-guild-internal-users
   name: InternalUserController
@@ -579,7 +579,7 @@ modelConnections:
   originId: app-ws-gateway
   targetId: app-guild
   direction: outgoing
-  description: 'GET /internal/channels/*/check-access + GET /internal/users/{userId}/guilds (Retry + CB)'
+  description: 'GET /internal/channels/*/access + GET /internal/users/{userId}/guilds (Retry + CB)'
 
 - id: conn-messaging-guild
   name: HTTP (Polly)
@@ -748,7 +748,7 @@ modelConnections:
    SendMessage(channelId, text, idempotencyKey)
 
 4. WS Gateway → Guild Service (HTTP, Polly: Retry+CB):
-   GET /internal/channels/{channelId}/check-access?userId=A
+   GET /internal/channels/{channelId}/access?userId=A
 5. Guild Service → PostgreSQL: SELECT member
 6. Guild Service → WS Gateway: { allowed: true, guildId }
 
@@ -789,7 +789,7 @@ modelConnections:
 3. Nginx → Voice Service: Proxy POST /api/voice/{channelId}/join
 
 4. Voice Service → Guild Service (HTTP, Polly: CB + Deadline):
-   GET /internal/channels/{channelId}/check-access?userId=X
+   GET /internal/channels/{channelId}/access?userId=X
    Headers: X-Correlation-Id, X-Deadline
 5. Guild Service → PostgreSQL: SELECT member, channel WHERE channel.type = 'voice'
 6. Guild Service → Voice Service: { allowed: true }
@@ -893,7 +893,7 @@ modelConnections:
 Сценарий: Guild Service упал при отправке сообщения.
 
 1. React SPA → Nginx → WS Gateway (SignalR): SendMessage(channelId, text)
-2. WS Gateway → Guild Service: GET /internal/channels/{id}/check-access
+2. WS Gateway → Guild Service: GET /internal/channels/{id}/access
    Попытка 1: Timeout 2с → Polly Retry (backoff ~200ms)
    Попытка 2: Connection refused → Polly Retry (backoff ~400ms)
    Попытка 3: Connection refused → Fail (ошибка накапливается)
@@ -954,7 +954,7 @@ modelConnections:
 
 4. Messaging Service: Валидация JWT → userId
 5. Messaging Service → Guild Service (HTTP, Polly: CB + Deadline):
-   GET /internal/channels/{channelId}/check-access?userId=X
+   GET /internal/channels/{channelId}/access?userId=X
    Headers: X-Correlation-Id, X-Deadline
 6. Guild Service → Messaging Service: { allowed: true }
 
@@ -1035,7 +1035,7 @@ modelConnections:
    SELECT message WHERE id={messageId}
    Проверяет: message.author_id == callerId → разрешено (автор)
    Если нет → Messaging Service → Guild Service (HTTP, Polly: CB + Deadline):
-     GET /internal/channels/{channelId}/check-access?userId=callerId
+     GET /internal/channels/{channelId}/access?userId=callerId
      Guild Service: callerRole == 'Admin' или 'Owner' → разрешено
      Guild Service: callerRole == 'Member' → 403 Forbidden
 
@@ -1091,7 +1091,7 @@ modelConnections:
    Messaging Service: устанавливает X-Deadline = NOW() + 5 сек
 
 2. Messaging Service → Guild Service (HTTP, Polly: CB + Deadline):
-   GET /internal/channels/{channelId}/check-access?userId=X
+   GET /internal/channels/{channelId}/access?userId=X
    Headers: X-Deadline = <UTC timestamp>
 
 3. Guild Service: DeadlineMiddleware проверяет X-Deadline
