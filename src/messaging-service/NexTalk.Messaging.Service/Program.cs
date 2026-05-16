@@ -61,16 +61,16 @@ builder.Services.AddScoped<CreateMessageHandler>();
 
 // Аутентификация: проверка JWT access-токенов, выпущенных Zitadel.
 var zitadelAuthority = builder.Configuration["Zitadel:Authority"] ?? throw new InvalidOperationException("Zitadel:Authority is not configured");
-var zitadelMetadata   = builder.Configuration["Zitadel:MetadataAddress"] ?? throw new InvalidOperationException("Zitadel:MetadataAddress is not configured");
-var zitadelProjectId  = builder.Configuration["Zitadel:ProjectId"];
-var swaggerClientId   = builder.Configuration["Zitadel:SwaggerClientId"];
+var zitadelMetadata = builder.Configuration["Zitadel:MetadataAddress"] ?? throw new InvalidOperationException("Zitadel:MetadataAddress is not configured");
+var zitadelProjectId = builder.Configuration["Zitadel:ProjectId"];
+var swaggerClientId = builder.Configuration["Zitadel:SwaggerClientId"];
 
 builder.Services
     .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(o =>
     {
-        o.Authority          = zitadelAuthority;
-        o.MetadataAddress    = zitadelMetadata;
+        o.Authority = zitadelAuthority;
+        o.MetadataAddress = zitadelMetadata;
         o.RequireHttpsMetadata = false;
         // Discovery doc возвращает jwks_uri с внешним hostname (http://localhost:8080/...).
         // Изнутри Docker-контейнера localhost - это сам контейнер, а не nginx -> Connection refused.
@@ -81,14 +81,14 @@ builder.Services
             internalBase: new Uri(zitadelMetadata).GetLeftPart(UriPartial.Authority));
         o.TokenValidationParameters = new TokenValidationParameters
         {
-            ValidateIssuer   = true,
-            ValidIssuer      = zitadelAuthority,
+            ValidateIssuer = true,
+            ValidIssuer = zitadelAuthority,
             ValidateAudience = !string.IsNullOrEmpty(zitadelProjectId),
-            ValidAudiences   = string.IsNullOrEmpty(zitadelProjectId)
+            ValidAudiences = string.IsNullOrEmpty(zitadelProjectId)
                 ? null
                 : new[] { zitadelProjectId },
             ValidateLifetime = true,
-            NameClaimType    = "preferred_username",
+            NameClaimType = "preferred_username",
         };
     });
 
@@ -102,12 +102,12 @@ builder.Services.AddSwaggerGen(c =>
 {
     c.SwaggerDoc("v1", new OpenApiInfo
     {
-        Title       = "Messaging Service",
-        Version     = "v1",
+        Title = "Messaging Service",
+        Version = "v1",
         Description = "Хранение сообщений, Outbox Pattern, идемпотентность."
     });
     c.AddServer(new OpenApiServer { Url = "/api", Description = "Через Nginx (unified)" });
-    c.AddServer(new OpenApiServer { Url = "/",    Description = "Прямой доступ к сервису" });
+    c.AddServer(new OpenApiServer { Url = "/", Description = "Прямой доступ к сервису" });
     c.CustomSchemaIds(type => type.FullName?.Replace("+", ".") ?? type.Name);
 
     var xmlPath = Path.Combine(AppContext.BaseDirectory, "NexTalk.Messaging.Service.xml");
@@ -117,28 +117,28 @@ builder.Services.AddSwaggerGen(c =>
     c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
     {
         Description = "JWT Authorization header using the Bearer scheme. Example: 'Bearer {token}'",
-        Name        = "Authorization",
-        In          = ParameterLocation.Header,
-        Type        = SecuritySchemeType.Http,
-        Scheme      = "bearer",
+        Name = "Authorization",
+        In = ParameterLocation.Header,
+        Type = SecuritySchemeType.Http,
+        Scheme = "bearer",
         BearerFormat = "JWT"
     });
 
     c.AddSecurityDefinition("oauth2", new OpenApiSecurityScheme
     {
-        Type  = SecuritySchemeType.OAuth2,
+        Type = SecuritySchemeType.OAuth2,
         Flows = new OpenApiOAuthFlows
         {
             AuthorizationCode = new OpenApiOAuthFlow
             {
                 AuthorizationUrl = new Uri($"{zitadelAuthority}/oauth/v2/authorize"),
-                TokenUrl         = new Uri($"{zitadelAuthority}/oauth/v2/token"),
-                Scopes           = new Dictionary<string, string>
+                TokenUrl = new Uri($"{zitadelAuthority}/oauth/v2/token"),
+                Scopes = new Dictionary<string, string>
                 {
-                    { "openid",         "OpenID"         },
-                    { "profile",        "Profile"        },
-                    { "email",          "Email"          },
-                    { "offline_access", "Refresh token"  }
+                    { "openid", "OpenID" },
+                    { "profile", "Profile" },
+                    { "email", "Email" },
+                    { "offline_access", "Refresh token" }
                 }
             }
         }
@@ -151,7 +151,7 @@ builder.Services.AddSwaggerGen(c =>
                 Reference = new OpenApiReference
                 {
                     Type = ReferenceType.SecurityScheme,
-                    Id   = "oauth2"
+                    Id = "oauth2"
                 }
             },
             ["openid", "profile", "email"]
@@ -173,7 +173,7 @@ if (app.Environment.IsDevelopment())
         c.OAuthScopes("openid", "profile", "email");
         c.OAuthUsePkce();
         c.SwaggerEndpoint("v1/swagger.json", "Messaging Service v1");
-        c.RoutePrefix  = "swagger";
+        c.RoutePrefix = "swagger";
         c.DocumentTitle = "Messaging Service API";
     });
 
@@ -192,7 +192,7 @@ app.UseExceptionHandler(exApp => exApp.Run(async ctx =>
         NotFoundException e => (StatusCodes.Status404NotFound, e.Message),
         ForbiddenException e => (StatusCodes.Status403Forbidden, e.Message),
         BadRequestException e => (StatusCodes.Status400BadRequest, e.Message),
-        _                    => (StatusCodes.Status500InternalServerError,  "An unexpected error occurred.")
+        _ => (StatusCodes.Status500InternalServerError, "An unexpected error occurred.")
     };
     ctx.Response.StatusCode = status;
     await ctx.Response.WriteAsJsonAsync(new { error = message });

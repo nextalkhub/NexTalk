@@ -86,12 +86,9 @@ public sealed class ChatHub : Hub
 
     /// <summary>
     /// Отправляет сообщение в текстовый канал.
+    /// GuildId не передаётся клиентом — сервер получает его из ответа Guild Service /internal/channels/{channelId}/access.
     /// </summary>
-    /// <param name="channelId"></param>
-    /// <param name="guildId"></param>
-    /// <param name="content"></param>
-    /// <param name="idempotencyKey"></param>
-    public async Task SendMessage(Guid channelId, Guid guildId, string content, string idempotencyKey)
+    public async Task SendMessage(Guid channelId, string content, string idempotencyKey)
     {
         var userId = GetUserId();
         if (userId == Guid.Empty)
@@ -99,10 +96,10 @@ public sealed class ChatHub : Hub
             await Clients.Caller.SendAsync("Error", new { Message = "Unauthorized" });
             return;
         }
-        
+
         var correlationId = Guid.NewGuid().ToString();
         var command = new SendMessageCommand(
-            channelId, guildId, content, idempotencyKey,
+            channelId, content, idempotencyKey,
             userId, GetDisplayName(), correlationId);
         
         var result = await _sendMessageHandler.HandleAsync(command, Context.ConnectionAborted);
