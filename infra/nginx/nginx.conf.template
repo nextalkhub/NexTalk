@@ -145,18 +145,22 @@ http {
 
         location /swagger/guild/ {
             proxy_pass http://guild-service/swagger/;
+            add_header Cache-Control "no-store" always;
         }
 
         location /swagger/messaging/ {
             proxy_pass http://messaging-service/swagger/;
+            add_header Cache-Control "no-store" always;
         }
 
         location /swagger/voice/ {
             proxy_pass http://voice-service/swagger/;
+            add_header Cache-Control "no-store" always;
         }
 
         location /swagger/websocket/ {
             proxy_pass http://websocket-gateway/swagger/;
+            add_header Cache-Control "no-store" always;
         }
 
         # Login UI
