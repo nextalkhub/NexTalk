@@ -16,8 +16,8 @@ public sealed class OutboxWorker(
     OutboxChannel channel,
     ILogger<OutboxWorker> logger) : BackgroundService
 {
-    private static readonly TimeSpan PollingInterval  = TimeSpan.FromSeconds(1);
-    private static readonly TimeSpan StaleThreshold   = TimeSpan.FromMinutes(2);
+    private static readonly TimeSpan PollingInterval = TimeSpan.FromSeconds(1);
+    private static readonly TimeSpan StaleThreshold = TimeSpan.FromMinutes(2);
     private const int BatchSize = 50;
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)

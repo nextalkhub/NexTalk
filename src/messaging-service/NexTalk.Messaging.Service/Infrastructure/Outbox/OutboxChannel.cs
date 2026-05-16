@@ -12,7 +12,7 @@ public sealed class OutboxChannel
     private readonly Channel<OutboxEvent> _channel =
         Channel.CreateBounded<OutboxEvent>(new BoundedChannelOptions(100)
         {
-            FullMode   = BoundedChannelFullMode.Wait,
+            FullMode = BoundedChannelFullMode.Wait,
             SingleWriter = true,
             SingleReader = true,
         });
