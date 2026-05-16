@@ -237,6 +237,8 @@ app.UseExceptionHandler(exApp => exApp.Run(async ctx =>
     await ctx.Response.WriteAsJsonAsync(new { error = message });
 }));
 
+app.UseMiddleware<DeadlineMiddleware>();
+
 app.UseHttpMetrics();
 
 app.UseSerilogRequestLogging(opts =>

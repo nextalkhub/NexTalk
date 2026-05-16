@@ -795,10 +795,10 @@ Polly Retry Policy на `IHttpClientFactory`:
 
 ### 8.4 Deadlines
 
-- Заголовок `X-Deadline`: UTC timestamp
-- Middleware: если deadline прошел → 504
-- `CancellationTokenSource` привязан к deadline
-- Default: 5 сек на всю цепочку
+- Заголовок `X-Deadline`: UTC ISO 8601 timestamp (`DateTimeOffset.ToString("O")`)
+- `DeadlineMiddleware` (Guild Service, Messaging Service): если дедлайн истёк — `504 { error, retryAfter: 5 }` сразу; иначе — `CancellationTokenSource(remaining)`, связанный с `HttpContext.RequestAborted`
+- `DeadlineForwardingHandler` (DelegatingHandler в Voice Service): добавляет `X-Deadline = UtcNow + 1.5s` к каждому запросу в Guild Service — меньше Polly Timeout (2s), поэтому DeadlineMiddleware срабатывает первым
+- Default budget: 1.5 секунды (Voice → Guild); общее правило — budget < Polly Timeout на данном клиенте
 
 ### 8.5 Rate Limiting
 
