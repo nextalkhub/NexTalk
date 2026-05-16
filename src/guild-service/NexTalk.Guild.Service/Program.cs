@@ -97,6 +97,13 @@ builder.Services
         o.Authority = zitadelAuthority;
         o.MetadataAddress = zitadelMetadata;
         o.RequireHttpsMetadata = false;
+        // Discovery doc возвращает jwks_uri с внешним hostname (http://localhost:8080/...).
+        // Изнутри Docker-контейнера localhost — это сам контейнер, а не nginx → Connection refused.
+        // Handler перенаправляет все backchannel-запросы на внутренний zitadel-api
+        // и проставляет Host: localhost:8080, чтобы Zitadel нашёл нужный инстанс.
+        o.BackchannelHttpHandler = new ZitadelBackchannelHandler(
+            externalBase: zitadelAuthority,
+            internalBase: new Uri(zitadelMetadata).GetLeftPart(UriPartial.Authority));
         o.TokenValidationParameters = new TokenValidationParameters
         {
             ValidateIssuer = true,
@@ -319,5 +326,21 @@ internal sealed class ExcludeNonPublicEndpointsFilter : IDocumentFilter
 
         foreach (var path in toRemove)
             swaggerDoc.Paths.Remove(path);
+    }
+}
+
+file sealed class ZitadelBackchannelHandler(string externalBase, string internalBase) : HttpClientHandler
+{
+    private readonly string _ext = externalBase.TrimEnd('/');
+    private readonly string _int = internalBase.TrimEnd('/');
+    private readonly string _host = new Uri(externalBase).Authority;
+
+    protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage req, CancellationToken ct)
+    {
+        var uri = req.RequestUri!.ToString();
+        if (uri.StartsWith(_ext, StringComparison.OrdinalIgnoreCase))
+            req.RequestUri = new Uri(_int + uri[_ext.Length..]);
+        req.Headers.Host = _host;
+        return base.SendAsync(req, ct);
     }
 }
