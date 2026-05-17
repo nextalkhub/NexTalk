@@ -10,7 +10,7 @@ namespace NexTalk.Voice.Service.Features.Voice.Leave;
 public static class LeaveVoiceEndpoint
 {
     public static void Map(IEndpointRouteBuilder app) =>
-        app.MapPost("/api/voice/{channelId:guid}/leave", async (
+        app.MapPost("/voice/{channelId:guid}/leave", async (
             Guid channelId,
             ClaimsPrincipal principal,
             LeaveVoiceHandler handler,
