@@ -23,6 +23,8 @@ public class MessagingServiceFactory : WebApplicationFactory<Program>
     public ChannelAccessResult GuildAccessResponse { get; set; } =
         new(true, Guid.NewGuid());
 
+    public bool AdminCheckGranted { get; set; } = true;
+
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
         // UseSetting() is applied BEFORE WebApplication.CreateBuilder reads its Configuration,
@@ -64,7 +66,7 @@ public class MessagingServiceFactory : WebApplicationFactory<Program>
                 .Where(d => d.ServiceType == typeof(IGuildServiceClient))
                 .ToList();
             foreach (var d in clientDescriptors) services.Remove(d);
-            services.AddScoped<IGuildServiceClient>(_ => new FakeGuildServiceClient(GuildAccessResponse));
+            services.AddScoped<IGuildServiceClient>(_ => new FakeGuildServiceClient(GuildAccessResponse, AdminCheckGranted));
 
             // Override JwtBearer: clear Authority/MetadataAddress (no OIDC discovery to fake URL)
             // and provide a symmetric IssuerSigningKey matching TestJwt.SigningKey.

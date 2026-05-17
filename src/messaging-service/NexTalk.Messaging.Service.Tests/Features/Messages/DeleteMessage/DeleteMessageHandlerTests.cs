@@ -60,6 +60,9 @@ public class DeleteMessageHandlerTests
 
         var deleted = await _db.Messages.FirstOrDefaultAsync(m => m.Id == message.Id);
         Assert.Null(deleted);
+
+        _guildServiceMock.Verify(x => x.RequireAdminOrOwnerAsync(
+            It.IsAny<Guid>(), It.IsAny<Guid>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 
     [Fact]
@@ -100,6 +103,9 @@ public class DeleteMessageHandlerTests
 
         var deleted = await _db.Messages.FirstOrDefaultAsync(m => m.Id == message.Id);
         Assert.Null(deleted);
+
+        _guildServiceMock.Verify(x => x.RequireAdminOrOwnerAsync(
+            channelId, adminId, It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Fact]

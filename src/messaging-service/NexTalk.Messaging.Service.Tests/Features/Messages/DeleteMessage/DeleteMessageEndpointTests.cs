@@ -81,6 +81,18 @@ public class DeleteMessageEndpointTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task Delete_WithNonAuthorMember_Returns403()
+    {
+        var (message, _, _, _) = await CreateMessageAsync();
+        _factory.AdminCheckGranted = false;
+        var client = _factory.CreateAuthenticatedClient(Guid.NewGuid());
+
+        var response = await client.DeleteAsync($"/messages/{message.Id}");
+
+        Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
+    }
+
+    [Fact]
     public async Task Delete_WithoutBearerToken_Returns401()
     {
         var (message, _, _, _) = await CreateMessageAsync();
