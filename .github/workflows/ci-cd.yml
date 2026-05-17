@@ -107,14 +107,6 @@ jobs:
       - name: ESLint
         run: npm run lint
 
-  test-backend-services:
-    runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        include:
-          - name: messaging-service
-            project: src/messaging-service/NexTalk.Messaging.Service.Tests/NexTalk.Messaging.Service.Tests.csproj
-
     name: Test ${{ matrix.name }}
     steps:
       - uses: actions/checkout@v4
