@@ -164,6 +164,23 @@ public class CreateInviteEndpointTests(GuildServiceFactory factory) : IClassFixt
     }
 
     [Fact]
+    public async Task PostInvite_WithNonPositiveExpiresInSeconds_Returns400()
+    {
+        var (guildId, ownerId) = await SeedGuildAsync();
+        var client = AuthedClient(ownerId);
+
+        var responseNegative = await client.PostAsJsonAsync(
+            $"/guilds/{guildId}/invites",
+            new { expiresInSeconds = -3600 });
+        var responseZero = await client.PostAsJsonAsync(
+            $"/guilds/{guildId}/invites",
+            new { expiresInSeconds = 0 });
+
+        Assert.Equal(HttpStatusCode.BadRequest, responseNegative.StatusCode);
+        Assert.Equal(HttpStatusCode.BadRequest, responseZero.StatusCode);
+    }
+
+    [Fact]
     public async Task PostInvite_PersistsRowToDb()
     {
         var (guildId, ownerId) = await SeedGuildAsync();

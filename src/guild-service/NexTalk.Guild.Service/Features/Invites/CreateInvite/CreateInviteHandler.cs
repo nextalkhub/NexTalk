@@ -22,6 +22,9 @@ public class CreateInviteHandler(GuildDbContext db, RbacService rbac, IConfigura
 
     public async Task<InviteResponse> HandleAsync(CreateInviteCommand cmd, CancellationToken ct = default)
     {
+        if (cmd.MaxUses.HasValue && cmd.MaxUses.Value <= 0)
+            throw new BadRequestException("maxUses must be a positive integer.");
+
         if (!await db.Guilds.AnyAsync(g => g.Id == cmd.GuildId, ct))
             throw new NotFoundException("Guild not found.");
 
@@ -43,7 +46,7 @@ public class CreateInviteHandler(GuildDbContext db, RbacService rbac, IConfigura
         db.Invites.Add(invite);
         await db.SaveChangesAsync(ct);
 
-        var baseUrl = config["Invites:BaseUrl"] ?? "https://nextalk.app/invite";
+        var baseUrl = config["Invites:BaseUrl"] ?? "https://nextalk.fun/invite";
         var url = $"{baseUrl.TrimEnd('/')}/{invite.Code}";
 
         return new InviteResponse(

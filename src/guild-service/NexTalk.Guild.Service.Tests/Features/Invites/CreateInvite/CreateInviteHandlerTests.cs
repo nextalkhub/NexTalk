@@ -138,12 +138,12 @@ public class CreateInviteHandlerTests
     {
         await using var db = CreateDb();
         var (guildId, callerId) = await SeedGuildAsync(db);
-        var handler = CreateHandler(db, CreateConfig("https://nextalk.app/invite"));
+        var handler = CreateHandler(db, CreateConfig("https://nextalk.fun/invite"));
 
         var result = await handler.HandleAsync(
             new CreateInviteCommand(guildId, null, null, callerId));
 
-        Assert.Equal($"https://nextalk.app/invite/{result.Code}", result.Url);
+        Assert.Equal($"https://nextalk.fun/invite/{result.Code}", result.Url);
     }
 
     [Fact]
@@ -151,12 +151,12 @@ public class CreateInviteHandlerTests
     {
         await using var db = CreateDb();
         var (guildId, callerId) = await SeedGuildAsync(db);
-        var handler = CreateHandler(db, CreateConfig("https://nextalk.app/invite/"));
+        var handler = CreateHandler(db, CreateConfig("https://nextalk.fun/invite/"));
 
         var result = await handler.HandleAsync(
             new CreateInviteCommand(guildId, null, null, callerId));
 
-        Assert.Equal($"https://nextalk.app/invite/{result.Code}", result.Url);
+        Assert.Equal($"https://nextalk.fun/invite/{result.Code}", result.Url);
     }
 
     [Fact]
@@ -170,7 +170,7 @@ public class CreateInviteHandlerTests
         var result = await handler.HandleAsync(
             new CreateInviteCommand(guildId, null, null, callerId));
 
-        Assert.StartsWith("https://nextalk.app/invite/", result.Url);
+        Assert.StartsWith("https://nextalk.fun/invite/", result.Url);
     }
 
     [Fact]
@@ -189,6 +189,19 @@ public class CreateInviteHandlerTests
         }
 
         Assert.Equal(20, codes.Count);
+    }
+
+    [Fact]
+    public async Task Handle_WithNonPositiveMaxUses_ThrowsBadRequest()
+    {
+        await using var db = CreateDb();
+        var (guildId, callerId) = await SeedGuildAsync(db);
+        var handler = CreateHandler(db);
+
+        await Assert.ThrowsAsync<BadRequestException>(() =>
+            handler.HandleAsync(new CreateInviteCommand(guildId, null, 0, callerId)));
+        await Assert.ThrowsAsync<BadRequestException>(() =>
+            handler.HandleAsync(new CreateInviteCommand(guildId, null, -1, callerId)));
     }
 
     [Fact]

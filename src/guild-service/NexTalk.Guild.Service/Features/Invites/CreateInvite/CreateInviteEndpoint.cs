@@ -31,9 +31,14 @@ public static class CreateInviteEndpoint
         if (!string.IsNullOrWhiteSpace(req.ExpiresIn))
             return ParseDurationString(req.ExpiresIn);
 
-        return req.ExpiresInSeconds.HasValue
-            ? TimeSpan.FromSeconds(req.ExpiresInSeconds.Value)
-            : null;
+        if (req.ExpiresInSeconds.HasValue)
+        {
+            if (req.ExpiresInSeconds.Value <= 0)
+                throw new BadRequestException($"expiresInSeconds must be positive, got {req.ExpiresInSeconds.Value}.");
+            return TimeSpan.FromSeconds(req.ExpiresInSeconds.Value);
+        }
+
+        return null;
     }
 
     // Accepts "<number><unit>" where unit is one of s/m/h/d. Examples: "24h", "7d", "30m", "3600s".
