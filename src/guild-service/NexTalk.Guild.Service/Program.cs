@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
+using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Distributed;
 using Microsoft.IdentityModel.Tokens;
@@ -226,13 +227,12 @@ app.UseAuthorization();
 app.UseExceptionHandler(exApp => exApp.Run(async ctx =>
 {
     var ex = ctx.Features.Get<IExceptionHandlerFeature>()?.Error;
-    var (status, message) = ex switch
-    {
-        NotFoundException e => (StatusCodes.Status404NotFound, e.Message),
-        ForbiddenException e => (StatusCodes.Status403Forbidden, e.Message),
-        BadRequestException e => (StatusCodes.Status400BadRequest, e.Message),
-        _ => (StatusCodes.Status500InternalServerError, "An unexpected error occurred.")
-    };
+    var (status, message) =
+        ex is NotFoundException ? (StatusCodes.Status404NotFound, ex.Message) :
+        ex is ForbiddenException ? (StatusCodes.Status403Forbidden, ex.Message) :
+        ex is BadRequestException ? (StatusCodes.Status400BadRequest, ex.Message) :
+        (StatusCodes.Status500InternalServerError, "An unexpected error occurred.");
+
     ctx.Response.StatusCode = status;
     await ctx.Response.WriteAsJsonAsync(new { error = message });
 }));

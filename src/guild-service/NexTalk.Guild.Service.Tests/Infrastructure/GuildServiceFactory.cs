@@ -12,6 +12,7 @@ using Microsoft.IdentityModel.Protocols.OpenIdConnect;
 using Microsoft.IdentityModel.Tokens;
 using NexTalk.Guild.Service.Features.Invites.AcceptInvite;
 using NexTalk.Guild.Service.Infrastructure;
+using System.Net.Http.Headers;
 using System.Text;
 
 namespace NexTalk.Guild.Service.Tests.Infrastructure;
@@ -88,5 +89,19 @@ public class GuildServiceFactory : WebApplicationFactory<Program>
                 };
             });
         });
+    }
+
+    public async Task<GuildDbContext> GetDbContextAsync()
+    {
+        var scope = Services.CreateAsyncScope();
+        return scope.ServiceProvider.GetRequiredService<GuildDbContext>();
+    }
+
+    public HttpClient CreateAuthenticatedClient(Guid userId)
+    {
+        var client = CreateClient();
+        client.DefaultRequestHeaders.Authorization =
+            new AuthenticationHeaderValue("Bearer", TestJwt.Generate(userId));
+        return client;
     }
 }

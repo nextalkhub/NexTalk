@@ -1026,9 +1026,9 @@ modelConnections:
    UPDATE members SET role='Admin' WHERE user_id={userId} AND guild_id={guildId}
 
 7. Guild Service → WS Gateway (HTTP):
-   POST /internal/broadcast { type: 'member.roleChanged', userId, guildId, newRole: 'Admin' }
-8. WS Gateway → React SPA (участники гильда, SignalR):
-   { type: 'member.roleChanged', userId, newRole: 'Admin' }
+   POST /internal/broadcast/guild/{guildId} { type: 'role.assigned', payload: { userId, guildId, role: 'Admin' } }
+8. WS Gateway → React SPA (участники гильдии, SignalR):
+   GatewayEvent { type: 'role.assigned', payload: { userId, guildId, role: 'Admin' } }
    (UI обновляет роль участника в реальном времени)
 
 9. Guild Service → Nginx → React SPA: 200 OK { userId, role: 'Admin' }
