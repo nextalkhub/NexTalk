@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using Moq;
 using NexTalk.Messaging.Service.Domain;
 using NexTalk.Messaging.Service.Features.Messages.DeleteMessage;
@@ -12,7 +13,7 @@ namespace NexTalk.Messaging.Service.Tests.Features.Messages.DeleteMessage;
 public class DeleteMessageHandlerTests
 {
     private readonly MessagingDbContext _db;
-    private readonly Mock<GuildServiceClient> _guildServiceMock;
+    private readonly Mock<IGuildServiceClient> _guildServiceMock;
     private readonly Mock<WsGatewayClient> _wsGatewayMock;
     private readonly DeleteMessageHandler _handler;
 
@@ -23,8 +24,10 @@ public class DeleteMessageHandlerTests
             .Options;
 
         _db = new MessagingDbContext(options);
-        _guildServiceMock = new Mock<GuildServiceClient>(new HttpClient(new MockHttpMessageHandler()));
-        _wsGatewayMock = new Mock<WsGatewayClient>(new HttpClient(new MockHttpMessageHandler()));
+        _guildServiceMock = new Mock<IGuildServiceClient>();
+        _wsGatewayMock = new Mock<WsGatewayClient>(
+            new HttpClient(new MockHttpMessageHandler()),
+            Mock.Of<ILogger<WsGatewayClient>>());
         _handler = new DeleteMessageHandler(_db, _guildServiceMock.Object, _wsGatewayMock.Object);
     }
 
@@ -60,7 +63,7 @@ public class DeleteMessageHandlerTests
     }
 
     [Fact]
-    public async Task HandleAsync_WithAuthor_BroadcastsToChannel()
+    public async Task HandleAsync_WithAuthor_BroadcastsToGuild()
     {
         var guildId = Guid.NewGuid();
         var channelId = Guid.NewGuid();
@@ -71,10 +74,11 @@ public class DeleteMessageHandlerTests
         await _handler.HandleAsync(cmd);
 
         _wsGatewayMock.Verify(
-            x => x.BroadcastToChannelAsync(
-                channelId,
+            x => x.BroadcastToGuildAsync(
+                guildId,
                 "message.deleted",
                 It.IsAny<object>(),
+                It.IsAny<string>(),
                 It.IsAny<CancellationToken>()),
             Times.Once);
     }
@@ -136,7 +140,9 @@ public class DeleteMessageHandlerTests
         var authorId = Guid.NewGuid();
         var message = await CreateMessageAsync(guildId, channelId, authorId);
 
-        _wsGatewayMock.Setup(x => x.BroadcastToChannelAsync(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<object>(), It.IsAny<CancellationToken>()))
+        _wsGatewayMock.Setup(x => x.BroadcastToGuildAsync(
+                It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<object>(),
+                It.IsAny<string>(), It.IsAny<CancellationToken>()))
             .ThrowsAsync(new HttpRequestException("Gateway unavailable"));
 
         var cmd = new DeleteMessageCommand(message.Id, authorId);

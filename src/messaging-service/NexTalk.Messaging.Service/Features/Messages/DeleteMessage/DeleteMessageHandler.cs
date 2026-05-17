@@ -5,7 +5,7 @@ using NexTalk.Messaging.Service.Shared.Exceptions;
 
 namespace NexTalk.Messaging.Service.Features.Messages.DeleteMessage;
 
-public class DeleteMessageHandler(MessagingDbContext db, GuildServiceClient guildService, WsGatewayClient wsGateway)
+public class DeleteMessageHandler(MessagingDbContext db, IGuildServiceClient guildService, WsGatewayClient wsGateway)
 {
     public async Task HandleAsync(DeleteMessageCommand cmd, CancellationToken ct = default)
     {
@@ -15,7 +15,7 @@ public class DeleteMessageHandler(MessagingDbContext db, GuildServiceClient guil
 
         if (message.AuthorId != cmd.CallerId)
         {
-            await guildService.RequireAdminOrOwnerAsync(message.GuildId, cmd.CallerId, ct);
+            await guildService.RequireAdminOrOwnerAsync(message.ChannelId, cmd.CallerId, ct);
         }
 
         db.Messages.Remove(message);
@@ -23,8 +23,12 @@ public class DeleteMessageHandler(MessagingDbContext db, GuildServiceClient guil
 
         try
         {
-            await wsGateway.BroadcastToChannelAsync(message.ChannelId, "message.deleted",
-                new { MessageId = cmd.MessageId, ChannelId = message.ChannelId }, ct);
+            await wsGateway.BroadcastToGuildAsync(
+                message.GuildId,
+                "message.deleted",
+                new { MessageId = cmd.MessageId, ChannelId = message.ChannelId },
+                Guid.NewGuid().ToString(),
+                ct);
         }
         catch { /* best-effort */ }
     }

@@ -52,7 +52,7 @@ public class DeleteMessageEndpointTests : IAsyncLifetime
         var (message, authorId, _, _) = await CreateMessageAsync();
         var client = _factory.CreateAuthenticatedClient(authorId);
 
-        var response = await client.DeleteAsync($"/api/messages/{message.Id}");
+        var response = await client.DeleteAsync($"/messages/{message.Id}");
 
         Assert.Equal(HttpStatusCode.NoContent, response.StatusCode);
     }
@@ -63,7 +63,7 @@ public class DeleteMessageEndpointTests : IAsyncLifetime
         var (message, authorId, _, _) = await CreateMessageAsync();
         var client = _factory.CreateAuthenticatedClient(authorId);
 
-        await client.DeleteAsync($"/api/messages/{message.Id}");
+        await client.DeleteAsync($"/messages/{message.Id}");
 
         var deleted = await _db.Messages.FirstOrDefaultAsync(m => m.Id == message.Id);
         Assert.Null(deleted);
@@ -75,19 +75,19 @@ public class DeleteMessageEndpointTests : IAsyncLifetime
         var client = _factory.CreateAuthenticatedClient(Guid.NewGuid());
         var nonExistentId = Guid.NewGuid();
 
-        var response = await client.DeleteAsync($"/api/messages/{nonExistentId}");
+        var response = await client.DeleteAsync($"/messages/{nonExistentId}");
 
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
     }
 
     [Fact]
-    public async Task Delete_WithoutXUserId_Returns400()
+    public async Task Delete_WithoutBearerToken_Returns401()
     {
         var (message, _, _, _) = await CreateMessageAsync();
         var client = _factory.CreateClient();
 
-        var response = await client.DeleteAsync($"/api/messages/{message.Id}");
+        var response = await client.DeleteAsync($"/messages/{message.Id}");
 
-        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
     }
 }

@@ -5,7 +5,7 @@ namespace NexTalk.Messaging.Service.Features.Messages.DeleteMessage;
 public static class DeleteMessageEndpoint
 {
     public static void Map(IEndpointRouteBuilder app) =>
-        app.MapDelete("/api/messages/{messageId:guid}", async (
+        app.MapDelete("/messages/{messageId:guid}", async (
             Guid messageId,
             [FromHeader(Name = "X-User-Id")] Guid userId,
             DeleteMessageHandler handler,
