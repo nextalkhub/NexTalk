@@ -227,6 +227,8 @@ app.UseForwardedHeaders();
 app.UseAuthentication();
 app.UseAuthorization();
 
+app.UseMiddleware<DeadlineMiddleware>();
+
 app.UseHttpMetrics();
 
 app.UseSerilogRequestLogging(opts =>
