@@ -1,9 +1,4 @@
-using System;
-using System.Threading;
-using Microsoft.AspNetCore.Builder;
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.Routing;
 using NexTalk.Guild.Service.Domain;
 using NexTalk.Guild.Service.Shared;
 using System.Security.Claims;
