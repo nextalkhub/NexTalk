@@ -30,6 +30,7 @@ public class GetMessagesEndpointTests(MessagingServiceFactory factory) : IClassF
             {
                 Id = Guid.NewGuid(),
                 ChannelId = channelId,
+                GuildId = Guid.NewGuid(),
                 AuthorId = Guid.NewGuid(),
                 AuthorName = $"User{i}",
                 Content = $"msg{i}",

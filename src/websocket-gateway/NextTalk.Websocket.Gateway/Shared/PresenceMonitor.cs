@@ -52,7 +52,7 @@ public sealed class PresenceMonitor : BackgroundService
                             .Group(ChatHub.GuildGroup(guildId))
                             .SendAsync(
                                 "GatewayEvent",
-                                new { Type = "presence.offline", UserId = userId },
+                                new { Type = "presence.offline", Payload = new { UserId = userId } },
                                 stoppingToken);
                     }
                 }
