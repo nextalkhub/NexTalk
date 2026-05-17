@@ -15,6 +15,7 @@ jobs:
   build-backend-services:
     runs-on: ubuntu-latest
     strategy:
+      fail-fast: false
       matrix:
         include:
           - name: guild-service
@@ -41,9 +42,19 @@ jobs:
       - name: Build
         run: dotnet build ${{ matrix.project }} -c Release --no-restore
 
-  test-guild-service:
+  test-backend-services:
+    needs: [build-backend-services]
     runs-on: ubuntu-latest
-    name: Test guild-service
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: guild-service
+            solution: src/guild-service/NexTalk.Guild.Service.Tests/NexTalk.Guild.Service.Tests.csproj
+          - name: messaging-service
+            solution: src/messaging-service/NexTalk.Messaging.Service.Tests/NexTalk.Messaging.Service.Tests.csproj
+
+    name: Test ${{ matrix.name }}
     steps:
       - uses: actions/checkout@v4
 
@@ -53,10 +64,23 @@ jobs:
           dotnet-version: "10.0.x"
 
       - name: Restore
-        run: dotnet restore src/guild-service/NexTalk.Guild.Service.Tests/NexTalk.Guild.Service.Tests.csproj
+        run: dotnet restore ${{ matrix.solution }}
 
       - name: Test
-        run: dotnet test src/guild-service/NexTalk.Guild.Service.Tests/NexTalk.Guild.Service.Tests.csproj --no-restore -c Release --logger "console;verbosity=normal"
+        run: >
+          dotnet test ${{ matrix.solution }}
+          -c Release --no-restore
+          --logger "trx;LogFileName=test-results.trx"
+          --logger "console;verbosity=normal"
+          --results-directory TestResults
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results-${{ matrix.name }}
+          path: TestResults/**/*.trx
+          if-no-files-found: ignore
 
   frontend-ci:
     runs-on: ubuntu-latest
@@ -85,7 +109,7 @@ jobs:
 
   # Docker build & push (only on target branches)
   docker-build-push:
-    needs: [build-backend-services, test-guild-service, frontend-ci]
+    needs: [build-backend-services, test-backend-services, frontend-ci]
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     permissions:
@@ -93,6 +117,7 @@ jobs:
       packages: write
 
     strategy:
+      fail-fast: false
       matrix:
         include:
           - name: guild-service
