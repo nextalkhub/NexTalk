@@ -2,6 +2,7 @@
   <Folder Name="/gateway/" />
   <Folder Name="/gateway/ws-gateway/">
     <Project Path="src/websocket-gateway/NextTalk.Websocket.Gateway/NextTalk.Websocket.Gateway.csproj" />
+    <Project Path="src/websocket-gateway/NextTalk.Websocket.Gateway.Tests/NextTalk.Websocket.Gateway.Tests.csproj" />
   </Folder>
   <Folder Name="/services/" />
   <Folder Name="/services/guild/">
@@ -14,6 +15,7 @@
   </Folder>
   <Folder Name="/services/voice/">
     <Project Path="src/voice-service/NexTalk.Voice.Service/NexTalk.Voice.Service.csproj" />
+    <Project Path="src/voice-service/NexTalk.Voice.Service.Tests/NexTalk.Voice.Service.Tests.csproj" />
   </Folder>
   <Folder Name="/Solution Items/">
     <File Path=".env.example" />

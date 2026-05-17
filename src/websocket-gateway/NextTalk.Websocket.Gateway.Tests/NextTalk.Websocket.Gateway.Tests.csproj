@@ -15,13 +15,11 @@
             <PrivateAssets>all</PrivateAssets>
         </PackageReference>
         <PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" Version="10.0.0" />
-        <PackageReference Include="Microsoft.EntityFrameworkCore.InMemory" Version="9.0.4" />
-        <PackageReference Include="Microsoft.EntityFrameworkCore.Relational" Version="9.0.4" />
-        <PackageReference Include="Moq" Version="4.20.70" />
+        <PackageReference Include="Microsoft.AspNetCore.SignalR.Client" Version="10.0.0" />
     </ItemGroup>
 
     <ItemGroup>
-        <ProjectReference Include="..\NexTalk.Guild.Service\NexTalk.Guild.Service.csproj" />
+        <ProjectReference Include="..\NextTalk.Websocket.Gateway\NextTalk.Websocket.Gateway.csproj" />
     </ItemGroup>
 
 </Project>
