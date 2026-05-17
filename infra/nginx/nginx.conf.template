@@ -156,10 +156,21 @@ http {
             add_header Cache-Control "no-store" always;
         }
 
-        # Zitadel route'ы: пробрасываем $http_host вместо $host, чтобы сохранить
-        # порт (:8080). Иначе Zitadel видит Host=localhost и выпускает токены с
-        # iss=http://localhost, ломая ValidIssuer=http://localhost:8080 в бэкендах.
-        # Login UI
+        # Zitadel route'ы. Ключевые правила, выведенные эмпирически + из официальных доков:
+        #   1. Host = $http_host (с портом). $host без порта приводит к iss=http://localhost,
+        #      а .NET бэкенды с ValidIssuer=http://localhost:8080 отклоняют такие токены.
+        #   2. X-Forwarded-Host / X-Forwarded-Port НЕ выставляем: $host теряет порт, а
+        #      $server_port = внутренний listen (80), а не публичный (8080). Если выставить
+        #      их этими переменными — Zitadel поверит им и соберёт issuer на :80, отсюда
+        #      "ничего не отрисовывается / циклит" в Console.
+        #      Zitadel сам корректно парсит host:port из Host header.
+        #   3. X-Forwarded-Proto обязателен — Zitadel выбирает http/https для построения
+        #      ссылок именно по нему.
+
+        # Login UI (Next.js, отдельный контейнер zitadel-login).
+        # Next.js base path задан NEXT_PUBLIC_BASE_PATH=/ui/v2/login в docker-compose.
+        # SSR-вызовы Next.js -> zitadel-api идут по внутреннему ZITADEL_API_URL и
+        # подставляют публичные Host/Proto через CUSTOM_REQUEST_HEADERS.
         location ^~ /ui/v2/login {
             limit_req zone=auth_limit burst=30 nodelay;
             proxy_pass http://zitadel-login;
@@ -170,14 +181,20 @@ http {
             proxy_set_header Connection "";
         }
 
-        # OIDC / OAuth2
+        # OIDC discovery: AddJwtBearer на бэкендах + Console SPA читают этот документ.
         location ^~ /.well-known/ {
             proxy_pass http://zitadel-api;
             proxy_set_header Host $http_host;
+            proxy_set_header X-Forwarded-Proto $scheme;
+            proxy_set_header X-Forwarded-For $remote_addr;
             proxy_set_header Connection "";
         }
 
-        location ~ ^/(oauth|oidc|openidconnect|saml)/ {
+        # Zitadel OIDC/OAuth2/SAML: фактические пути в v4 — oauth/v2/, oidc/v1/,
+        # openid-connect/v1/ (через дефис!), saml/v2/. Старое написание `openidconnect`
+        # без дефиса не существует и приводило к 404 от location /, что ломало
+        # discovery-цепочку Console.
+        location ~ ^/(oauth|oidc|openid-connect|saml)/ {
             limit_req zone=auth_limit burst=20 nodelay;
             proxy_pass http://zitadel-api;
             proxy_set_header Host $http_host;
@@ -186,7 +203,8 @@ http {
             proxy_set_header Connection "";
         }
 
-        # Zitadel Console UI
+        # Zitadel Console UI (Angular SPA) + её ассеты по /ui/console/*.
+        # /ui/v2/login обрабатывается выше (^~ выигрывает у regex), здесь — всё прочее /ui/.
         location ^~ /ui/ {
             proxy_pass http://zitadel-api;
             proxy_set_header Host $http_host;
@@ -195,8 +213,12 @@ http {
             proxy_set_header Connection "";
         }
 
-        # Zitadel REST Management APIs
-        location ~ ^/(auth/|management/|admin/|system/|v2/) {
+        # Zitadel REST/Connect APIs.
+        # v2beta/ — обязателен: Console v4 ходит за user-инфой именно туда
+        # (например /v2beta/users/me, /v2beta/sessions). Без этого Console
+        # получает 404 от React SPA на location /, считает что не залогинен,
+        # и редиректит на /ui/v2/login — отсюда визуальный «цикл логина».
+        location ~ ^/(auth/|management/|admin/|system/|v2/|v2beta/) {
             proxy_pass http://zitadel-api;
             proxy_set_header Host $http_host;
             proxy_set_header X-Forwarded-Proto $scheme;
@@ -204,10 +226,21 @@ http {
             proxy_set_header Connection "";
         }
 
-        # Zitadel native gRPC
-        location ~ ^/zitadel\. {
-            grpc_pass grpc://zitadel-api;
-            grpc_set_header Host $http_host;
+        # gRPC-Web вызовы Console (POST /zitadel.<package>.<v>.<Service>/<Method>).
+        # Не используем grpc_pass: nginx слушает на чистом HTTP/1.1 (listen 80),
+        # а браузер шлёт grpc-web по HTTP/1.1 с Content-Type application/grpc-web+proto.
+        # grpc_pass требует HTTP/2 на upstream и теряет HTTP/1.1 запросы.
+        # Zitadel на :8080 принимает оба формата на одном порту, поэтому proxy_pass
+        # достаточно. Дополнительно отключаем буферизацию, чтобы стримящиеся
+        # gRPC-Web ответы (server-streaming) не задерживались.
+        location ~ ^/zitadel\.[a-zA-Z0-9_.]+/ {
+            proxy_pass http://zitadel-api;
+            proxy_set_header Host $http_host;
+            proxy_set_header X-Forwarded-Proto $scheme;
+            proxy_set_header X-Forwarded-For $remote_addr;
+            proxy_set_header Connection "";
+            proxy_buffering off;
+            proxy_request_buffering off;
         }
 
         # Guild service
