@@ -117,7 +117,7 @@
 | ChannelController | CRUD каналов |
 | InviteController | Создание и принятие инвайтов |
 | MemberController | Список, кик, бан, назначение ролей |
-| InternalAccessController | GET /internal/channels/{id}/check-access |
+| InternalAccessController | GET /internal/channels/{id}/access |
 | InternalUserController | GET /internal/users/{userId}/guilds |
 | InternalMembersController | GET /internal/guilds/{id}/members |
 | RbacService | Проверка прав (3 фиксированные роли: Owner/Admin/Member) |
@@ -407,7 +407,7 @@ modelObjects:
   name: InternalAccessController
   type: component
   parentId: app-guild
-  description: GET /internal/channels/{id}/check-access
+  description: GET /internal/channels/{id}/access
 
 - id: comp-guild-internal-users
   name: InternalUserController
@@ -579,7 +579,7 @@ modelConnections:
   originId: app-ws-gateway
   targetId: app-guild
   direction: outgoing
-  description: 'GET /internal/channels/*/check-access + GET /internal/users/{userId}/guilds (Retry + CB)'
+  description: 'GET /internal/channels/*/access + GET /internal/users/{userId}/guilds (Retry + CB)'
 
 - id: conn-messaging-guild
   name: HTTP (Polly)
@@ -748,7 +748,7 @@ modelConnections:
    SendMessage(channelId, text, idempotencyKey)
 
 4. WS Gateway → Guild Service (HTTP, Polly: Retry+CB):
-   GET /internal/channels/{channelId}/check-access?userId=A
+   GET /internal/channels/{channelId}/access?userId=A
 5. Guild Service → PostgreSQL: SELECT member
 6. Guild Service → WS Gateway: { allowed: true, guildId }
 
@@ -789,7 +789,7 @@ modelConnections:
 3. Nginx → Voice Service: Proxy POST /api/voice/{channelId}/join
 
 4. Voice Service → Guild Service (HTTP, Polly: CB + Deadline):
-   GET /internal/channels/{channelId}/check-access?userId=X
+   GET /internal/channels/{channelId}/access?userId=X
    Headers: X-Correlation-Id, X-Deadline
 5. Guild Service → PostgreSQL: SELECT member, channel WHERE channel.type = 'voice'
 6. Guild Service → Voice Service: { allowed: true }
@@ -851,20 +851,23 @@ modelConnections:
    COMMIT
 
 6. Guild Service → WS Gateway (HTTP):
-   POST /internal/disconnect/X { guildId: Y, reason: 'banned' }
-7. WS Gateway (SignalR):
-   a. → React SPA (клиент X): { type: 'banned', guildId, reason }
-   b. WS Gateway: принудительно закрывает SignalR-соединение клиента X
-   c. → React SPA (остальные участники гильда): { type: 'member.left', userId: X }
+   POST /internal/broadcast/guild/{guildId} { type: 'member.banned', payload: { userId: X, guildId: Y } }
+7. Guild Service → WS Gateway (HTTP):
+   POST /internal/disconnect/guild/{guildId}/user/{userId}
+8. WS Gateway (SignalR):
+   a. → React SPA (клиент X): GatewayEvent { type: 'guild.force.disconnect', payload: { guildId: Y } }
+   b. WS Gateway удаляет X из SignalR-группы гильдии
+   c. → React SPA (участники гильдии, кроме X): GatewayEvent { type: 'member.left', payload: { userId: X, guildId: Y } }
 
-8. [Если X находился в голосовом канале] Guild Service → Voice Service (HTTP):
-   DELETE /internal/voice/X/disconnect
-9. Voice Service → LiveKit HTTP API: RemoveParticipant(identity=X)
-10. Voice Service → SessionStore: Удалить X из всех комнат гильда
-11. Voice Service → WS Gateway (HTTP):
-    POST /internal/broadcast { type: 'voice.left', userId, channelId }
-12. WS Gateway → React SPA (участники голосового канала, SignalR):
-    { type: 'voice.left', userId, channelId }
+9. Guild Service → Voice Service (HTTP):
+   DELETE /internal/voice/{userId}/disconnect
+   [идемпотентен: если X не был в голосе — 204 без ошибки]
+10. Voice Service → SessionStore: Удалить сессию X (получить channelId, guildId)
+11. Voice Service → LiveKit HTTP API: RemoveParticipant(identity=X)
+12. Voice Service → WS Gateway (HTTP):
+    POST /internal/broadcast/guild/{guildId} { type: 'voice.left', payload: { userId: X, channelId } }
+13. WS Gateway → React SPA (участники гильдии, SignalR):
+    GatewayEvent { type: 'voice.left', payload: { userId: X, channelId } }
 ```
 
 ### Flow 7: Heartbeat и Presence
@@ -893,7 +896,7 @@ modelConnections:
 Сценарий: Guild Service упал при отправке сообщения.
 
 1. React SPA → Nginx → WS Gateway (SignalR): SendMessage(channelId, text)
-2. WS Gateway → Guild Service: GET /internal/channels/{id}/check-access
+2. WS Gateway → Guild Service: GET /internal/channels/{id}/access
    Попытка 1: Timeout 2с → Polly Retry (backoff ~200ms)
    Попытка 2: Connection refused → Polly Retry (backoff ~400ms)
    Попытка 3: Connection refused → Fail (ошибка накапливается)
@@ -954,7 +957,7 @@ modelConnections:
 
 4. Messaging Service: Валидация JWT → userId
 5. Messaging Service → Guild Service (HTTP, Polly: CB + Deadline):
-   GET /internal/channels/{channelId}/check-access?userId=X
+   GET /internal/channels/{channelId}/access?userId=X
    Headers: X-Correlation-Id, X-Deadline
 6. Guild Service → Messaging Service: { allowed: true }
 
@@ -977,20 +980,29 @@ modelConnections:
 1. Owner/Admin → React SPA: "Пригласить участников" → настройка TTL и лимита
 2. React SPA → Nginx: POST /api/guilds/{guildId}/invites + JWT
    Body: { expiresIn: "24h", maxUses: 25 }
+   expiresIn — строка с суффиксом единицы ("24h", "7d", "30m", "3600s")
+   expiresInSeconds — альтернативная legacy-форма (целое число секунд)
+   maxUses — опционально; null = безлимитный инвайт
 
 3. Nginx: rate limit, X-Request-Id → Proxy к Guild Service
+   Маршрут /api/guilds/* → guild-service/guilds/* (стрипается /api)
 
 4. Guild Service: Валидация JWT → userId
 5. Guild Service → PostgreSQL: SELECT member WHERE user_id=X AND guild_id=Y
-   Проверка роли: Owner или Admin → разрешено, Member → 403
+   Проверка роли: Owner или Admin → разрешено, Member / не-участник → 403
 
 6. Guild Service → PostgreSQL:
-   INSERT INTO invites (code=UUID, guild_id, created_by, expires_at=NOW()+TTL, max_uses)
-   code - криптографически случайный UUID (не предсказуемый)
+   INSERT INTO invites (code, guild_id, created_by, expires_at=NOW()+TTL, max_uses)
+   code — криптографически случайный base64url-токен, 12 символов (~72 бита энтропии),
+          алфавит A-Z a-z 0-9 - _ (URL-safe, не UUID)
 
 7. Guild Service → Nginx → React SPA:
-   201 Created { code: "abc123", url: "https://nextalk.app/invite/abc123",
-                 expiresAt, maxUses }
+   201 Created {
+     id: uuid, code: "abc123def456",
+     url: "https://nextalk.fun/invite/abc123def456",
+     guildId: uuid, expiresAt: "2025-05-18T12:00:00Z" | null,
+     maxUses: 25 | null, usesCount: 0, createdAt: "2025-05-17T12:00:00Z"
+   }
 
 8. React SPA: отображает ссылку → пользователь копирует и отправляет другу
 ```
@@ -1035,7 +1047,7 @@ modelConnections:
    SELECT message WHERE id={messageId}
    Проверяет: message.author_id == callerId → разрешено (автор)
    Если нет → Messaging Service → Guild Service (HTTP, Polly: CB + Deadline):
-     GET /internal/channels/{channelId}/check-access?userId=callerId
+     GET /internal/channels/{channelId}/access?userId=callerId
      Guild Service: callerRole == 'Admin' или 'Owner' → разрешено
      Guild Service: callerRole == 'Member' → 403 Forbidden
 
@@ -1085,29 +1097,36 @@ modelConnections:
 ### Flow 16: Демонстрация Deadline (504)
 
 ```
-Сценарий: Messaging Service медленно отвечает Guild Service при удалении сообщения.
+Сценарий: Voice Service вызывает Guild Service (проверка доступа к каналу),
+          Guild Service отвечает слишком долго — дедлайн истекает.
 
-1. React SPA → Nginx → Messaging Service: DELETE /api/messages/{id} + JWT
-   Messaging Service: устанавливает X-Deadline = NOW() + 5 сек
+1. React SPA → Nginx → Voice Service: POST /api/voice/join/{channelId} + JWT
 
-2. Messaging Service → Guild Service (HTTP, Polly: CB + Deadline):
-   GET /internal/channels/{channelId}/check-access?userId=X
-   Headers: X-Deadline = <UTC timestamp>
+2. Voice Service → Guild Service (HTTP):
+   GET /internal/channels/{channelId}/access?userId=X
+   DeadlineForwardingHandler добавляет: X-Deadline = UtcNow + 1.5 сек
 
-3. Guild Service: DeadlineMiddleware проверяет X-Deadline
-   Если дедлайн НЕ истек → обрабатывает запрос нормально
+3. Guild Service: DeadlineMiddleware читает X-Deadline
+   Если дедлайн уже истёк на входе → немедленно: 504 { error: "Request timeout", retryAfter: 5 }
+   Иначе → создаёт CancellationTokenSource(remaining), подменяет HttpContext.RequestAborted
 
-4. [Сценарий: Guild Service отвечает очень медленно (DB lock, GC pause и т.п.)]
-   CancellationToken, привязанный к X-Deadline, срабатывает
+4. [Сценарий: Guild Service отвечает очень медленно — DB lock, GC pause и т.п.]
+   CancellationToken, привязанный к X-Deadline, срабатывает →
+   OperationCanceledException в хендлере →
+   DeadlineMiddleware перехватывает → 504 { error: "Request timeout", retryAfter: 5 }
 
-5. Guild Service → Messaging Service: 504 Gateway Timeout
-   (или: Messaging Service сам обрывает запрос по CancellationToken до ответа)
+5. Voice Service получает 504 от Guild Service
+   Polly Retry срабатывает, но дедлайн уже истёк → повторные попытки тоже 504
 
-6. Messaging Service → Nginx → React SPA: 504 Gateway Timeout
-   Body: { error: "Request timeout", retryAfter: 5 }
+6. Voice Service → Nginx → React SPA: 504 Gateway Timeout
 
-7. React SPA: показывает пользователю "Не удалось выполнить действие. Попробуйте снова."
-   (в отличие от Circuit Breaker - это разовый сбой, не накопительный)
+7. React SPA: показывает пользователю "Не удалось подключиться. Попробуйте снова."
+   (в отличие от Circuit Breaker — это разовый сбой по тайм-ауту, не накопительный)
+
+Инфраструктура:
+  DeadlineMiddleware        — Guild Service, Messaging Service (ASP.NET Core middleware)
+  DeadlineForwardingHandler — Voice Service → Guild Service (DelegatingHandler, X-Deadline = UtcNow+1.5s)
+  Default budget            — 1.5 сек (< Polly Timeout 2s на том же клиенте — deadline срабатывает первым)
 ```
 
 ### Flow 17: Создание канала

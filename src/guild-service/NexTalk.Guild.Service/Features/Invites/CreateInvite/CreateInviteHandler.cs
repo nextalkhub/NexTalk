@@ -1,4 +1,6 @@
+using System.Security.Cryptography;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 using NexTalk.Guild.Service.Domain;
 using NexTalk.Guild.Service.Infrastructure;
 using NexTalk.Guild.Service.Shared;
@@ -6,18 +8,29 @@ using NexTalk.Guild.Service.Shared.Exceptions;
 
 namespace NexTalk.Guild.Service.Features.Invites.CreateInvite;
 
-public class CreateInviteHandler(GuildDbContext db, RbacService rbac)
+public class CreateInviteHandler(GuildDbContext db, RbacService rbac, IConfiguration config)
 {
-    public record InviteResponse(Guid Id, string Code, Guid GuildId, DateTime? ExpiresAt, int? MaxUses, int UsesCount, DateTime CreatedAt);
+    public record InviteResponse(
+        Guid Id,
+        string Code,
+        string Url,
+        Guid GuildId,
+        DateTime? ExpiresAt,
+        int? MaxUses,
+        int UsesCount,
+        DateTime CreatedAt);
 
     public async Task<InviteResponse> HandleAsync(CreateInviteCommand cmd, CancellationToken ct = default)
     {
+        if (cmd.MaxUses.HasValue && cmd.MaxUses.Value <= 0)
+            throw new BadRequestException("maxUses must be a positive integer.");
+
         if (!await db.Guilds.AnyAsync(g => g.Id == cmd.GuildId, ct))
             throw new NotFoundException("Guild not found.");
 
         await rbac.RequireAdminOrOwnerAsync(cmd.GuildId, cmd.CallerId, ct);
 
-        var code = Guid.NewGuid().ToString("N")[..8].ToUpper();
+        var code = GenerateSecureCode();
         var invite = new Invite
         {
             Id = Guid.NewGuid(),
@@ -33,6 +46,24 @@ public class CreateInviteHandler(GuildDbContext db, RbacService rbac)
         db.Invites.Add(invite);
         await db.SaveChangesAsync(ct);
 
-        return new InviteResponse(invite.Id, invite.Code, invite.GuildId, invite.ExpiresAt, invite.MaxUses, invite.UsesCount, invite.CreatedAt);
+        var baseUrl = config["Invites:BaseUrl"] ?? "https://nextalk.fun/invite";
+        var url = $"{baseUrl.TrimEnd('/')}/{invite.Code}";
+
+        return new InviteResponse(
+            invite.Id, invite.Code, url, invite.GuildId,
+            invite.ExpiresAt, invite.MaxUses, invite.UsesCount, invite.CreatedAt);
+    }
+
+    // 9 bytes → 12-character base64url (no padding) → ~72 bits of entropy.
+    // RandomNumberGenerator is the CSPRNG required by spec ("криптографически случайный").
+    // Base64url over hex doubles density per char and stays URL-safe without encoding.
+    private static string GenerateSecureCode()
+    {
+        Span<byte> bytes = stackalloc byte[9];
+        RandomNumberGenerator.Fill(bytes);
+        return Convert.ToBase64String(bytes)
+            .Replace('+', '-')
+            .Replace('/', '_')
+            .TrimEnd('=');
     }
 }

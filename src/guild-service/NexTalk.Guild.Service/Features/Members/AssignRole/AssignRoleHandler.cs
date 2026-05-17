@@ -22,7 +22,7 @@ public class AssignRoleHandler(GuildDbContext db, RbacService rbac, WsGatewayCli
 
         try
         {
-            await wsGateway.BroadcastToGuildAsync(cmd.GuildId, "role-assigned",
+            await wsGateway.BroadcastToGuildAsync(cmd.GuildId, "role.assigned",
                 new { UserId = cmd.TargetUserId, Role = cmd.Role.ToString(), cmd.GuildId }, ct);
         }
         catch { /* best-effort */ }

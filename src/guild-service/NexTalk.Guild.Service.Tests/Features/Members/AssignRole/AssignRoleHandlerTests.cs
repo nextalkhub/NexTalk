@@ -94,7 +94,7 @@ public class AssignRoleHandlerTests
         _wsGatewayMock.Verify(
             x => x.BroadcastToGuildAsync(
                 guild.Id,
-                "role-assigned",
+                "role.assigned",
                 It.IsAny<object>(),
                 It.IsAny<CancellationToken>()),
             Times.Once);

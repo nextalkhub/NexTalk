@@ -201,25 +201,21 @@ public class AssignRoleEndpointTests : IAsyncLifetime
     }
 
     [Fact]
-    public async Task Put_AssignRole_WithoutBearerToken_Returns403Forbidden()
+    public async Task Put_AssignRole_WithoutBearerToken_Returns401Unauthorized()
     {
         var (guild, owner, target) = await SetupGuildWithMembersAsync();
         var client = _factory.CreateClient();
-
-        // X-User-Id without Bearer token results in unauthenticated user
-        // Business logic check returns 403 Forbidden (not an owner)
-        client.DefaultRequestHeaders.Add("X-User-Id", Guid.NewGuid().ToString());
 
         var request = new AssignRoleEndpoint.Request("Admin");
         var response = await client.PutAsJsonAsync(
             $"/guilds/{guild.Id}/members/{target.UserId}/role",
             request);
 
-        Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
     }
 
     [Fact]
-    public async Task Put_AssignRole_WithNonExistentGuild_Returns404NotFound()
+    public async Task Put_AssignRole_WithNonExistentGuild_Returns403Forbidden()
     {
         var (guild, owner, target) = await SetupGuildWithMembersAsync();
         var client = _factory.CreateAuthenticatedClient(owner.UserId);

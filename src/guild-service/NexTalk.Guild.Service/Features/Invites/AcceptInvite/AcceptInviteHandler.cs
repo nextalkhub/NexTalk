@@ -4,35 +4,39 @@ using NexTalk.Guild.Service.Domain;
 using NexTalk.Guild.Service.Infrastructure;
 using NexTalk.Guild.Service.Shared;
 using NexTalk.Guild.Service.Shared.Exceptions;
+using NexTalk.Guild.Service.Shared.Responses;
 
 namespace NexTalk.Guild.Service.Features.Invites.AcceptInvite;
 
-public class AcceptInviteHandler(GuildDbContext db, WsGatewayClient wsGateway)
+public class AcceptInviteHandler(GuildDbContext db, WsGatewayClient wsGateway, IInviteRepository inviteRepository)
 {
-    public async Task HandleAsync(AcceptInviteCommand cmd, CancellationToken cancellationToken,
-        CancellationToken ct = default)
+    public async Task<GuildResponse> HandleAsync(AcceptInviteCommand cmd, CancellationToken ct = default)
     {
-        var invite = await db.Invites.FirstOrDefaultAsync(i => i.Code == cmd.Code, ct)
+        var row = await db.Invites
+            .Where(i => i.Code == cmd.Code)
+            .Select(i => new { i.Id, i.GuildId })
+            .FirstOrDefaultAsync(ct)
             ?? throw new NotFoundException("Invite not found.");
 
-        if (invite.ExpiresAt.HasValue && invite.ExpiresAt.Value < DateTime.UtcNow)
-            throw new BadRequestException("Invite has expired.");
+        var isBanned = await db.Bans.AnyAsync(b => b.GuildId == row.GuildId && b.UserId == cmd.UserId, ct);
+        if (isBanned)
+            throw new ForbiddenException("You are banned from this guild.");
 
-        if (invite.MaxUses.HasValue && invite.UsesCount >= invite.MaxUses.Value)
-            throw new BadRequestException("Invite has reached its maximum uses.");
-
-        var alreadyMember = await db.Members.AnyAsync(m => m.GuildId == invite.GuildId && m.UserId == cmd.UserId, ct);
+        var alreadyMember = await db.Members.AnyAsync(m => m.GuildId == row.GuildId && m.UserId == cmd.UserId, ct);
         if (alreadyMember)
             throw new BadRequestException("Already a member of this guild.");
 
-        var isBanned = await db.Bans.AnyAsync(b => b.GuildId == invite.GuildId && b.UserId == cmd.UserId, ct);
-        if (isBanned)
-            throw new ForbiddenException("You are banned from this guild.");
+        var claimed = await inviteRepository.TryClaimAsync(row.Id, ct);
+        if (!claimed)
+            throw new BadRequestException("Invite has expired or reached its maximum uses.");
+
+        var guild = await db.Guilds.FindAsync([row.GuildId], ct)
+            ?? throw new NotFoundException("Guild not found.");
 
         var member = new Member
         {
             Id = Guid.NewGuid(),
-            GuildId = invite.GuildId,
+            GuildId = row.GuildId,
             UserId = cmd.UserId,
             DisplayName = cmd.DisplayName,
             Username = cmd.Username,
@@ -40,15 +44,16 @@ public class AcceptInviteHandler(GuildDbContext db, WsGatewayClient wsGateway)
             JoinedAt = DateTime.UtcNow
         };
 
-        invite.UsesCount++;
         db.Members.Add(member);
         await db.SaveChangesAsync(ct);
 
         try
         {
-            await wsGateway.BroadcastToGuildAsync(invite.GuildId, "member-joined",
+            await wsGateway.BroadcastToGuildAsync(row.GuildId, "member.joined",
                 new { member.Id, member.UserId, member.DisplayName, member.Username, member.GuildId }, ct);
         }
         catch { /* best-effort */ }
+
+        return new GuildResponse(guild.Id, guild.Name, guild.DisplayName, guild.OwnerId, guild.CreatedAt);
     }
 }
