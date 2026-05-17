@@ -10,6 +10,10 @@
     </PropertyGroup>
 
     <ItemGroup>
+        <InternalsVisibleTo Include="NextTalk.Websocket.Gateway.Tests" />
+    </ItemGroup>
+
+    <ItemGroup>
         <PackageReference Include="AspNetCore.HealthChecks.Uris" Version="9.0.0" />
         <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="9.0.4" />
         <PackageReference Include="Microsoft.Extensions.Http.Resilience" Version="9.6.0" />

@@ -15,13 +15,10 @@
             <PrivateAssets>all</PrivateAssets>
         </PackageReference>
         <PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" Version="10.0.0" />
-        <PackageReference Include="Microsoft.EntityFrameworkCore.InMemory" Version="9.0.4" />
-        <PackageReference Include="Microsoft.EntityFrameworkCore.Relational" Version="9.0.4" />
-        <PackageReference Include="Moq" Version="4.20.70" />
     </ItemGroup>
 
     <ItemGroup>
-        <ProjectReference Include="..\NexTalk.Guild.Service\NexTalk.Guild.Service.csproj" />
+        <ProjectReference Include="..\NexTalk.Voice.Service\NexTalk.Voice.Service.csproj" />
     </ItemGroup>
 
 </Project>

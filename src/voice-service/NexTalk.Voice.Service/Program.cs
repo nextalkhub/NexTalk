@@ -12,6 +12,7 @@ using NexTalk.Voice.Service.Features.Internal.DisconnectUser;
 using NexTalk.Voice.Service.Features.Voice.Join;
 using NexTalk.Voice.Service.Features.Voice.Leave;
 using NexTalk.Voice.Service.Infrastructure;
+using NexTalk.Voice.Service.Shared;
 using NexTalk.Voice.Service.Shared.Exceptions;
 using Polly;
 using Prometheus;
@@ -175,7 +176,12 @@ builder.Services.AddSwaggerGen(c =>
     });
 });
 
-builder.Services.AddHealthChecks();
+var livekitUrl = builder.Configuration["LiveKit:Url"]
+    ?? throw new InvalidOperationException("LiveKit:Url не задан.");
+
+builder.Services.AddHealthChecks()
+    .AddUrlGroup(new Uri(livekitUrl), name: "livekit", tags: ["ready"])
+    .AddUrlGroup(new Uri($"{guildUrl}/healthz"), name: "guild-service", tags: ["ready"]);
 
 var app = builder.Build();
 
@@ -211,6 +217,8 @@ app.UseExceptionHandler(exApp => exApp.Run(async ctx =>
     await ctx.Response.WriteAsJsonAsync(new { error = message });
 }));
 
+app.UseMiddleware<DeadlineMiddleware>();
+
 app.UseHttpMetrics();
 
 app.UseSerilogRequestLogging(opts =>
@@ -230,8 +238,10 @@ DisconnectChannelEndpoint.Map(app);
 
 app.MapHealthChecks("/healthz", new HealthCheckOptions { Predicate = _ => false })
     .AllowAnonymous();
-app.MapHealthChecks("/readyz", new HealthCheckOptions { Predicate = _ => false })
-    .AllowAnonymous();
+app.MapHealthChecks("/readyz", new HealthCheckOptions
+{
+    Predicate = check => check.Tags.Contains("ready")
+}).AllowAnonymous();
 app.MapMetrics().AllowAnonymous();
 
 app.Run();

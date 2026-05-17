@@ -79,6 +79,10 @@ jobs:
             solution: src/guild-service/NexTalk.Guild.Service.Tests/NexTalk.Guild.Service.Tests.csproj
           - name: messaging-service
             solution: src/messaging-service/NexTalk.Messaging.Service.Tests/NexTalk.Messaging.Service.Tests.csproj
+          - name: voice-service
+            solution: src/voice-service/NexTalk.Voice.Service.Tests/NexTalk.Voice.Service.Tests.csproj
+          - name: websocket-gateway
+            solution: src/websocket-gateway/NextTalk.Websocket.Gateway.Tests/NextTalk.Websocket.Gateway.Tests.csproj
 
     name: Test ${{ matrix.name }}
     steps:
