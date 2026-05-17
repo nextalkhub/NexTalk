@@ -1,4 +1,5 @@
 using System.Net;
+using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using Microsoft.Extensions.DependencyInjection;
 using NexTalk.Guild.Service.Domain;
@@ -14,10 +15,8 @@ public class CreateInviteEndpointTests(GuildServiceFactory factory) : IClassFixt
     private HttpClient AuthedClient(Guid userId)
     {
         var client = factory.CreateClient();
-        // Endpoint binds [FromHeader(Name = "X-User-Id")] Guid userId directly.
-        // In production this header is populated by the JWT-propagation middleware;
-        // here we set it directly to exercise the same endpoint contract.
-        client.DefaultRequestHeaders.Add("X-User-Id", userId.ToString());
+        client.DefaultRequestHeaders.Authorization =
+            new AuthenticationHeaderValue("Bearer", TestJwt.Generate(userId));
         return client;
     }
 

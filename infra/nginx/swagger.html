@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>NexTalk API Docs</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/swagger-ui-dist@5/swagger-ui.css" />
+</head>
+<body>
+  <div id="swagger-container"></div>
+
+  <script src="https://cdn.jsdelivr.net/npm/swagger-ui-dist@5/swagger-ui-bundle.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/swagger-ui-dist@5/swagger-ui-standalone-preset.js"></script>
+
+  <script>
+    window.onload = async () => {
+      const config = await fetch('/swagger/config.json')
+        .then(r => r.ok ? r.json() : {})
+        .catch(() => ({}));
+
+      const ui = SwaggerUIBundle({
+        urls: [
+          { url: "/swagger/guild/v1/swagger.json",     name: "Guild Service"      },
+          { url: "/swagger/messaging/v1/swagger.json", name: "Messaging Service"  },
+          { url: "/swagger/voice/v1/swagger.json",     name: "Voice Service"      },
+          { url: "/swagger/websocket/v1/swagger.json", name: "WebSocket Gateway"  },
+        ],
+        "urls.primaryName": "Guild Service",
+        dom_id: "#swagger-container",
+        presets: [
+          SwaggerUIBundle.presets.apis,
+          SwaggerUIStandalonePreset,
+        ],
+        layout: "StandaloneLayout",
+        deepLinking: true,
+        displayRequestDuration: true,
+        tryItOutEnabled: true,
+        oauth2RedirectUrl: window.location.origin + "/swagger/oauth2-redirect.html",
+      });
+
+      ui.initOAuth({
+        clientId: config.swaggerClientId || "",
+        scopeSeparator: " ",
+        scopes: "openid profile email",
+        usePkceWithAuthorizationCodeGrant: true,
+      });
+    };
+  </script>
+</body>
+</html>

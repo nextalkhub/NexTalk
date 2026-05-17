@@ -25,7 +25,7 @@ public class DeleteChannelHandler(GuildDbContext db, RbacService rbac, WsGateway
 
         try
         {
-            await wsGateway.BroadcastToGuildAsync(cmd.GuildId, "channel-deleted",
+            await wsGateway.BroadcastToGuildAsync(cmd.GuildId, "channel.deleted",
                 new { ChannelId = cmd.ChannelId, cmd.GuildId }, ct);
         }
         catch { /* best-effort */ }

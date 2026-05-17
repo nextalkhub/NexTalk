@@ -1,4 +1,5 @@
-using Microsoft.AspNetCore.Mvc;
+using NexTalk.Guild.Service.Shared;
+using System.Security.Claims;
 
 namespace NexTalk.Guild.Service.Features.Channels.DeleteChannel;
 
@@ -8,11 +9,12 @@ public static class DeleteChannelEndpoint
         app.MapDelete("/guilds/{guildId:guid}/channels/{channelId:guid}", async (
             Guid guildId,
             Guid channelId,
-            [FromHeader(Name = "X-User-Id")] Guid userId,
+            ClaimsPrincipal user,
             DeleteChannelHandler handler,
             CancellationToken ct) =>
         {
-            await handler.HandleAsync(new DeleteChannelCommand(guildId, channelId, userId), ct);
+            await handler.HandleAsync(
+                new DeleteChannelCommand(guildId, channelId, user.GetUserId()), ct);
             return Results.NoContent();
         });
 }
