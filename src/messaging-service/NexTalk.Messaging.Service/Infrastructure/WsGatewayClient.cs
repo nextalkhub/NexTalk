@@ -7,13 +7,13 @@ namespace NexTalk.Messaging.Service.Infrastructure;
 /// Вызывается BroadcastConsumer после чтения события из канала.
 /// Resilience настраивается на IHttpClientBuilder в Program.cs.
 /// </summary>
-public sealed class WsGatewayClient(HttpClient http, ILogger<WsGatewayClient> logger)
+public class WsGatewayClient(HttpClient http, ILogger<WsGatewayClient> logger)
 {
     /// <summary>
     /// Рассылает событие всем SignalR-клиентам в группе гильдии.
     /// Эндпоинт: POST /internal/broadcast/guild/{guildId}
     /// </summary>
-    public async Task BroadcastToGuildAsync(
+    public virtual async Task BroadcastToGuildAsync(
         Guid guildId,
         string eventType,
         object payload,

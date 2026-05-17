@@ -9,6 +9,7 @@ using Microsoft.Extensions.Http.Resilience;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using NexTalk.Messaging.Service.Features.Messages.CreateMessage;
+using NexTalk.Messaging.Service.Features.Messages.DeleteMessage;
 using NexTalk.Messaging.Service.Features.Messages.GetMessages;
 using NexTalk.Messaging.Service.Infrastructure;
 using NexTalk.Messaging.Service.Infrastructure.Outbox;
@@ -74,6 +75,7 @@ builder.Services.AddHttpClient<IGuildServiceClient, GuildServiceClient>(c =>
 
 builder.Services.AddScoped<CreateMessageHandler>();
 builder.Services.AddScoped<GetMessagesHandler>();
+builder.Services.AddScoped<DeleteMessageHandler>();
 
 // Аутентификация: проверка JWT access-токенов, выпущенных Zitadel.
 var zitadelAuthority = builder.Configuration["Zitadel:Authority"] ?? throw new InvalidOperationException("Zitadel:Authority is not configured");
@@ -243,6 +245,7 @@ CreateMessageEndpoint.Map(app);
 // Публичные эндпоинты — требуют валидного JWT
 var api = app.MapGroup("").RequireAuthorization();
 GetMessagesEndpoint.Map(api);
+DeleteMessageEndpoint.Map(api);
 
 app.MapHealthChecks("/healthz", new HealthCheckOptions { Predicate = _ => false })
     .AllowAnonymous();
