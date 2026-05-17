@@ -1,10 +1,19 @@
 using System.Net;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.AspNetCore.HttpOverrides;
+using Microsoft.Extensions.Http.Resilience;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
+using NexTalk.Voice.Service.Features.Internal.DisconnectChannel;
+using NexTalk.Voice.Service.Features.Internal.DisconnectUser;
+using NexTalk.Voice.Service.Features.Voice.Join;
+using NexTalk.Voice.Service.Features.Voice.Leave;
+using NexTalk.Voice.Service.Infrastructure;
+using NexTalk.Voice.Service.Shared.Exceptions;
+using Polly;
 using Prometheus;
 using Serilog;
 using IPNetwork = System.Net.IPNetwork;
@@ -18,19 +27,67 @@ builder.Services.AddSerilog((_, lc) => lc.ReadFrom.Configuration(builder.Configu
 builder.Services.Configure<ForwardedHeadersOptions>(options =>
 {
     options.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
-
     options.KnownIPNetworks.Add(new IPNetwork(IPAddress.Parse("172.16.0.0"), 12));
     options.KnownIPNetworks.Add(new IPNetwork(IPAddress.Parse("10.0.0.0"), 8));
 });
 
-
-builder.Services.AddHealthChecks();
-
-var zitadelAuthority = builder.Configuration["Zitadel:Authority"] ?? throw new InvalidOperationException("Zitadel:Authority is not configured");
-var zitadelMetadata = builder.Configuration["Zitadel:MetadataAddress"] ?? throw new InvalidOperationException("Zitadel:MetadataAddress is not configured");
+var zitadelAuthority = builder.Configuration["Zitadel:Authority"] ?? throw new InvalidOperationException("Zitadel:Authority не задан.");
+var zitadelMetadata = builder.Configuration["Zitadel:MetadataAddress"] ?? throw new InvalidOperationException("Zitadel:MetadataAddress не задан.");
 var zitadelProjectId = builder.Configuration["Zitadel:ProjectId"];
 var swaggerClientId = builder.Configuration["Zitadel:SwaggerClientId"];
 
+var guildUrl = builder.Configuration["Services:GuildService"] ?? throw new InvalidOperationException("Services:GuildService не задан.");
+var wsGatewayUrl = builder.Configuration["Services:WebSocketGateway"] ?? throw new InvalidOperationException("Services:WebSocketGateway не задан.");
+
+// In-memory сессионное хранилище и LiveKit-инфраструктура.
+builder.Services.AddSingleton<SessionStore>();
+builder.Services.AddSingleton<LiveKitTokenGenerator>();
+builder.Services.AddSingleton<LiveKitRoomClient>();
+
+// DeadlineForwardingHandler добавляет X-Deadline к каждому запросу в Guild Service.
+builder.Services.AddTransient<DeadlineForwardingHandler>();
+
+// HTTP-клиент к Guild Service
+builder.Services.AddHttpClient<GuildServiceClient>(c => c.BaseAddress = new Uri(guildUrl))
+    .AddHttpMessageHandler<DeadlineForwardingHandler>()
+    .AddResilienceHandler("guild", pipeline =>
+    {
+        pipeline.AddRetry(new HttpRetryStrategyOptions
+        {
+            MaxRetryAttempts = 3,
+            Delay = TimeSpan.FromMilliseconds(200),
+            BackoffType = DelayBackoffType.Exponential,
+            UseJitter = true,
+        });
+        pipeline.AddCircuitBreaker(new HttpCircuitBreakerStrategyOptions
+        {
+            SamplingDuration = TimeSpan.FromSeconds(30),
+            FailureRatio = 0.5,
+            MinimumThroughput = 5,
+            BreakDuration = TimeSpan.FromSeconds(15),
+        });
+        pipeline.AddTimeout(TimeSpan.FromSeconds(2));
+    });
+
+// HTTP-клиент к WS Gateway
+builder.Services.AddHttpClient<WsGatewayClient>(c => c.BaseAddress = new Uri(wsGatewayUrl))
+    .AddResilienceHandler("ws-gateway", pipeline =>
+    {
+        pipeline.AddRetry(new HttpRetryStrategyOptions
+        {
+            MaxRetryAttempts = 3,
+            Delay = TimeSpan.FromMilliseconds(300),
+            BackoffType = DelayBackoffType.Exponential,
+            UseJitter = true,
+        });
+        pipeline.AddTimeout(TimeSpan.FromSeconds(5));
+    });
+
+// Feature-хендлеры.
+builder.Services.AddScoped<JoinVoiceHandler>();
+builder.Services.AddScoped<LeaveVoiceHandler>();
+
+// Аутентификация: JWT-токены Zitadel.
 builder.Services
     .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(o =>
@@ -38,6 +95,8 @@ builder.Services
         o.Authority = zitadelAuthority;
         o.MetadataAddress = zitadelMetadata;
         o.RequireHttpsMetadata = false;
+        // Discovery doc возвращает jwks_uri с внешним hostname.
+        // Handler перенаправляет backchannel-запросы на внутренний адрес Zitadel.
         o.BackchannelHttpHandler = new ZitadelBackchannelHandler(
             externalBase: zitadelAuthority,
             internalBase: new Uri(zitadelMetadata).GetLeftPart(UriPartial.Authority));
@@ -66,7 +125,7 @@ builder.Services.AddSwaggerGen(c =>
     {
         Title = "Voice Service",
         Version = "v1",
-        Description = "Управление голосовыми каналами через LiveKit SFU."
+        Description = "Управление голосовыми каналами через LiveKit SFU.",
     });
     c.AddServer(new OpenApiServer { Url = "/api", Description = "Через Nginx (unified)" });
     c.AddServer(new OpenApiServer { Url = "/",    Description = "Прямой доступ к сервису" });
@@ -83,9 +142,8 @@ builder.Services.AddSwaggerGen(c =>
         In = ParameterLocation.Header,
         Type = SecuritySchemeType.Http,
         Scheme = "bearer",
-        BearerFormat = "JWT"
+        BearerFormat = "JWT",
     });
-
     c.AddSecurityDefinition("oauth2", new OpenApiSecurityScheme
     {
         Type = SecuritySchemeType.OAuth2,
@@ -100,8 +158,8 @@ builder.Services.AddSwaggerGen(c =>
                     { "openid", "OpenID" },
                     { "profile", "Profile" },
                     { "email", "Email" },
-                    { "offline_access", "Refresh token" }
-                }
+                    { "offline_access", "Refresh token" },
+                },
             }
         }
     });
@@ -110,16 +168,14 @@ builder.Services.AddSwaggerGen(c =>
         {
             new OpenApiSecurityScheme
             {
-                Reference = new OpenApiReference
-                {
-                    Type = ReferenceType.SecurityScheme,
-                    Id = "oauth2"
-                }
+                Reference = new OpenApiReference { Type = ReferenceType.SecurityScheme, Id = "oauth2" }
             },
             ["openid", "profile", "email"]
         }
     });
 });
+
+builder.Services.AddHealthChecks();
 
 var app = builder.Build();
 
@@ -141,6 +197,20 @@ app.UseForwardedHeaders();
 app.UseAuthentication();
 app.UseAuthorization();
 
+app.UseExceptionHandler(exApp => exApp.Run(async ctx =>
+{
+    var ex = ctx.Features.Get<IExceptionHandlerFeature>()?.Error;
+    var (status, message) = ex switch
+    {
+        NotFoundException e => (StatusCodes.Status404NotFound, e.Message),
+        ForbiddenException e => (StatusCodes.Status403Forbidden, e.Message),
+        BadRequestException e => (StatusCodes.Status400BadRequest, e.Message),
+        _ => (StatusCodes.Status500InternalServerError, "Произошла непредвиденная ошибка."),
+    };
+    ctx.Response.StatusCode = status;
+    await ctx.Response.WriteAsJsonAsync(new { error = message });
+}));
+
 app.UseHttpMetrics();
 
 app.UseSerilogRequestLogging(opts =>
@@ -150,9 +220,17 @@ app.UseSerilogRequestLogging(opts =>
             ?? ctx.Request.Headers["X-Correlation-Id"].FirstOrDefault()
             ?? ctx.TraceIdentifier));
 
+// Публичные эндпоинты (требуют JWT).
+JoinVoiceEndpoint.Map(app);
+LeaveVoiceEndpoint.Map(app);
+
+// Internal-эндпоинты (сетевой trust, без JWT).
+DisconnectUserEndpoint.Map(app);
+DisconnectChannelEndpoint.Map(app);
+
 app.MapHealthChecks("/healthz", new HealthCheckOptions { Predicate = _ => false })
     .AllowAnonymous();
-app.MapHealthChecks("/readyz", new HealthCheckOptions { Predicate = _ => true })
+app.MapHealthChecks("/readyz", new HealthCheckOptions { Predicate = _ => false })
     .AllowAnonymous();
 app.MapMetrics().AllowAnonymous();
 

@@ -1,3 +1,4 @@
+using System.Threading;
 using Microsoft.EntityFrameworkCore;
 using NexTalk.Guild.Service.Domain;
 using NexTalk.Guild.Service.Infrastructure;
@@ -48,7 +49,7 @@ public class AcceptInviteHandler(GuildDbContext db, WsGatewayClient wsGateway, I
 
         try
         {
-            await wsGateway.BroadcastToGuildAsync(row.GuildId, "member-joined",
+            await wsGateway.BroadcastToGuildAsync(row.GuildId, "member.joined",
                 new { member.Id, member.UserId, member.DisplayName, member.Username, member.GuildId }, ct);
         }
         catch { /* best-effort */ }

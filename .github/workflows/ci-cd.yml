@@ -11,10 +11,35 @@ env:
   IMAGE_PREFIX: ghcr.io/${{ github.repository_owner }}/nextalk
 
 jobs:
-  # Build & test (every branch, every PR)
+  # Определяем, что изменилось, чтобы не гонять лишние джобы
+  changes:
+    runs-on: ubuntu-latest
+    outputs:
+      backend: ${{ steps.filter.outputs.backend }}
+      frontend: ${{ steps.filter.outputs.frontend }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            backend:
+              - 'src/guild-service/**'
+              - 'src/messaging-service/**'
+              - 'src/voice-service/**'
+              - 'src/websocket-gateway/**'
+              - '.github/workflows/**'
+            frontend:
+              - 'src/web/**'
+              - '.github/workflows/**'
+
+  # Build (only when backend changed)
   build-backend-services:
+    needs: [changes]
+    if: needs.changes.outputs.backend == 'true'
     runs-on: ubuntu-latest
     strategy:
+      fail-fast: false
       matrix:
         include:
           - name: guild-service
@@ -41,9 +66,21 @@ jobs:
       - name: Build
         run: dotnet build ${{ matrix.project }} -c Release --no-restore
 
-  test-guild-service:
+  # Test (only when backend changed)
+  test-backend-services:
+    needs: [changes, build-backend-services]
+    if: needs.changes.outputs.backend == 'true'
     runs-on: ubuntu-latest
-    name: Test guild-service
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: guild-service
+            solution: src/guild-service/NexTalk.Guild.Service.Tests/NexTalk.Guild.Service.Tests.csproj
+          - name: messaging-service
+            solution: src/messaging-service/NexTalk.Messaging.Service.Tests/NexTalk.Messaging.Service.Tests.csproj
+
+    name: Test ${{ matrix.name }}
     steps:
       - uses: actions/checkout@v4
 
@@ -53,12 +90,28 @@ jobs:
           dotnet-version: "10.0.x"
 
       - name: Restore
-        run: dotnet restore src/guild-service/NexTalk.Guild.Service.Tests/NexTalk.Guild.Service.Tests.csproj
+        run: dotnet restore ${{ matrix.solution }}
 
       - name: Test
-        run: dotnet test src/guild-service/NexTalk.Guild.Service.Tests/NexTalk.Guild.Service.Tests.csproj --no-restore -c Release --logger "console;verbosity=normal"
+        run: >
+          dotnet test ${{ matrix.solution }}
+          -c Release --no-restore
+          --logger "trx;LogFileName=test-results.trx"
+          --logger "console;verbosity=normal"
+          --results-directory TestResults
 
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results-${{ matrix.name }}
+          path: TestResults/**/*.trx
+          if-no-files-found: ignore
+
+  # Frontend CI (only when frontend changed)
   frontend-ci:
+    needs: [changes]
+    if: needs.changes.outputs.frontend == 'true'
     runs-on: ubuntu-latest
     name: frontend lint & typecheck
     defaults:
@@ -83,9 +136,9 @@ jobs:
       - name: ESLint
         run: npm run lint
 
-  # Docker build & push (only on target branches)
+  # Docker build & push (only on push to main, after all checks pass or are skipped)
   docker-build-push:
-    needs: [build-backend-services, test-guild-service, frontend-ci]
+    needs: [build-backend-services, test-backend-services, frontend-ci]
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     permissions:
@@ -93,6 +146,7 @@ jobs:
       packages: write
 
     strategy:
+      fail-fast: false
       matrix:
         include:
           - name: guild-service

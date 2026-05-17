@@ -1,4 +1,4 @@
-﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
 using NexTalk.Guild.Service.Infrastructure;
 using NexTalk.Guild.Service.Shared;
 using NexTalk.Guild.Service.Shared.Exceptions;
@@ -41,8 +41,7 @@ public class DeleteGuildHandler(GuildDbContext db, RbacService rbac, WsGatewayCl
         // Broadcast об удалении гильдии
         try
         {
-            await wsGateway.BroadcastToGuildAsync(cmd.GuildId, "guild-deleted",
-                new { GuildId = cmd.GuildId }, ct);
+            await wsGateway.BroadcastToGuildAsync(cmd.GuildId, "guild.deleted", new { GuildId = cmd.GuildId }, ct);
         }
         catch { /* best-effort */ }
     }

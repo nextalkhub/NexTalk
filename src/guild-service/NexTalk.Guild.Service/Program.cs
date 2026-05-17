@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
+using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Distributed;
 using Microsoft.IdentityModel.Tokens;
@@ -14,7 +15,7 @@ using NexTalk.Guild.Service.Features.Channels.GetChannels;
 using NexTalk.Guild.Service.Features.Guilds.CreateGuild;
 using NexTalk.Guild.Service.Features.Guilds.DeleteGuild;
 using NexTalk.Guild.Service.Features.Guilds.GetUserGuilds;
-using NexTalk.Guild.Service.Features.Internal.CheckAccess;
+using NexTalk.Guild.Service.Features.Internal.CheckChannelAccess;
 using NexTalk.Guild.Service.Features.Internal.GetGuildMembers;
 using NexTalk.Guild.Service.Features.Internal.GetUserGuildsInternal;
 using NexTalk.Guild.Service.Features.Invites.AcceptInvite;
@@ -91,7 +92,7 @@ builder.Services.AddScoped<KickMemberHandler>();
 builder.Services.AddScoped<BanMemberHandler>();
 
 // Internal handlers
-builder.Services.AddScoped<CheckAccessHandler>();
+builder.Services.AddScoped<CheckChannelAccessHandler>();
 builder.Services.AddScoped<GetGuildMembersHandler>();
 builder.Services.AddScoped<GetUserGuildsInternalHandler>();
 
@@ -226,16 +227,17 @@ app.UseAuthorization();
 app.UseExceptionHandler(exApp => exApp.Run(async ctx =>
 {
     var ex = ctx.Features.Get<IExceptionHandlerFeature>()?.Error;
-    var (status, message) = ex switch
-    {
-        NotFoundException e => (StatusCodes.Status404NotFound, e.Message),
-        ForbiddenException e => (StatusCodes.Status403Forbidden, e.Message),
-        BadRequestException e => (StatusCodes.Status400BadRequest, e.Message),
-        _ => (StatusCodes.Status500InternalServerError, "An unexpected error occurred.")
-    };
+    var (status, message) =
+        ex is NotFoundException ? (StatusCodes.Status404NotFound, ex.Message) :
+        ex is ForbiddenException ? (StatusCodes.Status403Forbidden, ex.Message) :
+        ex is BadRequestException ? (StatusCodes.Status400BadRequest, ex.Message) :
+        (StatusCodes.Status500InternalServerError, "An unexpected error occurred.");
+
     ctx.Response.StatusCode = status;
     await ctx.Response.WriteAsJsonAsync(new { error = message });
 }));
+
+app.UseMiddleware<DeadlineMiddleware>();
 
 app.UseHttpMetrics();
 
@@ -268,7 +270,7 @@ BanMemberEndpoint.Map(app);
 
 // Internal-эндпоинты
 var internalEndpoints = app.MapGroup("").AllowAnonymous();
-CheckAccessEndpoint.Map(internalEndpoints);
+CheckChannelAccessEndpoint.Map(internalEndpoints);
 GetGuildMembersEndpoint.Map(internalEndpoints);
 GetUserGuildsInternalEndpoint.Map(internalEndpoints);
 

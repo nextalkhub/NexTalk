@@ -4,15 +4,16 @@ namespace NexTalk.Guild.Service.Shared;
 
 public static class ClaimsPrincipalExtensions
 {
-    // Fixed namespace for UUIDv5 derivation — must not change; changing it would break all
-    // existing foreign keys that reference user IDs derived from Zitadel snowflake sub values.
+    // Фиксированный namespace для вывода UUIDv5 — должен совпадать с messaging-service и ws-gateway.
+    // Изменение сломает перекрёстные FK (members.user_id vs messages.author_id).
     private static readonly Guid Namespace = new("3f8a1b6c-2d4e-4f7a-9b1c-5e6d7f8a9b0c");
 
     /// <summary>
-    /// Returns the caller's identity as a <see cref="Guid"/>.
-    /// Zitadel issues snowflake IDs as <c>sub</c>; we derive a stable UUIDv5 so every
-    /// internal table can use <see cref="Guid"/> as the PK without storing provider strings.
-    /// If <c>sub</c> is already a Guid (e.g. in integration tests) it is returned as-is.
+    /// Возвращает идентификатор вызывающего как <see cref="Guid"/>.
+    /// Zitadel выдаёт snowflake-идентификаторы в поле <c>sub</c>; выводим стабильный UUIDv5,
+    /// чтобы все внутренние таблицы могли использовать <see cref="Guid"/> в качестве PK
+    /// без хранения строк провайдера. Если <c>sub</c> уже является Guid (например, в интеграционных тестах),
+    /// он возвращается как есть.
     /// </summary>
     public static Guid GetUserId(this ClaimsPrincipal user)
     {
@@ -29,7 +30,7 @@ public static class ClaimsPrincipalExtensions
     public static string GetUsername(this ClaimsPrincipal user) =>
         user.FindFirstValue("preferred_username") ?? string.Empty;
 
-    // UUIDv5 per RFC 4122 §4.3: SHA-1(namespace || name) with version/variant bits set.
+    // UUIDv5 по RFC 4122 §4.3: SHA-1(namespace || name) с выставленными битами версии и варианта.
     private static Guid DeriveGuid(string sub)
     {
         Span<byte> nsBytes = stackalloc byte[16];

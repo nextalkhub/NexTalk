@@ -1,17 +1,27 @@
 using System.Net;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.AspNetCore.HttpOverrides;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Http.Resilience;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
+using NexTalk.Messaging.Service.Features.Messages.CreateMessage;
+using NexTalk.Messaging.Service.Features.Messages.DeleteMessage;
+using NexTalk.Messaging.Service.Features.Messages.GetMessages;
+using NexTalk.Messaging.Service.Infrastructure;
+using NexTalk.Messaging.Service.Infrastructure.Outbox;
+using NexTalk.Messaging.Service.Shared;
+using NexTalk.Messaging.Service.Shared.Exceptions;
+using Polly;
 using Prometheus;
 using Serilog;
 using IPNetwork = System.Net.IPNetwork;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Zitadel projectId + client IDs из bootstrap container's output volume.
 builder.Configuration.AddJsonFile("/zitadel-config/swagger-config.json", optional: true, reloadOnChange: true);
 
 builder.Services.AddSerilog((_, lc) => lc.ReadFrom.Configuration(builder.Configuration));
@@ -19,14 +29,53 @@ builder.Services.AddSerilog((_, lc) => lc.ReadFrom.Configuration(builder.Configu
 builder.Services.Configure<ForwardedHeadersOptions>(options =>
 {
     options.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
-
     options.KnownIPNetworks.Add(new IPNetwork(IPAddress.Parse("172.16.0.0"), 12));
     options.KnownIPNetworks.Add(new IPNetwork(IPAddress.Parse("10.0.0.0"), 8));
 });
 
+var pgConnectionString = builder.Configuration.GetConnectionString("PostgresConnection")!;
+var wsGatewayUrl = builder.Configuration["Services:WebSocketGateway"]
+    ?? throw new InvalidOperationException("Services:WebSocketGateway is not configured");
 
-builder.Services.AddHealthChecks()
-    .AddNpgSql(builder.Configuration.GetConnectionString("PostgresConnection")!, tags: ["ready"]);
+builder.Services.AddDbContext<MessagingDbContext>(opts =>
+    opts.UseNpgsql(pgConnectionString));
+
+// Outbox: in-process channel + background workers
+builder.Services.AddSingleton<OutboxChannel>();
+builder.Services.AddHostedService<OutboxWorker>();
+builder.Services.AddHostedService<BroadcastConsumer>();
+
+// WS Gateway client for Outbox broadcast — simple retry, no circuit breaker needed
+// (BroadcastConsumer retries at application level via OutboxWorker stale-threshold)
+builder.Services.AddHttpClient<WsGatewayClient>(c => c.BaseAddress = new Uri(wsGatewayUrl))
+    .AddResilienceHandler("ws-gateway", pipeline =>
+    {
+        pipeline.AddRetry(new HttpRetryStrategyOptions
+        {
+            MaxRetryAttempts = 3,
+            Delay = TimeSpan.FromMilliseconds(300),
+            BackoffType = DelayBackoffType.Exponential,
+            UseJitter = true,
+        });
+        pipeline.AddTimeout(TimeSpan.FromSeconds(5));
+    });
+
+builder.Services.AddHttpContextAccessor();
+
+// HTTP client to Guild Service для проверки доступа к каналу (Flow 11)
+builder.Services.AddHttpClient<IGuildServiceClient, GuildServiceClient>(c =>
+        c.BaseAddress = new Uri(builder.Configuration["Services:GuildService"]
+            ?? throw new InvalidOperationException("Services:GuildService is not configured")))
+    .AddStandardResilienceHandler(opts =>
+    {
+        opts.AttemptTimeout.Timeout = TimeSpan.FromSeconds(3);
+        opts.TotalRequestTimeout.Timeout = TimeSpan.FromSeconds(10);
+        opts.CircuitBreaker.SamplingDuration = TimeSpan.FromSeconds(30);
+    });
+
+builder.Services.AddScoped<CreateMessageHandler>();
+builder.Services.AddScoped<GetMessagesHandler>();
+builder.Services.AddScoped<DeleteMessageHandler>();
 
 // Аутентификация: проверка JWT access-токенов, выпущенных Zitadel.
 var zitadelAuthority = builder.Configuration["Zitadel:Authority"] ?? throw new InvalidOperationException("Zitadel:Authority is not configured");
@@ -41,6 +90,10 @@ builder.Services
         o.Authority = zitadelAuthority;
         o.MetadataAddress = zitadelMetadata;
         o.RequireHttpsMetadata = false;
+        // Discovery doc возвращает jwks_uri с внешним hostname (http://localhost:8080/...).
+        // Изнутри Docker-контейнера localhost — это сам контейнер, а не nginx → Connection refused.
+        // Handler перенаправляет все backchannel-запросы на внутренний zitadel-api
+        // и проставляет Host: localhost:8080, чтобы Zitadel нашёл нужный инстанс.
         o.BackchannelHttpHandler = new ZitadelBackchannelHandler(
             externalBase: zitadelAuthority,
             internalBase: new Uri(zitadelMetadata).GetLeftPart(UriPartial.Authority));
@@ -72,7 +125,7 @@ builder.Services.AddSwaggerGen(c =>
         Description = "Хранение сообщений, Outbox Pattern, идемпотентность."
     });
     c.AddServer(new OpenApiServer { Url = "/api", Description = "Через Nginx (unified)" });
-    c.AddServer(new OpenApiServer { Url = "/",    Description = "Прямой доступ к сервису" });
+    c.AddServer(new OpenApiServer { Url = "/", Description = "Прямой доступ к сервису" });
     c.CustomSchemaIds(type => type.FullName?.Replace("+", ".") ?? type.Name);
 
     var xmlPath = Path.Combine(AppContext.BaseDirectory, "NexTalk.Messaging.Service.xml");
@@ -124,6 +177,9 @@ builder.Services.AddSwaggerGen(c =>
     });
 });
 
+builder.Services.AddHealthChecks()
+    .AddNpgSql(pgConnectionString, tags: ["ready"]);
+
 var app = builder.Build();
 
 if (app.Environment.IsDevelopment())
@@ -138,13 +194,43 @@ if (app.Environment.IsDevelopment())
         c.RoutePrefix = "swagger";
         c.DocumentTitle = "Messaging Service API";
     });
+
+    MigrateDatabase(app);
 }
 
 app.UseForwardedHeaders();
 app.UseAuthentication();
 app.UseAuthorization();
 
+app.UseExceptionHandler(exApp => exApp.Run(async ctx =>
+{
+    var ex = ctx.Features.Get<IExceptionHandlerFeature>()?.Error;
+    var (status, message) = ex switch
+    {
+        NotFoundException e => (StatusCodes.Status404NotFound, e.Message),
+        ForbiddenException e => (StatusCodes.Status403Forbidden, e.Message),
+        BadRequestException e => (StatusCodes.Status400BadRequest, e.Message),
+        _ => (StatusCodes.Status500InternalServerError, "An unexpected error occurred.")
+    };
+    ctx.Response.StatusCode = status;
+    await ctx.Response.WriteAsJsonAsync(new { error = message });
+}));
+
+app.UseMiddleware<DeadlineMiddleware>();
+
 app.UseHttpMetrics();
+
+// Propagate JWT "sub" claim as X-User-Id so GetMessages endpoint can bind [FromHeader] Guid userId.
+app.Use(async (ctx, next) =>
+{
+    if (ctx.User.Identity?.IsAuthenticated == true)
+    {
+        var sub = ctx.User.FindFirst("sub")?.Value
+            ?? ctx.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+        if (sub is not null) ctx.Request.Headers["X-User-Id"] = sub;
+    }
+    await next();
+});
 
 app.UseSerilogRequestLogging(opts =>
     opts.EnrichDiagnosticContext = (dc, ctx) =>
@@ -152,6 +238,14 @@ app.UseSerilogRequestLogging(opts =>
             ctx.Request.Headers["X-Request-Id"].FirstOrDefault()
             ?? ctx.Request.Headers["X-Correlation-Id"].FirstOrDefault()
             ?? ctx.TraceIdentifier));
+
+// Internal endpoint — вызывается WS Gateway, AllowAnonymous задан в эндпоинте
+CreateMessageEndpoint.Map(app);
+
+// Публичные эндпоинты — требуют валидного JWT
+var api = app.MapGroup("").RequireAuthorization();
+GetMessagesEndpoint.Map(api);
+DeleteMessageEndpoint.Map(api);
 
 app.MapHealthChecks("/healthz", new HealthCheckOptions { Predicate = _ => false })
     .AllowAnonymous();
@@ -162,6 +256,18 @@ app.MapHealthChecks("/readyz", new HealthCheckOptions
 app.MapMetrics().AllowAnonymous();
 
 app.Run();
+
+static void MigrateDatabase(WebApplication app)
+{
+    using var scope = app.Services.CreateScope();
+    var db = scope.ServiceProvider.GetRequiredService<MessagingDbContext>();
+
+    if (!db.Database.IsRelational())
+        return;
+
+    if (db.Database.GetPendingMigrations().Any())
+        db.Database.Migrate();
+}
 
 file sealed class ZitadelBackchannelHandler(string externalBase, string internalBase) : HttpClientHandler
 {
@@ -178,3 +284,5 @@ file sealed class ZitadelBackchannelHandler(string externalBase, string internal
         return base.SendAsync(req, ct);
     }
 }
+
+public partial class Program;
