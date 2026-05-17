@@ -980,20 +980,29 @@ modelConnections:
 1. Owner/Admin → React SPA: "Пригласить участников" → настройка TTL и лимита
 2. React SPA → Nginx: POST /api/guilds/{guildId}/invites + JWT
    Body: { expiresIn: "24h", maxUses: 25 }
+   expiresIn — строка с суффиксом единицы ("24h", "7d", "30m", "3600s")
+   expiresInSeconds — альтернативная legacy-форма (целое число секунд)
+   maxUses — опционально; null = безлимитный инвайт
 
 3. Nginx: rate limit, X-Request-Id → Proxy к Guild Service
+   Маршрут /api/guilds/* → guild-service/guilds/* (стрипается /api)
 
 4. Guild Service: Валидация JWT → userId
 5. Guild Service → PostgreSQL: SELECT member WHERE user_id=X AND guild_id=Y
-   Проверка роли: Owner или Admin → разрешено, Member → 403
+   Проверка роли: Owner или Admin → разрешено, Member / не-участник → 403
 
 6. Guild Service → PostgreSQL:
-   INSERT INTO invites (code=UUID, guild_id, created_by, expires_at=NOW()+TTL, max_uses)
-   code - криптографически случайный UUID (не предсказуемый)
+   INSERT INTO invites (code, guild_id, created_by, expires_at=NOW()+TTL, max_uses)
+   code — криптографически случайный base64url-токен, 12 символов (~72 бита энтропии),
+          алфавит A-Z a-z 0-9 - _ (URL-safe, не UUID)
 
 7. Guild Service → Nginx → React SPA:
-   201 Created { code: "abc123", url: "https://nextalk.app/invite/abc123",
-                 expiresAt, maxUses }
+   201 Created {
+     id: uuid, code: "abc123def456",
+     url: "https://nextalk.fun/invite/abc123def456",
+     guildId: uuid, expiresAt: "2025-05-18T12:00:00Z" | null,
+     maxUses: 25 | null, usesCount: 0, createdAt: "2025-05-17T12:00:00Z"
+   }
 
 8. React SPA: отображает ссылку → пользователь копирует и отправляет другу
 ```

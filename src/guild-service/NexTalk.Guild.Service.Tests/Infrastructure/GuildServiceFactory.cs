@@ -31,6 +31,7 @@ public class GuildServiceFactory : WebApplicationFactory<Program>
                 ["VoiceService:BaseUrl"] = "http://localhost:19998",
                 ["Services:WebSocketGateway"] = "http://localhost:19999",
                 ["Services:VoiceService"] = "http://localhost:19998",
+                ["Invites:BaseUrl"] = "https://test.local/invite",
             }));
 
         builder.ConfigureTestServices(services =>
