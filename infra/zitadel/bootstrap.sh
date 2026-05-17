@@ -6,6 +6,10 @@ apk add --no-cache curl jq > /dev/null 2>&1
 API_URL="http://zitadel-api:8080"
 ZITADEL_HOST="${ZITADEL_DOMAIN:-localhost}:${ZITADEL_EXTERNALPORT:-8080}"
 BASE_URL="${ZITADEL_PUBLIC_SCHEME:-http}://${ZITADEL_DOMAIN:-localhost}:${ZITADEL_EXTERNALPORT:-8080}"
+# Vite dev server (npm run dev в src/web) поднимается на :3000 и проксирует
+# /oauth + /api к nginx. Redirect возвращается напрямую в браузер, поэтому
+# для local-dev сценария нужен отдельный callback на :3000.
+SPA_DEV_BASE_URL="${ZITADEL_PUBLIC_SCHEME:-http}://${ZITADEL_DOMAIN:-localhost}:3000"
 PAT_FILE="/zitadel/bootstrap/bootstrap-sa.pat"
 OUTPUT_FILE="/output/swagger-config.json"
 MAX_WAIT=120
@@ -68,8 +72,10 @@ fi
 # ── 2. Create or find OIDC app ────────────────────────────────────────────────
 resolve_oidc_app() {
     local app_name="$1"
-    local redirect_uri="$2"
-    local post_logout_uri="$3"
+    # $2 — JSON-массив redirect URIs (например '["http://a","http://b"]').
+    # $3 — JSON-массив post-logout URIs.
+    local redirect_uris_json="$2"
+    local post_logout_uris_json="$3"
 
     EXISTING_APPS=$(api_post "/management/v1/projects/${PROJECT_ID}/apps/_search" \
         "{\"queries\":[{\"nameQuery\":{\"name\":\"${app_name}\",\"method\":\"TEXT_QUERY_METHOD_EQUALS\"}}]}")
@@ -83,12 +89,12 @@ resolve_oidc_app() {
 
     APP_RESP=$(api_post "/management/v1/projects/${PROJECT_ID}/apps/oidc" \
         "{\"name\":\"${app_name}\",\
-\"redirectUris\":[\"${redirect_uri}\"],\
+\"redirectUris\":${redirect_uris_json},\
 \"responseTypes\":[\"OIDC_RESPONSE_TYPE_CODE\"],\
 \"grantTypes\":[\"OIDC_GRANT_TYPE_AUTHORIZATION_CODE\"],\
 \"appType\":\"OIDC_APP_TYPE_USER_AGENT\",\
 \"authMethodType\":\"OIDC_AUTH_METHOD_TYPE_NONE\",\
-\"postLogoutRedirectUris\":[\"${post_logout_uri}\"],\
+\"postLogoutRedirectUris\":${post_logout_uris_json},\
 \"version\":\"OIDC_VERSION_1_0\",\
 \"devMode\":true,\
 \"accessTokenType\":\"OIDC_TOKEN_TYPE_JWT\",\
@@ -102,15 +108,40 @@ resolve_oidc_app() {
 echo "[bootstrap] Resolving OIDC apps..."
 SPA_CLIENT_ID=$(resolve_oidc_app \
     "NexTalk SPA" \
-    "${BASE_URL}/callback" \
-    "${BASE_URL}")
+    "[\"${BASE_URL}/callback\",\"${SPA_DEV_BASE_URL}/callback\"]" \
+    "[\"${BASE_URL}\",\"${SPA_DEV_BASE_URL}\"]")
 
 SWAGGER_CLIENT_ID=$(resolve_oidc_app \
     "NexTalk Swagger UI" \
-    "${BASE_URL}/swagger/oauth2-redirect.html" \
-    "${BASE_URL}/swagger")
+    "[\"${BASE_URL}/swagger/oauth2-redirect.html\"]" \
+    "[\"${BASE_URL}/swagger\"]")
 
-# ── 3. Write output ───────────────────────────────────────────────────────────
+# ── 3. Branding ───────────────────────────────────────────────────────────────
+# Кастомизируем label policy: цвета NexTalk + убираем Zitadel watermark в footer.
+# Логотип не загружаем (нет ассета в репо); это можно сделать вручную через
+# Console -> Default Settings -> Branding.
+echo "[bootstrap] Applying NexTalk branding..."
+BRANDING_PAYLOAD='{
+"primaryColor":"#5865F2",
+"hideLoginNameSuffix":true,
+"warnColor":"#ED4245",
+"backgroundColor":"#FFFFFF",
+"fontColor":"#060607",
+"primaryColorDark":"#5865F2",
+"backgroundColorDark":"#202225",
+"warnColorDark":"#ED4245",
+"fontColorDark":"#FFFFFF",
+"disableWatermark":true,
+"themeMode":"THEME_MODE_AUTO"
+}'
+# Сначала пробуем POST (создать custom policy если её ещё нет, instance по умолчанию даёт isDefault=true).
+# Если POST упал ("already exists"), делаем PUT для обновления существующей.
+api_post "/management/v1/policies/label" "$BRANDING_PAYLOAD" > /dev/null 2>&1 || \
+    api_put "/management/v1/policies/label" "$BRANDING_PAYLOAD" > /dev/null 2>&1 || true
+# Активация переводит "preview" → "active".
+api_post "/management/v1/policies/label/_activate" '{}' > /dev/null 2>&1 || true
+
+# ── 4. Write output ───────────────────────────────────────────────────────────
 # Flat keys are read by the unified Swagger UI HTML (browser side).
 # Nested "Zitadel" object is read by .NET IConfiguration on backend services
 # (AddJsonFile populates Zitadel:ProjectId etc.).

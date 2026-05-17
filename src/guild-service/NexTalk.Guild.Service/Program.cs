@@ -4,8 +4,10 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
+using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Distributed;
+using Microsoft.Extensions.Http.Resilience;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using NexTalk.Guild.Service.Features.Channels.CreateChannel;
@@ -26,6 +28,7 @@ using NexTalk.Guild.Service.Features.Members.KickMember;
 using NexTalk.Guild.Service.Infrastructure;
 using NexTalk.Guild.Service.Shared;
 using NexTalk.Guild.Service.Shared.Exceptions;
+using Polly;
 using Prometheus;
 using Serilog;
 using Swashbuckle.AspNetCore.SwaggerGen;
@@ -61,11 +64,51 @@ builder.Services.AddStackExchangeRedisCache(opts =>
 builder.Services.AddDbContext<GuildDbContext>(opts =>
     opts.UseNpgsql(pgConnectionString));
 
+builder.Services.AddTransient<DeadlineForwardingHandler>();
+
 builder.Services.AddHttpClient<WsGatewayClient>(c =>
-    c.BaseAddress = new Uri(builder.Configuration["Services:WebSocketGateway"] ?? throw new InvalidOperationException("Services:WebSocketGateway is not configured")));
+        c.BaseAddress = new Uri(builder.Configuration["Services:WebSocketGateway"] ?? throw new InvalidOperationException("Services:WebSocketGateway is not configured")))
+    .AddHttpMessageHandler<DeadlineForwardingHandler>()
+    .AddResilienceHandler("ws-gateway", pipeline =>
+    {
+        pipeline.AddRetry(new HttpRetryStrategyOptions
+        {
+            MaxRetryAttempts = 3,
+            Delay = TimeSpan.FromMilliseconds(200),
+            BackoffType = DelayBackoffType.Exponential,
+            UseJitter = true,
+        });
+        pipeline.AddCircuitBreaker(new HttpCircuitBreakerStrategyOptions
+        {
+            SamplingDuration = TimeSpan.FromSeconds(30),
+            FailureRatio = 0.5,
+            MinimumThroughput = 5,
+            BreakDuration = TimeSpan.FromSeconds(15),
+        });
+        pipeline.AddTimeout(TimeSpan.FromSeconds(2));
+    });
 
 builder.Services.AddHttpClient<VoiceServiceClient>(c =>
-    c.BaseAddress = new Uri(builder.Configuration["Services:VoiceService"] ?? throw new InvalidOperationException("Services:VoiceService is not configured")));
+        c.BaseAddress = new Uri(builder.Configuration["Services:VoiceService"] ?? throw new InvalidOperationException("Services:VoiceService is not configured")))
+    .AddHttpMessageHandler<DeadlineForwardingHandler>()
+    .AddResilienceHandler("voice", pipeline =>
+    {
+        pipeline.AddRetry(new HttpRetryStrategyOptions
+        {
+            MaxRetryAttempts = 3,
+            Delay = TimeSpan.FromMilliseconds(200),
+            BackoffType = DelayBackoffType.Exponential,
+            UseJitter = true,
+        });
+        pipeline.AddCircuitBreaker(new HttpCircuitBreakerStrategyOptions
+        {
+            SamplingDuration = TimeSpan.FromSeconds(30),
+            FailureRatio = 0.5,
+            MinimumThroughput = 5,
+            BreakDuration = TimeSpan.FromSeconds(15),
+        });
+        pipeline.AddTimeout(TimeSpan.FromSeconds(2));
+    });
 
 builder.Services.AddScoped<RbacService>();
 
@@ -226,13 +269,12 @@ app.UseAuthorization();
 app.UseExceptionHandler(exApp => exApp.Run(async ctx =>
 {
     var ex = ctx.Features.Get<IExceptionHandlerFeature>()?.Error;
-    var (status, message) = ex switch
-    {
-        NotFoundException e => (StatusCodes.Status404NotFound, e.Message),
-        ForbiddenException e => (StatusCodes.Status403Forbidden, e.Message),
-        BadRequestException e => (StatusCodes.Status400BadRequest, e.Message),
-        _ => (StatusCodes.Status500InternalServerError, "An unexpected error occurred.")
-    };
+    var (status, message) =
+        ex is NotFoundException ? (StatusCodes.Status404NotFound, ex.Message) :
+        ex is ForbiddenException ? (StatusCodes.Status403Forbidden, ex.Message) :
+        ex is BadRequestException ? (StatusCodes.Status400BadRequest, ex.Message) :
+        (StatusCodes.Status500InternalServerError, "An unexpected error occurred.");
+
     ctx.Response.StatusCode = status;
     await ctx.Response.WriteAsJsonAsync(new { error = message });
 }));

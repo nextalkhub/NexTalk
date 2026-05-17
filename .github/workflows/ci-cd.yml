@@ -11,8 +11,32 @@ env:
   IMAGE_PREFIX: ghcr.io/${{ github.repository_owner }}/nextalk
 
 jobs:
-  # Build & test (every branch, every PR)
+  # Определяем, что изменилось, чтобы не гонять лишние джобы
+  changes:
+    runs-on: ubuntu-latest
+    outputs:
+      backend: ${{ steps.filter.outputs.backend }}
+      frontend: ${{ steps.filter.outputs.frontend }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            backend:
+              - 'src/guild-service/**'
+              - 'src/messaging-service/**'
+              - 'src/voice-service/**'
+              - 'src/websocket-gateway/**'
+              - '.github/workflows/**'
+            frontend:
+              - 'src/web/**'
+              - '.github/workflows/**'
+
+  # Build (only when backend changed)
   build-backend-services:
+    needs: [changes]
+    if: needs.changes.outputs.backend == 'true'
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -42,8 +66,10 @@ jobs:
       - name: Build
         run: dotnet build ${{ matrix.project }} -c Release --no-restore
 
+  # Test (only when backend changed)
   test-backend-services:
-    needs: [build-backend-services]
+    needs: [changes, build-backend-services]
+    if: needs.changes.outputs.backend == 'true'
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -53,6 +79,10 @@ jobs:
             solution: src/guild-service/NexTalk.Guild.Service.Tests/NexTalk.Guild.Service.Tests.csproj
           - name: messaging-service
             solution: src/messaging-service/NexTalk.Messaging.Service.Tests/NexTalk.Messaging.Service.Tests.csproj
+          - name: voice-service
+            solution: src/voice-service/NexTalk.Voice.Service.Tests/NexTalk.Voice.Service.Tests.csproj
+          - name: websocket-gateway
+            solution: src/websocket-gateway/NextTalk.Websocket.Gateway.Tests/NextTalk.Websocket.Gateway.Tests.csproj
 
     name: Test ${{ matrix.name }}
     steps:
@@ -82,7 +112,10 @@ jobs:
           path: TestResults/**/*.trx
           if-no-files-found: ignore
 
+  # Frontend CI (only when frontend changed)
   frontend-ci:
+    needs: [changes]
+    if: needs.changes.outputs.frontend == 'true'
     runs-on: ubuntu-latest
     name: frontend lint & typecheck
     defaults:
@@ -107,7 +140,7 @@ jobs:
       - name: ESLint
         run: npm run lint
 
-  # Docker build & push (only on target branches)
+  # Docker build & push (only on push to main, after all checks pass or are skipped)
   docker-build-push:
     needs: [build-backend-services, test-backend-services, frontend-ci]
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'

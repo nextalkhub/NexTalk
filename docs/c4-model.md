@@ -106,7 +106,7 @@
 | PresenceTracker | In-memory ConcurrentDictionary, heartbeat TTL |
 | MessagingHttpClient | HTTP → Messaging Service (Polly: Retry + CB) |
 | GuildHttpClient | HTTP → Guild Service (Polly: Retry + CB) |
-| BroadcastController | POST /internal/broadcast (от Outbox Worker, Guild Service, Voice Service) |
+| BroadcastController | POST /internal/broadcast/guild/{guildId} (от Outbox Worker, Guild Service, Voice Service) |
 | DisconnectController | POST /internal/disconnect/{userId} - принудительное отключение |
 
 #### Guild Service
@@ -131,7 +131,7 @@
 | IdempotencyMiddleware | Проверка X-Idempotency-Key |
 | OutboxWriter | INSERT outbox_event в транзакции с message |
 | OutboxWorker | BackgroundService: poll → Channel → broadcast |
-| BroadcastConsumer | POST /internal/broadcast в WS Gateway |
+| BroadcastConsumer | POST /internal/broadcast/guild/{guildId} в WS Gateway |
 
 #### Voice Service
 
@@ -358,7 +358,7 @@ modelObjects:
   name: BroadcastController
   type: component
   parentId: app-ws-gateway
-  description: POST /internal/broadcast - от Messaging Outbox Worker, Guild Service и Voice Service
+  description: POST /internal/broadcast/guild/{guildId} - от Messaging Outbox Worker, Guild Service и Voice Service
 
 - id: comp-ws-disconnect
   name: DisconnectController
@@ -456,7 +456,7 @@ modelObjects:
   name: BroadcastConsumer
   type: component
   parentId: app-messaging
-  description: 'POST /internal/broadcast в WS Gateway (из OutboxWorker channel)'
+  description: 'POST /internal/broadcast/guild/{guildId} в WS Gateway (из OutboxWorker channel)'
 
 # --- Components: Voice Service ---
 - id: comp-voice-controller
@@ -593,7 +593,7 @@ modelConnections:
   originId: app-messaging
   targetId: app-ws-gateway
   direction: outgoing
-  description: 'POST /internal/broadcast (Outbox для message.created; прямой вызов для message.deleted)'
+  description: 'POST /internal/broadcast/guild/{guildId} (Outbox для message.created; прямой вызов для message.deleted)'
 
 - id: conn-voice-guild
   name: HTTP (Polly)
@@ -621,7 +621,7 @@ modelConnections:
   originId: app-guild
   targetId: app-ws-gateway
   direction: outgoing
-  description: 'POST /internal/broadcast (member/channel/guild events) + POST /internal/disconnect/{userId} (при бане)'
+  description: 'POST /internal/broadcast/guild/{guildId} (member/channel/guild events) + POST /internal/disconnect/{userId} (при бане)'
 
 - id: conn-guild-voice
   name: HTTP
@@ -635,7 +635,7 @@ modelConnections:
   originId: app-voice
   targetId: app-ws-gateway
   direction: outgoing
-  description: 'POST /internal/broadcast (voice.joined, voice.left)'
+  description: 'POST /internal/broadcast/guild/{guildId} (voice.joined, voice.left)'
 
 # --- Services → Storage ---
 - id: conn-guild-pg
@@ -773,7 +773,7 @@ modelConnections:
 11. [Async] Messaging Service (OutboxWorker) → PostgreSQL:
     SELECT outbox_events WHERE processed = false
 12. Messaging Service (BroadcastConsumer) → WS Gateway:
-    POST /internal/broadcast { type: 'message.created', payload: { message } }
+    POST /internal/broadcast/guild/{guildId} { type: 'message.created', payload: { message } }
     [При ошибке → exponential backoff retry, макс 5 попыток]
 13. WS Gateway → React SPA (участники канала, SignalR):
     ReceiveMessage({ id, channelId, authorId, authorName, content, createdAt })
@@ -806,7 +806,7 @@ modelConnections:
 13. LiveKit: пересылает SRTP-пакеты остальным участникам комнаты
 
 14. Voice Service → WS Gateway (HTTP):
-    POST /internal/broadcast { type: 'voice.joined', userId, channelId }
+    POST /internal/broadcast/guild/{guildId} { type: 'voice.joined', payload: { userId, channelId } }
 15. WS Gateway → React SPA (участники канала, SignalR):
     { type: 'voice.joined', userId, channelId }
 ```
@@ -830,7 +830,7 @@ modelConnections:
 8. React SPA: Сервер появляется в левой панели
 
 9. Guild Service → WS Gateway (HTTP):
-   POST /internal/broadcast { type: 'member.joined', userId, guildId }
+   POST /internal/broadcast/guild/{guildId} { type: 'member.joined', payload: { userId, guildId } }
 10. WS Gateway → React SPA (онлайн-участники): Обновить список
 ```
 
@@ -939,7 +939,7 @@ modelConnections:
 7. LiveKit: Обрывает SRTP-сессию участника
 
 8. Voice Service → WS Gateway (HTTP):
-   POST /internal/broadcast { type: 'voice.left', userId, channelId }
+   POST /internal/broadcast/guild/{guildId} { type: 'voice.left', payload: { userId, channelId } }
 9. WS Gateway → React SPA (участники): Обновить список голосового канала
 
 10. Voice Service → Nginx → React SPA: 200 OK
@@ -980,20 +980,29 @@ modelConnections:
 1. Owner/Admin → React SPA: "Пригласить участников" → настройка TTL и лимита
 2. React SPA → Nginx: POST /api/guilds/{guildId}/invites + JWT
    Body: { expiresIn: "24h", maxUses: 25 }
+   expiresIn — строка с суффиксом единицы ("24h", "7d", "30m", "3600s")
+   expiresInSeconds — альтернативная legacy-форма (целое число секунд)
+   maxUses — опционально; null = безлимитный инвайт
 
 3. Nginx: rate limit, X-Request-Id → Proxy к Guild Service
+   Маршрут /api/guilds/* → guild-service/guilds/* (стрипается /api)
 
 4. Guild Service: Валидация JWT → userId
 5. Guild Service → PostgreSQL: SELECT member WHERE user_id=X AND guild_id=Y
-   Проверка роли: Owner или Admin → разрешено, Member → 403
+   Проверка роли: Owner или Admin → разрешено, Member / не-участник → 403
 
 6. Guild Service → PostgreSQL:
-   INSERT INTO invites (code=UUID, guild_id, created_by, expires_at=NOW()+TTL, max_uses)
-   code - криптографически случайный UUID (не предсказуемый)
+   INSERT INTO invites (code, guild_id, created_by, expires_at=NOW()+TTL, max_uses)
+   code — криптографически случайный base64url-токен, 12 символов (~72 бита энтропии),
+          алфавит A-Z a-z 0-9 - _ (URL-safe, не UUID)
 
 7. Guild Service → Nginx → React SPA:
-   201 Created { code: "abc123", url: "https://nextalk.app/invite/abc123",
-                 expiresAt, maxUses }
+   201 Created {
+     id: uuid, code: "abc123def456",
+     url: "https://nextalk.fun/invite/abc123def456",
+     guildId: uuid, expiresAt: "2025-05-18T12:00:00Z" | null,
+     maxUses: 25 | null, usesCount: 0, createdAt: "2025-05-17T12:00:00Z"
+   }
 
 8. React SPA: отображает ссылку → пользователь копирует и отправляет другу
 ```
@@ -1017,9 +1026,9 @@ modelConnections:
    UPDATE members SET role='Admin' WHERE user_id={userId} AND guild_id={guildId}
 
 7. Guild Service → WS Gateway (HTTP):
-   POST /internal/broadcast { type: 'member.roleChanged', userId, guildId, newRole: 'Admin' }
-8. WS Gateway → React SPA (участники гильда, SignalR):
-   { type: 'member.roleChanged', userId, newRole: 'Admin' }
+   POST /internal/broadcast/guild/{guildId} { type: 'role.assigned', payload: { userId, guildId, role: 'Admin' } }
+8. WS Gateway → React SPA (участники гильдии, SignalR):
+   GatewayEvent { type: 'role.assigned', payload: { userId, guildId, role: 'Admin' } }
    (UI обновляет роль участника в реальном времени)
 
 9. Guild Service → Nginx → React SPA: 200 OK { userId, role: 'Admin' }
@@ -1047,7 +1056,7 @@ modelConnections:
    (outbox_event для broadcast не нужен - сообщение удаляется, не создается)
 
 7. Messaging Service → WS Gateway (HTTP):
-   POST /internal/broadcast { type: 'message.deleted', messageId, channelId }
+   POST /internal/broadcast/guild/{guildId} { type: 'message.deleted', payload: { messageId, channelId } }
 8. WS Gateway → React SPA (участники канала, SignalR):
    { type: 'message.deleted', messageId }
    (UI убирает сообщение из чата)
@@ -1139,7 +1148,7 @@ modelConnections:
    type = 'text' | 'voice'
 
 7. Guild Service → WS Gateway (HTTP):
-   POST /internal/broadcast { type: 'channel.created', guildId, channel: { id, name, type } }
+   POST /internal/broadcast/guild/{guildId} { type: 'channel.created', payload: { guildId, channel: { id, name, type } } }
 8. WS Gateway → React SPA (участники гильда, SignalR):
    { type: 'channel.created', channel: { id, name, type } }
    (UI добавляет канал в список без перезагрузки)
@@ -1171,7 +1180,7 @@ modelConnections:
    (сообщения канала остаются в messages - CASCADE не настроен в MVP)
 
 8. Guild Service → WS Gateway (HTTP):
-   POST /internal/broadcast { type: 'channel.deleted', guildId, channelId }
+   POST /internal/broadcast/guild/{guildId} { type: 'channel.deleted', payload: { guildId, channelId } }
 9. WS Gateway → React SPA (участники гильда, SignalR):
    { type: 'channel.deleted', channelId }
    (UI убирает канал из списка; если пользователь был в этом канале - переводит на general)
@@ -1210,7 +1219,7 @@ modelConnections:
    COMMIT
 
 8. Guild Service → WS Gateway (HTTP):
-   POST /internal/broadcast { type: 'guild.deleted', guildId }
+   POST /internal/broadcast/guild/{guildId} { type: 'guild.deleted', payload: { guildId } }
 9. WS Gateway → React SPA (все участники гильда, SignalR):
    { type: 'guild.deleted', guildId }
    (UI убирает сервер из панели, переводит пользователей на главный экран)

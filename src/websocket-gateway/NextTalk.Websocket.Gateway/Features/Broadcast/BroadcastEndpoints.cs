@@ -16,21 +16,7 @@ public static class BroadcastEndpoints
                     .SendAsync("GatewayEvent", new { req.Type, req.Payload });
                 return Results.NoContent();
             }).AllowAnonymous().ExcludeFromDescription();
-
-        app.MapPost("/internal/broadcast",
-            async (BroadcastRequest req, IHubContext<ChatHub> hub) =>
-            {
-                if (req.GuildId.HasValue)
-                {
-                    await hub.Clients
-                        .Group(ChatHub.GuildGroup(req.GuildId.Value))
-                        .SendAsync("GatewayEvent", new { req.Type, req.Payload });
-                }
-                return Results.NoContent();
-            }).AllowAnonymous().ExcludeFromDescription();
     }
 
     public record BroadcastGuildRequest(string Type, JsonElement? Payload);
-
-    public record BroadcastRequest(string Type, Guid? GuildId, JsonElement? Payload);
 }

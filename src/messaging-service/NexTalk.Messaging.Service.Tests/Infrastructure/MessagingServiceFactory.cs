@@ -4,13 +4,13 @@ using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage;
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.IdentityModel.Tokens;
 using NexTalk.Messaging.Service.Infrastructure;
 using NexTalk.Messaging.Service.Infrastructure.Outbox;
 using NexTalk.Messaging.Service.Shared;
+using System.Net.Http.Headers;
 using System.Text;
 
 namespace NexTalk.Messaging.Service.Tests.Infrastructure;
@@ -22,6 +22,8 @@ public class MessagingServiceFactory : WebApplicationFactory<Program>
 
     public ChannelAccessResult GuildAccessResponse { get; set; } =
         new(true, Guid.NewGuid());
+
+    public bool AdminCheckGranted { get; set; } = true;
 
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
@@ -64,7 +66,7 @@ public class MessagingServiceFactory : WebApplicationFactory<Program>
                 .Where(d => d.ServiceType == typeof(IGuildServiceClient))
                 .ToList();
             foreach (var d in clientDescriptors) services.Remove(d);
-            services.AddScoped<IGuildServiceClient>(_ => new FakeGuildServiceClient(GuildAccessResponse));
+            services.AddScoped<IGuildServiceClient>(_ => new FakeGuildServiceClient(GuildAccessResponse, AdminCheckGranted));
 
             // Override JwtBearer: clear Authority/MetadataAddress (no OIDC discovery to fake URL)
             // and provide a symmetric IssuerSigningKey matching TestJwt.SigningKey.
@@ -90,5 +92,19 @@ public class MessagingServiceFactory : WebApplicationFactory<Program>
                 };
             });
         });
+    }
+
+    public async Task<MessagingDbContext> GetDbContextAsync()
+    {
+        var scope = Services.CreateAsyncScope();
+        return scope.ServiceProvider.GetRequiredService<MessagingDbContext>();
+    }
+
+    public HttpClient CreateAuthenticatedClient(Guid userId)
+    {
+        var client = CreateClient();
+        client.DefaultRequestHeaders.Authorization =
+            new AuthenticationHeaderValue("Bearer", TestJwt.Generate(userId));
+        return client;
     }
 }

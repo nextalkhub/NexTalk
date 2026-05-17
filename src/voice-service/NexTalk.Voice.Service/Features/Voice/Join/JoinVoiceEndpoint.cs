@@ -11,7 +11,7 @@ namespace NexTalk.Voice.Service.Features.Voice.Join;
 public static class JoinVoiceEndpoint
 {
     public static void Map(IEndpointRouteBuilder app) =>
-        app.MapPost("/api/voice/{channelId:guid}/join", async (
+        app.MapPost("/voice/{channelId:guid}/join", async (
             Guid channelId,
             ClaimsPrincipal principal,
             JoinVoiceHandler handler,
