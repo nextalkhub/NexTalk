@@ -1,9 +1,18 @@
+import {User} from "./common.ts";
+
 export interface Guild {
     id: string
     name: string
-    displayName: string
+    description?: string
+    icon?: string
     ownerId: string
-    createdAt: string
+    owner?: User
+    memberCount: number
+    onlineCount: number
+    channels?: Channel[]
+    members?: Member[]
+    createdAt: Date
+    updatedAt?: Date
 }
 
 export interface Channel {
