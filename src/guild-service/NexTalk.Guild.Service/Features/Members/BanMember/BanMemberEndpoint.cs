@@ -6,9 +6,9 @@ namespace NexTalk.Guild.Service.Features.Members.BanMember;
 public static class BanMemberEndpoint
 {
     public static void Map(IEndpointRouteBuilder app) =>
-        app.MapPost("/guilds/{guildId:guid}/members/{targetUserId:guid}/ban", async (
+        app.MapPost("/guilds/{guildId:guid}/members/{targetUserId}/ban", async (
             Guid guildId,
-            Guid targetUserId,
+            string targetUserId,
             ClaimsPrincipal user,
             BanMemberHandler handler,
             CancellationToken ct) =>

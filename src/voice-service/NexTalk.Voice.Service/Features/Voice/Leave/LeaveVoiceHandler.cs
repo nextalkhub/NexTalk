@@ -3,26 +3,39 @@ using NexTalk.Voice.Service.Shared.Exceptions;
 
 namespace NexTalk.Voice.Service.Features.Voice.Leave;
 
-public sealed class LeaveVoiceHandler(
-    LiveKitRoomClient roomClient,
-    SessionStore sessionStore,
-    WsGatewayClient wsGateway,
-    ILogger<LeaveVoiceHandler> logger)
+public sealed class LeaveVoiceHandler
 {
+    private readonly LiveKitRoomClient _roomClient;
+    private readonly SessionStore _sessionStore;
+    private readonly WsGatewayClient _wsGateway;
+    private readonly ILogger<LeaveVoiceHandler> _logger;
+
+    public LeaveVoiceHandler(
+        LiveKitRoomClient roomClient,
+        SessionStore sessionStore,
+        WsGatewayClient wsGateway,
+        ILogger<LeaveVoiceHandler> logger)
+    {
+        _roomClient = roomClient;
+        _sessionStore = sessionStore;
+        _wsGateway = wsGateway;
+        _logger = logger;
+    }
+
     public async Task HandleAsync(LeaveVoiceCommand cmd, CancellationToken ct)
     {
-        var session = sessionStore.GetSession(cmd.UserId);
+        var session = _sessionStore.GetSession(cmd.UserId);
 
         // Проверяем, что пользователь в именно этом канале.
         if (session is null || session.ChannelId != cmd.ChannelId)
-            throw new NotFoundException($"Пользователь {cmd.UserId} не найден в канале {cmd.ChannelId}.");
+            throw new NotFoundException($"User {cmd.UserId} is not in channel {cmd.ChannelId}.");
 
-        sessionStore.Leave(cmd.UserId);
+        _sessionStore.Leave(cmd.UserId);
 
         // Отключаем от LiveKit (best-effort - клиент мог уже отвалиться по сети).
-        await roomClient.RemoveParticipantAsync(cmd.ChannelId, cmd.UserId, ct);
+        await _roomClient.RemoveParticipantAsync(cmd.ChannelId, cmd.UserId, ct);
 
-        logger.LogInformation(
+        _logger.LogInformation(
             "Voice leave: user={UserId} channel={ChannelId} guild={GuildId} correlation={CorrelationId}",
             cmd.UserId, cmd.ChannelId, session.GuildId, cmd.CorrelationId);
 
@@ -30,11 +43,11 @@ public sealed class LeaveVoiceHandler(
         _ = BroadcastLeaveAsync(session.GuildId, cmd.UserId, cmd.ChannelId, cmd.CorrelationId);
     }
 
-    private async Task BroadcastLeaveAsync(Guid guildId, Guid userId, Guid channelId, string correlationId)
+    private async Task BroadcastLeaveAsync(Guid guildId, string userId, Guid channelId, string correlationId)
     {
         try
         {
-            await wsGateway.BroadcastToGuildAsync(
+            await _wsGateway.BroadcastToGuildAsync(
                 guildId,
                 "voice.left",
                 new { UserId = userId, ChannelId = channelId },
@@ -42,8 +55,8 @@ public sealed class LeaveVoiceHandler(
         }
         catch (Exception ex)
         {
-            logger.LogWarning(ex,
-                "Не удалось отправить voice.left: user={UserId} channel={ChannelId}",
+            _logger.LogWarning(ex,
+                "Failed to broadcast voice.left: user={UserId} channel={ChannelId}",
                 userId, channelId);
         }
     }

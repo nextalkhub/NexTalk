@@ -37,31 +37,28 @@ public class AssignRoleHandlerTests
         {
             Id = Guid.NewGuid(),
             Name = "test-guild",
-            DisplayName = "Test Guild",
-            OwnerId = Guid.NewGuid(),
-            CreatedAt = DateTime.UtcNow
+            OwnerId = Guid.NewGuid().ToString(),
+            CreatedAt = DateTimeOffset.UtcNow
         };
 
         var owner = new Member
         {
-            Id = Guid.NewGuid(),
             GuildId = guild.Id,
             UserId = guild.OwnerId,
             DisplayName = "Guild Owner",
             Username = "owner",
             Role = MemberRole.Owner,
-            JoinedAt = DateTime.UtcNow
+            JoinedAt = DateTimeOffset.UtcNow
         };
 
         var target = new Member
         {
-            Id = Guid.NewGuid(),
             GuildId = guild.Id,
-            UserId = Guid.NewGuid(),
+            UserId = Guid.NewGuid().ToString(),
             DisplayName = "Target User",
             Username = "target",
             Role = MemberRole.Member,
-            JoinedAt = DateTime.UtcNow
+            JoinedAt = DateTimeOffset.UtcNow
         };
 
         _db.Guilds.Add(guild);
@@ -107,13 +104,12 @@ public class AssignRoleHandlerTests
 
         var nonOwner = new Member
         {
-            Id = Guid.NewGuid(),
             GuildId = guild.Id,
-            UserId = Guid.NewGuid(),
+            UserId = Guid.NewGuid().ToString(),
             DisplayName = "Non Owner",
             Username = "nonowner",
             Role = MemberRole.Admin,
-            JoinedAt = DateTime.UtcNow
+            JoinedAt = DateTimeOffset.UtcNow
         };
 
         _db.Members.Add(nonOwner);
@@ -129,7 +125,7 @@ public class AssignRoleHandlerTests
     public async Task HandleAsync_WithNonExistentTarget_ThrowsNotFoundException()
     {
         var (guild, owner, target) = await SetupGuildWithMembersAsync();
-        var nonExistentUserId = Guid.NewGuid();
+        var nonExistentUserId = Guid.NewGuid().ToString();
 
         var cmd = new AssignRoleCommand(guild.Id, nonExistentUserId, MemberRole.Admin, owner.UserId);
 
@@ -167,15 +163,12 @@ public class AssignRoleHandlerTests
     {
         var (guild, owner, target) = await SetupGuildWithMembersAsync();
 
-        // Broadcast is already set to return 200 OK by default MockHttpMessageHandler,
-        // so we need to configure it to throw
         _wsGatewayMock
             .Setup(x => x.BroadcastToGuildAsync(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<object>(), It.IsAny<CancellationToken>()))
             .ThrowsAsync(new HttpRequestException("Gateway unavailable"));
 
         var cmd = new AssignRoleCommand(guild.Id, target.UserId, MemberRole.Admin, owner.UserId);
 
-        // Should not throw even though broadcast fails (best-effort)
         await _handler.HandleAsync(cmd);
 
         var updated = await _db.Members.FirstAsync(m => m.UserId == target.UserId && m.GuildId == guild.Id);

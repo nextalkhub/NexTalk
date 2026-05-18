@@ -6,16 +6,23 @@ namespace NexTalk.Voice.Service.Infrastructure;
 /// Генерирует короткоживущий JWT для подключения клиента к LiveKit-комнате.
 /// Токен даёт права на публикацию и подписку в рамках одной комнаты (channelId).
 /// </summary>
-public sealed class LiveKitTokenGenerator(IConfiguration config)
+public sealed class LiveKitTokenGenerator
 {
-    private readonly string _apiKey = config["LiveKit:ApiKey"] ?? throw new InvalidOperationException("LiveKit:ApiKey не задан.");
-    private readonly string _apiSecret = config["LiveKit:ApiSecret"] ?? throw new InvalidOperationException("LiveKit:ApiSecret не задан.");
-    private readonly int _ttlMinutes = int.TryParse(config["LiveKit:TokenTtlMinutes"], out var t) ? t : 60;
+    private readonly string _apiKey;
+    private readonly string _apiSecret;
+    private readonly int _ttlMinutes;
 
-    public string GenerateToken(Guid userId, string displayName, Guid channelId)
+    public LiveKitTokenGenerator(IConfiguration config)
+    {
+        _apiKey = config["LiveKit:ApiKey"] ?? throw new InvalidOperationException("LiveKit:ApiKey не задан.");
+        _apiSecret = config["LiveKit:SecretKey"] ?? throw new InvalidOperationException("LiveKit:SecretKey не задан.");
+        _ttlMinutes = int.TryParse(config["LiveKit:TokenTtlMinutes"], out var t) ? t : 60;
+    }
+
+    public string GenerateToken(string userId, string displayName, Guid channelId)
     {
         var token = new AccessToken(_apiKey, _apiSecret)
-            .WithIdentity(userId.ToString())
+            .WithIdentity(userId)
             .WithName(displayName)
             .WithGrants(new VideoGrants
             {

@@ -1,11 +1,9 @@
 # Реляционная схема
 
 Карта таблиц, полей и связей между ними для бизнес-БД `nextalk`.
+
 БД Zitadel (`zitadel`) управляется самим Identity Provider и в этот документ не входит.
 
-> Источник истины - EF Core миграции:
-> - [guild-service/.../Migrations/20260515235625_Initial.cs](../src/guild-service/NexTalk.Guild.Service/Infrastructure/Migrations/20260515235625_Initial.cs)
-> - [messaging-service/.../Migrations/20260516124606_InitialCreate.cs](../src/messaging-service/NexTalk.Messaging.Service/Migrations/20260516124606_InitialCreate.cs)
 
 DBML-версия для [dbdiagram.io](https://dbdiagram.io/d): [schema.dbml](schema.dbml).
 
@@ -13,28 +11,23 @@ DBML-версия для [dbdiagram.io](https://dbdiagram.io/d): [schema.dbml](s
 
 ## 1. Схемы и владельцы
 
-| PG-схема | Сервис-владелец | Таблицы |
-|:--|:--|:--|
-| `guild` | Guild Service | `guilds`, `channels`, `members`, `invites`, `bans` |
-| `messaging` | Messaging Service | `Messages`, `OutboxEvents`, `IdempotencyKeys` |
-
-> Имена таблиц в `guild` - snake_case (явный `ToTable("...")` в [GuildDbContext.cs](../src/guild-service/NexTalk.Guild.Service/Infrastructure/GuildDbContext.cs)).
-> Имена таблиц в `messaging` - PascalCase (EF Core по умолчанию подставляет имя `DbSet<>` свойства, явных `ToTable` нет в [MessagingDbContext.cs](../src/messaging-service/NexTalk.Messaging.Service/Infrastructure/MessagingDbContext.cs)).
+| PG-схема    | Сервис-владелец   | Таблицы                                            |
+| :---------- | :---------------- | :------------------------------------------------- |
+| `guild`     | Guild Service     | `guilds`, `channels`, `members`, `invites`, `bans` |
+| `messaging` | Messaging Service | `messages`, `outbox_events`, `idempotency_keys`    |
 
 ## 2. Связь с Zitadel
 
-Идентификатор пользователя из JWT-claim `sub` (UUID) хранится как обычный `uuid`-столбец без FK - Zitadel-БД физически отдельная база, кросс-БД FK невозможны.
-Поля, ссылающиеся на Zitadel `sub`:
+Идентификатор пользователя — сырая строка из JWT-claim `sub` (Zitadel выдаёт snowflake-ID, например `"287040091499675137"`).
+Поля, хранящие sub пользователя:
 
-| Таблица | Поле | Семантика |
-|:--|:--|:--|
-| `guild.guilds` | `OwnerId` | Создатель сервера |
-| `guild.members` | `UserId` | Кто состоит в гильдии |
-| `guild.invites` | `CreatedBy` | Кто создал инвайт |
-| `guild.bans` | `UserId`, `BannedBy` | Кого забанили / кто забанил |
-| `messaging.Messages` | `AuthorId` | Автор сообщения |
-
-`Username` и `DisplayName` дублируются в `members` намеренно - Guild Service не ходит в Zitadel для отрисовки списка участников.
+| Таблица              | Поле                   | Семантика                   |
+| -------------------- | ---------------------- | --------------------------- |
+| `guild.guilds`       | `owner_id`             | Создатель сервера           |
+| `guild.members`      | `user_id`              | Кто состоит в гильдии       |
+| `guild.invites`      | `created_by`           | Кто создал инвайт           |
+| `guild.bans`         | `user_id`, `banned_by` | Кого забанили / Кто забанил |
+| `messaging.messages` | `author_id`            | Автор сообщения             |
 
 ---
 
@@ -42,172 +35,162 @@ DBML-версия для [dbdiagram.io](https://dbdiagram.io/d): [schema.dbml](s
 
 ### Таблица `guilds`
 
-| Колонка | Тип | NULL | Default | Описание |
-|:--|:--|:--:|:--|:--|
-| `Id` | `uuid` | NO | - | **PK** |
-| `Name` | `varchar(100)` | NO | - | Уникальное «короткое» имя (slug-like) |
-| `DisplayName` | `varchar(200)` | NO | - | Отображаемое имя |
-| `OwnerId` | `uuid` | NO | - | Zitadel sub создателя |
-| `CreatedAt` | `timestamptz` | NO | - | Момент создания |
+| Колонка      | Тип           | NULL | Default    | Описание                                    |
+| :----------- | :------------ | :--: | :--------- | :------------------------------------------ |
+| `id`         | `uuid`        |  no  | `uuidv7()` | **PK**                                      |
+| `name`       | `varchar(32)` |  no  | -          | Название гильдии, мин. 2 символа после trim |
+| `owner_id`   | `varchar(36)` |  no  | -          | Zitadel sub создателя                       |
+| `created_at` | `timestamptz` |  no  | `now()`    | Момент создания                             |
 
-Индексы: только PK.
+Индексы: PK на `id`, обычный на `owner_id`.
 
 ### Таблица `channels`
+| Колонка      | Тип           | NULL | Default    | Описание                                |
+| ------------ | ------------- | ---- | ---------- | --------------------------------------- |
+| `id`         | `uuid`        | no   | `uuidv7()` | **PK**                                  |
+| `guild_id`   | `uuid`        | no   | -          | **FK -> `guilds.id`** ON DELETE CASCADE |
+| `name`       | `varchar(32)` | no   | -          | Имя канала, мин. 1 символ после trim    |
+| `type`       | `varchar(20)` | no   | `'text'`   | ENUM: `text`, `voice`                   |
+| `created_at` | `timestamptz` | no   | `now()`    | Момент создания                         |
 
-| Колонка | Тип | NULL | Default | Описание |
-|:--|:--|:--:|:--|:--|
-| `Id` | `uuid` | NO | - | **PK** |
-| `GuildId` | `uuid` | NO | - | **FK → `guilds.Id`** (ON DELETE CASCADE) |
-| `Name` | `varchar(100)` | NO | - | Имя канала |
-| `Type` | `varchar(20)` | NO | `"text"` | `text` | `voice` |
-| `CreatedAt` | `timestamptz` | NO | - | Момент создания |
-
-Индексы:
-- `IX_channels_GuildId` (`GuildId`) - для `WHERE GuildId = ?`.
+Индексы: PK на `id`, обычный на `guild_id`.
 
 ### Таблица `members`
 
-| Колонка | Тип | NULL | Default | Описание |
-|:--|:--|:--:|:--|:--|
-| `Id` | `uuid` | NO | - | **PK** |
-| `GuildId` | `uuid` | NO | - | **FK → `guilds.Id`** (CASCADE) |
-| `UserId` | `uuid` | NO | - | Zitadel sub |
-| `DisplayName` | `varchar(200)` | NO | - | Отображаемое имя (snapshot) |
-| `Username` | `varchar(100)` | NO | - | `preferred_username` (snapshot) |
-| `Role` | `text` | NO | - | Хранится как строка enum: `Member` / `Admin` / `Owner` |
-| `JoinedAt` | `timestamptz` | NO | - | Момент вступления |
+| Колонка        | Тип           | NULL | Default  | Описание                                    |
+| :------------- | :------------ | :--: | :------- | :------------------------------------------ |
+| `guild_id`     | `uuid`        |  no  | -        | **PK, FK** -> `guilds.Id` ON DELETE CASCADE |
+| `user_id`      | `varchar(36)` |  no  | -        | **PK**, Zitadel sub                         |
+| `display_name` | `varchar(32)` |  no  | -        | snapshot из JWT                             |
+| `username`     | `varchar(32)` |  no  | -        | snapshot из JWT                             |
+| `role`         | `text`        |  no  | `member` | enum: `member`, `admin`, `owner`            |
+| `joined_at`    | `timestamptz` |  no  | `now`    | Момент вступления                           |
 
-Индексы:
-- `IX_members_GuildId_UserId` (`GuildId`, `UserId`) **UNIQUE** - один пользователь не может состоять в одной гильдии дважды.
+Индексы: составной PK `(guild_id, user_id)`.
 
 ### Таблица `invites`
 
-| Колонка | Тип | NULL | Default | Описание |
-|:--|:--|:--:|:--|:--|
-| `Id` | `uuid` | NO | - | **PK** |
-| `GuildId` | `uuid` | NO | - | **FK → `guilds.Id`** (CASCADE) |
-| `Code` | `varchar(20)` | NO | - | Уникальный публичный код (для `/invite/{code}`) |
-| `CreatedBy` | `uuid` | NO | - | Zitadel sub автора |
-| `ExpiresAt` | `timestamptz` | YES | `NULL` | TTL; `NULL` = бессрочно |
-| `MaxUses` | `integer` | YES | `NULL` | Лимит использований; `NULL` = без лимита |
-| `UsesCount` | `integer` | NO | - | Текущее число использований |
-| `CreatedAt` | `timestamptz` | NO | - | Момент создания |
+| Колонка      | Тип           | NULL | Default    | Описание                                  |
+| :----------- | :------------ | :--: | :--------- | :---------------------------------------- |
+| `id`         | `uuid`        |  no  | `uuidv7()` | **PK**                                    |
+| `guild_id`   | `uuid`        |  no  | -          | **FK** -> `guilds.Id` ON DELETE CASCADE   |
+| `code`       | `varchar(20)` |  no  | -          | Уникальный публичный код, мин. 6 символов |
+| `created_by` | `varchar(36)` |  no  | -          | Zitadel sub автора                        |
+| `expires_at` | `timestamptz` | yes  | `NULL`     | TTL; `NULL` = бессрочно                   |
+| `max_uses`   | `integer`     | yes  | `NULL`     | Лимит; `NULL` = без лимита                |
+| `uses_count` | `integer`     |  no  | `0`        | Текущее число использований               |
+| `created_at` | `timestamptz` |  no  | `now()`    | Момент создания                           |
 
-Индексы:
-- `IX_invites_Code` (`Code`) **UNIQUE** - lookup по коду + защита от коллизий.
-- `IX_invites_GuildId` (`GuildId`).
+Индексы: PK на `id`, UNIQUE на `code`, обычный на `guild_id`.
 
 ### Таблица `bans`
 
-| Колонка | Тип | NULL | Default | Описание |
-|:--|:--|:--:|:--|:--|
-| `Id` | `uuid` | NO | - | **PK** |
-| `GuildId` | `uuid` | NO | - | **FK → `guilds.Id`** (CASCADE) |
-| `UserId` | `uuid` | NO | - | Zitadel sub забаненного |
-| `BannedBy` | `uuid` | NO | - | Zitadel sub модератора |
-| `BannedAt` | `timestamptz` | NO | - | Момент бана |
+| Колонка     | Тип           | NULL | Default | Описание                                    |
+| :---------- | :------------ | :--: | :------ | :------------------------------------------ |
+| `guild_id`  | `uuid`        |  no  | -       | **PK, FK** -> `guilds.id` ON DELETE CASCADE |
+| `user_id`   | `varchar(36)` |  no  | -       | **PK**, Zitadel sub забаненного             |
+| `banned_by` | `varchar(36)` |  no  | -       | Zitadel sub модератора                      |
+| `reason`    | `varchar(500)` | yes  | `NULL`  | Причина бана                                |
+| `banned_at` | `timestamptz` |  no  | `now()` | Момент бана                                 |
 
-Индексы:
-- `IX_bans_GuildId_UserId` (`GuildId`, `UserId`) **UNIQUE** - повторный бан того же юзера невозможен.
+Индексы: составной PK `(guild_id, user_id)`.
 
 ### ER-диаграмма (schema `guild`)
 
+
 ```mermaid
 erDiagram
-    guilds ||--o{ channels : "has"
-    guilds ||--o{ members  : "has"
-    guilds ||--o{ invites  : "has"
-    guilds ||--o{ bans     : "has"
+  guilds ||--o{ channels : "has"
+  guilds ||--o{ members  : "has"
+  guilds ||--o{ invites  : "has"
+  guilds ||--o{ bans     : "has"
 
-    guilds {
-        uuid Id PK
-        varchar(100) Name
-        varchar(200) DisplayName
-        uuid OwnerId "Zitadel sub"
-        timestamptz CreatedAt
-    }
+  guilds {
+    uuid        id         PK
+    varchar_32  name
+    varchar_36  owner_id
+    timestamptz created_at
+  }
 
-    channels {
-        uuid Id PK
-        uuid GuildId FK "idx"
-        varchar(100) Name
-        varchar(20) Type "text|voice"
-        timestamptz CreatedAt
-    }
+  channels {
+    uuid         id         PK
+    uuid         guild_id   FK
+    varchar_32  name
+    channel_type type
+    timestamptz  created_at
+  }
 
-    members {
-        uuid Id PK
-        uuid GuildId FK "uniq(GuildId,UserId)"
-        uuid UserId "Zitadel sub, uniq(GuildId,UserId)"
-        varchar(200) DisplayName
-        varchar(100) Username
-        text Role "Member|Admin|Owner"
-        timestamptz JoinedAt
-    }
+  members {
+    uuid       guild_id     PK,FK
+    varchar_36 user_id      PK
+    varchar_32 display_name
+    varchar_32 username
+    member_role role
+    timestamptz joined_at
+  }
 
-    invites {
-        uuid Id PK
-        uuid GuildId FK "idx"
-        varchar(20) Code "uniq"
-        uuid CreatedBy "Zitadel sub"
-        timestamptz ExpiresAt "nullable"
-        int MaxUses "nullable"
-        int UsesCount
-        timestamptz CreatedAt
-    }
+  invites {
+    uuid        id         PK
+    uuid        guild_id   FK
+    varchar_20  code
+    varchar_36  created_by
+    timestamptz expires_at
+    integer     max_uses
+    integer     uses_count
+    timestamptz created_at
+  }
 
-    bans {
-        uuid Id PK
-        uuid GuildId FK "uniq(GuildId,UserId)"
-        uuid UserId "Zitadel sub, uniq(GuildId,UserId)"
-        uuid BannedBy "Zitadel sub"
-        timestamptz BannedAt
-    }
+  bans {
+    uuid        guild_id  PK,FK
+    varchar_36  user_id   PK
+    varchar_36  banned_by
+    varchar_500 reason
+    timestamptz banned_at
+  }
 ```
+
 
 ---
 
 ## 4. Schema `messaging`
 
-### Таблица `Messages`
+### Таблица `messages`
 
-| Колонка | Тип | NULL | Default | Описание |
-|:--|:--|:--:|:--|:--|
-| `Id` | `uuid` | NO | - | **PK** |
-| `ChannelId` | `uuid` | NO | - | Soft-FK → `guild.channels.Id` (без БД-FK, разные сервисы) |
-| `GuildId` | `uuid` | NO | - | Soft-FK → `guild.guilds.Id` (денормализация для broadcast) |
-| `AuthorId` | `uuid` | NO | - | Zitadel sub |
-| `AuthorName` | `varchar(100)` | NO | - | snapshot имени (без JOIN при чтении истории) |
-| `Content` | `varchar(4000)` | NO | - | Тело сообщения plain text |
-| `CreatedAt` | `timestamptz` | NO | - | Момент отправки |
+| Колонка       | Тип             | NULL | Default    | Описание                       |
+| :------------ | :-------------- | :--: | :--------- | :----------------------------- |
+| `id`          | `uuid`          |  no  | `uuidv7()` | **PK**                         |
+| `channel_id`  | `uuid`          |  no  | -          | Soft-FK -> `guild.channels.Id` |
+| `guild_id`    | `uuid`          |  no  | -          | Soft-FK -> `guild.guilds.Id`   |
+| `author_id`   | `varchar(36)`   |  no  | -          | Zitadel sub                    |
+| `author_name` | `varchar(32)`   |  no  | -          | snapshot имени                 |
+| `content`     | `varchar(4000)` |  no  | -          | Мин. 1 символ после trim       |
+| `created_at`  | `timestamptz`   |  no  | `now()`    | Момент отправки                |
 
-Индексы:
-- `IX_Messages_ChannelId_CreatedAt` (`ChannelId`, `CreatedAt`) - cursor-pagination истории.
+Индексы: PK на `id`, составной на `(channel_id, created_at)`.
 
-### Таблица `OutboxEvents`
+### Таблица `outbox_events`
 
-| Колонка | Тип | NULL | Default | Описание |
-|:--|:--|:--:|:--|:--|
-| `Id` | `uuid` | NO | - | **PK** |
-| `EventType` | `varchar(100)` | NO | - | Точечная нотация: `message.created`, `message.deleted`, … |
-| `GuildId` | `uuid` | NO | - | Для роутинга broadcast в WS Gateway |
-| `Payload` | `text` | NO | - | JSON-payload события |
-| `PublishedAt` | `timestamptz` | YES | `NULL` | Помечается OutboxWorker'ом в момент pickup; защита от двойной обработки |
-| `Processed` | `boolean` | NO | - | `true` после успешного broadcast |
-| `ProcessedAt` | `timestamptz` | YES | `NULL` | Момент успешной доставки |
-| `CreatedAt` | `timestamptz` | NO | - | Момент INSERT в одной транзакции с `Messages` |
+| Колонка        | Тип           | NULL | Default  | Описание                                    |
+| :------------- | :------------ | :--: | :------- | :------------------------------------------ |
+| `id`           | `uuid`        |  no  | `uuidv7` | **PK**                                      |
+| `event_type`   | `varchar(64)` |  no  | -        | `message.created`, `message.deleted`, …     |
+| `guild_id`     | `uuid`        |  no  | -        | Для роутинга broadcast                      |
+| `payload`      | `text`        |  no  | -        | JSON-payload                                |
+| `published_at` | `timestamptz` | yes  | `NULL`   | Soft lock; NOT NULL = in-flight или завис   |
+| `processed_at` | `timestamptz` | yes  | `NULL`   | NULL = не обработано, NOT NULL = доставлено |
+| `created_at`   | `timestamptz` |  no  | `now()`  | Момент INSERT                               |
 
-Индексы:
-- `IX_OutboxEvents_Processed_PublishedAt_CreatedAt` (`Processed`, `PublishedAt`, `CreatedAt`) - выборка необработанных событий по времени.
+Индексы: PK на `id`, partial на `(published_at, created_at)` WHERE `processed_at IS NULL`.
 
-### Таблица `IdempotencyKeys`
 
-| Колонка | Тип | NULL | Default | Описание |
-|:--|:--|:--:|:--|:--|
-| `Key` | `varchar(128)` | NO | - | **PK** (UUID из заголовка `X-Idempotency-Key`) |
-| `Response` | `text` | NO | - | Сериализованный ответ; возвращается при повторном запросе |
-| `CreatedAt` | `timestamptz` | NO | - | Момент первого выполнения |
-| `ExpiresAt` | `timestamptz` | NO | - | TTL = 24ч; cleanup BackgroundService'ом |
+### Таблица `idempotency_keys`
+
+| Колонка      | Тип            | NULL | Default | Описание                                       |
+| :----------- | :------------- | :--: | :------ | :--------------------------------------------- |
+| `key`        | `varchar(128)` |  no  | -       | **PK** (UUID из заголовка `X-Idempotency-Key`) |
+| `response`   | `text`         |  no  | -       | Сериализованный ответ                          |
+| `created_at` | `timestamptz`  |  no  | -       | Момент первого выполнения                      |
+| `expires_at` | `timestamptz`  |  no  | -       | TTL = 24ч                                      |
 
 Индексы: только PK.
 
@@ -215,32 +198,31 @@ erDiagram
 
 ```mermaid
 erDiagram
-    Messages {
-        uuid Id PK
-        uuid ChannelId "soft-FK guild.channels, idx(ChannelId,CreatedAt)"
-        uuid GuildId "soft-FK guild.guilds"
-        uuid AuthorId "Zitadel sub"
-        varchar(100) AuthorName
-        varchar(4000) Content
-        timestamptz CreatedAt
+    messages {
+        uuid        id           PK
+        uuid        channel_id   "soft-FK guild.channels"
+        uuid        guild_id     "soft-FK guild.guilds"
+        varchar_36  author_id    "Zitadel sub"
+        varchar_32  author_name  "snapshot"
+        varchar_4000 content
+        timestamptz created_at
     }
 
-    OutboxEvents {
-        uuid Id PK
-        varchar(100) EventType "message.created|deleted|..."
-        uuid GuildId "broadcast routing"
-        text Payload "JSON"
-        timestamptz PublishedAt "nullable, set on pickup"
-        bool Processed
-        timestamptz ProcessedAt "nullable"
-        timestamptz CreatedAt
+    outbox_events {
+        uuid        id           PK
+        varchar_64  event_type   "message.created|deleted"
+        uuid        guild_id     "broadcast routing"
+        text        payload      "JSON"
+        timestamptz published_at "nullable, soft lock"
+        timestamptz processed_at "nullable, NULL=pending"
+        timestamptz created_at
     }
 
-    IdempotencyKeys {
-        varchar(128) Key PK "X-Idempotency-Key UUID"
-        text Response "cached body"
-        timestamptz CreatedAt
-        timestamptz ExpiresAt "TTL 24h"
+    idempotency_keys {
+        varchar_128 key          PK "X-Idempotency-Key"
+        text        response     "cached body"
+        timestamptz created_at
+        timestamptz expires_at   "TTL 24h"
     }
 ```
 
@@ -250,39 +232,38 @@ erDiagram
 
 ## 5. Cross-schema soft-связи
 
+
 ```mermaid
 erDiagram
-    guilds   ||--o{ channels : "FK CASCADE"
-    channels ||..o{ Messages : "soft-FK ChannelId"
-    guilds   ||..o{ Messages : "soft-FK GuildId"
-    guilds   ||..o{ OutboxEvents : "soft-FK GuildId"
+    guilds   ||--o{ channels     : "FK CASCADE"
+    channels ||..o{ messages     : "soft-FK channel_id"
+    guilds   ||..o{ messages     : "soft-FK guild_id"
+    guilds   ||..o{ outbox_events : "soft-FK guild_id"
 
     guilds {
-        uuid Id PK
+        uuid id PK
     }
     channels {
-        uuid Id PK
-        uuid GuildId FK
+        uuid id       PK
+        uuid guild_id FK
     }
-    Messages {
-        uuid Id PK
-        uuid ChannelId "soft"
-        uuid GuildId "soft"
+    messages {
+        uuid id         PK
+        uuid channel_id "soft"
+        uuid guild_id   "soft"
     }
-    OutboxEvents {
-        uuid Id PK
-        uuid GuildId "soft"
+    outbox_events {
+        uuid id       PK
+        uuid guild_id "soft"
     }
 ```
 
-Пунктир = soft-FK (без `FOREIGN KEY` на уровне Postgres, целостность поддерживается приложением).
-
 ---
 
-## 6. Каскадные удаления
+### 6. Каскадные удаления
 
-| Триггер | Что удаляется автоматически |
+|Триггер|Что удаляется автоматически|
 |:--|:--|
-| `DELETE FROM guild.guilds WHERE Id = ?` | `channels`, `members`, `invites`, `bans` той же гильдии (PG CASCADE) |
+|`DELETE FROM guild.guilds WHERE id = ?`|`channels`, `members`, `invites`, `bans` той же гильдии (PG CASCADE)|
 
-Сообщения в `messaging.Messages` **не удаляются** при удалении гильдии: они в другой БД-схеме и каскад не дотягивается. Чистка - отдельная задача Messaging Service (в MVP не реализована).
+Сообщения в `messaging.messages` **не удаляются** при удалении гильдии: они в другой БД-схеме и каскад не дотягивается. Чистка — отдельная задача Messaging Service (в MVP не реализована).

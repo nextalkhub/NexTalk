@@ -6,14 +6,21 @@ namespace NexTalk.Voice.Service.Shared;
 /// Иначе создаёт CancellationToken, привязанный к оставшемуся времени,
 /// и подменяет HttpContext.RequestAborted — все хендлеры получат его автоматически.
 /// </summary>
-public sealed class DeadlineMiddleware(RequestDelegate next)
+public sealed class DeadlineMiddleware
 {
+    private readonly RequestDelegate _next;
+
+    public DeadlineMiddleware(RequestDelegate next)
+    {
+        _next = next;
+    }
+
     public async Task InvokeAsync(HttpContext ctx)
     {
         if (!ctx.Request.Headers.TryGetValue("X-Deadline", out var header) ||
             !DateTimeOffset.TryParse(header, out var deadline))
         {
-            await next(ctx);
+            await _next(ctx);
             return;
         }
 
@@ -34,7 +41,7 @@ public sealed class DeadlineMiddleware(RequestDelegate next)
 
         try
         {
-            await next(ctx);
+            await _next(ctx);
         }
         catch (OperationCanceledException) when (deadlineCts.IsCancellationRequested && !ctx.Response.HasStarted)
         {

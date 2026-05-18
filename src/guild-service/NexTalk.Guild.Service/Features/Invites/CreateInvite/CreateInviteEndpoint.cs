@@ -7,35 +7,33 @@ namespace NexTalk.Guild.Service.Features.Invites.CreateInvite;
 
 public static class CreateInviteEndpoint
 {
-    // ExpiresIn is the spec format ("24h", "7d", "30m", "3600s") — string with unit suffix.
-    // ExpiresInSeconds is the legacy numeric form, kept for back-compat.
     public record Request(string? ExpiresIn, int? ExpiresInSeconds, int? MaxUses);
 
     public static void Map(IEndpointRouteBuilder app) =>
         app.MapPost("/guilds/{guildId:guid}/invites", async (
             Guid guildId,
             ClaimsPrincipal user,
-            [FromBody] Request req,
+            [FromBody] Request request,
             CreateInviteHandler handler,
             CancellationToken ct) =>
         {
-            var expiresIn = ParseExpiresIn(req);
+            var expiresIn = ParseExpiresIn(request);
 
-            var cmd = new CreateInviteCommand(guildId, expiresIn, req.MaxUses, user.GetUserId());
+            var cmd = new CreateInviteCommand(guildId, expiresIn, request.MaxUses, user.GetUserId());
             var result = await handler.HandleAsync(cmd, ct);
             return Results.Created($"/invites/{result.Code}", result);
         });
 
-    internal static TimeSpan? ParseExpiresIn(Request req)
+    internal static TimeSpan? ParseExpiresIn(Request request)
     {
-        if (!string.IsNullOrWhiteSpace(req.ExpiresIn))
-            return ParseDurationString(req.ExpiresIn);
+        if (!string.IsNullOrWhiteSpace(request.ExpiresIn))
+            return ParseDurationString(request.ExpiresIn);
 
-        if (req.ExpiresInSeconds.HasValue)
+        if (request.ExpiresInSeconds.HasValue)
         {
-            if (req.ExpiresInSeconds.Value <= 0)
-                throw new BadRequestException($"expiresInSeconds must be positive, got {req.ExpiresInSeconds.Value}.");
-            return TimeSpan.FromSeconds(req.ExpiresInSeconds.Value);
+            if (request.ExpiresInSeconds.Value <= 0)
+                throw new BadRequestException($"expiresInSeconds must be positive, got {request.ExpiresInSeconds.Value}.");
+            return TimeSpan.FromSeconds(request.ExpiresInSeconds.Value);
         }
 
         return null;

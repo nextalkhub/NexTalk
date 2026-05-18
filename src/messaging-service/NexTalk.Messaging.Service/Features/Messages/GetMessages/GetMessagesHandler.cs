@@ -5,27 +5,33 @@ using NexTalk.Messaging.Service.Shared.Exceptions;
 
 namespace NexTalk.Messaging.Service.Features.Messages.GetMessages;
 
-public class GetMessagesHandler(MessagingDbContext db, IGuildServiceClient guildClient)
+public class GetMessagesHandler
 {
+    private readonly MessagingDbContext _db;
+    private readonly IGuildServiceClient _guildClient;
+
+    public GetMessagesHandler(MessagingDbContext db, IGuildServiceClient guildClient)
+    {
+        _db = db;
+        _guildClient = guildClient;
+    }
+
     public async Task<GetMessagesResponse> HandleAsync(GetMessagesQuery query, CancellationToken ct = default)
     {
-        // Flow 11 step 5-6: ask Guild Service whether this user can see the channel.
-        var access = await guildClient.CheckChannelAccessAsync(query.ChannelId, query.UserId, ct);
+        var access = await _guildClient.CheckChannelAccessAsync(query.ChannelId, query.UserId, ct);
         if (access.GuildId is null)
             throw new NotFoundException("Channel not found.");
         if (!access.Allowed)
             throw new ForbiddenException("You do not have access to this channel.");
-
-        // Cursor pagination keyed by message Id (UUIDv7 expected for monotonic ordering).
-        // Fetch limit+1 to detect whether more history exists without an extra COUNT query.
-        var q = db.Messages.AsNoTracking()
+        
+        var q = _db.Messages.AsNoTracking()
             .Where(m => m.ChannelId == query.ChannelId);
 
         if (query.Cursor is { } cursor)
         {
-            var cursorCreatedAt = await db.Messages
+            var cursorCreatedAt = await _db.Messages
                 .Where(m => m.Id == cursor)
-                .Select(m => (DateTime?)m.CreatedAt)
+                .Select(m => (DateTimeOffset ?)m.CreatedAt)
                 .FirstOrDefaultAsync(ct);
 
             if (cursorCreatedAt is not null)

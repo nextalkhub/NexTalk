@@ -6,18 +6,17 @@ namespace NexTalk.Guild.Service.Features.Guilds.CreateGuild;
 
 public static class CreateGuildEndpoint
 {
-    public record Request(string Name, string DisplayName);
+    public record Request(string Name);
 
     public static void Map(IEndpointRouteBuilder app) =>
         app.MapPost("/guilds", async (
             ClaimsPrincipal user,
-            [FromBody] Request req,
+            [FromBody] Request request,
             CreateGuildHandler handler,
             CancellationToken ct) =>
         {
             var cmd = new CreateGuildCommand(
-                req.Name,
-                req.DisplayName,
+                request.Name,
                 user.GetUserId(),
                 user.GetDisplayName(),
                 user.GetUsername());

@@ -1,125 +1,121 @@
-// NexTalk DB schema for dbdiagram.io
-// Источник: EF Core миграции (см. docs/schema.md).
-// Импорт: https://dbdiagram.io/d → New → Import → DBML → paste this file.
-
 Project NexTalk {
   database_type: 'PostgreSQL'
   Note: '''
     Бизнес-БД `nextalk` с двумя схемами:
     - guild     — Guild Service (5 таблиц, hard-FK + cascade)
     - messaging — Messaging Service (3 таблицы, без hard-FK)
-    Zitadel пользует отдельную БД `zitadel`, поэтому связи на sub — без FK.
+    Zitadel использует отдельную БД `zitadel`, поэтому связи на sub — без FK.
   '''
 }
 
 // ─── Schema: guild ────────────────────────────────────────────────────────
 
 Table guild.guilds {
-  Id          uuid          [pk]
-  Name        varchar(100)  [not null]
-  DisplayName varchar(200)  [not null]
-  OwnerId     uuid          [not null, note: 'Zitadel sub']
-  CreatedAt   timestamptz   [not null]
+  id         uuid         [pk, default: `uuidv7()`]
+  name       varchar(32)  [not null, note: 'мин. 2 символа после trim']
+  owner_id   varchar(36)  [not null, note: 'Zitadel sub']
+  created_at timestamptz  [not null, default: `now()`]
+
+  Indexes {
+    owner_id [name: 'IX_guilds_owner_id']
+  }
 }
 
 Table guild.channels {
-  Id        uuid         [pk]
-  GuildId   uuid         [not null, ref: > guild.guilds.Id]
-  Name      varchar(100) [not null]
-  Type      varchar(20)  [not null, default: 'text', note: 'text|voice']
-  CreatedAt timestamptz  [not null]
+  id         uuid        [pk, default: `uuidv7()`]
+  guild_id   uuid        [not null, ref: > guild.guilds.id]
+  name       varchar(32) [not null, note: 'мин. 1 символ после trim']
+  type       varchar(20) [not null, default: 'text', note: 'enum: text|voice']
+  created_at timestamptz [not null, default: `now()`]
 
   Indexes {
-    GuildId [name: 'IX_channels_GuildId']
+    guild_id [name: 'IX_channels_guild_id']
   }
 }
 
 Table guild.members {
-  Id          uuid         [pk]
-  GuildId     uuid         [not null, ref: > guild.guilds.Id]
-  UserId      uuid         [not null, note: 'Zitadel sub']
-  DisplayName varchar(200) [not null]
-  Username    varchar(100) [not null]
-  Role        text         [not null, note: 'Member|Admin|Owner']
-  JoinedAt    timestamptz  [not null]
+  guild_id     uuid        [not null, ref: > guild.guilds.id]
+  user_id      varchar(36) [not null, note: 'Zitadel sub']
+  display_name varchar(32) [not null, note: 'snapshot из JWT']
+  username     varchar(32) [not null, note: 'snapshot из JWT']
+  role         text        [not null, default: 'member', note: 'enum: member|admin|owner']
+  joined_at    timestamptz [not null, default: `now()`]
 
   Indexes {
-    (GuildId, UserId) [unique, name: 'IX_members_GuildId_UserId']
+    (guild_id, user_id) [pk, name: 'PK_members']
   }
 }
 
 Table guild.invites {
-  Id        uuid         [pk]
-  GuildId   uuid         [not null, ref: > guild.guilds.Id]
-  Code      varchar(20)  [not null, note: 'public invite code']
-  CreatedBy uuid         [not null, note: 'Zitadel sub']
-  ExpiresAt timestamptz  [null, note: 'NULL = бессрочно']
-  MaxUses   integer      [null, note: 'NULL = без лимита']
-  UsesCount integer      [not null]
-  CreatedAt timestamptz  [not null]
+  id          uuid        [pk, default: `uuidv7()`]
+  guild_id    uuid        [not null, ref: > guild.guilds.id]
+  code        varchar(20) [not null, note: 'мин. 6 символов, [a-zA-Z0-9]']
+  created_by  varchar(36) [not null, note: 'Zitadel sub']
+  expires_at  timestamptz [null, note: 'NULL = бессрочно']
+  max_uses    integer     [null, note: 'NULL = без лимита, > 0']
+  uses_count  integer     [not null, default: 0]
+  created_at  timestamptz [not null, default: `now()`]
 
   Indexes {
-    Code [unique, name: 'IX_invites_Code']
-    GuildId [name: 'IX_invites_GuildId']
+    code     [unique, name: 'IX_invites_code']
+    guild_id [name: 'IX_invites_guild_id']
   }
 }
 
 Table guild.bans {
-  Id        uuid        [pk]
-  GuildId   uuid        [not null, ref: > guild.guilds.Id]
-  UserId    uuid        [not null, note: 'Zitadel sub']
-  BannedBy  uuid        [not null, note: 'Zitadel sub']
-  BannedAt  timestamptz [not null]
+  guild_id   uuid        [not null, ref: > guild.guilds.id]
+  user_id    varchar(36)  [not null, note: 'Zitadel sub забаненного']
+  banned_by  varchar(36)  [not null, note: 'Zitadel sub модератора']
+  reason     varchar(500) [null]
+  banned_at  timestamptz [not null, default: `now()`]
 
   Indexes {
-    (GuildId, UserId) [unique, name: 'IX_bans_GuildId_UserId']
+    (guild_id, user_id) [pk, name: 'PK_bans']
   }
 }
 
 // ─── Schema: messaging ────────────────────────────────────────────────────
-// Hard-FK на guild.* НЕТ: кросс-схемная развязка между микросервисами.
 
-Table messaging.Messages {
-  Id         uuid          [pk]
-  ChannelId  uuid          [not null, note: 'soft-FK guild.channels.Id']
-  GuildId    uuid          [not null, note: 'soft-FK guild.guilds.Id (денормализация для broadcast)']
-  AuthorId   uuid          [not null, note: 'Zitadel sub']
-  AuthorName varchar(100)  [not null, note: 'snapshot имени']
-  Content    varchar(4000) [not null]
-  CreatedAt  timestamptz   [not null]
+Table messaging.messages {
+  id          uuid          [pk, default: `uuidv7()`]
+  channel_id  uuid          [not null, note: 'soft-FK guild.channels.id']
+  guild_id    uuid          [not null, note: 'soft-FK guild.guilds.id']
+  author_id   varchar(36)   [not null, note: 'Zitadel sub']
+  author_name varchar(32)   [not null, note: 'snapshot имени']
+  content     varchar(4000) [not null, note: 'мин. 1 символ после trim']
+  created_at  timestamptz   [not null, default: `now()`]
 
   Indexes {
-    (ChannelId, CreatedAt) [name: 'IX_Messages_ChannelId_CreatedAt']
+    (channel_id, created_at) [name: 'IX_messages_channel_id_created_at']
   }
 }
 
-Table messaging.OutboxEvents {
-  Id          uuid         [pk]
-  EventType   varchar(100) [not null, note: 'message.created|deleted|...']
-  GuildId     uuid         [not null, note: 'soft-FK; broadcast routing']
-  Payload     text         [not null, note: 'JSON']
-  PublishedAt timestamptz  [null, note: 'pickup-mark от OutboxWorker']
-  Processed   boolean      [not null]
-  ProcessedAt timestamptz  [null]
-  CreatedAt   timestamptz  [not null]
+Table messaging.outbox_events {
+  id           uuid        [pk, default: `uuidv7()`]
+  event_type   varchar(64) [not null, note: 'message.created|deleted|...']
+  guild_id     uuid        [not null, note: 'soft-FK; broadcast routing']
+  payload      text        [not null, note: 'JSON']
+  published_at timestamptz [null, note: 'soft lock; NOT NULL = in-flight или завис']
+  processed_at timestamptz [null, note: 'NULL = не обработано, NOT NULL = доставлено']
+  created_at   timestamptz [not null, default: `now()`]
 
   Indexes {
-    (Processed, PublishedAt, CreatedAt) [name: 'IX_OutboxEvents_Processed_PublishedAt_CreatedAt']
+    (published_at, created_at) [name: 'IX_outbox_events_pending', note: 'partial WHERE processed_at IS NULL']
   }
 }
 
-Table messaging.IdempotencyKeys {
-  Key       varchar(128) [pk, note: 'X-Idempotency-Key UUID']
-  Response  text         [not null, note: 'cached body']
-  CreatedAt timestamptz  [not null]
-  ExpiresAt timestamptz  [not null, note: 'TTL 24h']
+Table messaging.idempotency_keys {
+  key        varchar(128) [pk, note: 'X-Idempotency-Key UUID']
+  response   text         [not null, note: 'cached body']
+  created_at timestamptz  [not null, default: `now()`]
+  expires_at timestamptz  [not null, note: 'TTL 24h']
 }
 
-// ─── Soft-связи через приложение (без FK на уровне БД) ────────────────────
-// dbdiagram отрисует пунктиром при ref:
-Ref soft_messages_channel: messaging.Messages.ChannelId > guild.channels.Id
-Ref soft_messages_guild:   messaging.Messages.GuildId   > guild.guilds.Id
-Ref soft_outbox_guild:     messaging.OutboxEvents.GuildId > guild.guilds.Id
+// ─── Soft-связи ───────────────────────────────────────────────────────────
+
+Ref soft_messages_channel: messaging.messages.channel_id > guild.channels.id
+Ref soft_messages_guild:   messaging.messages.guild_id   > guild.guilds.id
+Ref soft_outbox_guild:     messaging.outbox_events.guild_id > guild.guilds.id
 
 TableGroup guild {
   guild.guilds
@@ -130,7 +126,7 @@ TableGroup guild {
 }
 
 TableGroup messaging {
-  messaging.Messages
-  messaging.OutboxEvents
-  messaging.IdempotencyKeys
+  messaging.messages
+  messaging.outbox_events
+  messaging.idempotency_keys
 }

@@ -19,8 +19,6 @@ public class AssignRoleEndpointTests : IAsyncLifetime
     public async Task InitializeAsync()
     {
         _db = await _factory.GetDbContextAsync();
-        // InMemory database doesn't require EnsureCreated, it's created automatically
-        // await _db.Database.EnsureCreatedAsync();
     }
 
     public async Task DisposeAsync()
@@ -35,38 +33,34 @@ public class AssignRoleEndpointTests : IAsyncLifetime
         {
             Id = Guid.NewGuid(),
             Name = "test-guild",
-            DisplayName = "Test Guild",
-            OwnerId = Guid.NewGuid(),
-            CreatedAt = DateTime.UtcNow
+            OwnerId = Guid.NewGuid().ToString(),
+            CreatedAt = DateTimeOffset.UtcNow
         };
 
         var owner = new Member
         {
-            Id = Guid.NewGuid(),
             GuildId = guild.Id,
             UserId = guild.OwnerId,
             DisplayName = "Guild Owner",
             Username = "owner",
             Role = MemberRole.Owner,
-            JoinedAt = DateTime.UtcNow
+            JoinedAt = DateTimeOffset.UtcNow
         };
 
         var target = new Member
         {
-            Id = Guid.NewGuid(),
             GuildId = guild.Id,
-            UserId = Guid.NewGuid(),
+            UserId = Guid.NewGuid().ToString(),
             DisplayName = "Target User",
             Username = "target",
             Role = MemberRole.Member,
-            JoinedAt = DateTime.UtcNow
+            JoinedAt = DateTimeOffset.UtcNow
         };
 
         _db.Guilds.Add(guild);
         _db.Members.AddRange(owner, target);
         await _db.SaveChangesAsync();
 
-        // Detach from context so changes are committed to InMemory store
         _db.ChangeTracker.Clear();
 
         return (guild, owner, target);
@@ -115,13 +109,12 @@ public class AssignRoleEndpointTests : IAsyncLifetime
 
         var nonOwner = new Member
         {
-            Id = Guid.NewGuid(),
             GuildId = guild.Id,
-            UserId = Guid.NewGuid(),
+            UserId = Guid.NewGuid().ToString(),
             DisplayName = "Non Owner",
             Username = "nonowner",
             Role = MemberRole.Admin,
-            JoinedAt = DateTime.UtcNow
+            JoinedAt = DateTimeOffset.UtcNow
         };
 
         _db.Members.Add(nonOwner);

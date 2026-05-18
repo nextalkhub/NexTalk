@@ -10,7 +10,7 @@ public class GuildServiceClient(HttpClient http, IHttpContextAccessor httpContex
     private record GuildAccessResponse(bool HasAccess, Guid GuildId);
     private record GuildAccessWithRoleResponse(bool HasAccess, Guid GuildId, string ChannelType, string? Role);
 
-    public async Task<ChannelAccessResult> CheckChannelAccessAsync(Guid channelId, Guid userId, CancellationToken ct = default)
+    public async Task<ChannelAccessResult> CheckChannelAccessAsync(Guid channelId, string userId, CancellationToken ct = default)
     {
         var req = new HttpRequestMessage(HttpMethod.Get,
             $"/internal/channels/{channelId}/access?userId={userId}");
@@ -44,7 +44,7 @@ public class GuildServiceClient(HttpClient http, IHttpContextAccessor httpContex
 
     // Проверка Admin/Owner через CheckChannelAccess (Flow 14 — удаление чужого сообщения).
     // guild-service возвращает Role в теле — проверяем здесь.
-    public virtual async Task RequireAdminOrOwnerAsync(Guid channelId, Guid userId, CancellationToken ct = default)
+    public virtual async Task RequireAdminOrOwnerAsync(Guid channelId, string userId, CancellationToken ct = default)
     {
         var req = new HttpRequestMessage(HttpMethod.Get,
             $"/internal/channels/{channelId}/access?userId={userId}");

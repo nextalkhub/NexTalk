@@ -6,38 +6,50 @@ using NexTalk.Guild.Service.Shared.Exceptions;
 
 namespace NexTalk.Guild.Service.Features.Members.BanMember;
 
-public class BanMemberHandler(GuildDbContext db, RbacService rbac, WsGatewayClient wsGateway, VoiceServiceClient voiceService)
+public class BanMemberHandler
 {
+    private readonly GuildDbContext _db;
+    private readonly RbacService _rbac;
+    private readonly WsGatewayClient _wsGateway;
+    private readonly VoiceServiceClient _voiceService;
+
+    public BanMemberHandler(GuildDbContext db, RbacService rbac, WsGatewayClient wsGateway, VoiceServiceClient voiceService)
+    {
+        _db = db;
+        _rbac = rbac;
+        _wsGateway = wsGateway;
+        _voiceService = voiceService;
+    }
+
     public async Task HandleAsync(BanMemberCommand cmd, CancellationToken ct = default)
     {
-        var caller = await rbac.GetMemberOrThrowAsync(cmd.GuildId, cmd.CallerId, ct);
-        var target = await rbac.GetMemberOrThrowAsync(cmd.GuildId, cmd.TargetUserId, ct);
+        var caller = await _rbac.GetMemberOrThrowAsync(cmd.GuildId, cmd.CallerId, ct);
+        var target = await _rbac.GetMemberOrThrowAsync(cmd.GuildId, cmd.TargetUserId, ct);
 
-        if (!rbac.CanActOn(caller.Role, target.Role))
+        if (!_rbac.CanActOn(caller.Role, target.Role))
             throw new ForbiddenException("Insufficient role to ban this member.");
 
-        var alreadyBanned = await db.Bans.AnyAsync(b => b.GuildId == cmd.GuildId && b.UserId == cmd.TargetUserId, ct);
+        var alreadyBanned = await _db.Bans.AnyAsync(b => b.GuildId == cmd.GuildId && b.UserId == cmd.TargetUserId, ct);
         if (alreadyBanned)
             throw new BadRequestException("Member is already banned.");
 
         var ban = new Ban
         {
-            Id = Guid.NewGuid(),
             GuildId = cmd.GuildId,
             UserId = cmd.TargetUserId,
             BannedBy = cmd.CallerId,
-            BannedAt = DateTime.UtcNow
+            BannedAt = DateTimeOffset.UtcNow
         };
 
-        db.Bans.Add(ban);
-        db.Members.Remove(target);
-        await db.SaveChangesAsync(ct);
+        _db.Bans.Add(ban);
+        _db.Members.Remove(target);
+        await _db.SaveChangesAsync(ct);
 
         // Все вызовы — best-effort: сбой не откатывает бан.
         // Каждый вызов независим: сбой WS Gateway не должен блокировать отключение от голоса.
-        try { await wsGateway.BroadcastToGuildAsync(cmd.GuildId, "member.banned",
+        try { await _wsGateway.BroadcastToGuildAsync(cmd.GuildId, "member.banned",
             new { UserId = cmd.TargetUserId, cmd.GuildId }, ct); } catch { }
-        try { await wsGateway.DisconnectUserFromGuildAsync(cmd.GuildId, cmd.TargetUserId, ct); } catch { }
-        try { await voiceService.DisconnectUserAsync(cmd.TargetUserId, ct); } catch { }
+        try { await _wsGateway.DisconnectUserFromGuildAsync(cmd.GuildId, cmd.TargetUserId, ct); } catch { }
+        try { await _voiceService.DisconnectUserAsync(cmd.TargetUserId, ct); } catch { }
     }
 }

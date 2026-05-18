@@ -8,12 +8,12 @@ namespace NexTalk.Guild.Service.Features.Members.AssignRole;
 public static class AssignRoleEndpoint
 {
     public record Request(string Role);
-    public record Response(Guid UserId, string Role);
+    public record Response(string UserId, string Role);
 
     public static void Map(IEndpointRouteBuilder app) =>
-        app.MapPut("/guilds/{guildId:guid}/members/{targetUserId:guid}/role", async (
+        app.MapPut("/guilds/{guildId:guid}/members/{targetUserId}/role", async (
             Guid guildId,
-            Guid targetUserId,
+            string targetUserId,
             ClaimsPrincipal user,
             [FromBody] Request req,
             AssignRoleHandler handler,

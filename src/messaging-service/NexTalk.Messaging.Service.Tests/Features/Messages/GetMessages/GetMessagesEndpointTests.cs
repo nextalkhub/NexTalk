@@ -15,15 +15,15 @@ public class GetMessagesEndpointTests(MessagingServiceFactory factory) : IClassF
 {
     private HttpClient NewClient() => factory.CreateClient();
 
-    private static void Authorize(HttpClient client, Guid userId) =>
+    private static void Authorize(HttpClient client, string userId) =>
         client.DefaultRequestHeaders.Authorization =
             new AuthenticationHeaderValue("Bearer", TestJwt.Generate(userId));
 
-    private async Task SeedAsync(Guid channelId, int count, DateTime? baseTime = null)
+    private async Task SeedAsync(Guid channelId, int count, DateTimeOffset? baseTime = null)
     {
         using var scope = factory.Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<MessagingDbContext>();
-        var start = baseTime ?? DateTime.UtcNow.AddMinutes(-count);
+        var start = baseTime ?? DateTimeOffset.UtcNow.AddMinutes(-count);
         for (var i = 0; i < count; i++)
         {
             db.Messages.Add(new Message
@@ -31,7 +31,7 @@ public class GetMessagesEndpointTests(MessagingServiceFactory factory) : IClassF
                 Id = Guid.NewGuid(),
                 ChannelId = channelId,
                 GuildId = Guid.NewGuid(),
-                AuthorId = Guid.NewGuid(),
+                AuthorId = Guid.NewGuid().ToString(),
                 AuthorName = $"User{i}",
                 Content = $"msg{i}",
                 CreatedAt = start.AddSeconds(i)
@@ -52,7 +52,7 @@ public class GetMessagesEndpointTests(MessagingServiceFactory factory) : IClassF
     {
         factory.GuildAccessResponse = new ChannelAccessResult(false, null);
         var client = NewClient();
-        Authorize(client, Guid.NewGuid());
+        Authorize(client, Guid.NewGuid().ToString());
 
         var response = await client.GetAsync($"/channels/{Guid.NewGuid()}/messages");
 
@@ -64,7 +64,7 @@ public class GetMessagesEndpointTests(MessagingServiceFactory factory) : IClassF
     {
         factory.GuildAccessResponse = new ChannelAccessResult(false, Guid.NewGuid());
         var client = NewClient();
-        Authorize(client, Guid.NewGuid());
+        Authorize(client, Guid.NewGuid().ToString());
 
         var response = await client.GetAsync($"/channels/{Guid.NewGuid()}/messages");
 
@@ -79,7 +79,7 @@ public class GetMessagesEndpointTests(MessagingServiceFactory factory) : IClassF
         factory.GuildAccessResponse = new ChannelAccessResult(true, Guid.NewGuid());
 
         var client = NewClient();
-        Authorize(client, Guid.NewGuid());
+        Authorize(client, Guid.NewGuid().ToString());
 
         var response = await client.GetAsync($"/channels/{channelId}/messages?limit=50");
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
@@ -101,7 +101,7 @@ public class GetMessagesEndpointTests(MessagingServiceFactory factory) : IClassF
         factory.GuildAccessResponse = new ChannelAccessResult(true, Guid.NewGuid());
 
         var client = NewClient();
-        Authorize(client, Guid.NewGuid());
+        Authorize(client, Guid.NewGuid().ToString());
 
         var response = await client.GetAsync($"/channels/{channelId}/messages");
         var body = await response.Content.ReadFromJsonAsync<GetMessagesResponse>();
@@ -119,7 +119,7 @@ public class GetMessagesEndpointTests(MessagingServiceFactory factory) : IClassF
         factory.GuildAccessResponse = new ChannelAccessResult(true, Guid.NewGuid());
 
         var client = NewClient();
-        Authorize(client, Guid.NewGuid());
+        Authorize(client, Guid.NewGuid().ToString());
 
         var firstResp = await client.GetAsync($"/channels/{channelId}/messages?limit=2");
         var firstBody = await firstResp.Content.ReadFromJsonAsync<GetMessagesResponse>();
@@ -141,7 +141,7 @@ public class GetMessagesEndpointTests(MessagingServiceFactory factory) : IClassF
     {
         factory.GuildAccessResponse = new ChannelAccessResult(true, Guid.NewGuid());
         var client = NewClient();
-        Authorize(client, Guid.NewGuid());
+        Authorize(client, Guid.NewGuid().ToString());
 
         var responseZero = await client.GetAsync($"/channels/{Guid.NewGuid()}/messages?limit=0");
         var responseHuge = await client.GetAsync($"/channels/{Guid.NewGuid()}/messages?limit=1000");
@@ -155,7 +155,7 @@ public class GetMessagesEndpointTests(MessagingServiceFactory factory) : IClassF
     {
         factory.GuildAccessResponse = new ChannelAccessResult(true, Guid.NewGuid());
         var client = NewClient();
-        Authorize(client, Guid.NewGuid());
+        Authorize(client, Guid.NewGuid().ToString());
 
         var response = await client.GetAsync($"/channels/{Guid.NewGuid()}/messages?limit=50");
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);

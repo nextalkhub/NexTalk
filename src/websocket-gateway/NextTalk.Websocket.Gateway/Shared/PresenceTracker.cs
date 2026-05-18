@@ -7,30 +7,30 @@ namespace NextTalk.Websocket.Gateway.Shared;
 /// </summary>
 public sealed class PresenceTracker
 {
-    private readonly ConcurrentDictionary<Guid, DateTime> _lastSeen = new();
+    private readonly ConcurrentDictionary<string, DateTimeOffset> _lastSeen = new();
 
     /// <summary>
     /// Фиксирует heartbeat для userId.
     /// </summary>
     /// <returns>True, если пользователь был офлайн (только что появился в сети)</returns>
-    public bool SetOnline(Guid userId)
+    public bool SetOnline(string userId)
     {
         var wasOffline = !_lastSeen.ContainsKey(userId);
-        _lastSeen[userId] = DateTime.UtcNow;
+        _lastSeen[userId] = DateTimeOffset.UtcNow;
         return wasOffline;
     }
-    
-    public bool Remove(Guid userId) => _lastSeen.TryRemove(userId, out _);
-    
-    public bool IsOnline(Guid userId) => _lastSeen.ContainsKey(userId);
+
+    public bool Remove(string userId) => _lastSeen.TryRemove(userId, out _);
+
+    public bool IsOnline(string userId) => _lastSeen.ContainsKey(userId);
 
     /// <summary>
     /// Возвращает userId, чей последний heartbeat старше заданного времени
     /// </summary>
-    public IReadOnlyList<Guid> GetStale(TimeSpan timeout)
+    public IReadOnlyList<string> GetStale(TimeSpan timeout)
     {
         return _lastSeen
-            .Where(kv => DateTime.UtcNow - kv.Value > timeout)
+            .Where(kv => DateTimeOffset.UtcNow - kv.Value > timeout)
             .Select(kv => kv.Key)
             .ToList();
     }

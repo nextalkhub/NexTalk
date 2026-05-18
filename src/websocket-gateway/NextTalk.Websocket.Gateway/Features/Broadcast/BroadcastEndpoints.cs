@@ -9,11 +9,11 @@ public static class BroadcastEndpoints
     public static void Map(IEndpointRouteBuilder app)
     {
         app.MapPost("/internal/broadcast/guild/{guildId:guid}",
-            async (Guid guildId, BroadcastGuildRequest req, IHubContext<ChatHub> hub) =>
+            async (Guid guildId, BroadcastGuildRequest request, IHubContext<ChatHub> hub) =>
             {
                 await hub.Clients
                     .Group(ChatHub.GuildGroup(guildId))
-                    .SendAsync("GatewayEvent", new { req.Type, req.Payload });
+                    .SendAsync("GatewayEvent", new { request.Type, request.Payload });
                 return Results.NoContent();
             }).AllowAnonymous().ExcludeFromDescription();
     }

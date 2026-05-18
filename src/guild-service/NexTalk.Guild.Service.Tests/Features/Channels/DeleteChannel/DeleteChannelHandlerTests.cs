@@ -26,7 +26,7 @@ public class DeleteChannelHandlerTests
         var voiceService = new TestVoiceServiceClient();
         var handler = new DeleteChannelHandler(db, rbac, wsGateway, voiceService);
 
-        var cmd = new DeleteChannelCommand(Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid());
+        var cmd = new DeleteChannelCommand(Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid().ToString());
 
         await Assert.ThrowsAsync<NotFoundException>(() => handler.HandleAsync(cmd));
     }
@@ -35,13 +35,13 @@ public class DeleteChannelHandlerTests
     public async Task HandleAsync_OwnerDeletesChannel_Succeeds()
     {
         await using var db = CreateDb();
-        var ownerId = Guid.NewGuid();
+        var ownerId = Guid.NewGuid().ToString();
         var guildId = Guid.NewGuid();
         var channelId = Guid.NewGuid();
 
-        var guild = new GuildEntity { Id = guildId, Name = "Test", DisplayName = "Test Guild", OwnerId = ownerId };
+        var guild = new GuildEntity { Id = guildId, Name = "Test", OwnerId = ownerId };
         var member = new Member { UserId = ownerId, GuildId = guildId, Role = MemberRole.Owner, DisplayName = "Owner", Username = "owner" };
-        var channel = new Channel { Id = channelId, GuildId = guildId, Name = "test", Type = "text" };
+        var channel = new Channel { Id = channelId, GuildId = guildId, Name = "test", Type = ChannelType.Text };
         db.Guilds.Add(guild);
         db.Members.Add(member);
         db.Channels.Add(channel);
@@ -63,15 +63,15 @@ public class DeleteChannelHandlerTests
     public async Task HandleAsync_AdminDeletesChannel_Succeeds()
     {
         await using var db = CreateDb();
-        var adminId = Guid.NewGuid();
-        var ownerId = Guid.NewGuid();
+        var adminId = Guid.NewGuid().ToString();
+        var ownerId = Guid.NewGuid().ToString();
         var guildId = Guid.NewGuid();
         var channelId = Guid.NewGuid();
 
-        var guild = new GuildEntity { Id = guildId, Name = "Test", DisplayName = "Test Guild", OwnerId = ownerId };
+        var guild = new GuildEntity { Id = guildId, Name = "Test", OwnerId = ownerId };
         var ownerMember = new Member { UserId = ownerId, GuildId = guildId, Role = MemberRole.Owner, DisplayName = "Owner", Username = "owner" };
         var adminMember = new Member { UserId = adminId, GuildId = guildId, Role = MemberRole.Admin, DisplayName = "Admin", Username = "admin" };
-        var channel = new Channel { Id = channelId, GuildId = guildId, Name = "test", Type = "text" };
+        var channel = new Channel { Id = channelId, GuildId = guildId, Name = "test", Type = ChannelType.Text };
         db.Guilds.Add(guild);
         db.Members.AddRange(ownerMember, adminMember);
         db.Channels.Add(channel);
@@ -93,15 +93,15 @@ public class DeleteChannelHandlerTests
     public async Task HandleAsync_MemberDeletesChannel_ThrowsForbidden()
     {
         await using var db = CreateDb();
-        var memberId = Guid.NewGuid();
-        var ownerId = Guid.NewGuid();
+        var memberId = Guid.NewGuid().ToString();
+        var ownerId = Guid.NewGuid().ToString();
         var guildId = Guid.NewGuid();
         var channelId = Guid.NewGuid();
 
-        var guild = new GuildEntity { Id = guildId, Name = "Test", DisplayName = "Test Guild", OwnerId = ownerId };
+        var guild = new GuildEntity { Id = guildId, Name = "Test", OwnerId = ownerId };
         var ownerMember = new Member { UserId = ownerId, GuildId = guildId, Role = MemberRole.Owner, DisplayName = "Owner", Username = "owner" };
         var regularMember = new Member { UserId = memberId, GuildId = guildId, Role = MemberRole.Member, DisplayName = "User", Username = "user" };
-        var channel = new Channel { Id = channelId, GuildId = guildId, Name = "test", Type = "text" };
+        var channel = new Channel { Id = channelId, GuildId = guildId, Name = "test", Type = ChannelType.Text };
         db.Guilds.Add(guild);
         db.Members.AddRange(ownerMember, regularMember);
         db.Channels.Add(channel);
@@ -121,13 +121,13 @@ public class DeleteChannelHandlerTests
     public async Task HandleAsync_DeleteVoiceChannel_DisconnectsUsers()
     {
         await using var db = CreateDb();
-        var ownerId = Guid.NewGuid();
+        var ownerId = Guid.NewGuid().ToString();
         var guildId = Guid.NewGuid();
         var channelId = Guid.NewGuid();
 
-        var guild = new GuildEntity { Id = guildId, Name = "Test", DisplayName = "Test Guild", OwnerId = ownerId };
+        var guild = new GuildEntity { Id = guildId, Name = "Test", OwnerId = ownerId };
         var member = new Member { UserId = ownerId, GuildId = guildId, Role = MemberRole.Owner, DisplayName = "Owner", Username = "owner" };
-        var channel = new Channel { Id = channelId, GuildId = guildId, Name = "voice", Type = "voice" };
+        var channel = new Channel { Id = channelId, GuildId = guildId, Name = "voice", Type = ChannelType.Voice };
         db.Guilds.Add(guild);
         db.Members.Add(member);
         db.Channels.Add(channel);
@@ -149,13 +149,13 @@ public class DeleteChannelHandlerTests
     public async Task HandleAsync_DeleteTextChannel_DoesNotDisconnect()
     {
         await using var db = CreateDb();
-        var ownerId = Guid.NewGuid();
+        var ownerId = Guid.NewGuid().ToString();
         var guildId = Guid.NewGuid();
         var channelId = Guid.NewGuid();
 
-        var guild = new GuildEntity { Id = guildId, Name = "Test", DisplayName = "Test Guild", OwnerId = ownerId };
+        var guild = new GuildEntity { Id = guildId, Name = "Test", OwnerId = ownerId };
         var member = new Member { UserId = ownerId, GuildId = guildId, Role = MemberRole.Owner, DisplayName = "Owner", Username = "owner" };
-        var channel = new Channel { Id = channelId, GuildId = guildId, Name = "text", Type = "text" };
+        var channel = new Channel { Id = channelId, GuildId = guildId, Name = "text", Type = ChannelType.Text };
         db.Guilds.Add(guild);
         db.Members.Add(member);
         db.Channels.Add(channel);
@@ -176,13 +176,13 @@ public class DeleteChannelHandlerTests
     public async Task HandleAsync_BroadcastFails_ContinuesSuccessfully()
     {
         await using var db = CreateDb();
-        var ownerId = Guid.NewGuid();
+        var ownerId = Guid.NewGuid().ToString();
         var guildId = Guid.NewGuid();
         var channelId = Guid.NewGuid();
 
-        var guild = new GuildEntity { Id = guildId, Name = "Test", DisplayName = "Test Guild", OwnerId = ownerId };
+        var guild = new GuildEntity { Id = guildId, Name = "Test", OwnerId = ownerId };
         var member = new Member { UserId = ownerId, GuildId = guildId, Role = MemberRole.Owner, DisplayName = "Owner", Username = "owner" };
-        var channel = new Channel { Id = channelId, GuildId = guildId, Name = "test", Type = "text" };
+        var channel = new Channel { Id = channelId, GuildId = guildId, Name = "test", Type = ChannelType.Text };
         db.Guilds.Add(guild);
         db.Members.Add(member);
         db.Channels.Add(channel);

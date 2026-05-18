@@ -6,21 +6,30 @@ using NexTalk.Messaging.Service.Shared.Exceptions;
 
 namespace NexTalk.Messaging.Service.Features.Messages.CreateMessage;
 
-public sealed class CreateMessageHandler(MessagingDbContext db, ILogger<CreateMessageHandler> logger)
+public sealed class CreateMessageHandler
 {
+    private readonly MessagingDbContext _db;
+    private readonly ILogger<CreateMessageHandler> _logger;
+
     private static readonly TimeSpan IdempotencyTtl = TimeSpan.FromHours(24);
+
+    public CreateMessageHandler(MessagingDbContext db, ILogger<CreateMessageHandler> logger)
+    {
+        _db = db;
+        _logger = logger;
+    }
 
     public async Task<CreateMessageResult> HandleAsync(CreateMessageCommand cmd, CancellationToken ct)
     {
         if (string.IsNullOrWhiteSpace(cmd.Content))
             throw new BadRequestException("Message content cannot be empty.");
 
-        var cached = await db.IdempotencyKeys
-            .FirstOrDefaultAsync(k => k.Key == cmd.IdempotencyKey && k.ExpiresAt > DateTime.UtcNow, ct);
+        var cached = await _db.IdempotencyKeys
+            .FirstOrDefaultAsync(k => k.Key == cmd.IdempotencyKey && k.ExpiresAt > DateTimeOffset.UtcNow, ct);
 
         if (cached is not null)
         {
-            logger.LogInformation(
+            _logger.LogInformation(
                 "Idempotency hit: key={Key} correlation={CorrelationId}",
                 cmd.IdempotencyKey, cmd.CorrelationId);
 
@@ -48,16 +57,16 @@ public sealed class CreateMessageHandler(MessagingDbContext db, ILogger<CreateMe
         {
             Key = cmd.IdempotencyKey,
             Response = JsonSerializer.Serialize(dto),
-            ExpiresAt = DateTime.UtcNow.Add(IdempotencyTtl),
+            ExpiresAt = DateTimeOffset.UtcNow.Add(IdempotencyTtl),
         };
 
         // Три вставки в одной транзакции
-        db.Messages.Add(message);
-        db.OutboxEvents.Add(outbox);
-        db.IdempotencyKeys.Add(idempotencyKey);
-        await db.SaveChangesAsync(ct);
+        _db.Messages.Add(message);
+        _db.OutboxEvents.Add(outbox);
+        _db.IdempotencyKeys.Add(idempotencyKey);
+        await _db.SaveChangesAsync(ct);
 
-        logger.LogInformation(
+        _logger.LogInformation(
             "Message created: id={MessageId} channel={ChannelId} guild={GuildId} correlation={CorrelationId}",
             message.Id, cmd.ChannelId, cmd.GuildId, cmd.CorrelationId);
 
@@ -72,9 +81,9 @@ public record MessageDto(
     Guid Id,
     Guid ChannelId,
     Guid GuildId,
-    Guid AuthorId,
+    string AuthorId,
     string AuthorName,
     string Content,
-    DateTime CreatedAt);
+    DateTimeOffset CreatedAt);
 
 public record CreateMessageResult(MessageDto Message, bool IsReplay);

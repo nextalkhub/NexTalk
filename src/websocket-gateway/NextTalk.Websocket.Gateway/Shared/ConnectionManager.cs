@@ -7,18 +7,18 @@ namespace NextTalk.Websocket.Gateway.Shared;
 /// </summary>
 public sealed class ConnectionManager
 {
-    private readonly ConcurrentDictionary<Guid, Entry> _entries = new();
-    
-    public void Register(Guid userId, string connectionId, IReadOnlyList<Guid> guildIds) 
+    private readonly ConcurrentDictionary<string, Entry> _entries = new();
+
+    public void Register(string userId, string connectionId, IReadOnlyList<Guid> guildIds)
         => _entries[userId] = new Entry(connectionId, guildIds);
-    
-    public bool TryUnregister(Guid userId, out Entry? entry) =>
+
+    public bool TryUnregister(string userId, out Entry? entry) =>
         _entries.TryRemove(userId, out entry);
-    
-    public Entry? Get(Guid userId) =>
+
+    public Entry? Get(string userId) =>
         _entries.TryGetValue(userId, out var e) ? e : null;
-    
-    public bool IsConnected(Guid userId) => _entries.ContainsKey(userId);
-    
-    public  record Entry(string ConnectionId, IReadOnlyList<Guid> GuildIds);
+
+    public bool IsConnected(string userId) => _entries.ContainsKey(userId);
+
+    public record Entry(string ConnectionId, IReadOnlyList<Guid> GuildIds);
 }

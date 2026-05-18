@@ -1,4 +1,4 @@
-﻿using System.Net;
+using System.Net;
 using System.Net.Http.Headers;
 using Microsoft.Extensions.DependencyInjection;
 using NexTalk.Guild.Service.Domain;
@@ -14,7 +14,7 @@ public class DeleteGuildEndpointTests(GuildServiceFactory factory) : IClassFixtu
 {
     private HttpClient NewClient() => factory.CreateClient();
 
-    private static void Authorize(HttpClient client, Guid userId) =>
+    private static void Authorize(HttpClient client, string userId) =>
         client.DefaultRequestHeaders.Authorization =
             new AuthenticationHeaderValue("Bearer", TestJwt.Generate(userId, "Test User", "testuser"));
 
@@ -30,7 +30,7 @@ public class DeleteGuildEndpointTests(GuildServiceFactory factory) : IClassFixtu
     public async Task DeleteGuild_GuildNotFound_Returns404()
     {
         var client = NewClient();
-        var ownerId = Guid.NewGuid();
+        var ownerId = Guid.NewGuid().ToString();
         Authorize(client, ownerId);
 
         var response = await client.DeleteAsync($"/guilds/{Guid.NewGuid()}");
@@ -40,13 +40,13 @@ public class DeleteGuildEndpointTests(GuildServiceFactory factory) : IClassFixtu
     [Fact]
     public async Task DeleteGuild_WithOwner_Returns204()
     {
-        var ownerId = Guid.NewGuid();
+        var ownerId = Guid.NewGuid().ToString();
         var guildId = Guid.NewGuid();
 
         using (var scope = factory.Services.CreateScope())
         {
             var db = scope.ServiceProvider.GetRequiredService<GuildDbContext>();
-            db.Guilds.Add(new GuildEntity { Id = guildId, Name = "Test", DisplayName = "Test Guild", OwnerId = ownerId });
+            db.Guilds.Add(new GuildEntity { Id = guildId, Name = "Test", OwnerId = ownerId });
             db.Members.Add(new Member { UserId = ownerId, GuildId = guildId, Role = MemberRole.Owner, DisplayName = "Owner", Username = "owner" });
             await db.SaveChangesAsync();
         }
@@ -61,14 +61,14 @@ public class DeleteGuildEndpointTests(GuildServiceFactory factory) : IClassFixtu
     [Fact]
     public async Task DeleteGuild_WithMember_Returns403()
     {
-        var ownerId = Guid.NewGuid();
-        var memberId = Guid.NewGuid();
+        var ownerId = Guid.NewGuid().ToString();
+        var memberId = Guid.NewGuid().ToString();
         var guildId = Guid.NewGuid();
 
         using (var scope = factory.Services.CreateScope())
         {
             var db = scope.ServiceProvider.GetRequiredService<GuildDbContext>();
-            db.Guilds.Add(new GuildEntity { Id = guildId, Name = "Test", DisplayName = "Test Guild", OwnerId = ownerId });
+            db.Guilds.Add(new GuildEntity { Id = guildId, Name = "Test", OwnerId = ownerId });
             db.Members.AddRange(
                 new Member { UserId = ownerId, GuildId = guildId, Role = MemberRole.Owner, DisplayName = "Owner", Username = "owner" },
                 new Member { UserId = memberId, GuildId = guildId, Role = MemberRole.Member, DisplayName = "User", Username = "user" }
@@ -86,13 +86,13 @@ public class DeleteGuildEndpointTests(GuildServiceFactory factory) : IClassFixtu
     [Fact]
     public async Task DeleteGuild_RemovesFromDatabase()
     {
-        var ownerId = Guid.NewGuid();
+        var ownerId = Guid.NewGuid().ToString();
         var guildId = Guid.NewGuid();
 
         using (var scope = factory.Services.CreateScope())
         {
             var db = scope.ServiceProvider.GetRequiredService<GuildDbContext>();
-            db.Guilds.Add(new GuildEntity { Id = guildId, Name = "Test", DisplayName = "Test Guild", OwnerId = ownerId });
+            db.Guilds.Add(new GuildEntity { Id = guildId, Name = "Test", OwnerId = ownerId });
             db.Members.Add(new Member { UserId = ownerId, GuildId = guildId, Role = MemberRole.Owner, DisplayName = "Owner", Username = "owner" });
             await db.SaveChangesAsync();
         }
@@ -113,14 +113,14 @@ public class DeleteGuildEndpointTests(GuildServiceFactory factory) : IClassFixtu
     [Fact]
     public async Task DeleteGuild_RemovesAllMembers()
     {
-        var ownerId = Guid.NewGuid();
-        var memberId = Guid.NewGuid();
+        var ownerId = Guid.NewGuid().ToString();
+        var memberId = Guid.NewGuid().ToString();
         var guildId = Guid.NewGuid();
 
         using (var scope = factory.Services.CreateScope())
         {
             var db = scope.ServiceProvider.GetRequiredService<GuildDbContext>();
-            db.Guilds.Add(new GuildEntity { Id = guildId, Name = "Test", DisplayName = "Test Guild", OwnerId = ownerId });
+            db.Guilds.Add(new GuildEntity { Id = guildId, Name = "Test", OwnerId = ownerId });
             db.Members.AddRange(
                 new Member { UserId = ownerId, GuildId = guildId, Role = MemberRole.Owner, DisplayName = "Owner", Username = "owner" },
                 new Member { UserId = memberId, GuildId = guildId, Role = MemberRole.Member, DisplayName = "User", Username = "user" }
@@ -144,16 +144,16 @@ public class DeleteGuildEndpointTests(GuildServiceFactory factory) : IClassFixtu
     [Fact]
     public async Task DeleteGuild_RemovesAllChannels()
     {
-        var ownerId = Guid.NewGuid();
+        var ownerId = Guid.NewGuid().ToString();
         var guildId = Guid.NewGuid();
         var channelId = Guid.NewGuid();
 
         using (var scope = factory.Services.CreateScope())
         {
             var db = scope.ServiceProvider.GetRequiredService<GuildDbContext>();
-            db.Guilds.Add(new GuildEntity { Id = guildId, Name = "Test", DisplayName = "Test Guild", OwnerId = ownerId });
+            db.Guilds.Add(new GuildEntity { Id = guildId, Name = "Test", OwnerId = ownerId });
             db.Members.Add(new Member { UserId = ownerId, GuildId = guildId, Role = MemberRole.Owner, DisplayName = "Owner", Username = "owner" });
-            db.Channels.Add(new ChannelEntity { Id = channelId, GuildId = guildId, Name = "test", Type = "text" });
+            db.Channels.Add(new ChannelEntity { Id = channelId, GuildId = guildId, Name = "test", Type = ChannelType.Text });
             await db.SaveChangesAsync();
         }
 

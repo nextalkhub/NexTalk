@@ -100,7 +100,7 @@ public class MessagingServiceFactory : WebApplicationFactory<Program>
         return scope.ServiceProvider.GetRequiredService<MessagingDbContext>();
     }
 
-    public HttpClient CreateAuthenticatedClient(Guid userId)
+    public HttpClient CreateAuthenticatedClient(string userId)
     {
         var client = CreateClient();
         client.DefaultRequestHeaders.Authorization =

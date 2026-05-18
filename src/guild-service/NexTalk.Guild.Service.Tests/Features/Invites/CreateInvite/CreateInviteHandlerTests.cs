@@ -25,21 +25,21 @@ public class CreateInviteHandlerTests
     private static CreateInviteHandler CreateHandler(GuildDbContext db, IConfiguration? config = null) =>
         new(db, new RbacService(db), config ?? CreateConfig());
 
-    private static async Task<(Guid guildId, Guid ownerId)> SeedGuildAsync(GuildDbContext db, MemberRole callerRole = MemberRole.Owner)
+    private static async Task<(Guid guildId, string callerId)> SeedGuildAsync(GuildDbContext db, MemberRole callerRole = MemberRole.Owner)
     {
         var guildId = Guid.NewGuid();
-        var callerId = Guid.NewGuid();
+        var callerId = Guid.NewGuid().ToString();
         db.Guilds.Add(new GuildAggregate
         {
-            Id = guildId, Name = "g", DisplayName = "g",
-            OwnerId = callerRole == MemberRole.Owner ? callerId : Guid.NewGuid(),
-            CreatedAt = DateTime.UtcNow
+            Id = guildId, Name = "g",
+            OwnerId = callerRole == MemberRole.Owner ? callerId : Guid.NewGuid().ToString(),
+            CreatedAt = DateTimeOffset.UtcNow
         });
         db.Members.Add(new Member
         {
-            Id = Guid.NewGuid(), GuildId = guildId, UserId = callerId,
+            GuildId = guildId, UserId = callerId,
             DisplayName = "U", Username = "u",
-            Role = callerRole, JoinedAt = DateTime.UtcNow
+            Role = callerRole, JoinedAt = DateTimeOffset.UtcNow
         });
         await db.SaveChangesAsync();
         return (guildId, callerId);
@@ -51,7 +51,7 @@ public class CreateInviteHandlerTests
         await using var db = CreateDb();
         var handler = CreateHandler(db);
 
-        var cmd = new CreateInviteCommand(Guid.NewGuid(), TimeSpan.FromHours(24), 10, Guid.NewGuid());
+        var cmd = new CreateInviteCommand(Guid.NewGuid(), TimeSpan.FromHours(24), 10, Guid.NewGuid().ToString());
 
         await Assert.ThrowsAsync<NotFoundException>(() => handler.HandleAsync(cmd));
     }
@@ -75,7 +75,7 @@ public class CreateInviteHandlerTests
         var (guildId, _) = await SeedGuildAsync(db);
         var handler = CreateHandler(db);
 
-        var cmd = new CreateInviteCommand(guildId, TimeSpan.FromHours(24), 10, Guid.NewGuid());
+        var cmd = new CreateInviteCommand(guildId, TimeSpan.FromHours(24), 10, Guid.NewGuid().ToString());
 
         await Assert.ThrowsAsync<ForbiddenException>(() => handler.HandleAsync(cmd));
     }
@@ -97,8 +97,8 @@ public class CreateInviteHandlerTests
         Assert.Equal(0, result.UsesCount);
         Assert.NotNull(result.ExpiresAt);
         Assert.InRange(result.ExpiresAt!.Value,
-            DateTime.UtcNow.AddHours(23.99),
-            DateTime.UtcNow.AddHours(24.01));
+            DateTimeOffset.UtcNow.AddHours(23.99),
+            DateTimeOffset.UtcNow.AddHours(24.01));
 
         var persisted = await db.Invites.SingleAsync(i => i.GuildId == guildId);
         Assert.Equal(result.Code, persisted.Code);

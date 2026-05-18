@@ -15,7 +15,7 @@ redis:
   address: redis:6379
 
 keys:
-  devkey: devsecret
+  devkey: devsecretdevsecretdevsecret12
 
 room:
   auto_create: true
