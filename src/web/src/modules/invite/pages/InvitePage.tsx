@@ -87,13 +87,15 @@ export const InvitePage: React.FC = () => {
                 </>
             )}
 
-            <Button
-                variant="primary"
-                onClick={() => navigate(`/servers/${serverId}/channels`)}
-                fullWidth
-            >
-              Готово
-            </Button>
+            <div className={styles.buttons}>
+              <Button
+                  variant="primary"
+                  onClick={() => navigate(`/servers/${serverId}/channels`)}
+                  fullWidth
+              >
+                Готово
+              </Button>
+            </div>
           </div>
         </div>
       </GradientBackground>
