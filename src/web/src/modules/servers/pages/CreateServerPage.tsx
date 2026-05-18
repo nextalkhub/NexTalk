@@ -9,20 +9,10 @@ import {createGuild} from "../../../processes/guild/createGuild.ts";
 import {createServer} from "../../../shared/slices/serverSlice.ts";
 import {useAppDispatch} from "../../../store.ts";
 
-const SERVER_TYPES = [
-  { id: 'game', name: 'Игровой', iconName: 'server-game' },
-  { id: 'dev', name: 'Разработка', iconName: 'server-dev' },
-  { id: 'music', name: 'Музыка', iconName: 'server-music' },
-  { id: 'study', name: 'Обучение', iconName: 'server-study' },
-  { id: 'friends', name: 'Друзья', iconName: 'server-friends' },
-  { id: 'default', name: 'Сообщество', iconName: 'server-default' },
-]
-
 export const CreateServerPage: React.FC = () => {
   const navigate = useNavigate()
   const [name, setName] = useState('')
-  const [description, setDescription] = useState('')
-  const [selectedType, setSelectedType] = useState('game')
+  const [displayName, setDisplayName] = useState('')
   const [loading, setLoading] = useState(false)
   const dispatch = useAppDispatch()
 
@@ -39,8 +29,7 @@ export const CreateServerPage: React.FC = () => {
 
       const newServer = {
         name,
-        description,
-        icon: selectedType,
+        displayName
       }
 
       dispatch(createServer(newServer))
@@ -52,8 +41,7 @@ export const CreateServerPage: React.FC = () => {
 
     const data = {
       name,
-      description,
-      icon: selectedType
+      displayName
     }
 
     await createGuild(data)
@@ -82,28 +70,11 @@ export const CreateServerPage: React.FC = () => {
                   className={styles.input}
               />
 
-              <div className={styles.iconSection}>
-                <label className={styles.label}>Иконка сервера</label>
-                <div className={styles.iconGrid}>
-                  {SERVER_TYPES.map((type) => (
-                      <button
-                          key={type.id}
-                          type="button"
-                          onClick={() => setSelectedType(type.id)}
-                          className={`${styles.iconOption} ${selectedType === type.id ? styles.selected : ''}`}
-                      >
-                        <Icon name={type.iconName} size={28} />
-                        <span className={styles.iconLabel}>{type.name}</span>
-                      </button>
-                  ))}
-                </div>
-              </div>
-
               <Input
-                  label="Описание (необязательно)"
-                  placeholder="Короткое описание сервера"
-                  value={description}
-                  onChange={(e) => setDescription(e.target.value)}
+                  label="Отображаемое название сервера"
+                  placeholder="Например: game1"
+                  value={displayName}
+                  onChange={(e) => setDisplayName(e.target.value)}
                   className={styles.input}
               />
 

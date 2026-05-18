@@ -1,6 +1,7 @@
 import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit'
 import { axiosInstance } from '../../processes/axiosInstance.ts'
 import {Channel} from "../types";
+import {getGuildChannels} from "../../processes/channels/getGuildChannels.ts";
 
 interface ChannelState {
     channels: Channel[]
@@ -29,8 +30,7 @@ export const fetchChannels = createAsyncThunk(
             return mockChannels.filter(c => c.serverId === serverId)
         }
 
-        const res = await axiosInstance.get(`/api/guilds/${serverId}/channels`)
-        return res.data
+        return await getGuildChannels(serverId);
     }
 )
 
@@ -63,8 +63,6 @@ const channelSlice = createSlice({
             })
     }
 })
-
-// + ДОБАВЬ В channelSlice.ts
 
 export const createChannel = createAsyncThunk(
     'channels/create',

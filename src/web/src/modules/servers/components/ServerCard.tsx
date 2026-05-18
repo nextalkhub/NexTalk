@@ -11,9 +11,6 @@ export const ServerCard: React.FC<ServerCardProps> = ({ server, onClick }) => {
     return (
         <div className={styles.card} onClick={onClick}>
             <div>{server.name}</div>
-            <div className={styles.stats}>
-                <span>{server.memberCount} участников</span>
-            </div>
         </div>
     )
 }

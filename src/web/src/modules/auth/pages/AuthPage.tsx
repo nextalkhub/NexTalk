@@ -50,7 +50,6 @@ export const AuthPage: React.FC = () => {
         authUrl.searchParams.set('response_type', 'code')
         authUrl.searchParams.set('scope', 'openid profile email offline_access')
         authUrl.searchParams.set('prompt', 'create')
-        authUrl.searchParams.set('email.isVerified', 'true')
 
         window.location.href = authUrl.toString()
     }

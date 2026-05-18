@@ -1,12 +1,9 @@
 export interface Guild {
     id: string
     name: string
-    description?: string
-    icon?: string
+    displayName: string
     ownerId: string
     createdAt: string
-    updatedAt: string
-    memberCount: number
 }
 
 export interface Channel {
@@ -17,12 +14,12 @@ export interface Channel {
 }
 
 export interface Member {
+    displayName: string
     id: string
+    joinedAt: string
+    role: 'Owner' | 'Admin' | 'Member'
     userId: string
     username: string
-    name: string
-    role: 'owner' | 'admin' | 'member'
-    avatar?: string
 }
 
 export interface Invite {
@@ -38,8 +35,7 @@ export interface Invite {
 
 export interface CreateGuildRequest {
     name: string
-    description?: string
-    icon?: string
+    displayName: string
 }
 
 export interface CreateChannelRequest {

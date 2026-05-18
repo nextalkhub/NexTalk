@@ -2,7 +2,6 @@ import { useState } from 'react'
 import { useWebRTC } from "./useWerbRtc.ts"
 import { joinVoiceChannel } from "../../processes/voice/joinVoiceChannel.ts"
 import { leaveVoiceChannel } from "../../processes/voice/leaveVoiceChannel.ts"
-import { getVoiceChannelParticipants } from "../../processes/voice/getVoiceChannelParticipants.ts"
 import {VoiceParticipant} from "../types";
 
 export const useVoice = () => {
@@ -24,22 +23,6 @@ export const useVoice = () => {
 
         // 1. JOIN API
         await joinVoiceChannel(channelId)
-
-        // 2. GET PARTICIPANTS
-        const users = await getVoiceChannelParticipants(channelId)
-
-        setParticipants(
-            users.map(u => ({
-                userId: u.userId,
-                username: u.username,
-                displayName: u.displayName,
-                joinedAt: u.joinedAt,
-                avatar: u.username[0].toUpperCase(),
-                isSpeaking: false,
-                isMuted: false,
-                isDeafened: false,
-            }))
-        )
 
         // 3. WEBRTC
         await webrtc.joinRoom(channelId, user.name)

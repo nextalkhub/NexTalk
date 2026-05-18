@@ -1,17 +1,23 @@
 import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit'
-import { axiosInstance } from '../../processes/axiosInstance.ts'
+import {getChannelMessages} from "../../processes/channels/getChannelMessages.ts";
 
 export interface MessageInterface {
     id: string
     channelId: string
     authorId: string
-    authorName: string
     content: string
     createdAt: string
 }
 
+interface ChannelMessagesState {
+    items: MessageInterface[]
+    nextCursor: string | null
+    hasMore: boolean
+    loading: boolean
+}
+
 interface ChatState {
-    messages: Record<string, MessageInterface[]>
+    messages: Record<string, ChannelMessagesState>
 }
 
 const initialState: ChatState = {
@@ -26,7 +32,6 @@ const mockMessages: Record<string, MessageInterface[]> = {
             id: '1',
             channelId: '1',
             authorId: '1',
-            authorName: 'Алексей',
             content: 'Привет',
             createdAt: new Date().toISOString()
         }
@@ -35,14 +40,17 @@ const mockMessages: Record<string, MessageInterface[]> = {
 
 export const fetchMessages = createAsyncThunk(
     'chat/fetchMessages',
-    async (channelId: string) => {
-        if (USE_MOCK) {
-            await new Promise(r => setTimeout(r, 200))
-            return mockMessages[channelId] || []
-        }
-
-        const res = await axiosInstance.get(`/api/channels/${channelId}/messages`)
-        return res.data
+    async ({
+               channelId,
+               cursor,
+           }: {
+        channelId: string
+        cursor?: string
+    }) => {
+        return await getChannelMessages(channelId, {
+            cursor,
+            limit: 50,
+        })
     }
 )
 
@@ -54,24 +62,78 @@ const chatSlice = createSlice({
             const msg = action.payload
 
             if (!state.messages[msg.channelId]) {
-                state.messages[msg.channelId] = []
+                state.messages[msg.channelId] = {
+                    items: [],
+                    nextCursor: null,
+                    hasMore: true,
+                    loading: false,
+                }
             }
 
-            state.messages[msg.channelId].push(msg)
+            state.messages[msg.channelId].items.push(msg)
 
             if (USE_MOCK) {
                 if (!mockMessages[msg.channelId]) {
                     mockMessages[msg.channelId] = []
                 }
+
                 mockMessages[msg.channelId].push(msg)
             }
         }
     },
     extraReducers: builder => {
-        builder.addCase(fetchMessages.fulfilled, (state, action) => {
-            const channelId = action.meta.arg
+        builder.addCase(fetchMessages.pending, (state, action) => {
+            const { channelId } = action.meta.arg
 
-            state.messages[channelId] = [...action.payload]
+            if (!state.messages[channelId]) {
+                state.messages[channelId] = {
+                    items: [],
+                    nextCursor: null,
+                    hasMore: true,
+                    loading: false,
+                }
+            }
+
+            state.messages[channelId].loading = true
+        })
+
+        builder.addCase(fetchMessages.fulfilled, (state, action) => {
+            const { channelId, cursor } = action.meta.arg
+
+            if (!state.messages[channelId]) {
+                state.messages[channelId] = {
+                    items: [],
+                    nextCursor: null,
+                    hasMore: true,
+                    loading: false,
+                }
+            }
+
+            const channelState = state.messages[channelId]
+
+            // первый запрос
+            if (!cursor) {
+                channelState.items = action.payload.messages
+            }
+            // догрузка старых сообщений
+            else {
+                channelState.items = [
+                    ...action.payload.messages,
+                    ...channelState.items,
+                ]
+            }
+
+            channelState.nextCursor = action.payload.nextCursor
+            channelState.hasMore = action.payload.hasMore
+            channelState.loading = false
+        })
+
+        builder.addCase(fetchMessages.rejected, (state, action) => {
+            const { channelId } = action.meta.arg
+
+            if (state.messages[channelId]) {
+                state.messages[channelId].loading = false
+            }
         })
     }
 })

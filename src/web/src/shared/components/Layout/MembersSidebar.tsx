@@ -32,12 +32,7 @@ export const MembersSidebar: React.FC = () => {
                         onClick={() => navigate(`/servers/${serverId}/members`)}
                         className={styles.member}
                     >
-                        <div className={styles.avatar}>
-                            {member.avatar}
-                        </div>
-
-                        <div className={styles.name}>{member.name}</div>
-
+                        <div className={styles.name}>{member.displayName}</div>
                         {member.role && (
                             <div className={styles.role}>{member.role}</div>
                         )}

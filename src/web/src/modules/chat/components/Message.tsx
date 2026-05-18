@@ -11,7 +11,7 @@ interface MessageProps {
 
 export const Message: React.FC<MessageProps> = ({
                                                     message,
-                                                    showAvatar = true,
+                                                    // showAvatar = true,
                                                     showAuthor = true,
                                                     isOwn = false
                                                 }) => {
@@ -21,18 +21,18 @@ export const Message: React.FC<MessageProps> = ({
 
     return (
         <div className={`${styles.message} ${isOwn ? styles.own : ''}`}>
-            {showAvatar ? (
-                <div className={styles.avatar}>
-                    {message.authorName?.charAt(0).toUpperCase() || '?'}
-                </div>
-            ) : (
-                <div className={styles.avatarPlaceholder} />
-            )}
+            {/*{showAvatar ? (*/}
+            {/*    <div className={styles.avatar}>*/}
+            {/*        {message.authorName?.charAt(0).toUpperCase() || '?'}*/}
+            {/*    </div>*/}
+            {/*) : (*/}
+            {/*    <div className={styles.avatarPlaceholder} />*/}
+            {/*)}*/}
 
             <div className={styles.content}>
                 {showAuthor && (
                     <div className={styles.header}>
-                        <span className={styles.author}>{message.authorName}</span>
+                        {/*<span className={styles.author}>{message.authorName}</span>*/}
                         <span className={styles.time}>{formatTime(message.createdAt)}</span>
                     </div>
                 )}

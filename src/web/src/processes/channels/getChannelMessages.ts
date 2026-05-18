@@ -1,5 +1,5 @@
-import {axiosInstance} from "../axiosInstance.ts";
-import {GetMessagesResponse} from "../../shared/types";
+import { axiosInstance } from "../axiosInstance.ts";
+import { GetMessagesResponse } from "../../shared/types";
 
 export async function getChannelMessages(
     channelId: string,
@@ -9,20 +9,18 @@ export async function getChannelMessages(
     }
 ): Promise<GetMessagesResponse> {
     try {
-        const params = new URLSearchParams()
-        if (options?.cursor) params.append('cursor', options.cursor)
-        if (options?.limit) params.append('limit', Math.min(options.limit, 100).toString())
+        const response = await axiosInstance.get(
+            `/channels/${channelId}/messages`,
+            {
+                params: {
+                    cursor: options?.cursor,
+                    limit: options?.limit ?? 50,
+                },
+            }
+        )
 
-        const url = `/api/channels/${channelId}/messages${params.toString() ? `?${params}` : ''}`
-        const response = await axiosInstance.get(url)
-
-        return {
-            messages: response.data.messages,
-            nextCursor: response.data.nextCursor,
-            prevCursor: response.data.prevCursor,
-            hasMore: response.data.hasMore,
-            total: response.data.total
-        }
+        console.log('getChannelMessages: ', response.data)
+        return response.data
     } catch (error) {
         console.error('Ошибка получения сообщений:', error)
         throw error

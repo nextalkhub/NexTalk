@@ -26,10 +26,13 @@ export const ChannelChatPage: React.FC = () => {
     }, [serverId, dispatch])
 
     useEffect(() => {
-        if (channelId) dispatch(fetchMessages(channelId))
+        if (channelId) {
+            dispatch(fetchMessages({ channelId }))
+        }
     }, [channelId, dispatch])
 
-    const currentMessages = messages[channelId || ''] || []
+    const currentMessages =
+        messages[channelId || '']?.items || []
     const currentChannel = channels.find(c => c.id === channelId)
 
     const handleSend = (text: string) => {
@@ -39,7 +42,6 @@ export const ChannelChatPage: React.FC = () => {
             id: Date.now().toString(),
             channelId,
             authorId: user.id,
-            authorName: user.name,
             content: text,
             createdAt: new Date().toISOString()
         }))

@@ -53,9 +53,9 @@ export const MembersPage: React.FC = () => {
     }))
   }
 
-  const owners = members.filter(m => m.role === 'owner')
-  const admins = members.filter(m => m.role === 'admin')
-  const users = members.filter(m => m.role === 'member')
+  const owners = members.filter(m => m.role === 'Owner')
+  const admins = members.filter(m => m.role === 'Admin')
+  const users = members.filter(m => m.role === 'Member')
 
 
   if (loading) {
@@ -124,10 +124,9 @@ interface MemberItemProps {
 const MemberItem: React.FC<MemberItemProps> = ({ member, onKick, onBan }) => {
   return (
       <div className={styles.memberItem}>
-        <div className={styles.memberAvatar}>{member.avatar}</div>
 
         <div className={styles.memberInfo}>
-          <div className={styles.memberName}>{member.name}</div>
+          <div className={styles.memberName}>{member.displayName}</div>
           <div className={styles.memberTag}>{member.username}</div>
         </div>
 
@@ -135,12 +134,12 @@ const MemberItem: React.FC<MemberItemProps> = ({ member, onKick, onBan }) => {
         {/*  {member.status === 'online' ? 'В сети' : 'Не в сети'}*/}
         {/*</div>*/}
 
-        {member.role !== 'owner' && (
+        {member.role !== 'Owner' && (
             <div className={styles.memberActions}>
-              <button onClick={() => onKick(member.id, member.name)} className={styles.kickBtn}>
+              <button onClick={() => onKick(member.id, member.displayName)} className={styles.kickBtn}>
                 Исключить
               </button>
-              <button onClick={() => onBan(member.id, member.name)} className={styles.banBtn}>
+              <button onClick={() => onBan(member.id, member.displayName)} className={styles.banBtn}>
                 Заблокировать
               </button>
             </div>
