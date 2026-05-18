@@ -1,7 +1,47 @@
 import { useEffect } from 'react'
 import { useAppDispatch } from '../../store'
-import {useSignalR} from "../../SignalrContext.tsx";
 import {messageReceived} from "../slices/chatSlice.ts";
+import {useSignalR} from "./useSignalR.ts";
+
+interface MessageCreatedEvent {
+    type: 'message.created'
+    payload: {
+        messageId: string
+        channelId: string
+        authorId: string
+        content: string
+        createdAt: string
+    }
+}
+
+interface VoiceJoinedEvent {
+    type: 'voice.joined'
+    payload: {
+        channelId: string
+        userId: string
+    }
+}
+
+interface VoiceLeftEvent {
+    type: 'voice.left'
+    payload: {
+        channelId: string
+        userId: string
+    }
+}
+
+interface PresenceOnlineEvent {
+    type: 'presence.online'
+    payload: {
+        userId: string
+    }
+}
+
+type GatewayEvent =
+    | MessageCreatedEvent
+    | VoiceJoinedEvent
+    | VoiceLeftEvent
+    | PresenceOnlineEvent
 
 export const useGatewayEvents = () => {
     const { connection } = useSignalR()
@@ -10,7 +50,7 @@ export const useGatewayEvents = () => {
     useEffect(() => {
         if (!connection) return
 
-        const handler = (event: any) => {
+        const handler = (event: GatewayEvent) => {
             console.log('GatewayEvent:', event)
 
             switch (event.type) {

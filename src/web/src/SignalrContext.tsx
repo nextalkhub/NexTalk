@@ -1,6 +1,4 @@
 import React, {
-    createContext,
-    useContext,
     useEffect,
     useState,
 } from 'react'
@@ -12,16 +10,7 @@ import {
 } from '@microsoft/signalr'
 import {selectIsAuthenticated} from "./shared/slices/authSlice.ts";
 import {useAppSelector} from "./store.ts";
-
-interface SignalRContextType {
-    connection: HubConnection | null
-    isConnected: boolean
-}
-
-const SignalRContext = createContext<SignalRContextType>({
-    connection: null,
-    isConnected: false,
-})
+import { SignalRContext } from "./shared/hooks/signalRContext.ts";
 
 export const SignalRProvider = ({
                                     children,
@@ -91,4 +80,3 @@ export const SignalRProvider = ({
     )
 }
 
-export const useSignalR = () => useContext(SignalRContext)

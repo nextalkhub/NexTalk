@@ -12,7 +12,7 @@ import {useAppDispatch, useAppSelector} from "../../../store.ts";
 import {selectUser} from "../../../shared/slices/authSlice.ts";
 import {fetchChannels} from "../../../shared/slices/channelSlice.ts";
 import {fetchMessages} from "../../../shared/slices/chatSlice.ts";
-import {useSignalR} from "../../../SignalrContext.tsx";
+import {useSignalR} from "../../../shared/hooks/useSignalR.ts";
 
 export const ChannelChatPage: React.FC = () => {
     const { serverId, channelId } = useParams()
