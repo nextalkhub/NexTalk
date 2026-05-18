@@ -1,9 +1,18 @@
+import {User} from "./common.ts";
+
 export interface Guild {
     id: string
     name: string
-    displayName: string
+    description?: string
+    icon?: string
     ownerId: string
+    owner?: User
+    memberCount: number
+    onlineCount: number
+    channels?: Channel[]
+    members?: Member[]
     createdAt: string
+    updatedAt?: string
 }
 
 export interface Channel {
@@ -115,7 +124,7 @@ export interface CreateMessageInternalRequest {
     content: string
     replyToId?: string
     mentions?: string[]
-    sentAt: Date
+    sentAt: string
 }
 
 export interface DeleteMessageRequest {
@@ -127,7 +136,7 @@ export interface DeleteMessageRequest {
 // Формат: `msg_${channelId}_${Date.now()}_${randomString}`
 export interface IdempotencyKey {
     key: string
-    expiresAt: Date
+    expiresAt: string
 }
 
 export interface JoinVoiceResponse {

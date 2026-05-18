@@ -17,34 +17,9 @@ const initialState: ServerState = {
     error: null,
 }
 
-const USE_MOCK = import.meta.env.VITE_USE_AUTH_MOCK === 'true'
-
-const mockServers: Guild[] = [
-    {
-        ownerId: '1',
-        id: '1',
-        name: 'Mock Server 1',
-        displayName: 'mockServer1',
-        createdAt: new Date().toISOString(),
-    },
-    {
-        ownerId: '2',
-        id: '2',
-        name: 'Mock Server 2',
-        displayName: 'mockServer2',
-        createdAt: new Date().toISOString()
-    },
-]
-
 export const fetchServers = createAsyncThunk(
     'servers/fetchServers',
     async () => {
-        if (USE_MOCK) {
-            await new Promise(res => setTimeout(res, 300))
-
-            return [...mockServers]
-        }
-
         return await getUserGuilds()
     }
 )
@@ -52,21 +27,6 @@ export const fetchServers = createAsyncThunk(
 export const createServer = createAsyncThunk(
     'servers/createServer',
     async (data: CreateGuildRequest) => {
-        if (USE_MOCK) {
-            await new Promise(res => setTimeout(res, 300))
-
-            const newServer: Guild = {
-                id: Date.now().toString(),
-                ownerId: 'mock-user',
-                name: data.name,
-                displayName: data.displayName,
-                createdAt: new Date().toISOString()
-            }
-
-            mockServers.push(newServer)
-            return newServer
-        }
-
         return await createGuild(data)
     }
 )
@@ -80,10 +40,6 @@ const serverSlice = createSlice({
         },
         addServer: (state, action: PayloadAction<Guild>) => {
             state.servers.push(action.payload)
-
-            if (USE_MOCK) {
-                mockServers.push(action.payload)
-            }
         },
         removeServer: (state, action: PayloadAction<string>) => {
             state.servers = state.servers.filter(s => s.id !== action.payload)

@@ -7,8 +7,8 @@ import { useAppDispatch, useAppSelector } from '../../../store'
 import {
     fetchChannels,
     setCurrentChannel
-} from '../../../shared/slices/channelSlice.ts'
-import {Channel} from "../../../shared/types";
+} from '../../../shared/slices/channelSlice'
+import { Channel } from "../../../shared/types"
 
 export const ChannelSidebar: React.FC = () => {
     const navigate = useNavigate()
@@ -38,9 +38,19 @@ export const ChannelSidebar: React.FC = () => {
         }
     }
 
+    const handleBackToServers = () => {
+        navigate('/servers')
+    }
+
     return (
         <>
             <div className={styles.sidebar}>
+                {/* Кнопка назад */}
+                <div className={styles.backButton} onClick={handleBackToServers}>
+                    <Icon name="arrow-left" size={18} />
+                    <span>Все серверы</span>
+                </div>
+
                 <div className={styles.serverHeader}>
                     <span className={styles.serverTitle}>
                         Каналы
