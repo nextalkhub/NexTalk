@@ -2,29 +2,39 @@ using NextTalk.Websocket.Gateway.Infrastructure;
 
 namespace NextTalk.Websocket.Gateway.Features.Chat.SendMessage;
 
-public sealed class SendMessageHandler(
-    GuildServiceClient guildClient,
-    MessagingServiceClient messagingClient,
-    ILogger<SendMessageHandler> logger)
+public sealed class SendMessageHandler
 {
+    private readonly GuildServiceClient _guildClient;
+    private readonly MessagingServiceClient _messagingClient;
+    private readonly ILogger<SendMessageHandler> _logger;
+
+    public SendMessageHandler(
+        GuildServiceClient guildClient,
+        MessagingServiceClient messagingClient,
+        ILogger<SendMessageHandler> logger)
+    {
+        _guildClient = guildClient;
+        _messagingClient = messagingClient;
+        _logger = logger;
+    }
+
     public async Task<SendMessageResult> HandleAsync(SendMessageCommand command, CancellationToken ct)
     {
-        // Проверяем доступ к каналу и получаем guildId — сервер авторитетен, клиенту не доверяем.
-        var access = await guildClient.CheckChannelAccessAsync(
+        var access = await _guildClient.CheckChannelAccessAsync(
             command.ChannelId, command.UserId, command.CorrelationId, ct);
 
         if (access is null)
         {
-            logger.LogWarning(
-                "Канал не найден: channel={ChannelId} correlationId={CorrelationId}",
+            _logger.LogWarning(
+                "Channel not found: channel={ChannelId} correlationId={CorrelationId}",
                 command.ChannelId, command.CorrelationId);
             return new SendMessageResult(false, null, "Channel not found");
         }
 
         if (!access.HasAccess)
         {
-            logger.LogWarning(
-                "Доступ запрещён: user={UserId} channel={ChannelId} correlationId={CorrelationId}",
+            _logger.LogWarning(
+                "Access denied: user={UserId} channel={ChannelId} correlationId={CorrelationId}",
                 command.UserId, command.ChannelId, command.CorrelationId);
             return new SendMessageResult(false, null, "Access denied");
         }
@@ -32,19 +42,19 @@ public sealed class SendMessageHandler(
         var messageRequest = new MessagingServiceClient.CreateMessageRequest(
             command.ChannelId, access.GuildId, command.UserId, command.AuthorName, command.Content);
 
-        var (success, message, error) = await messagingClient.CreateMessageAsync(
+        var (success, message, error) = await _messagingClient.CreateMessageAsync(
             messageRequest, command.IdempotencyKey, command.CorrelationId, ct);
 
         if (!success)
         {
-            logger.LogError(
-                "Ошибка создания сообщения: user={UserId} channel={ChannelId} correlationId={CorrelationId} error={Error}",
+            _logger.LogError(
+                "Failed to create message: user={UserId} channel={ChannelId} correlationId={CorrelationId} error={Error}",
                 command.UserId, command.ChannelId, command.CorrelationId, error);
             return new SendMessageResult(false, null, error ?? "Failed to save message");
         }
 
-        logger.LogInformation(
-            "Сообщение создано: id={MessageId} channel={ChannelId} user={UserId} correlationId={CorrelationId}",
+        _logger.LogInformation(
+            "Message created: id={MessageId} channel={ChannelId} user={UserId} correlationId={CorrelationId}",
             message?.Id, command.ChannelId, command.UserId, command.CorrelationId);
 
         return new SendMessageResult(true, message, null);

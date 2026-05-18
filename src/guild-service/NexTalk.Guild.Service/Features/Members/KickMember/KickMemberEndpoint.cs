@@ -6,9 +6,9 @@ namespace NexTalk.Guild.Service.Features.Members.KickMember;
 public static class KickMemberEndpoint
 {
     public static void Map(IEndpointRouteBuilder app) =>
-        app.MapDelete("/guilds/{guildId:guid}/members/{targetUserId:guid}", async (
+        app.MapDelete("/guilds/{guildId:guid}/members/{targetUserId}", async (
             Guid guildId,
-            Guid targetUserId,
+            string targetUserId,
             ClaimsPrincipal user,
             KickMemberHandler handler,
             CancellationToken ct) =>

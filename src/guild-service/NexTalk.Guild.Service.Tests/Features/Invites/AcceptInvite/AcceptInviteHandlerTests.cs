@@ -30,22 +30,22 @@ public class AcceptInviteHandlerTests
 
     private static async Task<(GuildDbContext db, Guid guildId, Guid inviteId)> SeedAsync(
         string code = "INVITE01",
-        Guid? ownerId = null)
+        string? ownerId = null)
     {
         var db = CreateDb();
-        var owner = ownerId ?? Guid.NewGuid();
+        var owner = ownerId ?? Guid.NewGuid().ToString();
         var guildId = Guid.NewGuid();
         var inviteId = Guid.NewGuid();
 
         db.Guilds.Add(new GuildAggregate
         {
-            Id = guildId, Name = "Test Guild", DisplayName = "Test Guild",
-            OwnerId = owner, CreatedAt = DateTime.UtcNow
+            Id = guildId, Name = "Test Guild",
+            OwnerId = owner, CreatedAt = DateTimeOffset.UtcNow
         });
         db.Invites.Add(new Invite
         {
             Id = inviteId, GuildId = guildId, Code = code,
-            CreatedBy = owner, CreatedAt = DateTime.UtcNow
+            CreatedBy = owner, CreatedAt = DateTimeOffset.UtcNow
         });
         await db.SaveChangesAsync();
         return (db, guildId, inviteId);
@@ -55,7 +55,7 @@ public class AcceptInviteHandlerTests
     public async Task Handle_WithValidInvite_ReturnsGuild()
     {
         var (db, guildId, _) = await SeedAsync();
-        var cmd = new AcceptInviteCommand("INVITE01", Guid.NewGuid(), "Alice", "alice");
+        var cmd = new AcceptInviteCommand("INVITE01", Guid.NewGuid().ToString(), "Alice", "alice");
 
         var result = await CreateHandler(db).HandleAsync(cmd);
 
@@ -67,7 +67,7 @@ public class AcceptInviteHandlerTests
     public async Task Handle_WithValidInvite_CreatesMemberWithRoleMember()
     {
         var (db, guildId, _) = await SeedAsync();
-        var userId = Guid.NewGuid();
+        var userId = Guid.NewGuid().ToString();
         var cmd = new AcceptInviteCommand("INVITE01", userId, "Bob", "bob");
 
         await CreateHandler(db).HandleAsync(cmd);
@@ -83,7 +83,7 @@ public class AcceptInviteHandlerTests
     public async Task Handle_WithNonExistentCode_ThrowsNotFound()
     {
         var (db, _, _) = await SeedAsync();
-        var cmd = new AcceptInviteCommand("WRONG", Guid.NewGuid(), "X", "x");
+        var cmd = new AcceptInviteCommand("WRONG", Guid.NewGuid().ToString(), "X", "x");
 
         await Assert.ThrowsAsync<NexTalk.Guild.Service.Shared.Exceptions.NotFoundException>(
             () => CreateHandler(db).HandleAsync(cmd));
@@ -93,8 +93,8 @@ public class AcceptInviteHandlerTests
     public async Task Handle_WhenUserIsBanned_ThrowsForbidden()
     {
         var (db, guildId, _) = await SeedAsync();
-        var userId = Guid.NewGuid();
-        db.Bans.Add(new Ban { Id = Guid.NewGuid(), GuildId = guildId, UserId = userId, BannedAt = DateTime.UtcNow });
+        var userId = Guid.NewGuid().ToString();
+        db.Bans.Add(new Ban { GuildId = guildId, UserId = userId, BannedBy = "system", BannedAt = DateTimeOffset.UtcNow });
         await db.SaveChangesAsync();
 
         var cmd = new AcceptInviteCommand("INVITE01", userId, "X", "x");
@@ -107,11 +107,11 @@ public class AcceptInviteHandlerTests
     public async Task Handle_WhenAlreadyMember_ThrowsBadRequest()
     {
         var (db, guildId, _) = await SeedAsync();
-        var userId = Guid.NewGuid();
+        var userId = Guid.NewGuid().ToString();
         db.Members.Add(new Member
         {
-            Id = Guid.NewGuid(), GuildId = guildId, UserId = userId,
-            DisplayName = "X", Username = "x", Role = MemberRole.Member, JoinedAt = DateTime.UtcNow
+            GuildId = guildId, UserId = userId,
+            DisplayName = "X", Username = "x", Role = MemberRole.Member, JoinedAt = DateTimeOffset.UtcNow
         });
         await db.SaveChangesAsync();
 
@@ -125,7 +125,7 @@ public class AcceptInviteHandlerTests
     public async Task Handle_WhenClaimFails_ThrowsBadRequest()
     {
         var (db, _, _) = await SeedAsync();
-        var cmd = new AcceptInviteCommand("INVITE01", Guid.NewGuid(), "X", "x");
+        var cmd = new AcceptInviteCommand("INVITE01", Guid.NewGuid().ToString(), "X", "x");
 
         await Assert.ThrowsAsync<NexTalk.Guild.Service.Shared.Exceptions.BadRequestException>(
             () => CreateHandler(db, new FakeInviteRepository(claimSucceeds: false)).HandleAsync(cmd));

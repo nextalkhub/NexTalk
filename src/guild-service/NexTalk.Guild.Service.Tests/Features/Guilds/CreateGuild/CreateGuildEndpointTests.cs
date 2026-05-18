@@ -13,15 +13,14 @@ public class CreateGuildEndpointTests(GuildServiceFactory factory) : IClassFixtu
 {
     private HttpClient NewClient() => factory.CreateClient();
 
-    private static void Authorize(HttpClient client, Guid userId, string name = "Test User", string username = "testuser") =>
+    private static void Authorize(HttpClient client, string userId, string name = "Test User", string username = "testuser") =>
         client.DefaultRequestHeaders.Authorization =
             new AuthenticationHeaderValue("Bearer", TestJwt.Generate(userId, name, username));
 
     [Fact]
     public async Task PostGuilds_WithoutToken_Returns401()
     {
-        var response = await NewClient().PostAsJsonAsync("/guilds",
-            new { name = "Test", displayName = "Test" });
+        var response = await NewClient().PostAsJsonAsync("/guilds", new { name = "Test" });
 
         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
     }
@@ -33,8 +32,7 @@ public class CreateGuildEndpointTests(GuildServiceFactory factory) : IClassFixtu
         client.DefaultRequestHeaders.Authorization =
             new AuthenticationHeaderValue("Bearer", "invalid.token.value");
 
-        var response = await client.PostAsJsonAsync("/guilds",
-            new { name = "Test", displayName = "Test" });
+        var response = await client.PostAsJsonAsync("/guilds", new { name = "Test" });
 
         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
     }
@@ -43,10 +41,9 @@ public class CreateGuildEndpointTests(GuildServiceFactory factory) : IClassFixtu
     public async Task PostGuilds_WithValidToken_Returns201()
     {
         var client = NewClient();
-        Authorize(client, Guid.NewGuid());
+        Authorize(client, Guid.NewGuid().ToString());
 
-        var response = await client.PostAsJsonAsync("/guilds",
-            new { name = "My Guild", displayName = "My Guild" });
+        var response = await client.PostAsJsonAsync("/guilds", new { name = "My Guild" });
 
         Assert.Equal(HttpStatusCode.Created, response.StatusCode);
     }
@@ -55,10 +52,9 @@ public class CreateGuildEndpointTests(GuildServiceFactory factory) : IClassFixtu
     public async Task PostGuilds_WithValidToken_ReturnsGuildId()
     {
         var client = NewClient();
-        Authorize(client, Guid.NewGuid());
+        Authorize(client, Guid.NewGuid().ToString());
 
-        var response = await client.PostAsJsonAsync("/guilds",
-            new { name = "My Guild", displayName = "My Guild" });
+        var response = await client.PostAsJsonAsync("/guilds", new { name = "My Guild" });
 
         var body = await response.Content.ReadFromJsonAsync<GuildCreatedResponse>();
         Assert.NotNull(body);
@@ -68,12 +64,11 @@ public class CreateGuildEndpointTests(GuildServiceFactory factory) : IClassFixtu
     [Fact]
     public async Task PostGuilds_WithValidToken_PersistsGuildMemberAndChannel()
     {
-        var userId = Guid.NewGuid();
+        var userId = Guid.NewGuid().ToString();
         var client = NewClient();
         Authorize(client, userId, "John Doe", "johndoe");
 
-        var response = await client.PostAsJsonAsync("/guilds",
-            new { name = "Server Alpha", displayName = "Server Alpha" });
+        var response = await client.PostAsJsonAsync("/guilds", new { name = "Server Alpha" });
 
         var body = await response.Content.ReadFromJsonAsync<GuildCreatedResponse>();
         Assert.NotNull(body);
@@ -96,7 +91,7 @@ public class CreateGuildEndpointTests(GuildServiceFactory factory) : IClassFixtu
         Assert.True(db.Channels.Any(c =>
             c.GuildId == body.Id &&
             c.Name == "general" &&
-            c.Type == "text"));
+            c.Type == ChannelType.Text));
     }
 
     private record GuildCreatedResponse(Guid Id);

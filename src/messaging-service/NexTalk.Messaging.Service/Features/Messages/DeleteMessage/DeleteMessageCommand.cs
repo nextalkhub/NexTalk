@@ -1,3 +1,3 @@
 namespace NexTalk.Messaging.Service.Features.Messages.DeleteMessage;
 
-public record DeleteMessageCommand(Guid MessageId, Guid CallerId);
+public record DeleteMessageCommand(Guid MessageId, string CallerId);

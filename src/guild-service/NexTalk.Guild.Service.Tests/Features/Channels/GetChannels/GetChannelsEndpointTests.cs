@@ -15,7 +15,7 @@ public class GetChannelsEndpointTests(GuildServiceFactory factory) : IClassFixtu
 {
     private HttpClient NewClient() => factory.CreateClient();
 
-    private static void Authorize(HttpClient client, Guid userId) =>
+    private static void Authorize(HttpClient client, string userId) =>
         client.DefaultRequestHeaders.Authorization =
             new AuthenticationHeaderValue("Bearer", TestJwt.Generate(userId, "Test User", "testuser"));
 
@@ -32,7 +32,7 @@ public class GetChannelsEndpointTests(GuildServiceFactory factory) : IClassFixtu
     public async Task GetChannels_NonexistentGuild_ReturnsEmptyList()
     {
         var client = NewClient();
-        var userId = Guid.NewGuid();
+        var userId = Guid.NewGuid().ToString();
         Authorize(client, userId);
 
         var response = await client.GetAsync($"/guilds/{Guid.NewGuid()}/channels");
@@ -47,12 +47,12 @@ public class GetChannelsEndpointTests(GuildServiceFactory factory) : IClassFixtu
     public async Task GetChannels_GuildWithoutChannels_ReturnsEmptyList()
     {
         var guildId = Guid.NewGuid();
-        var userId = Guid.NewGuid();
+        var userId = Guid.NewGuid().ToString();
 
         using (var scope = factory.Services.CreateScope())
         {
             var db = scope.ServiceProvider.GetRequiredService<GuildDbContext>();
-            db.Guilds.Add(new GuildEntity { Id = guildId, Name = "Empty Guild", DisplayName = "Empty Guild", OwnerId = userId });
+            db.Guilds.Add(new GuildEntity { Id = guildId, Name = "Empty Guild", OwnerId = userId });
             db.Members.Add(new Member { UserId = userId, GuildId = guildId, Role = MemberRole.Owner, DisplayName = "Owner", Username = "owner" });
             await db.SaveChangesAsync();
         }
@@ -72,17 +72,17 @@ public class GetChannelsEndpointTests(GuildServiceFactory factory) : IClassFixtu
     public async Task GetChannels_GuildWithChannels_ReturnsAll()
     {
         var guildId = Guid.NewGuid();
-        var userId = Guid.NewGuid();
+        var userId = Guid.NewGuid().ToString();
 
         using (var scope = factory.Services.CreateScope())
         {
             var db = scope.ServiceProvider.GetRequiredService<GuildDbContext>();
-            db.Guilds.Add(new GuildEntity { Id = guildId, Name = "Test Guild", DisplayName = "Test Guild", OwnerId = userId });
+            db.Guilds.Add(new GuildEntity { Id = guildId, Name = "Test Guild", OwnerId = userId });
             db.Members.Add(new Member { UserId = userId, GuildId = guildId, Role = MemberRole.Owner, DisplayName = "Owner", Username = "owner" });
             db.Channels.AddRange(
-                new Channel { Id = Guid.NewGuid(), GuildId = guildId, Name = "general", Type = "text" },
-                new Channel { Id = Guid.NewGuid(), GuildId = guildId, Name = "voice-room", Type = "voice" },
-                new Channel { Id = Guid.NewGuid(), GuildId = guildId, Name = "announcements", Type = "text" }
+                new Channel { Id = Guid.NewGuid(), GuildId = guildId, Name = "general", Type = ChannelType.Text },
+                new Channel { Id = Guid.NewGuid(), GuildId = guildId, Name = "voice-room", Type = ChannelType.Voice },
+                new Channel { Id = Guid.NewGuid(), GuildId = guildId, Name = "announcements", Type = ChannelType.Text }
             );
             await db.SaveChangesAsync();
         }
@@ -103,14 +103,14 @@ public class GetChannelsEndpointTests(GuildServiceFactory factory) : IClassFixtu
     {
         var guildId = Guid.NewGuid();
         var channelId = Guid.NewGuid();
-        var userId = Guid.NewGuid();
+        var userId = Guid.NewGuid().ToString();
 
         using (var scope = factory.Services.CreateScope())
         {
             var db = scope.ServiceProvider.GetRequiredService<GuildDbContext>();
-            db.Guilds.Add(new GuildEntity { Id = guildId, Name = "Test Guild", DisplayName = "Test Guild", OwnerId = userId });
+            db.Guilds.Add(new GuildEntity { Id = guildId, Name = "Test Guild", OwnerId = userId });
             db.Members.Add(new Member { UserId = userId, GuildId = guildId, Role = MemberRole.Owner, DisplayName = "Owner", Username = "owner" });
-            db.Channels.Add(new Channel { Id = channelId, GuildId = guildId, Name = "test-channel", Type = "text" });
+            db.Channels.Add(new Channel { Id = channelId, GuildId = guildId, Name = "test-channel", Type = ChannelType.Text });
             await db.SaveChangesAsync();
         }
 
@@ -135,23 +135,24 @@ public class GetChannelsEndpointTests(GuildServiceFactory factory) : IClassFixtu
     {
         var guild1Id = Guid.NewGuid();
         var guild2Id = Guid.NewGuid();
-        var userId = Guid.NewGuid();
+        var userId = Guid.NewGuid().ToString();
+        var otherOwnerId = Guid.NewGuid().ToString();
 
         using (var scope = factory.Services.CreateScope())
         {
             var db = scope.ServiceProvider.GetRequiredService<GuildDbContext>();
             db.Guilds.AddRange(
-                new GuildEntity { Id = guild1Id, Name = "Guild 1", DisplayName = "Guild 1", OwnerId = userId },
-                new GuildEntity { Id = guild2Id, Name = "Guild 2", DisplayName = "Guild 2", OwnerId = Guid.NewGuid() }
+                new GuildEntity { Id = guild1Id, Name = "Guild 1", OwnerId = userId },
+                new GuildEntity { Id = guild2Id, Name = "Guild 2", OwnerId = otherOwnerId }
             );
             db.Members.AddRange(
                 new Member { UserId = userId, GuildId = guild1Id, Role = MemberRole.Owner, DisplayName = "Owner", Username = "owner" },
                 new Member { UserId = userId, GuildId = guild2Id, Role = MemberRole.Member, DisplayName = "Member", Username = "member" }
             );
             db.Channels.AddRange(
-                new Channel { Id = Guid.NewGuid(), GuildId = guild1Id, Name = "ch1", Type = "text" },
-                new Channel { Id = Guid.NewGuid(), GuildId = guild1Id, Name = "ch2", Type = "text" },
-                new Channel { Id = Guid.NewGuid(), GuildId = guild2Id, Name = "ch3", Type = "voice" }
+                new Channel { Id = Guid.NewGuid(), GuildId = guild1Id, Name = "ch1", Type = ChannelType.Text },
+                new Channel { Id = Guid.NewGuid(), GuildId = guild1Id, Name = "ch2", Type = ChannelType.Text },
+                new Channel { Id = Guid.NewGuid(), GuildId = guild2Id, Name = "ch3", Type = ChannelType.Voice }
             );
             await db.SaveChangesAsync();
         }
@@ -167,5 +168,5 @@ public class GetChannelsEndpointTests(GuildServiceFactory factory) : IClassFixtu
         Assert.All(body, ch => Assert.Equal(guild1Id, ch.GuildId));
     }
 
-    private record ChannelDto(Guid Id, Guid GuildId, string Name, string Type, DateTime CreatedAt);
+    private record ChannelDto(Guid Id, Guid GuildId, string Name, string Type, DateTimeOffset CreatedAt);
 }

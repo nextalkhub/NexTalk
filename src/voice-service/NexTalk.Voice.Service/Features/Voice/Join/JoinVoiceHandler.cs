@@ -3,41 +3,60 @@ using NexTalk.Voice.Service.Shared.Exceptions;
 
 namespace NexTalk.Voice.Service.Features.Voice.Join;
 
-public sealed class JoinVoiceHandler(
-    GuildServiceClient guildClient,
-    LiveKitRoomClient roomClient,
-    LiveKitTokenGenerator tokenGenerator,
-    SessionStore sessionStore,
-    WsGatewayClient wsGateway,
-    IConfiguration config,
-    ILogger<JoinVoiceHandler> logger)
+public sealed class JoinVoiceHandler
 {
+    private readonly GuildServiceClient _guildClient;
+    private readonly LiveKitRoomClient _roomClient;
+    private readonly LiveKitTokenGenerator _tokenGenerator;
+    private readonly SessionStore _sessionStore;
+    private readonly WsGatewayClient _wsGateway;
+    private readonly IConfiguration _config;
+    private readonly ILogger<JoinVoiceHandler> _logger;
+
+    public JoinVoiceHandler(
+        GuildServiceClient guildClient,
+        LiveKitRoomClient roomClient,
+        LiveKitTokenGenerator tokenGenerator,
+        SessionStore sessionStore,
+        WsGatewayClient wsGateway,
+        IConfiguration config,
+        ILogger<JoinVoiceHandler> logger)
+    {
+        _guildClient = guildClient;
+        _roomClient = roomClient;
+        _tokenGenerator = tokenGenerator;
+        _sessionStore = sessionStore;
+        _wsGateway = wsGateway;
+        _config = config;
+        _logger = logger;
+    }
+
     public async Task<JoinVoiceResult> HandleAsync(JoinVoiceCommand cmd, CancellationToken ct)
     {
         // 1. Проверяем доступ к каналу и получаем guildId + тип канала.
-        var access = await guildClient.CheckChannelAccessAsync(cmd.ChannelId, cmd.UserId, cmd.CorrelationId, ct);
+        var access = await _guildClient.CheckChannelAccessAsync(cmd.ChannelId, cmd.UserId, cmd.CorrelationId, ct);
 
         if (access is null)
-            throw new NotFoundException($"Канал {cmd.ChannelId} не найден.");
+            throw new NotFoundException($"Channel {cmd.ChannelId} not found.");
 
         if (!access.HasAccess)
-            throw new ForbiddenException("Нет доступа к каналу.");
+            throw new ForbiddenException("Access to channel denied.");
 
         if (!string.Equals(access.ChannelType, "voice", StringComparison.OrdinalIgnoreCase))
-            throw new BadRequestException($"Канал {cmd.ChannelId} не является голосовым.");
+            throw new BadRequestException($"Channel {cmd.ChannelId} is not a voice channel.");
 
         // 2. Создаем LiveKit-комнату, если ещё не существует.
-        await roomClient.EnsureRoomAsync(cmd.ChannelId, ct);
+        await _roomClient.EnsureRoomAsync(cmd.ChannelId, ct);
 
         // 3. Регистрируем сессию (если был в другом канале — переносимся).
-        sessionStore.Join(cmd.UserId, cmd.ChannelId, access.GuildId);
+        _sessionStore.Join(cmd.UserId, cmd.ChannelId, access.GuildId);
 
         // 4. Генерируем токен для клиента.
-        var token = tokenGenerator.GenerateToken(cmd.UserId, cmd.DisplayName, cmd.ChannelId);
-        var livekitUrl = config["LiveKit:PublicUrl"]
-                         ?? throw new InvalidOperationException("LiveKit:PublicUrl не задан.");
+        var token = _tokenGenerator.GenerateToken(cmd.UserId, cmd.DisplayName, cmd.ChannelId);
+        var livekitUrl = _config["LiveKit:PublicUrl"]
+                         ?? throw new InvalidOperationException("LiveKit:PublicUrl is not configured.");
 
-        logger.LogInformation(
+        _logger.LogInformation(
             "Voice join: user={UserId} channel={ChannelId} guild={GuildId} correlation={CorrelationId}",
             cmd.UserId, cmd.ChannelId, access.GuildId, cmd.CorrelationId);
 
@@ -47,11 +66,11 @@ public sealed class JoinVoiceHandler(
         return new JoinVoiceResult(token, livekitUrl, cmd.ChannelId, access.GuildId);
     }
 
-    private async Task BroadcastJoinAsync(Guid guildId, Guid userId, Guid channelId, string correlationId)
+    private async Task BroadcastJoinAsync(Guid guildId, string userId, Guid channelId, string correlationId)
     {
         try
         {
-            await wsGateway.BroadcastToGuildAsync(
+            await _wsGateway.BroadcastToGuildAsync(
                 guildId,
                 "voice.joined",
                 new { UserId = userId, ChannelId = channelId },
@@ -59,8 +78,8 @@ public sealed class JoinVoiceHandler(
         }
         catch (Exception ex)
         {
-            logger.LogWarning(ex,
-                "Не удалось отправить voice.joined: user={UserId} channel={ChannelId}",
+            _logger.LogWarning(ex,
+                "Failed to broadcast voice.joined: user={UserId} channel={ChannelId}",
                 userId, channelId);
         }
     }

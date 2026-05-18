@@ -12,7 +12,7 @@ namespace NexTalk.Guild.Service.Tests.Features.Invites.CreateInvite;
 
 public class CreateInviteEndpointTests(GuildServiceFactory factory) : IClassFixture<GuildServiceFactory>
 {
-    private HttpClient AuthedClient(Guid userId)
+    private HttpClient AuthedClient(string userId)
     {
         var client = factory.CreateClient();
         client.DefaultRequestHeaders.Authorization =
@@ -20,30 +20,30 @@ public class CreateInviteEndpointTests(GuildServiceFactory factory) : IClassFixt
         return client;
     }
 
-    private async Task<(Guid guildId, Guid ownerId)> SeedGuildAsync(MemberRole role = MemberRole.Owner)
+    private async Task<(Guid guildId, string callerId)> SeedGuildAsync(MemberRole role = MemberRole.Owner)
     {
         using var scope = factory.Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<GuildDbContext>();
         var guildId = Guid.NewGuid();
-        var callerId = Guid.NewGuid();
+        var callerId = Guid.NewGuid().ToString();
 
         db.Guilds.Add(new GuildAggregate
         {
-            Id = guildId, Name = "g", DisplayName = "g",
-            OwnerId = role == MemberRole.Owner ? callerId : Guid.NewGuid(),
-            CreatedAt = DateTime.UtcNow
+            Id = guildId, Name = "g",
+            OwnerId = role == MemberRole.Owner ? callerId : Guid.NewGuid().ToString(),
+            CreatedAt = DateTimeOffset.UtcNow
         });
         db.Members.Add(new Member
         {
-            Id = Guid.NewGuid(), GuildId = guildId, UserId = callerId,
+            GuildId = guildId, UserId = callerId,
             DisplayName = "U", Username = "u",
-            Role = role, JoinedAt = DateTime.UtcNow
+            Role = role, JoinedAt = DateTimeOffset.UtcNow
         });
         await db.SaveChangesAsync();
         return (guildId, callerId);
     }
 
-    private record InviteBody(Guid Id, string Code, string Url, Guid GuildId, DateTime? ExpiresAt, int? MaxUses, int UsesCount, DateTime CreatedAt);
+    private record InviteBody(Guid Id, string Code, string Url, Guid GuildId, DateTimeOffset? ExpiresAt, int? MaxUses, int UsesCount, DateTimeOffset CreatedAt);
 
     [Fact]
     public async Task PostInvite_AsOwner_Returns201_WithCodeAndUrl()
@@ -96,7 +96,7 @@ public class CreateInviteEndpointTests(GuildServiceFactory factory) : IClassFixt
     public async Task PostInvite_AsNonMember_Returns403()
     {
         var (guildId, _) = await SeedGuildAsync();
-        var client = AuthedClient(Guid.NewGuid());
+        var client = AuthedClient(Guid.NewGuid().ToString());
 
         var response = await client.PostAsJsonAsync(
             $"/guilds/{guildId}/invites",
@@ -108,7 +108,7 @@ public class CreateInviteEndpointTests(GuildServiceFactory factory) : IClassFixt
     [Fact]
     public async Task PostInvite_WhenGuildMissing_Returns404()
     {
-        var client = AuthedClient(Guid.NewGuid());
+        var client = AuthedClient(Guid.NewGuid().ToString());
 
         var response = await client.PostAsJsonAsync(
             $"/guilds/{Guid.NewGuid()}/invites",

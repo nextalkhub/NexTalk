@@ -62,7 +62,7 @@ builder.Services.AddStackExchangeRedisCache(opts =>
 });
 
 builder.Services.AddDbContext<GuildDbContext>(opts =>
-    opts.UseNpgsql(pgConnectionString));
+    opts.UseNpgsql(pgConnectionString).UseSnakeCaseNamingConvention());
 
 builder.Services.AddTransient<DeadlineForwardingHandler>();
 
@@ -340,7 +340,7 @@ app.MapGet("/guilds/probe", async (IDistributedCache cache, ILogger<Program> log
         return Results.Ok(new { source = "cache", value = cached });
     }
 
-    var value = $"set by {Environment.MachineName} at {DateTime.UtcNow:O}";
+    var value = $"set by {Environment.MachineName} at {DateTimeOffset.UtcNow:O}";
     await cache.SetStringAsync(key, value, new DistributedCacheEntryOptions
     {
         AbsoluteExpirationRelativeToNow = TimeSpan.FromSeconds(30)
@@ -357,9 +357,7 @@ static void MigrateDatabase(WebApplication app)
 {
     using var scope = app.Services.CreateScope();
     var dbContext = scope.ServiceProvider.GetRequiredService<GuildDbContext>();
-
-    // GetPendingMigrations() / Migrate() are relational-only. Integration tests swap the
-    // provider for EF Core InMemory, where calling them throws.
+    
     if (!dbContext.Database.IsRelational())
         return;
 

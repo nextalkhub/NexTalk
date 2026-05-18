@@ -6,9 +6,9 @@ public class FakeGuildServiceClient(ChannelAccessResult result, bool adminCheckG
 {
     public int CallCount { get; private set; }
     public Guid? LastChannelId { get; private set; }
-    public Guid? LastUserId { get; private set; }
+    public string? LastUserId { get; private set; }
 
-    public Task<ChannelAccessResult> CheckChannelAccessAsync(Guid channelId, Guid userId, CancellationToken ct = default)
+    public Task<ChannelAccessResult> CheckChannelAccessAsync(Guid channelId, string userId, CancellationToken ct = default)
     {
         CallCount++;
         LastChannelId = channelId;
@@ -16,7 +16,7 @@ public class FakeGuildServiceClient(ChannelAccessResult result, bool adminCheckG
         return Task.FromResult(result);
     }
 
-    public Task RequireAdminOrOwnerAsync(Guid channelId, Guid userId, CancellationToken ct = default)
+    public Task RequireAdminOrOwnerAsync(Guid channelId, string userId, CancellationToken ct = default)
     {
         if (!adminCheckGranted)
             throw new NexTalk.Messaging.Service.Shared.Exceptions.ForbiddenException("Only Admin or Owner can delete messages of other users.");

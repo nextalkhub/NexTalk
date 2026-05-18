@@ -97,7 +97,7 @@ public class GuildServiceFactory : WebApplicationFactory<Program>
         return scope.ServiceProvider.GetRequiredService<GuildDbContext>();
     }
 
-    public HttpClient CreateAuthenticatedClient(Guid userId)
+    public HttpClient CreateAuthenticatedClient(string userId)
     {
         var client = CreateClient();
         client.DefaultRequestHeaders.Authorization =

@@ -3,10 +3,9 @@ namespace NexTalk.Guild.Service.Domain;
 public class Guild
 {
     public Guid Id { get; set; }
-    public string Name { get; set; } = default!;
-    public string DisplayName { get; set; } = default!;
-    public Guid OwnerId { get; set; }
-    public DateTime CreatedAt { get; set; }
+    public string Name { get; set; } = null!;
+    public string OwnerId { get; set; } = null!;
+    public DateTimeOffset CreatedAt { get; set; }
 
     public ICollection<Channel> Channels { get; set; } = [];
     public ICollection<Member> Members { get; set; } = [];

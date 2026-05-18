@@ -8,45 +8,56 @@ using NexTalk.Guild.Service.Shared.Exceptions;
 
 namespace NexTalk.Guild.Service.Features.Invites.CreateInvite;
 
-public class CreateInviteHandler(GuildDbContext db, RbacService rbac, IConfiguration config)
+public class CreateInviteHandler
 {
+    private readonly GuildDbContext _db;
+    private readonly RbacService _rbac;
+    private readonly IConfiguration _config;
+
+    public CreateInviteHandler(GuildDbContext db, RbacService rbac, IConfiguration config)
+    {
+        _db = db;
+        _rbac = rbac;
+        _config = config;
+    }
+
     public record InviteResponse(
         Guid Id,
         string Code,
         string Url,
         Guid GuildId,
-        DateTime? ExpiresAt,
+        DateTimeOffset? ExpiresAt,
         int? MaxUses,
         int UsesCount,
-        DateTime CreatedAt);
+        DateTimeOffset CreatedAt);
 
     public async Task<InviteResponse> HandleAsync(CreateInviteCommand cmd, CancellationToken ct = default)
     {
         if (cmd.MaxUses.HasValue && cmd.MaxUses.Value <= 0)
             throw new BadRequestException("maxUses must be a positive integer.");
 
-        if (!await db.Guilds.AnyAsync(g => g.Id == cmd.GuildId, ct))
+        if (!await _db.Guilds.AnyAsync(g => g.Id == cmd.GuildId, ct))
             throw new NotFoundException("Guild not found.");
 
-        await rbac.RequireAdminOrOwnerAsync(cmd.GuildId, cmd.CallerId, ct);
+        await _rbac.RequireAdminOrOwnerAsync(cmd.GuildId, cmd.CallerId, ct);
 
         var code = GenerateSecureCode();
         var invite = new Invite
         {
-            Id = Guid.NewGuid(),
+            Id = Guid.CreateVersion7(),
             GuildId = cmd.GuildId,
             Code = code,
             CreatedBy = cmd.CallerId,
-            ExpiresAt = cmd.ExpiresIn.HasValue ? DateTime.UtcNow.Add(cmd.ExpiresIn.Value) : null,
+            ExpiresAt = cmd.ExpiresIn.HasValue ? DateTimeOffset.UtcNow.Add(cmd.ExpiresIn.Value) : null,
             MaxUses = cmd.MaxUses,
             UsesCount = 0,
-            CreatedAt = DateTime.UtcNow
+            CreatedAt = DateTimeOffset.UtcNow
         };
 
-        db.Invites.Add(invite);
-        await db.SaveChangesAsync(ct);
+        _db.Invites.Add(invite);
+        await _db.SaveChangesAsync(ct);
 
-        var baseUrl = config["Invites:BaseUrl"] ?? "https://nextalk.fun/invite";
+        var baseUrl = _config["Invites:BaseUrl"] ?? "https://nextalk.fun/invite";
         var url = $"{baseUrl.TrimEnd('/')}/{invite.Code}";
 
         return new InviteResponse(

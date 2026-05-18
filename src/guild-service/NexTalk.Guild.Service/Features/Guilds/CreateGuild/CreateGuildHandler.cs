@@ -5,43 +5,48 @@ using GuildAggregate = global::NexTalk.Guild.Service.Domain.Guild;
 
 namespace NexTalk.Guild.Service.Features.Guilds.CreateGuild;
 
-public class CreateGuildHandler(GuildDbContext db)
+public class CreateGuildHandler
 {
+    private readonly GuildDbContext _db;
+
+    public CreateGuildHandler(GuildDbContext db)
+    {
+        _db = db;
+    }
+
     public async Task<Guid> HandleAsync(CreateGuildCommand cmd, CancellationToken ct = default)
     {
         var guild = new GuildAggregate
         {
-            Id = Guid.NewGuid(),
+            Id = Guid.CreateVersion7(),
             Name = cmd.Name,
-            DisplayName = cmd.DisplayName,
             OwnerId = cmd.OwnerId,
-            CreatedAt = DateTime.UtcNow
+            CreatedAt = DateTimeOffset.UtcNow
         };
 
         var owner = new Member
         {
-            Id = Guid.NewGuid(),
             GuildId = guild.Id,
             UserId = cmd.OwnerId,
             DisplayName = cmd.OwnerDisplayName,
             Username = cmd.OwnerUsername,
             Role = MemberRole.Owner,
-            JoinedAt = DateTime.UtcNow
+            JoinedAt = DateTimeOffset.UtcNow
         };
 
         var general = new Channel
         {
-            Id = Guid.NewGuid(),
+            Id = Guid.CreateVersion7(),
             GuildId = guild.Id,
             Name = "general",
-            Type = "text",
-            CreatedAt = DateTime.UtcNow
+            Type = ChannelType.Text,
+            CreatedAt = DateTimeOffset.UtcNow
         };
 
-        db.Guilds.Add(guild);
-        db.Members.Add(owner);
-        db.Channels.Add(general);
-        await db.SaveChangesAsync(ct);
+        _db.Guilds.Add(guild);
+        _db.Members.Add(owner);
+        _db.Channels.Add(general);
+        await _db.SaveChangesAsync(ct);
 
         return guild.Id;
     }

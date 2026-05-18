@@ -9,8 +9,8 @@ namespace NexTalk.Voice.Service.Features.Internal.DisconnectUser;
 public static class DisconnectUserEndpoint
 {
     public static void Map(IEndpointRouteBuilder app) =>
-        app.MapDelete("/internal/voice/{userId:guid}/disconnect", async (
-            Guid userId,
+        app.MapDelete("/internal/voice/{userId}/disconnect", async (
+            string userId,
             SessionStore sessionStore,
             LiveKitRoomClient roomClient,
             WsGatewayClient wsGateway,
@@ -44,7 +44,7 @@ public static class DisconnectUserEndpoint
             catch (Exception ex)
             {
                 logger.LogWarning(ex,
-                    "Не удалось отправить voice.left при disconnect user: user={UserId}",
+                    "Failed to broadcast voice.left on disconnect user: user={UserId}",
                     userId);
             }
 

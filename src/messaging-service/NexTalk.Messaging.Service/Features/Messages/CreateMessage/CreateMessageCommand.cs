@@ -10,7 +10,7 @@ namespace NexTalk.Messaging.Service.Features.Messages.CreateMessage;
 public record CreateMessageCommand(
     Guid ChannelId,
     Guid GuildId,
-    Guid AuthorId,
+    string AuthorId,
     string AuthorName,
     string Content,
     string IdempotencyKey,

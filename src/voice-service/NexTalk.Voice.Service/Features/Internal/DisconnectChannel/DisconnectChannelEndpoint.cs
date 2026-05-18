@@ -42,7 +42,7 @@ public static class DisconnectChannelEndpoint
                 catch (Exception ex)
                 {
                     logger.LogWarning(ex,
-                        "Не удалось отправить voice.left при disconnect channel: user={UserId}",
+                        "Failed to broadcast voice.left on disconnect channel: user={UserId}",
                         p.UserId);
                 }
             });

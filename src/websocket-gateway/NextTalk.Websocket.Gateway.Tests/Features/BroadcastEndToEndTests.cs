@@ -110,7 +110,7 @@ public class BroadcastEndToEndTests : IClassFixture<BroadcastEndToEndTests.E2EFa
                         name = "test",
                         displayName = "Test",
                         ownerId = userId,
-                        createdAt = DateTime.UtcNow,
+                        createdAt = DateTimeOffset.UtcNow,
                     }
                 };
                 return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)

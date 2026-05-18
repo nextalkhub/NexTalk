@@ -1,4 +1,4 @@
-﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
 using NexTalk.Guild.Service.Domain;
 using NexTalk.Guild.Service.Features.Guilds.DeleteGuild;
 using NexTalk.Guild.Service.Infrastructure;
@@ -23,7 +23,7 @@ public class DeleteGuildHandlerTests
         await using var db = CreateDb();
         var handler = new DeleteGuildHandler(db, new RbacService(db), new TestWsGatewayClient(), new TestVoiceServiceClient());
 
-        var cmd = new DeleteGuildCommand(Guid.NewGuid(), Guid.NewGuid());
+        var cmd = new DeleteGuildCommand(Guid.NewGuid(), Guid.NewGuid().ToString());
 
         await Assert.ThrowsAsync<NotFoundException>(() => handler.HandleAsync(cmd));
     }
@@ -32,11 +32,11 @@ public class DeleteGuildHandlerTests
     public async Task HandleAsync_NonOwnerDeletesGuild_ThrowsForbidden()
     {
         await using var db = CreateDb();
-        var ownerId = Guid.NewGuid();
-        var memberId = Guid.NewGuid();
+        var ownerId = Guid.NewGuid().ToString();
+        var memberId = Guid.NewGuid().ToString();
         var guildId = Guid.NewGuid();
 
-        var guild = new GuildEntity { Id = guildId, Name = "Test", DisplayName = "Test Guild", OwnerId = ownerId };
+        var guild = new GuildEntity { Id = guildId, Name = "Test", OwnerId = ownerId };
         var ownerMember = new Member { UserId = ownerId, GuildId = guildId, Role = MemberRole.Owner, DisplayName = "Owner", Username = "owner" };
         var regularMember = new Member { UserId = memberId, GuildId = guildId, Role = MemberRole.Member, DisplayName = "User", Username = "user" };
         db.Guilds.Add(guild);
@@ -53,10 +53,10 @@ public class DeleteGuildHandlerTests
     public async Task HandleAsync_OwnerDeletesGuild_Succeeds()
     {
         await using var db = CreateDb();
-        var ownerId = Guid.NewGuid();
+        var ownerId = Guid.NewGuid().ToString();
         var guildId = Guid.NewGuid();
 
-        var guild = new GuildEntity { Id = guildId, Name = "Test", DisplayName = "Test Guild", OwnerId = ownerId };
+        var guild = new GuildEntity { Id = guildId, Name = "Test", OwnerId = ownerId };
         var owner = new Member { UserId = ownerId, GuildId = guildId, Role = MemberRole.Owner, DisplayName = "Owner", Username = "owner" };
         db.Guilds.Add(guild);
         db.Members.Add(owner);
@@ -75,11 +75,11 @@ public class DeleteGuildHandlerTests
     public async Task HandleAsync_DeletesAllMembers()
     {
         await using var db = CreateDb();
-        var ownerId = Guid.NewGuid();
-        var memberId = Guid.NewGuid();
+        var ownerId = Guid.NewGuid().ToString();
+        var memberId = Guid.NewGuid().ToString();
         var guildId = Guid.NewGuid();
 
-        var guild = new GuildEntity { Id = guildId, Name = "Test", DisplayName = "Test Guild", OwnerId = ownerId };
+        var guild = new GuildEntity { Id = guildId, Name = "Test", OwnerId = ownerId };
         db.Guilds.Add(guild);
         db.Members.AddRange(
             new Member { UserId = ownerId, GuildId = guildId, Role = MemberRole.Owner, DisplayName = "Owner", Username = "owner" },
@@ -100,16 +100,16 @@ public class DeleteGuildHandlerTests
     public async Task HandleAsync_DeletesAllChannels()
     {
         await using var db = CreateDb();
-        var ownerId = Guid.NewGuid();
+        var ownerId = Guid.NewGuid().ToString();
         var guildId = Guid.NewGuid();
 
-        var guild = new GuildEntity { Id = guildId, Name = "Test", DisplayName = "Test Guild", OwnerId = ownerId };
+        var guild = new GuildEntity { Id = guildId, Name = "Test", OwnerId = ownerId };
         var owner = new Member { UserId = ownerId, GuildId = guildId, Role = MemberRole.Owner, DisplayName = "Owner", Username = "owner" };
         db.Guilds.Add(guild);
         db.Members.Add(owner);
         db.Channels.AddRange(
-            new ChannelEntity { Id = Guid.NewGuid(), GuildId = guildId, Name = "general", Type = "text" },
-            new ChannelEntity { Id = Guid.NewGuid(), GuildId = guildId, Name = "voice", Type = "voice" }
+            new ChannelEntity { Id = Guid.NewGuid(), GuildId = guildId, Name = "general", Type = ChannelType.Text },
+            new ChannelEntity { Id = Guid.NewGuid(), GuildId = guildId, Name = "voice", Type = ChannelType.Voice }
         );
         await db.SaveChangesAsync();
 
@@ -126,13 +126,13 @@ public class DeleteGuildHandlerTests
     public async Task HandleAsync_DisconnectsFromVoiceChannels()
     {
         await using var db = CreateDb();
-        var ownerId = Guid.NewGuid();
+        var ownerId = Guid.NewGuid().ToString();
         var guildId = Guid.NewGuid();
         var voiceChannelId = Guid.NewGuid();
 
-        var guild = new GuildEntity { Id = guildId, Name = "Test", DisplayName = "Test Guild", OwnerId = ownerId };
+        var guild = new GuildEntity { Id = guildId, Name = "Test", OwnerId = ownerId };
         var owner = new Member { UserId = ownerId, GuildId = guildId, Role = MemberRole.Owner, DisplayName = "Owner", Username = "owner" };
-        var voiceChannel = new ChannelEntity { Id = voiceChannelId, GuildId = guildId, Name = "voice", Type = "voice" };
+        var voiceChannel = new ChannelEntity { Id = voiceChannelId, GuildId = guildId, Name = "voice", Type = ChannelType.Voice };
         db.Guilds.Add(guild);
         db.Members.Add(owner);
         db.Channels.Add(voiceChannel);
@@ -151,10 +151,10 @@ public class DeleteGuildHandlerTests
     public async Task HandleAsync_BroadcastFails_ContinuesSuccessfully()
     {
         await using var db = CreateDb();
-        var ownerId = Guid.NewGuid();
+        var ownerId = Guid.NewGuid().ToString();
         var guildId = Guid.NewGuid();
 
-        var guild = new GuildEntity { Id = guildId, Name = "Test", DisplayName = "Test Guild", OwnerId = ownerId };
+        var guild = new GuildEntity { Id = guildId, Name = "Test", OwnerId = ownerId };
         var owner = new Member { UserId = ownerId, GuildId = guildId, Role = MemberRole.Owner, DisplayName = "Owner", Username = "owner" };
         db.Guilds.Add(guild);
         db.Members.Add(owner);
@@ -184,12 +184,7 @@ internal class TestWsGatewayClient : WsGatewayClient
         await Task.CompletedTask;
     }
 
-    public override async Task DisconnectUserAsync(Guid userId, CancellationToken ct = default)
-    {
-        await Task.CompletedTask;
-    }
-
-    public override async Task DisconnectUserFromGuildAsync(Guid guildId, Guid userId, CancellationToken ct = default)
+    public override async Task DisconnectUserFromGuildAsync(Guid guildId, string userId, CancellationToken ct = default)
     {
         await Task.CompletedTask;
     }
