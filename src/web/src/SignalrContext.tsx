@@ -4,6 +4,7 @@ import React, {
 } from 'react'
 
 import {
+    HttpTransportType,
     HubConnection,
     HubConnectionBuilder,
     LogLevel,
@@ -11,6 +12,7 @@ import {
 import {selectIsAuthenticated} from "./shared/slices/authSlice.ts";
 import {useAppSelector} from "./store.ts";
 import { SignalRContext } from "./shared/hooks/signalRContext.ts";
+import {oidcService} from "./modules/auth/oidc/oidcService.ts";
 
 export const SignalRProvider = ({
                                     children,
@@ -25,13 +27,15 @@ export const SignalRProvider = ({
     useEffect(() => {
         if (!isAuthenticated) return
 
-        const token = localStorage.getItem('access_token')
+        const token = oidcService.getAccessToken()
 
         if (!token) return
 
         const conn = new HubConnectionBuilder()
             .withUrl(import.meta.env.VITE_WS_URL, {
                 accessTokenFactory: () => token,
+                transport: HttpTransportType.WebSockets,
+                skipNegotiation: true,
             })
             .withAutomaticReconnect()
             .configureLogging(LogLevel.Information)
