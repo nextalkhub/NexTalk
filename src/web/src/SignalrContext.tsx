@@ -1,36 +1,94 @@
-// import React, { createContext, useContext, useEffect, useState } from 'react';
-// import { HubConnection, HubConnectionBuilder } from '@microsoft/signalr';
-//
-// const SignalRContext = createContext<HubConnection | null>(null);
-//
-// export const SignalRProvider = ({ children }: { children: React.ReactNode }) => {
-//     const [connection, setConnection] = useState<HubConnection | null>(null);
-//
-//     useEffect(() => {
-//         const newConnection = new HubConnectionBuilder()
-//             .withUrl("http://localhost:19288/quizhub", {
-//                 accessTokenFactory: () => localStorage.getItem('token') || ''
-//             })
-//             .withAutomaticReconnect()
-//             .build();
-//
-//         newConnection.start()
-//             .then(() => {
-//                 console.log('SignalR Connected');
-//                 setConnection(newConnection);
-//             })
-//             .catch(err => console.error('SignalR Connection Error:', err));
-//
-//         return () => {
-//             newConnection.stop();
-//         };
-//     }, []);
-//
-//     return (
-//         <SignalRContext.Provider value={connection}>
-//             {children}
-//         </SignalRContext.Provider>
-//     );
-// };
-//
-// export const useSignalR = () => useContext(SignalRContext);
+import React, {
+    createContext,
+    useContext,
+    useEffect,
+    useState,
+} from 'react'
+
+import {
+    HubConnection,
+    HubConnectionBuilder,
+    LogLevel,
+} from '@microsoft/signalr'
+import {selectIsAuthenticated} from "./shared/slices/authSlice.ts";
+import {useAppSelector} from "./store.ts";
+
+interface SignalRContextType {
+    connection: HubConnection | null
+    isConnected: boolean
+}
+
+const SignalRContext = createContext<SignalRContextType>({
+    connection: null,
+    isConnected: false,
+})
+
+export const SignalRProvider = ({
+                                    children,
+                                }: {
+    children: React.ReactNode
+}) => {
+    const isAuthenticated = useAppSelector(selectIsAuthenticated)
+
+    const [connection, setConnection] = useState<HubConnection | null>(null)
+    const [isConnected, setIsConnected] = useState(false)
+
+    useEffect(() => {
+        if (!isAuthenticated) return
+
+        const token = localStorage.getItem('access_token')
+
+        if (!token) return
+
+        const conn = new HubConnectionBuilder()
+            .withUrl(import.meta.env.VITE_WS_URL, {
+                accessTokenFactory: () => token,
+            })
+            .withAutomaticReconnect()
+            .configureLogging(LogLevel.Information)
+            .build()
+
+        conn.start()
+            .then(() => {
+                console.log('SignalR connected')
+                setIsConnected(true)
+            })
+            .catch(err => {
+                console.error('SignalR error:', err)
+            })
+
+        conn.onclose(() => {
+            setIsConnected(false)
+        })
+
+        setConnection(conn)
+
+        return () => {
+            conn.stop()
+        }
+    }, [isAuthenticated])
+
+    useEffect(() => {
+        if (!connection) return
+
+        const interval = setInterval(() => {
+            connection.invoke('Heartbeat')
+                .catch(console.error)
+        }, 20000)
+
+        return () => clearInterval(interval)
+    }, [connection])
+
+    return (
+        <SignalRContext.Provider
+            value={{
+                connection,
+                isConnected,
+            }}
+        >
+            {children}
+        </SignalRContext.Provider>
+    )
+}
+
+export const useSignalR = () => useContext(SignalRContext)

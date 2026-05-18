@@ -9,9 +9,13 @@ export async function getChannelMessages(
     }
 ): Promise<GetMessagesResponse> {
     try {
+        const userId = '3'
         const response = await axiosInstance.get(
             `/channels/${channelId}/messages`,
             {
+                headers: {
+                    'X-User-Id': userId
+                },
                 params: {
                     cursor: options?.cursor,
                     limit: options?.limit ?? 50,

@@ -11,7 +11,8 @@ import styles from './ChannelChatPage.module.scss'
 import {useAppDispatch, useAppSelector} from "../../../store.ts";
 import {selectUser} from "../../../shared/slices/authSlice.ts";
 import {fetchChannels} from "../../../shared/slices/channelSlice.ts";
-import {fetchMessages, sendMessage} from "../../../shared/slices/chatSlice.ts";
+import {fetchMessages} from "../../../shared/slices/chatSlice.ts";
+import {useSignalR} from "../../../SignalrContext.tsx";
 
 export const ChannelChatPage: React.FC = () => {
     const { serverId, channelId } = useParams()
@@ -26,25 +27,28 @@ export const ChannelChatPage: React.FC = () => {
     }, [serverId, dispatch])
 
     useEffect(() => {
-        if (channelId) {
-            dispatch(fetchMessages({ channelId }))
+        if (channelId && user) {
+            const userId = user.id
+            console.log("user: ", user)
+            dispatch(fetchMessages({ channelId, userId }))
         }
-    }, [channelId, dispatch])
+    }, [channelId, dispatch, user])
 
     const currentMessages =
         messages[channelId || '']?.items || []
     const currentChannel = channels.find(c => c.id === channelId)
 
-    const handleSend = (text: string) => {
-        if (!user || !channelId) return
+    const { connection } = useSignalR()
 
-        dispatch(sendMessage({
-            id: Date.now().toString(),
+    const handleSend = async (text: string) => {
+        if (!connection || !channelId) return
+
+        await connection.invoke(
+            'SendMessage',
             channelId,
-            authorId: user.id,
-            content: text,
-            createdAt: new Date().toISOString()
-        }))
+            text,
+            crypto.randomUUID(),
+        )
     }
 
     const handleInvite = () => {

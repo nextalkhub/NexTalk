@@ -45,6 +45,7 @@ export const fetchMessages = createAsyncThunk(
                cursor,
            }: {
         channelId: string
+        userId: string
         cursor?: string
     }) => {
         return await getChannelMessages(channelId, {
@@ -79,7 +80,27 @@ const chatSlice = createSlice({
 
                 mockMessages[msg.channelId].push(msg)
             }
-        }
+        },
+        messageReceived: (state, action: PayloadAction<MessageInterface>) => {
+            const msg = action.payload
+
+            if (!state.messages[msg.channelId]) {
+                state.messages[msg.channelId] = {
+                    items: [],
+                    nextCursor: null,
+                    hasMore: true,
+                    loading: false,
+                }
+            }
+
+            const exists = state.messages[msg.channelId].items.some(
+                m => m.id === msg.id
+            )
+
+            if (!exists) {
+                state.messages[msg.channelId].items.push(msg)
+            }
+        },
     },
     extraReducers: builder => {
         builder.addCase(fetchMessages.pending, (state, action) => {
@@ -138,5 +159,5 @@ const chatSlice = createSlice({
     }
 })
 
-export const { sendMessage } = chatSlice.actions
+export const { sendMessage, messageReceived } = chatSlice.actions
 export default chatSlice.reducer
