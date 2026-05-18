@@ -138,9 +138,6 @@ export interface JoinVoiceResponse {
 export interface VoiceParticipant {
     userId: string
     username: string
-    displayName: string
-    avatar?: string
-    joinedAt: Date
     isMuted: boolean
     isDeafened: boolean
 }
@@ -150,7 +147,7 @@ export interface VoiceRoomInfo {
     guildId: string
     participants: VoiceParticipant[]
     participantCount: number
-    createdAt: Date
+    createdAt: string
 }
 
 export interface JoinRequest {

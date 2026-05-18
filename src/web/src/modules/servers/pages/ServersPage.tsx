@@ -6,6 +6,8 @@ import { ServerCard } from '../components/ServerCard'
 import { GradientBackground } from '../../../shared/components/GradientBackground/GradientBackground'
 import styles from './ServersPage.module.scss'
 import {useAppDispatch, useAppSelector} from "../../../store.ts";
+import {acceptInviteThunk} from "../../../shared/slices/inviteSlice.ts";
+import {InviteJoinCard} from "../../invite/components/InviteJoinCard.tsx";
 
 export const ServersPage: React.FC = () => {
     const navigate = useNavigate()
@@ -15,6 +17,7 @@ export const ServersPage: React.FC = () => {
     const servers = useAppSelector(selectServers)
 
     const isLoading = useAppSelector(selectServersLoading)
+    const inviteLoading = useAppSelector(state => state.invite.loading)
 
     const isAuthenticated = useAppSelector(selectIsAuthenticated)
 
@@ -44,6 +47,20 @@ export const ServersPage: React.FC = () => {
         navigate('/profile')
     }
 
+    const handleJoinServer = async (code: string) => {
+        try {
+            const result = await dispatch(
+                acceptInviteThunk(code)
+            ).unwrap()
+
+            navigate(
+                `/servers/${result.guildId}/channels/${result.channelId}`
+            )
+        } catch (e) {
+            console.error(e)
+        }
+    }
+
     if (isLoading) {
         return (
             <GradientBackground>
@@ -68,6 +85,11 @@ export const ServersPage: React.FC = () => {
                         <span>{user?.name || 'Профиль'}</span>
                     </div>
                 </div>
+
+                <InviteJoinCard
+                    onJoin={handleJoinServer}
+                    loading={inviteLoading}
+                />
 
                 <div className={styles.grid}>
                     {servers.length > 0 && servers.map((server) => (

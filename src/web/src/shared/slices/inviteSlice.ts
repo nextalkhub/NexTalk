@@ -1,6 +1,7 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit'
 import { createInvite } from '../../processes/invites/createInvite.ts'
 import { Invite, CreateInviteRequest } from '../types'
+import {acceptInvite} from "../../processes/invites/acceptInvite.ts";
 
 interface InviteState {
     invites: Record<string, Invite[]>
@@ -12,7 +13,6 @@ const initialState: InviteState = {
     loading: false,
 }
 
-// ===== CREATE =====
 export const createInviteThunk = createAsyncThunk(
     'invite/create',
     async (
@@ -20,6 +20,13 @@ export const createInviteThunk = createAsyncThunk(
     ): Promise<string> => {
         const invite = await createInvite(guildId, data)
         return invite.code
+    }
+)
+
+export const acceptInviteThunk = createAsyncThunk(
+    'invite/accept',
+    async (code: string) => {
+        return await acceptInvite(code)
     }
 )
 
@@ -36,6 +43,15 @@ const inviteSlice = createSlice({
                 state.loading = false
             })
             .addCase(createInviteThunk.rejected, state => {
+                state.loading = false
+            })
+            .addCase(acceptInviteThunk.pending, state => {
+                state.loading = true
+            })
+            .addCase(acceptInviteThunk.fulfilled, state => {
+                state.loading = false
+            })
+            .addCase(acceptInviteThunk.rejected, state => {
                 state.loading = false
             })
     },

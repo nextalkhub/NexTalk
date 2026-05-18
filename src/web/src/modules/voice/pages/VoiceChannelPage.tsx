@@ -44,8 +44,8 @@ export const VoiceChannelPage: React.FC = () => {
       ? [
         ...voice.participants.map(p => ({
           id: p.userId,
-          name: p.displayName || p.username,
-          avatar: p.avatar || p.username[0].toUpperCase(),
+          name:  p.username,
+          avatar: p.username[0].toUpperCase(),
           isSpeaking: false,
           isMuted: p.isMuted,
           isDeafened: p.isDeafened,
@@ -63,8 +63,8 @@ export const VoiceChannelPage: React.FC = () => {
       ]
       : voice.participants.map(p => ({
         id: p.userId,
-        name: p.displayName || p.username,
-        avatar: p.avatar || p.username[0].toUpperCase(),
+        name: p.username,
+        avatar: p.username[0].toUpperCase(),
         isSpeaking: false,
         isMuted: p.isMuted,
         isDeafened: p.isDeafened,

@@ -1,50 +1,108 @@
-import { useState } from 'react'
-import { useWebRTC } from "./useWerbRtc.ts"
-import { joinVoiceChannel } from "../../processes/voice/joinVoiceChannel.ts"
-import { leaveVoiceChannel } from "../../processes/voice/leaveVoiceChannel.ts"
+import { useCallback, useRef, useState } from 'react'
+import {
+    Room,
+    RoomEvent,
+    RemoteParticipant,
+} from 'livekit-client'
+
+import { joinVoiceChannel } from '../../processes/voice/joinVoiceChannel'
+import { leaveVoiceChannel } from '../../processes/voice/leaveVoiceChannel'
 import {VoiceParticipant} from "../types";
 
 export const useVoice = () => {
-    const webrtc = useWebRTC({
-        signalingServerUrl: import.meta.env.VITE_LIVEKIT_URL || 'http://localhost:3000/livekit',
-        iceServers: [
-            { urls: 'stun:stun.l.google.com:19302' },
-        ]
-    })
+    const roomRef = useRef<Room | null>(null)
 
-    // ===== REAL STATE =====
     const [participants, setParticipants] = useState<VoiceParticipant[]>([])
+    const [isConnected, setIsConnected] = useState(false)
+    const [isMuted, setIsMuted] = useState(false)
 
-    // ===== JOIN =====
-    const joinVoice = async (
+    const syncParticipants = useCallback(() => {
+        const room = roomRef.current
+        if (!room) return
+
+        const list = Array.from(room.remoteParticipants.values()).map(
+            (p: RemoteParticipant) => ({
+                userId: p.identity,
+                username: p.name || p.identity,
+                isMuted: false,
+                isDeafened: false,
+            })
+        )
+
+        setParticipants(list)
+    }, [])
+
+    const joinVoice = useCallback(async (
         channelId: string,
-        user: { id: string; name: string }
+        _: { id: string; name: string }
     ) => {
 
-        // 1. JOIN API
-        await joinVoiceChannel(channelId)
+        const response = await joinVoiceChannel(channelId)
 
-        // 3. WEBRTC
-        await webrtc.joinRoom(channelId, user.name)
-        await webrtc.startVoice()
-    }
+        const room = new Room()
 
-    // ===== LEAVE =====
-    const leaveVoice = async (channelId: string) => {
-        await leaveVoiceChannel(channelId)
-        webrtc.stopVoice()
+        roomRef.current = room
+
+        room.on(RoomEvent.ParticipantConnected, () => {
+            syncParticipants()
+        })
+
+        room.on(RoomEvent.ParticipantDisconnected, () => {
+            syncParticipants()
+        })
+
+        room.on(RoomEvent.Disconnected, () => {
+            setIsConnected(false)
+            setParticipants([])
+        })
+
+        await room.connect(
+            response.url,
+            response.token
+        )
+
+        await room.localParticipant.setMicrophoneEnabled(true)
+
+        setIsConnected(true)
+        setIsMuted(false)
+
+        syncParticipants()
+
+    }, [syncParticipants])
+
+    const leaveVoice = useCallback(async (channelId: string) => {
+
+        try {
+            await leaveVoiceChannel(channelId)
+        } catch (e) {
+            console.error(e)
+        }
+
+        roomRef.current?.disconnect()
+        roomRef.current = null
+
         setParticipants([])
-    }
+        setIsConnected(false)
 
-    // ===== MIC =====
-    const toggleMic = () => {
-        webrtc.toggleMic()
-    }
+    }, [])
+
+    const toggleMic = useCallback(async () => {
+
+        const room = roomRef.current
+        if (!room) return
+
+        const next = !isMuted
+
+        await room.localParticipant.setMicrophoneEnabled(next)
+
+        setIsMuted(!next)
+
+    }, [isMuted])
 
     return {
-        isConnected: webrtc.connectionStatus === 'connected',
-        isMuted: webrtc.isMuted,
         participants,
+        isConnected,
+        isMuted,
         joinVoice,
         leaveVoice,
         toggleMic,
