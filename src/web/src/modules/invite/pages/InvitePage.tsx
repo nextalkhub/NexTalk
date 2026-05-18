@@ -15,25 +15,24 @@ export const InvitePage: React.FC = () => {
   const loading = useAppSelector(state => state.invite.loading)
 
   const [copied, setCopied] = useState(false)
-  const [inviteUrl, setInviteUrl] = useState('')
+  const [inviteCode, setInviteCode] = useState('')
 
   const handleCreate = async () => {
     if (!serverId) return
 
     try {
-      const result = await dispatch(
+      const code = await dispatch(
           createInviteThunk({
             guildId: serverId,
             data: {
-              channelId: '1', // 👉 пока хардкод, потом подставишь реальный
-              maxUses: undefined,
-              expiresIn: 60 * 60 * 24 * 7, // 7 дней
+              maxUses: 10,
+              expiresIn: '7d',
+              expiresInSeconds: 60 * 60 * 24 * 7,
             },
           })
       ).unwrap()
 
-      const code = result.invite.code
-      setInviteUrl(`https://nextalk.gg/invite/${code}`)
+      setInviteCode(code)
 
     } catch (e) {
       console.error('Ошибка создания инвайта', e)
@@ -41,8 +40,8 @@ export const InvitePage: React.FC = () => {
   }
 
   const handleCopy = () => {
-    if (!inviteUrl) return
-    navigator.clipboard.writeText(inviteUrl)
+    if (!inviteCode) return
+    navigator.clipboard.writeText(inviteCode)
     setCopied(true)
     setTimeout(() => setCopied(false), 2000)
   }
@@ -56,18 +55,17 @@ export const InvitePage: React.FC = () => {
             </div>
 
             <div className={styles.serverName}>Invite</div>
-            <div className={styles.subtitle}>Создайте ссылку-приглашение</div>
 
-            {!inviteUrl ? (
+            {!inviteCode ? (
                 <Button onClick={handleCreate} disabled={loading}>
-                  {loading ? 'Создание...' : 'Создать ссылку'}
+                  {loading ? 'Создание...' : 'Создать инвайт'}
                 </Button>
             ) : (
                 <>
                   <div className={styles.inviteLink}>
                     <input
                         type="text"
-                        value={inviteUrl}
+                        value={inviteCode}
                         readOnly
                         className={styles.linkInput}
                     />
@@ -83,7 +81,7 @@ export const InvitePage: React.FC = () => {
                     </div>
                     <div className={styles.settingItem}>
                       <span className={styles.settingLabel}>Макс. использований</span>
-                      <span className={styles.settingValue}>Не ограничено</span>
+                      <span className={styles.settingValue}>10</span>
                     </div>
                   </div>
                 </>

@@ -23,13 +23,13 @@ export interface Member {
 }
 
 export interface Invite {
+    id: string
     code: string
+    url: string
     guildId: string
-    channelId: string
-    inviterId: string
-    maxUses?: number
-    uses: number
-    expiresAt?: string
+    expiresAt: string
+    maxUses: number
+    userCount: number
     createdAt: string
 }
 
@@ -44,9 +44,9 @@ export interface CreateChannelRequest {
 }
 
 export interface CreateInviteRequest {
-    channelId: string
-    maxUses?: number
-    expiresIn?: number // в секундах
+    expiresIn: '24h' | '7d' | '30m'
+    expiresInSeconds: number
+    maxUses: number
 }
 
 export interface UpdateMemberRoleRequest {
