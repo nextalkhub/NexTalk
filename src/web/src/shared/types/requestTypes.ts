@@ -11,8 +11,8 @@ export interface Guild {
     onlineCount: number
     channels?: Channel[]
     members?: Member[]
-    createdAt: Date
-    updatedAt?: Date
+    createdAt: string
+    updatedAt?: string
 }
 
 export interface Channel {
@@ -124,7 +124,7 @@ export interface CreateMessageInternalRequest {
     content: string
     replyToId?: string
     mentions?: string[]
-    sentAt: Date
+    sentAt: string
 }
 
 export interface DeleteMessageRequest {
@@ -136,7 +136,7 @@ export interface DeleteMessageRequest {
 // Формат: `msg_${channelId}_${Date.now()}_${randomString}`
 export interface IdempotencyKey {
     key: string
-    expiresAt: Date
+    expiresAt: string
 }
 
 export interface JoinVoiceResponse {
