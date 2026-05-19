@@ -28,7 +28,7 @@ public class VoiceServiceFactory : WebApplicationFactory<Program>
                 ["Services:WebSocketGateway"] = "http://localhost:19999",
                 ["LiveKit:Url"] = "http://localhost:17880",
                 ["LiveKit:ApiKey"] = "test-api-key",
-                ["LiveKit:ApiSecret"] = "test-api-secret-minimum-32-chars-long!",
+                ["LiveKit:SecretKey"] = "test-api-secret-minimum-32-chars-long!",
                 ["LiveKit:TokenTtlMinutes"] = "60",
             }));
 
@@ -54,7 +54,7 @@ public class VoiceServiceFactory : WebApplicationFactory<Program>
         });
     }
 
-    public HttpClient CreateAuthenticatedClient(Guid userId)
+    public HttpClient CreateAuthenticatedClient(string userId)
     {
         var client = CreateClient();
         client.DefaultRequestHeaders.Authorization =

@@ -7,34 +7,45 @@ using NexTalk.Guild.Service.Shared.Responses;
 
 namespace NexTalk.Guild.Service.Features.Channels.CreateChannel;
 
-public class CreateChannelHandler(GuildDbContext db, RbacService rbac, WsGatewayClient wsGateway)
+public class CreateChannelHandler
 {
+    private readonly GuildDbContext _db;
+    private readonly RbacService _rbac;
+    private readonly WsGatewayClient _wsGateway;
+
+    public CreateChannelHandler(GuildDbContext db, RbacService rbac, WsGatewayClient wsGateway)
+    {
+        _db = db;
+        _rbac = rbac;
+        _wsGateway = wsGateway;
+    }
+
     public async Task<ChannelResponse> HandleAsync(CreateChannelCommand cmd, CancellationToken ct = default)
     {
-        if (!await db.Guilds.AnyAsync(g => g.Id == cmd.GuildId, ct))
+        if (!await _db.Guilds.AnyAsync(g => g.Id == cmd.GuildId, ct))
             throw new NotFoundException("Guild not found.");
 
-        await rbac.RequireAdminOrOwnerAsync(cmd.GuildId, cmd.CallerId, ct);
+        await _rbac.RequireAdminOrOwnerAsync(cmd.GuildId, cmd.CallerId, ct);
 
         var channel = new Channel
         {
-            Id = Guid.NewGuid(),
+            Id = Guid.CreateVersion7(),
             GuildId = cmd.GuildId,
             Name = cmd.Name,
             Type = cmd.Type,
-            CreatedAt = DateTime.UtcNow
+            CreatedAt = DateTimeOffset.UtcNow
         };
 
-        db.Channels.Add(channel);
-        await db.SaveChangesAsync(ct);
+        _db.Channels.Add(channel);
+        await _db.SaveChangesAsync(ct);
 
         try
         {
-            await wsGateway.BroadcastToGuildAsync(cmd.GuildId, "channel.created",
+            await _wsGateway.BroadcastToGuildAsync(cmd.GuildId, "channel.created",
                 new { channel.Id, channel.GuildId, channel.Name, channel.Type }, ct);
         }
         catch { /* best-effort */ }
 
-        return new ChannelResponse(channel.Id, channel.GuildId, channel.Name, channel.Type, channel.CreatedAt);
+        return new ChannelResponse(channel.Id, channel.GuildId, channel.Name, channel.Type.ToString().ToLower(), channel.CreatedAt);
     }
 }

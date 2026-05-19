@@ -7,8 +7,17 @@ namespace NexTalk.Voice.Service.Infrastructure;
 /// Вызывается после join/leave/disconnect для уведомления клиентов в реальном времени.
 /// Resilience настраивается на IHttpClientBuilder в Program.cs.
 /// </summary>
-public sealed class WsGatewayClient(HttpClient http, ILogger<WsGatewayClient> logger)
+public sealed class WsGatewayClient
 {
+    private readonly HttpClient _http;
+    private readonly ILogger<WsGatewayClient> _logger;
+
+    public WsGatewayClient(HttpClient http, ILogger<WsGatewayClient> logger)
+    {
+        _http = http;
+        _logger = logger;
+    }
+
     /// <summary>
     /// Рассылает событие всем SignalR-клиентам в группе гильдии.
     /// Эндпоинт: POST /internal/broadcast/guild/{guildId}
@@ -28,11 +37,11 @@ public sealed class WsGatewayClient(HttpClient http, ILogger<WsGatewayClient> lo
         };
         request.Headers.TryAddWithoutValidation("X-Correlation-Id", correlationId);
 
-        using var response = await http.SendAsync(request, ct);
+        using var response = await _http.SendAsync(request, ct);
 
         if (!response.IsSuccessStatusCode)
         {
-            logger.LogWarning(
+            _logger.LogWarning(
                 "WS Gateway broadcast failed: guild={GuildId} event={EventType} status={Status} correlation={CorrelationId}",
                 guildId, eventType, (int)response.StatusCode, correlationId);
         }

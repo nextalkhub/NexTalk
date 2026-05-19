@@ -8,6 +8,6 @@ public class IdempotencyKey
     // Сериализованное тело ответа - возвращается при повторном запросе с тем же ключом.
     public string Response { get; init; } = "{}";
 
-    public DateTime CreatedAt { get; init; } = DateTime.UtcNow;
-    public DateTime ExpiresAt { get; init; }
+    public DateTimeOffset CreatedAt { get; init; }
+    public DateTimeOffset ExpiresAt { get; init; }
 }

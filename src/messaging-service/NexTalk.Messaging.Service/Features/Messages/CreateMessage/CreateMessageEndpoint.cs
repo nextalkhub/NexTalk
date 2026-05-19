@@ -7,7 +7,7 @@ public static class CreateMessageEndpoint
     public record Request(
         Guid ChannelId,
         Guid GuildId,
-        Guid AuthorId,
+        string AuthorId,
         string AuthorName,
         string Content);
 

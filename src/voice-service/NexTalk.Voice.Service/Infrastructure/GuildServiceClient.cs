@@ -6,28 +6,37 @@ namespace NexTalk.Voice.Service.Infrastructure;
 /// HTTP-клиент для внутренних эндпоинтов Guild Service.
 /// Resilience (Retry + Circuit Breaker + Timeout) настраивается на IHttpClientBuilder в Program.cs.
 /// </summary>
-public sealed class GuildServiceClient(HttpClient http, ILogger<GuildServiceClient> logger)
+public sealed class GuildServiceClient
 {
+    private readonly HttpClient _http;
+    private readonly ILogger<GuildServiceClient> _logger;
+
+    public GuildServiceClient(HttpClient http, ILogger<GuildServiceClient> logger)
+    {
+        _http = http;
+        _logger = logger;
+    }
+
     /// <summary>
     /// Проверяет доступ пользователя к каналу и возвращает метаданные канала.
     /// Эндпоинт: GET /internal/channels/{channelId}/access?userId={userId}
     /// </summary>
     public async Task<ChannelAccessResult?> CheckChannelAccessAsync(
-        Guid channelId, Guid userId, string correlationId, CancellationToken ct = default)
+        Guid channelId, string userId, string correlationId, CancellationToken ct = default)
     {
         using var request = new HttpRequestMessage(
             HttpMethod.Get,
             $"/internal/channels/{channelId}/access?userId={userId}");
         request.Headers.TryAddWithoutValidation("X-Correlation-Id", correlationId);
 
-        using var response = await http.SendAsync(request, ct);
+        using var response = await _http.SendAsync(request, ct);
 
         if (response.StatusCode == System.Net.HttpStatusCode.NotFound)
             return null;
 
         if (!response.IsSuccessStatusCode)
         {
-            logger.LogWarning(
+            _logger.LogWarning(
                 "Guild check-channel-access: channel={ChannelId} user={UserId} status={Status} correlation={CorrelationId}",
                 channelId, userId, (int)response.StatusCode, correlationId);
             return null;

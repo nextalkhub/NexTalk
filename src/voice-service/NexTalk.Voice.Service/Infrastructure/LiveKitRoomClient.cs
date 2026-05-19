@@ -13,11 +13,11 @@ public sealed class LiveKitRoomClient
 
     public LiveKitRoomClient(IConfiguration config, ILogger<LiveKitRoomClient> logger)
     {
-        var url = config["LiveKit:Url"] ?? throw new InvalidOperationException("LiveKit:Url не задан.");
-        var apiKey = config["LiveKit:ApiKey"] ?? throw new InvalidOperationException("LiveKit:ApiKey не задан.");
-        var apiSecret = config["LiveKit:ApiSecret"] ?? throw new InvalidOperationException("LiveKit:ApiSecret не задан.");
+        var url = config["LiveKit:Url"] ?? throw new InvalidOperationException("LiveKit:Url is not configured.");
+        var apiKey = config["LiveKit:ApiKey"] ?? throw new InvalidOperationException("LiveKit:ApiKey is not configured.");
+        var secretKey = config["LiveKit:SecretKey"] ?? throw new InvalidOperationException("LiveKit:SecretKey is not configured.");
 
-        _client = new RoomServiceClient(url, apiKey, apiSecret);
+        _client = new RoomServiceClient(url, apiKey, secretKey);
         _logger = logger;
     }
 
@@ -36,7 +36,7 @@ public sealed class LiveKitRoomClient
             // Комната уже существует или другая несмертельная ошибка.
             // Клиент всё равно сможет подключиться - LiveKit создаст комнату при первом join.
             _logger.LogWarning(ex,
-                "LiveKit EnsureRoom: комната {ChannelId} — возможно уже существует, продолжаем.",
+                "LiveKit EnsureRoom: room {ChannelId} may already exist, continuing.",
                 channelId);
         }
     }
@@ -45,20 +45,20 @@ public sealed class LiveKitRoomClient
     /// Принудительно удаляет участника из LiveKit-комнаты.
     /// Игнорирует ошибки - если участника нет, LiveKit вернет ошибку, которую мы логируем и проглатываем.
     /// </summary>
-    public async Task RemoveParticipantAsync(Guid channelId, Guid userId, CancellationToken ct = default)
+    public async Task RemoveParticipantAsync(Guid channelId, string userId, CancellationToken ct = default)
     {
         try
         {
             await _client.RemoveParticipant(new RoomParticipantIdentity
             {
                 Room = channelId.ToString(),
-                Identity = userId.ToString(),
+                Identity = userId,
             });
         }
         catch (Exception ex)
         {
             _logger.LogWarning(ex,
-                "LiveKit RemoveParticipant: участник {UserId} не найден в комнате {ChannelId} — возможно уже отключён.",
+                "LiveKit RemoveParticipant: participant {UserId} not found in room {ChannelId}, may have already disconnected.",
                 userId, channelId);
         }
     }
@@ -75,7 +75,7 @@ public sealed class LiveKitRoomClient
         catch (Exception ex)
         {
             _logger.LogWarning(ex,
-                "LiveKit DeleteRoom: не удалось удалить комнату {ChannelId} — возможно уже не существует.",
+                "LiveKit DeleteRoom: failed to delete room {ChannelId}, may not exist.",
                 channelId);
         }
     }

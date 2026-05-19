@@ -1,3 +1,3 @@
 namespace NexTalk.Guild.Service.Features.Members.BanMember;
 
-public record BanMemberCommand(Guid GuildId, Guid TargetUserId, Guid CallerId);
+public record BanMemberCommand(Guid GuildId, string TargetUserId, string CallerId);

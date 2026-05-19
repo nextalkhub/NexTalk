@@ -48,7 +48,7 @@ public class WsGatewayFactory : WebApplicationFactory<Program>
         });
     }
 
-    public HttpClient CreateAuthenticatedClient(Guid userId)
+    public HttpClient CreateAuthenticatedClient(string userId)
     {
         var client = CreateClient();
         client.DefaultRequestHeaders.Authorization =

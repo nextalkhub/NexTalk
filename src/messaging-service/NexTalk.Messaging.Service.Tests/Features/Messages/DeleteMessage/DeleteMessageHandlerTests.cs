@@ -31,7 +31,7 @@ public class DeleteMessageHandlerTests
         _handler = new DeleteMessageHandler(_db, _guildServiceMock.Object, _wsGatewayMock.Object);
     }
 
-    private async Task<Message> CreateMessageAsync(Guid guildId, Guid channelId, Guid authorId)
+    private async Task<Message> CreateMessageAsync(Guid guildId, Guid channelId, string authorId)
     {
         var message = new Message
         {
@@ -40,7 +40,7 @@ public class DeleteMessageHandlerTests
             ChannelId = channelId,
             AuthorId = authorId,
             Content = "Test message",
-            CreatedAt = DateTime.UtcNow
+            CreatedAt = DateTimeOffset.UtcNow
         };
         _db.Messages.Add(message);
         await _db.SaveChangesAsync();
@@ -52,7 +52,7 @@ public class DeleteMessageHandlerTests
     {
         var guildId = Guid.NewGuid();
         var channelId = Guid.NewGuid();
-        var authorId = Guid.NewGuid();
+        var authorId = Guid.NewGuid().ToString();
         var message = await CreateMessageAsync(guildId, channelId, authorId);
 
         var cmd = new DeleteMessageCommand(message.Id, authorId);
@@ -62,7 +62,7 @@ public class DeleteMessageHandlerTests
         Assert.Null(deleted);
 
         _guildServiceMock.Verify(x => x.RequireAdminOrOwnerAsync(
-            It.IsAny<Guid>(), It.IsAny<Guid>(), It.IsAny<CancellationToken>()), Times.Never);
+            It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 
     [Fact]
@@ -70,7 +70,7 @@ public class DeleteMessageHandlerTests
     {
         var guildId = Guid.NewGuid();
         var channelId = Guid.NewGuid();
-        var authorId = Guid.NewGuid();
+        var authorId = Guid.NewGuid().ToString();
         var message = await CreateMessageAsync(guildId, channelId, authorId);
 
         var cmd = new DeleteMessageCommand(message.Id, authorId);
@@ -91,11 +91,11 @@ public class DeleteMessageHandlerTests
     {
         var guildId = Guid.NewGuid();
         var channelId = Guid.NewGuid();
-        var authorId = Guid.NewGuid();
-        var adminId = Guid.NewGuid();
+        var authorId = Guid.NewGuid().ToString();
+        var adminId = Guid.NewGuid().ToString();
         var message = await CreateMessageAsync(guildId, channelId, authorId);
 
-        _guildServiceMock.Setup(x => x.RequireAdminOrOwnerAsync(It.IsAny<Guid>(), It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+        _guildServiceMock.Setup(x => x.RequireAdminOrOwnerAsync(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
             .Returns(Task.CompletedTask);
 
         var cmd = new DeleteMessageCommand(message.Id, adminId);
@@ -113,11 +113,11 @@ public class DeleteMessageHandlerTests
     {
         var guildId = Guid.NewGuid();
         var channelId = Guid.NewGuid();
-        var authorId = Guid.NewGuid();
-        var memberId = Guid.NewGuid();
+        var authorId = Guid.NewGuid().ToString();
+        var memberId = Guid.NewGuid().ToString();
         var message = await CreateMessageAsync(guildId, channelId, authorId);
 
-        _guildServiceMock.Setup(x => x.RequireAdminOrOwnerAsync(It.IsAny<Guid>(), It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+        _guildServiceMock.Setup(x => x.RequireAdminOrOwnerAsync(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
             .ThrowsAsync(new ForbiddenException("No access"));
 
         var cmd = new DeleteMessageCommand(message.Id, memberId);
@@ -130,7 +130,7 @@ public class DeleteMessageHandlerTests
     public async Task HandleAsync_WithNonExistentMessage_ThrowsNotFound()
     {
         var nonExistentId = Guid.NewGuid();
-        var callerId = Guid.NewGuid();
+        var callerId = Guid.NewGuid().ToString();
 
         var cmd = new DeleteMessageCommand(nonExistentId, callerId);
 
@@ -143,7 +143,7 @@ public class DeleteMessageHandlerTests
     {
         var guildId = Guid.NewGuid();
         var channelId = Guid.NewGuid();
-        var authorId = Guid.NewGuid();
+        var authorId = Guid.NewGuid().ToString();
         var message = await CreateMessageAsync(guildId, channelId, authorId);
 
         _wsGatewayMock.Setup(x => x.BroadcastToGuildAsync(

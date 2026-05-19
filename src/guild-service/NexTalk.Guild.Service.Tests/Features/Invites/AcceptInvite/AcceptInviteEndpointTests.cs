@@ -16,27 +16,27 @@ public class AcceptInviteEndpointTests(GuildServiceFactory factory) : IClassFixt
 {
     private HttpClient NewClient() => factory.CreateClient();
 
-    private static void Authorize(HttpClient client, Guid userId, string name = "Test", string username = "test") =>
+    private static void Authorize(HttpClient client, string userId, string name = "Test", string username = "test") =>
         client.DefaultRequestHeaders.Authorization =
             new AuthenticationHeaderValue("Bearer", TestJwt.Generate(userId, name, username));
 
-    private async Task<string> SeedInviteAsync(string code, Guid? userId = null)
+    private async Task<string> SeedInviteAsync(string code, string? userId = null)
     {
         using var scope = factory.Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<GuildDbContext>();
 
-        var ownerId = userId ?? Guid.NewGuid();
+        var ownerId = userId ?? Guid.NewGuid().ToString();
         var guildId = Guid.NewGuid();
 
         db.Guilds.Add(new GuildAggregate
         {
-            Id = guildId, Name = "Invite Test Guild", DisplayName = "Invite Test Guild",
-            OwnerId = ownerId, CreatedAt = DateTime.UtcNow
+            Id = guildId, Name = "Invite Test Guild",
+            OwnerId = ownerId, CreatedAt = DateTimeOffset.UtcNow
         });
         db.Invites.Add(new Invite
         {
             Id = Guid.NewGuid(), GuildId = guildId, Code = code,
-            CreatedBy = ownerId, CreatedAt = DateTime.UtcNow
+            CreatedBy = ownerId, CreatedAt = DateTimeOffset.UtcNow
         });
         await db.SaveChangesAsync();
         return code;
@@ -54,7 +54,7 @@ public class AcceptInviteEndpointTests(GuildServiceFactory factory) : IClassFixt
     public async Task PostAcceptInvite_WithNonExistentCode_Returns404()
     {
         var client = NewClient();
-        Authorize(client, Guid.NewGuid());
+        Authorize(client, Guid.NewGuid().ToString());
 
         var response = await client.PostAsync("/invites/NOEXIST/accept", null);
 
@@ -64,14 +64,14 @@ public class AcceptInviteEndpointTests(GuildServiceFactory factory) : IClassFixt
     [Fact]
     public async Task PostAcceptInvite_WhenBanned_Returns403()
     {
-        var userId = Guid.NewGuid();
+        var userId = Guid.NewGuid().ToString();
         var code = $"BAN{Guid.NewGuid():N}"[..10];
         await SeedInviteAsync(code);
 
         using var scope = factory.Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<GuildDbContext>();
         var guildId = db.Invites.Single(i => i.Code == code).GuildId;
-        db.Bans.Add(new Ban { Id = Guid.NewGuid(), GuildId = guildId, UserId = userId, BannedAt = DateTime.UtcNow });
+        db.Bans.Add(new Ban { GuildId = guildId, UserId = userId, BannedBy = "system", BannedAt = DateTimeOffset.UtcNow });
         await db.SaveChangesAsync();
 
         var client = NewClient();
@@ -85,7 +85,7 @@ public class AcceptInviteEndpointTests(GuildServiceFactory factory) : IClassFixt
     [Fact]
     public async Task PostAcceptInvite_WhenAlreadyMember_Returns400()
     {
-        var userId = Guid.NewGuid();
+        var userId = Guid.NewGuid().ToString();
         var code = $"MEM{Guid.NewGuid():N}"[..10];
         await SeedInviteAsync(code);
 
@@ -94,8 +94,8 @@ public class AcceptInviteEndpointTests(GuildServiceFactory factory) : IClassFixt
         var guildId = db.Invites.Single(i => i.Code == code).GuildId;
         db.Members.Add(new Member
         {
-            Id = Guid.NewGuid(), GuildId = guildId, UserId = userId,
-            DisplayName = "X", Username = "x", Role = MemberRole.Member, JoinedAt = DateTime.UtcNow
+            GuildId = guildId, UserId = userId,
+            DisplayName = "X", Username = "x", Role = MemberRole.Member, JoinedAt = DateTimeOffset.UtcNow
         });
         await db.SaveChangesAsync();
 
@@ -112,8 +112,6 @@ public class AcceptInviteEndpointTests(GuildServiceFactory factory) : IClassFixt
     {
         var code = $"EXP{Guid.NewGuid():N}"[..10];
 
-        // Derived factory with a failing IInviteRepository. Seed data goes into THIS factory's
-        // in-memory database so the handler can find the invite before the claim check.
         using var failFactory = factory.WithWebHostBuilder(b =>
             b.ConfigureTestServices(s =>
             {
@@ -125,23 +123,23 @@ public class AcceptInviteEndpointTests(GuildServiceFactory factory) : IClassFixt
         using (var scope = failFactory.Services.CreateScope())
         {
             var db = scope.ServiceProvider.GetRequiredService<GuildDbContext>();
-            var ownerId = Guid.NewGuid();
+            var ownerId = Guid.NewGuid().ToString();
             var guildId = Guid.NewGuid();
             db.Guilds.Add(new GuildAggregate
             {
-                Id = guildId, Name = "Invite Test Guild", DisplayName = "Invite Test Guild",
-                OwnerId = ownerId, CreatedAt = DateTime.UtcNow
+                Id = guildId, Name = "Invite Test Guild",
+                OwnerId = ownerId, CreatedAt = DateTimeOffset.UtcNow
             });
             db.Invites.Add(new Invite
             {
                 Id = Guid.NewGuid(), GuildId = guildId, Code = code,
-                CreatedBy = ownerId, CreatedAt = DateTime.UtcNow
+                CreatedBy = ownerId, CreatedAt = DateTimeOffset.UtcNow
             });
             await db.SaveChangesAsync();
         }
 
         var client = failFactory.CreateClient();
-        Authorize(client, Guid.NewGuid());
+        Authorize(client, Guid.NewGuid().ToString());
 
         var response = await client.PostAsync($"/invites/{code}/accept", null);
 
@@ -155,7 +153,7 @@ public class AcceptInviteEndpointTests(GuildServiceFactory factory) : IClassFixt
         await SeedInviteAsync(code);
 
         var client = NewClient();
-        Authorize(client, Guid.NewGuid(), "Charlie", "charlie");
+        Authorize(client, Guid.NewGuid().ToString(), "Charlie", "charlie");
 
         var response = await client.PostAsync($"/invites/{code}/accept", null);
 
@@ -168,7 +166,7 @@ public class AcceptInviteEndpointTests(GuildServiceFactory factory) : IClassFixt
     [Fact]
     public async Task PostAcceptInvite_WithValidInvite_CreatesMember()
     {
-        var userId = Guid.NewGuid();
+        var userId = Guid.NewGuid().ToString();
         var code = $"MB{Guid.NewGuid():N}"[..10];
         await SeedInviteAsync(code);
 
@@ -187,5 +185,5 @@ public class AcceptInviteEndpointTests(GuildServiceFactory factory) : IClassFixt
             m.Role == MemberRole.Member));
     }
 
-    private record GuildResponse(Guid Id, string Name, string DisplayName, Guid OwnerId, DateTime CreatedAt);
+    private record GuildResponse(Guid Id, string Name, string OwnerId, DateTimeOffset CreatedAt);
 }

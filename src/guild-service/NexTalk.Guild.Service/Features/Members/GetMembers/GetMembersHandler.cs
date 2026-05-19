@@ -4,11 +4,18 @@ using NexTalk.Guild.Service.Shared.Responses;
 
 namespace NexTalk.Guild.Service.Features.Members.GetMembers;
 
-public class GetMembersHandler(GuildDbContext db)
+public class GetMembersHandler
 {
+    private readonly GuildDbContext _db;
+
+    public GetMembersHandler(GuildDbContext db)
+    {
+        _db = db;
+    }
+
     public async Task<List<MemberResponse>> HandleAsync(GetMembersQuery query, CancellationToken ct = default) =>
-        await db.Members
+        await _db.Members
             .Where(m => m.GuildId == query.GuildId)
-            .Select(m => new MemberResponse(m.Id, m.UserId, m.DisplayName, m.Username, m.Role.ToString(), m.JoinedAt))
+            .Select(m => new MemberResponse(m.UserId, m.DisplayName, m.Username, m.Role.ToString(), m.JoinedAt))
             .ToListAsync(ct);
 }

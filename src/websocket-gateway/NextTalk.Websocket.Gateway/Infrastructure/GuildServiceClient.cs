@@ -1,33 +1,35 @@
-using System.Net.Http.Json;
-
 namespace NextTalk.Websocket.Gateway.Infrastructure;
 
-/// <summary>
-/// HTTP-клиент для внутренних эндпоинтов Guild Service.
-/// Resilience (Retry + Circuit Breaker) настраивается на IHttpClientBuilder в Program.cs.
-/// </summary>
-public sealed class GuildServiceClient(HttpClient http, ILogger<GuildServiceClient> logger)
+public sealed class GuildServiceClient
 {
+    private readonly HttpClient _httpClient;
+    private readonly ILogger<GuildServiceClient> _logger;
+
+    public GuildServiceClient(HttpClient http, ILogger<GuildServiceClient> logger)
+    {
+        _httpClient = http;
+        _logger = logger;
+    }
+
     /// <summary>
     /// Проверяет доступ пользователя к каналу и возвращает метаданные канала.
-    /// Эндпоинт: GET /internal/channels/{channelId}/access?userId={userId}
     /// </summary>
     public async Task<ChannelAccessResult?> CheckChannelAccessAsync(
-        Guid channelId, Guid userId, string correlationId, CancellationToken ct = default)
+        Guid channelId, string userId, string correlationId, CancellationToken ct = default)
     {
         using var request = new HttpRequestMessage(
             HttpMethod.Get,
             $"/internal/channels/{channelId}/access?userId={userId}");
         request.Headers.TryAddWithoutValidation("X-Correlation-Id", correlationId);
 
-        using var response = await http.SendAsync(request, ct);
+        using var response = await _httpClient.SendAsync(request, ct);
 
         if (response.StatusCode == System.Net.HttpStatusCode.NotFound)
             return null;
 
         if (!response.IsSuccessStatusCode)
         {
-            logger.LogWarning(
+            _logger.LogWarning(
                 "Guild channel-access: channel={ChannelId} user={UserId} status={Status} correlation={CorrelationId}",
                 channelId, userId, (int)response.StatusCode, correlationId);
             return null;
@@ -38,19 +40,18 @@ public sealed class GuildServiceClient(HttpClient http, ILogger<GuildServiceClie
 
     /// <summary>
     /// Возвращает все серверы, в которых состоит пользователь.
-    /// Эндпоинт: GET /internal/users/{userId}/guilds
     /// </summary>
     public async Task<IReadOnlyList<GuildDto>> GetUserGuildsAsync(
-        Guid userId, string correlationId, CancellationToken ct = default)
+        string userId, string correlationId, CancellationToken ct = default)
     {
         using var request = new HttpRequestMessage(HttpMethod.Get, $"/internal/users/{userId}/guilds");
         request.Headers.TryAddWithoutValidation("X-Correlation-Id", correlationId);
 
-        using var response = await http.SendAsync(request, ct);
+        using var response = await _httpClient.SendAsync(request, ct);
 
         if (!response.IsSuccessStatusCode)
         {
-            logger.LogWarning(
+            _logger.LogWarning(
                 "Guild get-user-guilds: user={UserId} status={Status} correlation={CorrelationId}",
                 userId, (int)response.StatusCode, correlationId);
             return [];
@@ -61,5 +62,5 @@ public sealed class GuildServiceClient(HttpClient http, ILogger<GuildServiceClie
 
     public record ChannelAccessResult(bool HasAccess, Guid GuildId, string ChannelType, string? Role);
 
-    public record GuildDto(Guid Id, string Name, string DisplayName, Guid OwnerId, DateTime CreatedAt);
+    public record GuildDto(Guid Id, string Name, string OwnerId, DateTimeOffset CreatedAt);
 }
