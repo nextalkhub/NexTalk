@@ -15,20 +15,9 @@ const initialState: ChannelState = {
     loading: false,
 }
 
-const USE_MOCK = import.meta.env.VITE_USE_AUTH_MOCK === 'true'
-
-const mockChannels: Channel[] = [
-    { id: '1', serverId: '1', name: 'general', type: 'text' },
-    { id: '2', serverId: '1', name: 'valorant', type: 'text' },
-]
-
 export const fetchChannels = createAsyncThunk(
     'channels/fetch',
     async (serverId: string) => {
-        if (USE_MOCK) {
-            await new Promise(r => setTimeout(r, 200))
-            return mockChannels.filter(c => c.serverId === serverId)
-        }
 
         return await getGuildChannels(serverId);
     }
@@ -42,8 +31,13 @@ const channelSlice = createSlice({
             state.currentChannelId = action.payload
         },
         addChannel: (state, action: PayloadAction<Channel>) => {
-            state.channels.push(action.payload)
-            if (USE_MOCK) mockChannels.push(action.payload)
+            const exists = state.channels.some(
+                c => c.id === action.payload.id
+            )
+
+            if (!exists) {
+                state.channels.push(action.payload)
+            }
         }
     },
     extraReducers: builder => {
@@ -68,20 +62,6 @@ export const createChannel = createAsyncThunk(
     'channels/create',
     async (data: { serverId: string; name: string; type: 'text' | 'voice' }) => {
         const { serverId, name, type } = data
-
-        if (USE_MOCK) {
-            await new Promise(r => setTimeout(r, 200))
-
-            const newChannel: Channel = {
-                id: Date.now().toString(),
-                serverId,
-                name,
-                type,
-            }
-
-            mockChannels.push(newChannel)
-            return newChannel
-        }
 
         const res = await axiosInstance.post(`/api/guilds/${serverId}/channels`, {
             name,

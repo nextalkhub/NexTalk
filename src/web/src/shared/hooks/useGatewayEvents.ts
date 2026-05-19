@@ -3,6 +3,7 @@ import { useAppDispatch } from '../../store'
 import {messageReceived} from "../slices/chatSlice.ts";
 import {useSignalR} from "./useSignalR.ts";
 import { voiceParticipantJoined, voiceParticipantLeft } from '../slices/voiceSlice'
+import {addChannel} from "../slices/channelSlice.ts";
 
 interface MessageCreatedEvent {
     type: 'message.created'
@@ -39,11 +40,22 @@ interface PresenceOnlineEvent {
     }
 }
 
+interface ChannelCreatedEvent {
+    type: 'channel.created'
+    payload: {
+        id: string
+        guildId: string
+        name: string
+        type: number
+    }
+}
+
 type GatewayEvent =
     | MessageCreatedEvent
     | VoiceJoinedEvent
     | VoiceLeftEvent
     | PresenceOnlineEvent
+    | ChannelCreatedEvent
 
 export const useGatewayEvents = () => {
     const { connection } = useSignalR()
@@ -79,6 +91,17 @@ export const useGatewayEvents = () => {
                     dispatch(voiceParticipantLeft({
                         channelId: event.payload.ChannelId,
                         userId: event.payload.UserId,
+                    }))
+                    break
+
+                case 'channel.created':
+                    dispatch(addChannel({
+                        id: event.payload.id,
+                        serverId: event.payload.guildId,
+                        name: event.payload.name,
+                        type: event.payload.type === 0
+                            ? 'text'
+                            : 'voice',
                     }))
                     break
 
