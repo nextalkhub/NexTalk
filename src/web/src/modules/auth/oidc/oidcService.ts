@@ -27,9 +27,9 @@ class OidcService {
     private tokenExpirationTimer: ReturnType<typeof setTimeout> | null = null
 
     // Конфигурация Zitadel
-    private readonly config = {
+    private config = {
         authority: import.meta.env.VITE_OIDC_AUTHORITY,
-        clientId: import.meta.env.VITE_OIDC_CLIENT_ID,
+        clientId: import.meta.env.VITE_OIDC_CLIENT_ID || '',
         redirectUri: import.meta.env.VITE_OIDC_REDIRECT_URI || `${window.location.origin}/callback`,
         postLogoutRedirectUri: `${window.location.origin}/auth`,
         scope: 'openid profile email offline_access',
@@ -37,6 +37,20 @@ class OidcService {
 
     private constructor() {
         this.loadTokensFromStorage()
+    }
+
+    async init(): Promise<void> {
+        try {
+            const res = await fetch('/swagger/config.json')
+            if (res.ok) {
+                const data = await res.json()
+                if (data.spaClientId) {
+                    this.config.clientId = data.spaClientId
+                }
+            }
+        } catch {
+            // fallback на build-time VITE_OIDC_CLIENT_ID (локальная разработка без Docker)
+        }
     }
 
     static getInstance(): OidcService {
