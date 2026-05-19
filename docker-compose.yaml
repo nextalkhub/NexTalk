@@ -51,6 +51,7 @@ services:
         VITE_OIDC_CLIENT_ID: ${VITE_OIDC_CLIENT_ID}
         VITE_OIDC_REDIRECT_URI: ${ZITADEL_PUBLIC_SCHEME}://${ZITADEL_DOMAIN}:${PROXY_HTTP_PUBLISHED_PORT}/callback
         VITE_LIVEKIT_URL: http://${ZITADEL_DOMAIN}:${PROXY_HTTP_PUBLISHED_PORT}/livekit
+        VITE_WS_URL: http://${ZITADEL_DOMAIN}:${PROXY_HTTP_PUBLISHED_PORT}/hubs/chat
         VITE_USE_AUTH_MOCK: ${VITE_USE_AUTH_MOCK:-false}
     restart: unless-stopped
     networks:
