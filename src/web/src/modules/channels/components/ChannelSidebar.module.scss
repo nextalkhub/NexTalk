@@ -91,6 +91,17 @@
   }
 }
 
+.participantCount {
+  margin-left: auto;
+  font-size: 11px;
+  color: $text-muted;
+  background: $bg-primary;
+  border-radius: 10px;
+  padding: 1px 6px;
+  min-width: 18px;
+  text-align: center;
+}
+
 .addChannel {
   display: flex;
   align-items: center;

@@ -27,6 +27,7 @@ export const VoiceChannelPage: React.FC = () => {
     participants,
     isMuted,
     isConnected,
+    isLocalSpeaking,
     toggleMic
   } = useVoice()
 
@@ -77,7 +78,7 @@ export const VoiceChannelPage: React.FC = () => {
               id:user.id,
               name:user.name,
               avatar:user.name[0].toUpperCase(),
-              isSpeaking:false,
+              isSpeaking:isLocalSpeaking,
               isMuted,
               isCurrentUser:true
             },
@@ -87,7 +88,7 @@ export const VoiceChannelPage: React.FC = () => {
               id:p.userId,
               name:p.username,
               avatar:p.username[0].toUpperCase(),
-              isSpeaking:false,
+              isSpeaking:p.isSpeaking,
               isMuted:p.isMuted,
               isDeafened:p.isDeafened,
               isCurrentUser:false

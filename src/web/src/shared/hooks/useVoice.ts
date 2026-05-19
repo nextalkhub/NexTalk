@@ -1,165 +1,125 @@
-import {useCallback,useRef,useState} from 'react'
-import {
-    Room,
-    RoomEvent,
-    RemoteParticipant
-} from 'livekit-client'
+import { useCallback, useRef, useState } from 'react'
+import { Participant, Room, RoomEvent, RemoteParticipant } from 'livekit-client'
 
-import {joinVoiceChannel} from '../../processes/voice/joinVoiceChannel'
-import {leaveVoiceChannel} from '../../processes/voice/leaveVoiceChannel'
-import {VoiceParticipant} from "../types"
+import { joinVoiceChannel } from '../../processes/voice/joinVoiceChannel'
+import { leaveVoiceChannel } from '../../processes/voice/leaveVoiceChannel'
+import { VoiceParticipant } from '../types'
 
-export const useVoice=()=>{
+export const useVoice = () => {
+    const roomRef = useRef<Room | null>(null)
+    const connectingRef = useRef(false)
+    const speakingIdsRef = useRef<Set<string>>(new Set())
 
-    const roomRef=useRef<Room|null>(null)
+    const [participants, setParticipants] = useState<VoiceParticipant[]>([])
+    const [isConnected, setIsConnected] = useState(false)
+    const [isMuted, setIsMuted] = useState(false)
+    const [isLocalSpeaking, setIsLocalSpeaking] = useState(false)
 
-    const connectingRef=useRef(false)
+    // Читает текущее состояние room.remoteParticipants и обновляет стейт.
+    // Вызывается на каждое событие, меняющее состав или статус участников.
+    const syncParticipants = useCallback(() => {
+        const room = roomRef.current
+        if (!room) return
 
-    const [participants,setParticipants]=useState<VoiceParticipant[]>([])
-    const [isConnected,setIsConnected]=useState(false)
-    const [isMuted,setIsMuted]=useState(false)
-
-    const syncParticipants=useCallback(()=>{
-
-        const room=roomRef.current
-
-        if(!room) return
-
-        const list=Array.from(
-            room.remoteParticipants.values()
-        ).map(
-            (p:RemoteParticipant)=>({
-
-                userId:p.identity,
-                username:p.name || p.identity,
-                isMuted:false,
-                isDeafened:false
+        const list = Array.from(room.remoteParticipants.values()).map(
+            (p: RemoteParticipant): VoiceParticipant => ({
+                userId: p.identity,
+                username: p.name || p.identity,
+                isMuted: !p.isMicrophoneEnabled,
+                isDeafened: false,
+                isSpeaking: speakingIdsRef.current.has(p.identity),
             })
         )
 
         setParticipants(list)
+    }, [])
 
-    },[])
+    const joinVoice = useCallback(async (
+        channelId: string,
+        _: { id: string; name: string }
+    ) => {
+        if (connectingRef.current || roomRef.current) return
 
-    const joinVoice=useCallback(async(
-        channelId:string,
-        _: {id:string,name:string}
-    )=>{
+        connectingRef.current = true
 
-        if(
-            connectingRef.current ||
-            roomRef.current
-        ){
-            return
-        }
+        try {
+            const response = await joinVoiceChannel(channelId)
 
-        connectingRef.current=true
+            const room = new Room()
+            roomRef.current = room
 
-        try{
+            room.on(RoomEvent.ParticipantConnected, syncParticipants)
+            room.on(RoomEvent.ParticipantDisconnected, syncParticipants)
 
-            const response=
-                await joinVoiceChannel(channelId)
+            // TrackMuted/TrackUnmuted обновляют isMicrophoneEnabled участника,
+            // поэтому пересинхронизируем список после каждого изменения.
+            room.on(RoomEvent.TrackMuted, () => syncParticipants())
+            room.on(RoomEvent.TrackUnmuted, () => syncParticipants())
 
-            console.log(response)
+            room.on(RoomEvent.ActiveSpeakersChanged, (speakers: Participant[]) => {
+                const ids = new Set(speakers.map(s => s.identity))
+                speakingIdsRef.current = ids
+                setIsLocalSpeaking(ids.has(room.localParticipant.identity))
+                syncParticipants()
+            })
 
-            const room=new Room()
+            room.on(RoomEvent.Disconnected, () => {
+                speakingIdsRef.current = new Set()
+                roomRef.current = null
+                setParticipants([])
+                setIsConnected(false)
+                setIsLocalSpeaking(false)
+            })
 
-            roomRef.current=room
-
-            room.on(
-                RoomEvent.ParticipantConnected,
-                syncParticipants
-            )
-
-            room.on(
-                RoomEvent.ParticipantDisconnected,
-                syncParticipants
-            )
-
-            room.on(
-                RoomEvent.Disconnected,
-                ()=>{
-
-                    roomRef.current=null
-                    setParticipants([])
-                    setIsConnected(false)
-                }
-            )
-
-            await room.connect(
-                response.liveKitUrl,
-                response.token
-            )
-
+            await room.connect(response.liveKitUrl, response.token)
             await room.localParticipant.setMicrophoneEnabled(true)
 
             setIsConnected(true)
             setIsMuted(false)
-
+            // Подхватываем участников, уже бывших в комнате до нашего join.
             syncParticipants()
-
+        } catch (err) {
+            console.error('Voice connect error:', err)
+        } finally {
+            connectingRef.current = false
         }
-        catch(err){
+    }, [syncParticipants])
 
-            console.error(
-                'Voice connect error:',
-                err
-            )
-        }
-        finally{
-            connectingRef.current=false
-        }
+    const leaveVoice = useCallback(async (channelId: string) => {
+        const room = roomRef.current
+        if (!room) return
 
-    },[syncParticipants])
-
-    const leaveVoice=useCallback(async(
-        channelId:string
-    )=>{
-
-        const room=roomRef.current
-
-        if(!room) return
-
-        try{
-
+        try {
             await leaveVoiceChannel(channelId)
-
-        }
-        catch(err){
-
+        } catch (err) {
             console.error(err)
         }
 
+        speakingIdsRef.current = new Set()
         room.disconnect()
-
-        roomRef.current=null
-
+        roomRef.current = null
         setParticipants([])
         setIsConnected(false)
+        setIsLocalSpeaking(false)
+    }, [])
 
-    },[])
+    const toggleMic = useCallback(async () => {
+        const room = roomRef.current
+        if (!room) return
 
-    const toggleMic=useCallback(async()=>{
+        // isMuted=true → микрофон выключен → setMicrophoneEnabled(true) = включить
+        const newMuted = !isMuted
+        await room.localParticipant.setMicrophoneEnabled(!newMuted)
+        setIsMuted(newMuted)
+    }, [isMuted])
 
-        const room=roomRef.current
-
-        if(!room) return
-
-        const next=!isMuted
-
-        await room.localParticipant
-            .setMicrophoneEnabled(next)
-
-        setIsMuted(!next)
-
-    },[isMuted])
-
-    return{
+    return {
         participants,
         isConnected,
         isMuted,
+        isLocalSpeaking,
         joinVoice,
         leaveVoice,
-        toggleMic
+        toggleMic,
     }
 }
