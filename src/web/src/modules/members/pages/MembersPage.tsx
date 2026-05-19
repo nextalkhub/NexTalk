@@ -190,9 +190,9 @@ const MemberItem: React.FC<MemberItemProps> = ({
             {member.displayName}
           </div>
 
-          <div className={styles.memberTag}>
-            {member.username}
-          </div>
+            {member.username !== '' && <div className={styles.memberTag}>
+            @{member.username}
+        </div>}
         </div>
 
         {canShowActions && (
