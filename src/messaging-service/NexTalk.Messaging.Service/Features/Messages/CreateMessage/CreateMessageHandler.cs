@@ -46,6 +46,12 @@ public sealed class CreateMessageHandler
             Content = cmd.Content,
         };
 
+        await using var tx = await _db.Database.BeginTransactionAsync(ct);
+
+        // Сохраняем message первым, чтобы БД сгенерировала Id (uuidv7) и CreatedAt
+        _db.Messages.Add(message);
+        await _db.SaveChangesAsync(ct);
+
         var dto = ToDto(message);
         var outbox = new OutboxEvent
         {
@@ -60,11 +66,11 @@ public sealed class CreateMessageHandler
             ExpiresAt = DateTimeOffset.UtcNow.Add(IdempotencyTtl),
         };
 
-        // Три вставки в одной транзакции
-        _db.Messages.Add(message);
         _db.OutboxEvents.Add(outbox);
         _db.IdempotencyKeys.Add(idempotencyKey);
         await _db.SaveChangesAsync(ct);
+
+        await tx.CommitAsync(ct);
 
         _logger.LogInformation(
             "Message created: id={MessageId} channel={ChannelId} guild={GuildId} correlation={CorrelationId}",
