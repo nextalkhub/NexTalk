@@ -6,16 +6,24 @@ log_level: info
 
 rtc:
   tcp_port: 7881
-  port_range_start: 50000
-  port_range_end: 50200
+  # udp_port включает UDP mux режим (pion/ice UDPMuxDefault): один UDP-порт
+  # мультиплексирует все WebRTC-соединения участников. Это официальный способ
+  # избежать проблем с диапазонами UDP-портов в Docker Desktop (Windows/Mac),
+  # где port_range_start/end требует отдельный docker-proxy процесс на каждый порт.
+  # Ref: https://docs.livekit.io/home/self-hosting/ports-firewall/
+  udp_port: 7882
   use_external_ip: false
-  node_ip: 0.0.0.0
+  # node_ip — IP, который LiveKit объявляет в ICE-кандидатах.
+  # Для локальной разработки (браузер и Docker на одной машине): 127.0.0.1.
+  # Для тестирования с разных машин в сети: заменить на LAN IP хоста (например, 192.168.x.x).
+  # Для продакшна: use_external_ip: true.
+  node_ip: 127.0.0.1
 
 redis:
   address: redis:6379
 
 keys:
-  devkey: devsecretdevsecretdevsecret12
+  APIkeyqBnyMc9wGDs: 1cGQBXpPrEKi54ySkTABp2QLKlNY132DZgk_skCjVXDUilNogmgaIHapR9L__zpo
 
 room:
   auto_create: true
