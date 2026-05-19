@@ -16,5 +16,15 @@ public static class DeleteChannelEndpoint
             await handler.HandleAsync(
                 new DeleteChannelCommand(guildId, channelId, user.GetUserId()), ct);
             return Results.NoContent();
-        });
+        })
+        .WithTags("Channels")
+        .WithSummary("Удалить канал")
+        .WithDescription("Удаляет канал из гильдии. Требует роль Admin или Owner.")
+        .Produces(204)
+        .Produces(401)
+        .Produces(403)
+        .Produces(404)
+        .WithMetadata(new ParameterDoc(
+            ("guildId", "Идентификатор гильдии."),
+            ("channelId", "Идентификатор удаляемого канала.")));
 }

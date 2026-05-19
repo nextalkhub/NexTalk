@@ -4,7 +4,7 @@ namespace NexTalk.Voice.Service.Infrastructure;
 
 /// <summary>
 /// Генерирует короткоживущий JWT для подключения клиента к LiveKit-комнате.
-/// Токен даёт права на публикацию и подписку в рамках одной комнаты (channelId).
+/// Токен дает права на публикацию и подписку в рамках одной комнаты (channelId).
 /// </summary>
 public sealed class LiveKitTokenGenerator
 {

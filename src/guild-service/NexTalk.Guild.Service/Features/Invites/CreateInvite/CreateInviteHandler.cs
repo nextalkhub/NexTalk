@@ -21,6 +21,15 @@ public class CreateInviteHandler
         _config = config;
     }
 
+    /// <summary>Созданное приглашение.</summary>
+    /// <param name="Id">Идентификатор приглашения (UUIDv7).</param>
+    /// <param name="Code">Публичный код (12 символов base64url) — часть ссылки после /invite/.</param>
+    /// <param name="Url">Полная ссылка-приглашение для отправки пользователю.</param>
+    /// <param name="GuildId">Идентификатор гильдии, в которую ведет приглашение.</param>
+    /// <param name="ExpiresAt">Срок действия. Null — бессрочное.</param>
+    /// <param name="MaxUses">Лимит активаций. Null — без лимита.</param>
+    /// <param name="UsesCount">Текущее число активаций.</param>
+    /// <param name="CreatedAt">Дата и время создания (UTC).</param>
     public record InviteResponse(
         Guid Id,
         string Code,

@@ -5,7 +5,7 @@ namespace NexTalk.Voice.Service.Infrastructure;
 /// <summary>
 /// In-memory хранилище голосовых сессий.
 /// Поддерживает двунаправленный поиск: userId → сессия и channelId → множество участников.
-/// Singleton: все состояние живет в памяти процесса — при рестарте сервиса сбрасывается.
+/// Singleton: все состояние живет в памяти процесса - при рестарте сервиса сбрасывается.
 /// </summary>
 public sealed class SessionStore
 {
@@ -15,7 +15,7 @@ public sealed class SessionStore
     private readonly ConcurrentDictionary<Guid, ConcurrentDictionary<string, byte>> _channelToUsers = new();
 
     /// <summary>
-    /// Добавляет пользователя в канал. Если пользователь уже в другом канале — переносит его.
+    /// Добавляет пользователя в канал. Если пользователь уже в другом канале - переносит его.
     /// </summary>
     public void Join(string userId, Guid channelId, Guid guildId)
     {

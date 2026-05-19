@@ -16,5 +16,17 @@ public static class BanMemberEndpoint
             await handler.HandleAsync(
                 new BanMemberCommand(guildId, targetUserId, user.GetUserId()), ct);
             return Results.NoContent();
-        });
+        })
+        .WithTags("Members")
+        .WithSummary("Забанить участника")
+        .WithDescription(
+            "Исключает пользователя из гильдии и запрещает повторное вступление. " +
+            "Требует роль Admin или Owner.")
+        .Produces(204)
+        .Produces(401)
+        .Produces(403)
+        .Produces(404)
+        .WithMetadata(new ParameterDoc(
+            ("guildId", "Идентификатор гильдии."),
+            ("targetUserId", "Zitadel sub баненного пользователя.")));
 }

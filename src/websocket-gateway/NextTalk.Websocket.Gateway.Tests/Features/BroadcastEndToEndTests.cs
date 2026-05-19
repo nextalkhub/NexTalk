@@ -12,7 +12,7 @@ namespace NextTalk.Websocket.Gateway.Tests.Features;
 
 /// <summary>
 /// E2E-фрагмент broadcast-флоу: убеждаемся, что POST /internal/broadcast/guild/{guildId}
-/// доходит до SignalR-клиента, подключённого к ChatHub и входящего в группу гильдии.
+/// доходит до SignalR-клиента, подключенного к ChatHub и входящего в группу гильдии.
 ///
 /// Полный путь SendMessage → Outbox → Broadcast → ReceiveMessage опирается на 4 сервиса
 /// и БД; здесь мы покрываем последнее звено — путь от broadcast-эндпоинта WS Gateway
@@ -32,7 +32,7 @@ public class BroadcastEndToEndTests : IClassFixture<BroadcastEndToEndTests.E2EFa
         var token = TestJwt.Generate(userId);
 
         var hub = new HubConnectionBuilder()
-            .WithUrl($"{_factory.Server.BaseAddress}ws/chat?access_token={token}", opts =>
+            .WithUrl($"{_factory.Server.BaseAddress}hubs/chat?access_token={token}", opts =>
             {
                 opts.HttpMessageHandlerFactory = _ => _factory.Server.CreateHandler();
                 opts.Transports = Microsoft.AspNetCore.Http.Connections.HttpTransportType.LongPolling;

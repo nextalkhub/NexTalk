@@ -3,11 +3,6 @@ using NexTalk.Voice.Service.Shared;
 
 namespace NexTalk.Voice.Service.Features.Voice.Join;
 
-/// <summary>
-/// Подключает пользователя к голосовому каналу.
-/// Проверяет членство в гильдии, создает LiveKit-комнату при необходимости,
-/// генерирует токен и уведомляет других участников через WS Gateway.
-/// </summary>
 public static class JoinVoiceEndpoint
 {
     public static void Map(IEndpointRouteBuilder app) =>
@@ -24,12 +19,20 @@ public static class JoinVoiceEndpoint
             var cmd = new JoinVoiceCommand(channelId, userId, displayName, correlationId);
             var result = await handler.HandleAsync(cmd, ct);
 
-            return Results.Ok(new
-            {
-                result.Token,
-                result.LiveKitUrl,
-                result.ChannelId,
-                result.GuildId,
-            });
-        });
+            return Results.Ok(result);
+        })
+        .WithTags("Voice")
+        .WithSummary("Войти в голосовой канал")
+        .WithDescription(
+            "Верифицирует членство в гильдии и тип канала (voice), создает LiveKit-комнату при необходимости " +
+            "и возвращает JWT-токен для прямого подключения к LiveKit SFU. " +
+            "Если пользователь уже находится в другом голосовом канале — сессия переносится. " +
+            "Остальные участники получают событие voice.joined по WebSocket.")
+        .Produces<JoinVoiceResult>(200)
+        .Produces(400)
+        .Produces(401)
+        .Produces(403)
+        .Produces(404)
+        .WithMetadata(new ParameterDoc(
+            ("channelId", "Идентификатор голосового канала (тип voice). 400 если канал текстовый.")));
 }
