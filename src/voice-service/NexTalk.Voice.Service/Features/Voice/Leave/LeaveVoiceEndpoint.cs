@@ -3,10 +3,6 @@ using NexTalk.Voice.Service.Shared;
 
 namespace NexTalk.Voice.Service.Features.Voice.Leave;
 
-/// <summary>
-/// Отключает пользователя от голосового канала.
-/// Удаляет сессию, принудительно отключает от LiveKit и уведомляет других участников.
-/// </summary>
 public static class LeaveVoiceEndpoint
 {
     public static void Map(IEndpointRouteBuilder app) =>
@@ -23,5 +19,14 @@ public static class LeaveVoiceEndpoint
             await handler.HandleAsync(cmd, ct);
 
             return Results.Ok();
-        });
+        })
+        .WithTags("Voice")
+        .WithSummary("Покинуть голосовой канал")
+        .WithDescription(
+            "Удаляет сессию пользователя, принудительно отключает от LiveKit " +
+            "и уведомляет участников гильдии событием voice.left по WebSocket.")
+        .Produces(200)
+        .Produces(401)
+        .Produces(404)
+        .WithMetadata(new ParameterDoc(("channelId", "Идентификатор голосового канала.")));
 }

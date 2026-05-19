@@ -2,9 +2,9 @@ namespace NexTalk.Messaging.Service.Shared;
 
 /// <summary>
 /// Читает заголовок X-Deadline (UTC ISO 8601).
-/// Если дедлайн уже истёк — сразу возвращает 504.
+/// Если дедлайн уже истёк - сразу возвращает 504.
 /// Иначе создаёт CancellationToken, привязанный к оставшемуся времени,
-/// и подменяет HttpContext.RequestAborted — все хендлеры получат его автоматически.
+/// и подменяет HttpContext.RequestAborted - все хендлеры получат его автоматически.
 /// </summary>
 public sealed class DeadlineMiddleware
 {
@@ -33,7 +33,7 @@ public sealed class DeadlineMiddleware
         }
 
         // CancellationTokenSource принимает максимум ~49.7 дней; для сервис-сервис вызовов
-        // разумный потолок — 30 сек. Всё что больше практически означает "нет дедлайна".
+        // разумный потолок - 30 сек. Всё что больше практически означает "нет дедлайна".
         var cappedRemaining = remaining < TimeSpan.FromSeconds(30) ? remaining : TimeSpan.FromSeconds(30);
         using var deadlineCts = new CancellationTokenSource(cappedRemaining);
         using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(ctx.RequestAborted, deadlineCts.Token);

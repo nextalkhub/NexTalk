@@ -22,7 +22,7 @@ public static class DisconnectUserEndpoint
 
             if (session is null)
             {
-                // Пользователь не был в голосовом канале — идемпотентный ответ.
+                // Пользователь не был в голосовом канале - идемпотентный ответ.
                 return Results.NoContent();
             }
 

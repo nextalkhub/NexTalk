@@ -2,8 +2,8 @@ namespace NexTalk.Guild.Service.Shared;
 
 /// <summary>
 /// DelegatingHandler для исходящих HTTP-клиентов Guild Service.
-/// Добавляет заголовок X-Deadline = UtcNow + 1.5 сек — меньше, чем Polly Timeout (2s),
-/// поэтому DeadlineMiddleware на стороне получателя выстрелит раньше Polly и вернёт 504.
+/// Добавляет заголовок X-Deadline = UtcNow + 1.5 сек - меньше, чем Polly Timeout (2s),
+/// поэтому DeadlineMiddleware на стороне получателя выстрелит раньше Polly и вернет 504.
 /// </summary>
 public sealed class DeadlineForwardingHandler : DelegatingHandler
 {
