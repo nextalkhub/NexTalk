@@ -46,7 +46,6 @@ export const ChannelSidebar: React.FC = () => {
     return (
         <>
             <div className={styles.sidebar}>
-                {/* Кнопка назад */}
                 <div className={styles.backButton} onClick={handleBackToServers}>
                     <Icon name="arrow-left" size={18} />
                     <span>Все серверы</span>

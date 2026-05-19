@@ -31,34 +31,45 @@ export const VoiceChannelPage: React.FC = () => {
     toggleMic
   } = useVoice()
 
-  const joinedRef = useRef(false)
+  const previousChannelRef = useRef<string | null>(null)
 
   useEffect(() => {
+    if (!channelId || !user) return
 
-    if (
-        !channelId ||
-        !user ||
-        joinedRef.current
-    ) return
+    const connect = async () => {
 
-    joinedRef.current = true
+      if (
+          previousChannelRef.current &&
+          previousChannelRef.current !== channelId
+      ) {
+        await leaveVoice(
+            previousChannelRef.current
+        )
+      }
 
-    joinVoice(channelId,{
-      id:user.id,
-      name:user.name
-    })
+      previousChannelRef.current = channelId
 
-    return () => {
-
-      joinedRef.current=false
-
-      leaveVoice(channelId)
+      await joinVoice(
+          channelId,
+          {
+            id: user.id,
+            name: user.name
+          }
+      )
     }
 
-  },[
-    channelId,
-    user?.id
-  ])
+    connect()
+
+    return () => {}
+  }, [channelId, user?.id])
+
+  useEffect(() => {
+    return () => {
+      if (previousChannelRef.current) {
+        leaveVoice(previousChannelRef.current)
+      }
+    }
+  }, [])
 
   const handleDisconnect = async()=>{
 

@@ -49,13 +49,11 @@ export const ServersPage: React.FC = () => {
 
     const handleJoinServer = async (code: string) => {
         try {
-            const result = await dispatch(
+            await dispatch(
                 acceptInviteThunk(code)
             ).unwrap()
 
-            navigate(
-                `/servers/${result.guildId}/channels`
-            )
+            dispatch(fetchServers())
         } catch (e) {
             console.error(e)
         }

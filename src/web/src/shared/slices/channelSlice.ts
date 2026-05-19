@@ -27,7 +27,7 @@ const channelSlice = createSlice({
     name: 'channels',
     initialState,
     reducers: {
-        setCurrentChannel: (state, action: PayloadAction<string>) => {
+        setCurrentChannel: (state, action: PayloadAction<string | null>) => {
             state.currentChannelId = action.payload
         },
         addChannel: (state, action: PayloadAction<Channel>) => {

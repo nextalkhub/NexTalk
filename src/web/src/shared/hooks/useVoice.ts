@@ -64,10 +64,12 @@ export const useVoice = () => {
             _: { id: string; name: string }
         ) => {
 
-            if (
-                connectingRef.current ||
-                roomRef.current
-            ) return
+            if (connectingRef.current) return
+
+            if (roomRef.current) {
+                roomRef.current.disconnect()
+                roomRef.current = null
+            }
 
             connectingRef.current = true
 

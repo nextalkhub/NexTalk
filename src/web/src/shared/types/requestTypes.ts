@@ -15,7 +15,6 @@ export interface Channel {
 export interface Member {
     displayName: string
     id: string
-    joinedAt: string
     role: 'Owner' | 'Admin' | 'Member'
     userId: string
     username: string

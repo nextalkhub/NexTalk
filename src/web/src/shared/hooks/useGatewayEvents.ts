@@ -3,7 +3,9 @@ import { useAppDispatch } from '../../store'
 import {messageReceived} from "../slices/chatSlice.ts";
 import {useSignalR} from "./useSignalR.ts";
 import { voiceParticipantJoined, voiceParticipantLeft } from '../slices/voiceSlice'
-import {addChannel} from "../slices/channelSlice.ts";
+import {addChannel, setCurrentChannel} from "../slices/channelSlice.ts";
+import {memberBanned, memberJoined, memberKicked} from "../slices/memberSlice.ts";
+import {useNavigate} from "react-router-dom";
 
 interface MessageCreatedEvent {
     type: 'message.created'
@@ -50,16 +52,55 @@ interface ChannelCreatedEvent {
     }
 }
 
+interface MemberJoinedEvent {
+    type: 'member.joined'
+    payload: {
+        id: string
+        userId: string
+        guildId: string
+        displayName: string
+        username: string
+    }
+}
+
+interface MemberKickedEvent {
+    type: 'member.kicked'
+    payload: {
+        userId: string
+        guildId: string
+    }
+}
+
+interface MemberBannedEvent {
+    type: 'member.banned'
+    payload: {
+        userId: string
+        guildId: string
+    }
+}
+
+interface ForcedDisconnectEvent {
+    type: 'guild.force.disconnect'
+    payload: {
+        guildId: string
+    }
+}
+
 type GatewayEvent =
     | MessageCreatedEvent
     | VoiceJoinedEvent
     | VoiceLeftEvent
     | PresenceOnlineEvent
     | ChannelCreatedEvent
+    | MemberJoinedEvent
+    | MemberKickedEvent
+    | MemberBannedEvent
+    | ForcedDisconnectEvent
 
 export const useGatewayEvents = () => {
     const { connection } = useSignalR()
     const dispatch = useAppDispatch()
+    const navigate = useNavigate();
 
     useEffect(() => {
         if (!connection) return
@@ -105,6 +146,38 @@ export const useGatewayEvents = () => {
                     }))
                     break
 
+                case 'member.joined':
+                    dispatch(memberJoined({
+                        serverId: event.payload.guildId,
+                        member: {
+                            id: event.payload.id,
+                            userId: event.payload.userId,
+                            displayName: event.payload.displayName,
+                            username: event.payload.username,
+                            role: 'Member'
+                        }
+                    }))
+                    break
+
+                case 'member.kicked':
+                    dispatch(memberKicked({
+                        serverId: event.payload.guildId,
+                        userId: event.payload.userId
+                    }))
+                    break
+
+                case 'member.banned':
+                    dispatch(memberBanned({
+                        serverId: event.payload.guildId,
+                        userId: event.payload.userId
+                    }))
+                    break
+
+                case 'guild.force.disconnect':
+                    dispatch(setCurrentChannel(null));
+                    navigate('/servers');
+                    break
+
                 case 'presence.online':
                     console.log('online')
                     break
@@ -116,5 +189,5 @@ export const useGatewayEvents = () => {
         return () => {
             connection.off('GatewayEvent', handler)
         }
-    }, [connection, dispatch])
+    }, [connection, dispatch, navigate])
 }
