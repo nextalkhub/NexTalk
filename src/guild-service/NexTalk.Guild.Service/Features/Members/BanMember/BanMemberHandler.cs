@@ -45,7 +45,7 @@ public class BanMemberHandler
         _db.Members.Remove(target);
         await _db.SaveChangesAsync(ct);
 
-        // Все вызовы — best-effort: сбой не откатывает бан.
+        // Все вызовы - best-effort: сбой не откатывает бан.
         // Каждый вызов независим: сбой WS Gateway не должен блокировать отключение от голоса.
         try { await _wsGateway.BroadcastToGuildAsync(cmd.GuildId, "member.banned",
             new { UserId = cmd.TargetUserId, cmd.GuildId }, ct); } catch { }

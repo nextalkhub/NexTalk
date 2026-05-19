@@ -71,7 +71,7 @@ public class GuildServiceFactory : WebApplicationFactory<Program>
             services.AddScoped<IInviteRepository>(_ => new FakeInviteRepository(claimSucceeds: true));
 
             // Переопределяем валидацию JWT известным симметричным ключом.
-            // Системный JwtBearerPostConfigureOptions выполняется до этого коллбэка и создаёт
+            // Системный JwtBearerPostConfigureOptions выполняется до этого коллбэка и создает
             // настоящий ConfigurationManager из MetadataAddress. Мы заменяем его на
             // StaticConfigurationManager - иначе хэндлер пытается обратиться по сети к http://test-authority.
             var signingKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(TestJwt.SigningKey));

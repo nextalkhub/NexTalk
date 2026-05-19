@@ -7,6 +7,7 @@ using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.Extensions.Http.Resilience;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
+using Swashbuckle.AspNetCore.SwaggerGen;
 using NexTalk.Voice.Service.Features.Internal.DisconnectChannel;
 using NexTalk.Voice.Service.Features.Internal.DisconnectUser;
 using NexTalk.Voice.Service.Features.Voice.Join;
@@ -126,11 +127,13 @@ builder.Services.AddSwaggerGen(c =>
     {
         Title = "Voice Service",
         Version = "v1",
-        Description = "Управление голосовыми каналами через LiveKit SFU.",
+        Description = "Управление голосовыми каналами через LiveKit SFU.\n\n" +
+                      "**Формат ошибок:** все 4xx/5xx возвращают `{ \"error\": \"сообщение\" }`.",
     });
     c.AddServer(new OpenApiServer { Url = "/api", Description = "Через Nginx (unified)" });
     c.AddServer(new OpenApiServer { Url = "/",    Description = "Прямой доступ к сервису" });
     c.CustomSchemaIds(type => type.FullName?.Replace("+", ".") ?? type.Name);
+    c.OperationFilter<ParameterDocFilter>();
 
     var xmlPath = Path.Combine(AppContext.BaseDirectory, "NexTalk.Voice.Service.xml");
     if (File.Exists(xmlPath))
@@ -245,6 +248,26 @@ app.MapHealthChecks("/readyz", new HealthCheckOptions
 app.MapMetrics().AllowAnonymous();
 
 app.Run();
+
+internal sealed record ParameterDoc(params (string Name, string Description)[] Params);
+
+internal sealed class ParameterDocFilter : IOperationFilter
+{
+    public void Apply(OpenApiOperation operation, OperationFilterContext context)
+    {
+        var docs = context.ApiDescription.ActionDescriptor.EndpointMetadata
+            .OfType<ParameterDoc>()
+            .SelectMany(d => d.Params);
+
+        foreach (var (name, desc) in docs)
+        {
+            var p = operation.Parameters?.FirstOrDefault(
+                x => string.Equals(x.Name, name, StringComparison.OrdinalIgnoreCase));
+            if (p is not null)
+                p.Description = desc;
+        }
+    }
+}
 
 file sealed class ZitadelBackchannelHandler(string externalBase, string internalBase) : HttpClientHandler
 {

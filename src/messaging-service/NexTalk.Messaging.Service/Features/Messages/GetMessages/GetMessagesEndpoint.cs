@@ -26,5 +26,21 @@ public static class GetMessagesEndpoint
             var result = await handler.HandleAsync(
                 new GetMessagesQuery(channelId, user.GetUserId(), cursor, effectiveLimit), ct);
             return Results.Ok(result);
-        });
+        })
+        .WithTags("Messages")
+        .WithSummary("История сообщений канала")
+        .WithDescription(
+            "Возвращает сообщения канала, отсортированные от новых к старым (курсорная пагинация). " +
+            "Параметр cursor — id последнего полученного сообщения; следующий запрос вернет сообщения до него. " +
+            $"Диапазон limit: 1–{MaxLimit}, по умолчанию {DefaultLimit}. " +
+            "Если nextCursor в ответе не null — есть еще страницы.")
+        .Produces<GetMessagesResponse>(200)
+        .Produces(400)
+        .Produces(401)
+        .Produces(403)
+        .Produces(404)
+        .WithMetadata(new ParameterDoc(
+            ("channelId", "Идентификатор канала."),
+            ("cursor", "Id последнего полученного сообщения (UUIDv7). Запрос вернет сообщения старее него. Не указывать для первой страницы."),
+            ("limit", $"Число сообщений на странице. Допустимые значения: 1–{MaxLimit}. По умолчанию {DefaultLimit}.")));
 }

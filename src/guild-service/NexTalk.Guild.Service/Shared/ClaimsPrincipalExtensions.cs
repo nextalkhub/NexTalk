@@ -6,7 +6,7 @@ public static class ClaimsPrincipalExtensions
 {
     /// <summary>
     /// Возвращает идентификатор вызывающего как сырую строку из claim sub.
-    /// Zitadel выдаёт snowflake-строку (например "287040091499675137") — возвращаем её как есть.
+    /// Zitadel выдает snowflake-строку (например "287040091499675137") - возвращаем её как есть.
     /// </summary>
     public static string GetUserId(this ClaimsPrincipal user) =>
         user.FindFirstValue("sub")
