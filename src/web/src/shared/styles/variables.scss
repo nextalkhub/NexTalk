@@ -1,23 +1,29 @@
 // Colors
-$bg-primary: #191C47;
-$bg-secondary: #1D1D4A;
-$bg-tertiary: #1A1C45;
-$bg-card: linear-gradient(109deg, #363580 0%, rgba(145.81, 73.32, 193.37, 0.64) 100%);
+$bg-primary: #0F0F12;
+$bg-secondary: #1A1A1F;
+$bg-tertiary: #16161A;
+$bg-card: #1E1E24;
 
-$text-primary: #F4F4F5;
-$text-secondary: #D4D4F2;
-$text-muted: #BBBBBF;
+$text-primary: #FFFFFF;
+$text-secondary: #A1A1AA;
+$text-muted: #71717A;
 
-$accent-pink: #DF72D1;
-$accent-purple: #765FFF;
-$accent-green: #36E7A2;
+$accent-primary: #3B82F6;
+$accent-secondary: #8B5CF6;
+$accent-success: #10B981;
+$accent-error: #EF4444;
 
-$border-color: #2B2A66;
-$error-color: #FF5A5A;
+$accent-pink: $accent-primary;
+$accent-purple: $accent-secondary;
+$accent-green: $accent-success;
+$error-color: $accent-error;
+
+$border-color: #27272A;
+
 
 // Gradients
-$gradient-btn: linear-gradient(169deg, $accent-pink 0%, $accent-purple 100%);
-$gradient-card: linear-gradient(109deg, #363580 0%, rgba(145.81, 73.32, 193.37, 0.64) 100%);
+$gradient-btn: linear-gradient(135deg, $accent-primary 0%, $accent-secondary 100%);
+$gradient-card: #1E1E24;
 
 // Spacing
 $spacing-xs: 4px;
@@ -28,11 +34,11 @@ $spacing-xl: 32px;
 $spacing-2xl: 48px;
 
 // Border radius
-$radius-sm: 8px;
-$radius-md: 12px;
-$radius-lg: 16px;
-$radius-xl: 20px;
-$radius-2xl: 24px;
+$radius-sm: 6px;
+$radius-md: 8px;
+$radius-lg: 12px;
+$radius-xl: 16px;
+$radius-2xl: 20px;
 $radius-full: 9999px;
 
 // Breakpoints

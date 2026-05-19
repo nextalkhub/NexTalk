@@ -1,5 +1,5 @@
 import {axiosInstance} from "../axiosInstance.ts";
-import {CreateGuildRequest, Guild} from "../../shared/types/requestTypes.ts";
+import {CreateGuildRequest, Guild} from "../../shared/types";
 
 export async function createGuild(data: CreateGuildRequest): Promise<Guild> {
     try {

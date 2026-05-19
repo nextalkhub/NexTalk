@@ -45,8 +45,8 @@ export const VoiceParticipantList: React.FC<VoiceParticipantListProps> = ({
                     <VoiceParticipant
                         key={participant.id}
                         {...participant}
-                        onMute={onMuteUser}
-                        onKick={onKickUser}
+                        onMute={onMuteUser ? () => onMuteUser(participant.id) : undefined}
+                        onKick={onKickUser ? () => onKickUser(participant.id) : undefined}
                     />
                 ))}
             </div>

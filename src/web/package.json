@@ -11,12 +11,15 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@microsoft/signalr": "^10.0.0",
+    "@reduxjs/toolkit": "^2.11.2",
     "axios": "^1.15.2",
+    "livekit-client": "^2.19.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
+    "react-redux": "^9.2.0",
     "react-router-dom": "^6.22.0",
-    "socket.io-client": "^4.8.3",
-    "zustand": "^4.5.0"
+    "socket.io-client": "^4.8.3"
   },
   "devDependencies": {
     "@types/react": "^18.2.43",
