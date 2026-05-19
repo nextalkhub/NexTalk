@@ -184,7 +184,8 @@ builder.Services.AddSwaggerGen(c =>
     {
         Title = "Guild Service",
         Version = "v1",
-        Description = "Управление серверами (гильдиями), каналами, участниками и приглашениями."
+        Description = "Управление серверами (гильдиями), каналами, участниками и приглашениями.\n\n" +
+                      "**Формат ошибок:** все 4xx/5xx возвращают `{ \"error\": \"сообщение\" }`."
     });
     c.AddServer(new OpenApiServer { Url = "/api", Description = "Через Nginx" });
     c.AddServer(new OpenApiServer { Url = "/",    Description = "Прямой доступ к сервису" });

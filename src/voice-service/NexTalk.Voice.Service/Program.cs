@@ -127,7 +127,8 @@ builder.Services.AddSwaggerGen(c =>
     {
         Title = "Voice Service",
         Version = "v1",
-        Description = "Управление голосовыми каналами через LiveKit SFU.",
+        Description = "Управление голосовыми каналами через LiveKit SFU.\n\n" +
+                      "**Формат ошибок:** все 4xx/5xx возвращают `{ \"error\": \"сообщение\" }`.",
     });
     c.AddServer(new OpenApiServer { Url = "/api", Description = "Через Nginx (unified)" });
     c.AddServer(new OpenApiServer { Url = "/",    Description = "Прямой доступ к сервису" });
