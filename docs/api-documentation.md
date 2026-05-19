@@ -60,8 +60,7 @@ Content-Type: application/json
 Authorization: Bearer <JWT>
 
 {
-  "name": "my-awesome-guild",
-  "displayName": "My Awesome Guild"
+  "name": "my-awesome-guild"
 }
 ```
 
@@ -69,8 +68,7 @@ Authorization: Bearer <JWT>
 
 | Поле | Тип | Требуется | Описание |
 |------|-----|-----------|---------|
-| `name` | string | да        | Техническое имя (для URL, уникальное) |
-| `displayName` | string | да        | Отображаемое имя |
+| `name` | string | да | Название сервера (2–32 символа) |
 
 **Ответ (201 Created):**
 ```json
@@ -96,17 +94,14 @@ Authorization: Bearer <JWT>
 
 **Ответ (200 OK):**
 ```json
-{
-  "guilds": [
-    {
-      "id": "550e8400-e29b-41d4-a716-446655440000",
-      "name": "my-awesome-guild",
-      "displayName": "My Awesome Guild",
-      "ownerId": "550e8400-e29b-41d4-a716-446655440002",
-      "createdAt": "2026-05-18T10:00:00Z"
-    }
-  ]
-}
+[
+  {
+    "id": "550e8400-e29b-41d4-a716-446655440000",
+    "name": "my-awesome-guild",
+    "ownerId": "550e8400-e29b-41d4-a716-446655440002",
+    "createdAt": "2026-05-18T10:00:00Z"
+  }
+]
 ```
 
 ---
@@ -151,16 +146,17 @@ Authorization: Bearer <JWT>
 **Параметры:**
 | Поле | Тип | Значения | Описание |
 |------|-----|----------|---------|
-| `name` | string | - | Имя канала |
+| `name` | string | — | Имя канала (1–32 символа) |
 | `type` | string | `text`, `voice` | Тип канала |
 
 **Ответ (201 Created):**
 ```json
 {
   "id": "550e8400-e29b-41d4-a716-446655440010",
+  "guildId": "550e8400-e29b-41d4-a716-446655440000",
   "name": "general",
   "type": "text",
-  "guildId": "550e8400-e29b-41d4-a716-446655440000"
+  "createdAt": "2026-05-18T10:00:00Z"
 }
 ```
 
@@ -168,7 +164,7 @@ Authorization: Bearer <JWT>
 
 #### 5. GetChannels (GET)
 
-Получение всех каналов севрера
+Получение всех каналов сервера
 
 ```http
 GET /guilds/{guildId}/channels
@@ -177,22 +173,22 @@ Authorization: Bearer <JWT>
 
 **Ответ (200 OK):**
 ```json
-{
-  "channels": [
-    {
-      "id": "550e8400-e29b-41d4-a716-446655440010",
-      "name": "general",
-      "type": "text",
-      "guildId": "550e8400-e29b-41d4-a716-446655440000"
-    },
-    {
-      "id": "550e8400-e29b-41d4-a716-446655440011",
-      "name": "voice-chat",
-      "type": "voice",
-      "guildId": "550e8400-e29b-41d4-a716-446655440000"
-    }
-  ]
-}
+[
+  {
+    "id": "550e8400-e29b-41d4-a716-446655440010",
+    "guildId": "550e8400-e29b-41d4-a716-446655440000",
+    "name": "general",
+    "type": "text",
+    "createdAt": "2026-05-18T10:00:00Z"
+  },
+  {
+    "id": "550e8400-e29b-41d4-a716-446655440011",
+    "guildId": "550e8400-e29b-41d4-a716-446655440000",
+    "name": "voice-chat",
+    "type": "voice",
+    "createdAt": "2026-05-18T10:05:00Z"
+  }
+]
 ```
 
 ---
@@ -233,19 +229,21 @@ Authorization: Bearer <JWT>
 **Параметры:**
 | Поле | Тип | Требуется | Описание | Примеры |
 |------|-----|----------|---------|---------|
-| `expiresIn` | string | нет | Время жизни приглашения | `"24h"`, `"7d"`, `"30m"`, `"3600s"` |
-| `expiresInSeconds` | integer | нет | Альтернатива (legacy) | `86400` (24 часа) |
-| `maxUses` | integer | нет | Максимум использований | `5`, `10` |
+| `expiresIn` | string | нет | Время жизни приглашения | `"30m"`, `"24h"`, `"7d"`, `"3600s"` |
+| `expiresInSeconds` | integer | нет | Альтернатива (TTL в секундах) | `86400` (24 часа) |
+| `maxUses` | integer | нет | Максимум использований (null = неограничено) | `5`, `10` |
 
 **Ответ (201 Created):**
 ```json
 {
+  "id": "018e9e5f-2b7a-7000-8000-000000000001",
   "code": "AB12CD34EF56",
+  "url": "https://nexttalk.example.com/invite/AB12CD34EF56",
   "guildId": "550e8400-e29b-41d4-a716-446655440000",
-  "createdBy": "550e8400-e29b-41d4-a716-446655440002",
   "expiresAt": "2026-05-19T10:00:00Z",
   "maxUses": 5,
-  "usedCount": 0
+  "usesCount": 0,
+  "createdAt": "2026-05-18T10:00:00Z"
 }
 ```
 
@@ -256,48 +254,29 @@ Authorization: Bearer <JWT>
 Присоединение к серверу по приглашению
 
 ```http
-POST /invites/{inviteCode}/accept
+POST /invites/{code}/accept
 Authorization: Bearer <JWT>
 ```
 
 **Ответ (200 OK):**
 ```json
 {
-  "guildId": "550e8400-e29b-41d4-a716-446655440000",
-  "displayName": "My Awesome Guild"
+  "id": "550e8400-e29b-41d4-a716-446655440000",
+  "name": "my-awesome-guild",
+  "ownerId": "550e8400-e29b-41d4-a716-446655440002",
+  "createdAt": "2026-05-18T10:00:00Z"
 }
 ```
 
 **Ошибки:**
-- `404` — Приглашение не найдено или истекло
 - `400` — Исчерпан лимит использований
-
----
-
-#### 9. GetInviteInfo (GET)
-
-Получение информации о приглашении
-
-```http
-GET /invites/{inviteCode}
-```
-
-**Ответ (200 OK):**
-```json
-{
-  "code": "AB12CD34EF56",
-  "guildDisplayName": "My Awesome Guild",
-  "expiresAt": "2026-05-19T10:00:00Z",
-  "maxUses": 5,
-  "usedCount": 1
-}
-```
+- `404` — Приглашение не найдено или истекло
 
 ---
 
 ### Члены сервера
 
-#### 10. GetMembers (GET)
+#### 9. GetMembers (GET)
 
 Получение участников сервера
 
@@ -308,32 +287,32 @@ Authorization: Bearer <JWT>
 
 **Ответ (200 OK):**
 ```json
-{
-  "members": [
-    {
-      "userId": "550e8400-e29b-41d4-a716-446655440002",
-      "displayName": "John Doe",
-      "role": "owner",
-      "joinedAt": "2026-05-18T10:00:00Z"
-    },
-    {
-      "userId": "550e8400-e29b-41d4-a716-446655440003",
-      "displayName": "Jane Smith",
-      "role": "member",
-      "joinedAt": "2026-05-18T10:30:00Z"
-    }
-  ]
-}
+[
+  {
+    "userId": "550e8400-e29b-41d4-a716-446655440002",
+    "displayName": "John Doe",
+    "username": "john_doe",
+    "role": "Owner",
+    "joinedAt": "2026-05-18T10:00:00Z"
+  },
+  {
+    "userId": "550e8400-e29b-41d4-a716-446655440003",
+    "displayName": "Jane Smith",
+    "username": "jane_smith",
+    "role": "Member",
+    "joinedAt": "2026-05-18T10:30:00Z"
+  }
+]
 ```
 
 ---
 
-#### 11. BanMember (POST)
+#### 10. BanMember (POST)
 
 Блокировка участника сервера
 
 ```http
-POST /guilds/{guildId}/members/{memberId}/ban
+POST /guilds/{guildId}/members/{targetUserId}/ban
 Authorization: Bearer <JWT>
 ```
 
@@ -344,12 +323,12 @@ Authorization: Bearer <JWT>
 
 ---
 
-#### 12. KickMember (POST)
+#### 11. KickMember (DELETE)
 
 Исключение участника сервера
 
 ```http
-POST /guilds/{guildId}/members/{memberId}/kick
+DELETE /guilds/{guildId}/members/{targetUserId}
 Authorization: Bearer <JWT>
 ```
 
@@ -360,17 +339,17 @@ Authorization: Bearer <JWT>
 
 ---
 
-#### 13. AssignRole (POST)
+#### 12. AssignRole (PUT)
 
 Назначение роли участнику
 
 ```http
-POST /guilds/{guildId}/members/{memberId}/role
+PUT /guilds/{guildId}/members/{targetUserId}/role
 Content-Type: application/json
 Authorization: Bearer <JWT>
 
 {
-  "role": "moderator"
+  "role": "Admin"
 }
 ```
 
@@ -378,12 +357,20 @@ Authorization: Bearer <JWT>
 
 | Поле | Тип | Значения |
 |------|-----|----------|
-| `role` | string | `owner`, `moderator`, `member` |
+| `role` | string | `Member`, `Admin`, `Owner` (без учёта регистра) |
 
-**Ответ (204 No Content):**
+**Ответ (200 OK):**
+```json
+{
+  "userId": "550e8400-e29b-41d4-a716-446655440003",
+  "role": "Admin"
+}
 ```
-(пустой)
-```
+
+**Ошибки:**
+- `400` — Неверное значение роли
+- `403` — Недостаточно прав (Admin не может назначить Owner)
+- `404` — Участник не найден
 
 ---
 
@@ -416,18 +403,18 @@ X-Correlation-Id: trace-123
 
 | Поле | Тип | Требуется |
 |------|-----|-----------|
-| `channelId` | UUID | да        |
-| `guildId` | UUID | да        |
-| `authorId` | UUID | да        |
-| `authorName` | string | да        |
-| `content` | string | да        |
+| `channelId` | UUID | да |
+| `guildId` | UUID | да |
+| `authorId` | UUID | да |
+| `authorName` | string | да |
+| `content` | string | да |
 
 **Заголовки:**
 
 | Заголовок | Требуется | Описание |
 |-----------|-----------|---------|
-| `X-Idempotency-Key` | да        | UUID для идемпотентности (24ч TTL) |
-| `X-Correlation-Id` | нет       | ID для отслеживания |
+| `X-Idempotency-Key` | да | UUID для идемпотентности (24ч TTL) |
+| `X-Correlation-Id` | нет | ID для отслеживания |
 
 **Ответ (201 Created / 200 OK если дублирование):**
 ```json
@@ -457,8 +444,8 @@ Authorization: Bearer <JWT>
 
 | Параметр | Тип | По умолчанию | Диапазон | Описание |
 |----------|-----|-------------|---------|---------|
-| `limit` | integer | 50 | 1-100 | Кол-во сообщений на странице |
-| `cursor` | UUID | - | - | ID последнего сообщения для пагинации |
+| `limit` | integer | 50 | 1–100 | Кол-во сообщений на странице |
+| `cursor` | UUID | — | — | ID последнего полученного сообщения (для следующей страницы) |
 
 **Ответ (200 OK):**
 ```json
@@ -476,6 +463,8 @@ Authorization: Bearer <JWT>
   "nextCursor": "018e9e5f-2b7a-7000-8000-000000000000"
 }
 ```
+
+Сообщения отсортированы от новых к старым. `nextCursor` равен `null`, если страниц больше нет.
 
 ---
 
@@ -520,29 +509,25 @@ Authorization: Bearer <JWT>
 |----------|-----|-------------|---------|
 | `channelId` | UUID | path | ID голосового канала |
 
-**Автоматический заголовок:**
-```
-X-User-Id: 550e8400-e29b-41d4-a716-446655440002
-```
-
 **Ответ (200 OK):**
 ```json
 {
   "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
-  "liveKitUrl": "ws://livekit:7880",
+  "liveKitUrl": "wss://livekit.example.com",
   "channelId": "550e8400-e29b-41d4-a716-446655440011",
   "guildId": "550e8400-e29b-41d4-a716-446655440000"
 }
 ```
 
 **Результаты:**
-- Проверка членства в гильдии
-- Создание LiveKit комнаты
-- Генерация токена
-- Оповещение других участников через WS
+- Проверка членства в гильдии и доступа к каналу
+- Создание LiveKit комнаты (если ещё не существует)
+- Генерация JWT токена для прямого подключения к SFU
+- Оповещение участников гильдии через WS Gateway (`voice.joined`)
 
 **Ошибки:**
-- `403` — Нет членства в гильдии
+- `400` — Канал не является голосовым
+- `403` — Нет доступа к каналу
 - `404` — Канал не найден
 
 ---
@@ -563,17 +548,16 @@ Authorization: Bearer <JWT>
 
 **Результаты:**
 - Удаление сессии пользователя
-- Отключение от LiveKit
-- Оповещение других участников
+- Оповещение участников гильдии через WS Gateway (`voice.left`)
 
 ---
 
-#### 3. DisconnectChannel (POST) — ВНУТРЕННИЙ
+#### 3. DisconnectChannel (DELETE) — ВНУТРЕННИЙ
 
-Принудительное отключение канала (при удалении)
+Принудительное отключение всех пользователей канала (при удалении канала)
 
 ```http
-POST /internal/voice/disconnect/{channelId}
+DELETE /internal/voice/channel/{channelId}/disconnect-all
 X-Correlation-Id: trace-123
 ```
 
@@ -584,12 +568,12 @@ X-Correlation-Id: trace-123
 
 ---
 
-#### 4. DisconnectUser (POST) — ВНУТРЕННИЙ
+#### 4. DisconnectUser (DELETE) — ВНУТРЕННИЙ
 
 Принудительное отключение пользователя
 
 ```http
-POST /internal/voice/disconnect/user/{userId}
+DELETE /internal/voice/{userId}/disconnect
 X-Correlation-Id: trace-123
 ```
 
@@ -602,17 +586,40 @@ X-Correlation-Id: trace-123
 
 ## WebSocket Gateway
 
-**URL:** `ws://localhost:5004` или `wss://nexttalk.example.com` (production)
+**URL подключения:** `ws://localhost:5004/hub/chat` или `wss://nexttalk.example.com/hub/chat` (production)
 
-### Подключение
+Используется **SignalR**. Для аутентификации передайте JWT через query-параметр `access_token`:
+
+```
+wss://nexttalk.example.com/hub/chat?access_token=<JWT_ACCESS_TOKEN>
+```
+
+### Подключение (JavaScript / TypeScript)
 
 ```javascript
-const ws = new WebSocket('ws://localhost:5004');
+import * as signalR from '@microsoft/signalr';
 
-ws.onmessage = (event) => {
-  const message = JSON.parse(event.data);
-  console.log(message);
-};
+const connection = new signalR.HubConnectionBuilder()
+  .withUrl('/hub/chat', { accessTokenFactory: () => jwtToken })
+  .withAutomaticReconnect()
+  .build();
+
+connection.on('GatewayEvent', (event) => {
+  console.log(event.type, event.payload);
+});
+
+await connection.start();
+```
+
+### Формат события
+
+Все события приходят через метод `GatewayEvent`:
+
+```json
+{
+  "type": "event-type",
+  "payload": { ... }
+}
 ```
 
 ### События
@@ -624,7 +631,7 @@ ws.onmessage = (event) => {
 ```json
 {
   "type": "message.created",
-  "data": {
+  "payload": {
     "id": "018e9e5f-2b7a-7000-8000-000000000001",
     "channelId": "550e8400-e29b-41d4-a716-446655440010",
     "authorId": "550e8400-e29b-41d4-a716-446655440002",
@@ -642,38 +649,96 @@ ws.onmessage = (event) => {
 ```json
 {
   "type": "message.deleted",
-  "data": {
+  "payload": {
     "messageId": "018e9e5f-2b7a-7000-8000-000000000001",
     "channelId": "550e8400-e29b-41d4-a716-446655440010"
   }
 }
 ```
 
-#### voice.user_joined
+#### voice.joined
 
 Пользователь присоединился к голосовому каналу
 
 ```json
 {
-  "type": "voice.user_joined",
-  "data": {
+  "type": "voice.joined",
+  "payload": {
     "userId": "550e8400-e29b-41d4-a716-446655440002",
-    "displayName": "John Doe",
     "channelId": "550e8400-e29b-41d4-a716-446655440011"
   }
 }
 ```
 
-#### voice.user_left
+#### voice.left
 
 Пользователь отключился от голосового канала
 
 ```json
 {
-  "type": "voice.user_left",
-  "data": {
+  "type": "voice.left",
+  "payload": {
     "userId": "550e8400-e29b-41d4-a716-446655440002",
     "channelId": "550e8400-e29b-41d4-a716-446655440011"
   }
 }
+```
+
+#### presence.online
+
+Пользователь подключился к WS Gateway
+
+```json
+{
+  "type": "presence.online",
+  "payload": {
+    "userId": "550e8400-e29b-41d4-a716-446655440002"
+  }
+}
+```
+
+#### presence.offline
+
+Пользователь отключился от WS Gateway
+
+```json
+{
+  "type": "presence.offline",
+  "payload": {
+    "userId": "550e8400-e29b-41d4-a716-446655440002"
+  }
+}
+```
+
+### Методы клиента (Client → Server)
+
+#### SendMessage
+
+Отправка сообщения в канал
+
+```javascript
+await connection.invoke('SendMessage', channelId, content, idempotencyKey);
+```
+
+| Параметр | Тип | Описание |
+|----------|-----|---------|
+| `channelId` | UUID | ID текстового канала |
+| `content` | string | Текст сообщения (1–4000 символов) |
+| `idempotencyKey` | string | UUID для дедупликации |
+
+**Ответ (через `MessageAck`):**
+```json
+{
+  "id": "018e9e5f-2b7a-7000-8000-000000000001",
+  "channelId": "550e8400-e29b-41d4-a716-446655440010",
+  "idempotencyKey": "550e8400-e29b-41d4-a716-446655440099"
+}
+```
+
+#### Heartbeat
+
+Поддержание присутствия онлайн
+
+```javascript
+await connection.invoke('Heartbeat');
 ```
