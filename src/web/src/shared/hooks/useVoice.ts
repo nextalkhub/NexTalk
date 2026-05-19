@@ -29,13 +29,25 @@ export const useVoice = () => {
 
         const list = Array.from(
             room.remoteParticipants.values()
-        ).map((p: RemoteParticipant) => ({
-            userId: p.identity,
-            username: p.name || p.identity,
-            isMuted: !p.isMicrophoneEnabled,
-            isDeafened: false,
-            isSpeaking: speakingIdsRef.current.has(p.identity),
-        }))
+        ).map((p: RemoteParticipant) => {
+
+            console.log(
+                'participant:',
+                {
+                    identity: p.identity,
+                    name: p.name,
+                    metadata: p.metadata,
+                }, 'p: ', p
+            )
+
+            return {
+                userId: p.identity,
+                username: p.name || p.identity,
+                isMuted: !p.isMicrophoneEnabled,
+                isDeafened: false,
+                isSpeaking: speakingIdsRef.current.has(p.identity),
+            }
+        })
 
         setParticipants(list)
     }, [])
