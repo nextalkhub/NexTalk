@@ -81,6 +81,12 @@ builder.Services.AddAuthorizationBuilder()
         .RequireAuthenticatedUser()
         .Build());
 
+builder.Services.AddMemoryCache();
+builder.Services.AddHttpContextAccessor();
+builder.Services.AddSingleton<NextTalk.Websocket.Gateway.Shared.ZitadelUserInfoService>();
+builder.Services.AddTransient<Microsoft.AspNetCore.Authentication.IClaimsTransformation,
+    NextTalk.Websocket.Gateway.Shared.ZitadelClaimsEnricher>();
+
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(c =>
 {
