@@ -32,7 +32,7 @@ public class BroadcastEndToEndTests : IClassFixture<BroadcastEndToEndTests.E2EFa
         var token = TestJwt.Generate(userId);
 
         var hub = new HubConnectionBuilder()
-            .WithUrl($"{_factory.Server.BaseAddress}ws/chat?access_token={token}", opts =>
+            .WithUrl($"{_factory.Server.BaseAddress}hubs/chat?access_token={token}", opts =>
             {
                 opts.HttpMessageHandlerFactory = _ => _factory.Server.CreateHandler();
                 opts.Transports = Microsoft.AspNetCore.Http.Connections.HttpTransportType.LongPolling;
