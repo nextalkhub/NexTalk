@@ -12,13 +12,15 @@ public class DeleteGuildHandler
     private readonly RbacService _rbac;
     private readonly WsGatewayClient _wsGateway;
     private readonly VoiceServiceClient _voiceService;
+    private readonly ILogger<DeleteGuildHandler> _logger;
 
-    public DeleteGuildHandler(GuildDbContext db, RbacService rbac, WsGatewayClient wsGateway, VoiceServiceClient voiceService)
+    public DeleteGuildHandler(GuildDbContext db, RbacService rbac, WsGatewayClient wsGateway, VoiceServiceClient voiceService, ILogger<DeleteGuildHandler> logger)
     {
         _db = db;
         _rbac = rbac;
         _wsGateway = wsGateway;
         _voiceService = voiceService;
+        _logger = logger;
     }
 
     public async Task HandleAsync(DeleteGuildCommand cmd, CancellationToken ct = default)
@@ -29,7 +31,6 @@ public class DeleteGuildHandler
         if (guild.OwnerId != cmd.CallerId)
             throw new ForbiddenException("Only the Owner can delete the guild.");
 
-        // Отключить всех из голосовых каналов
         var voiceChannels = await _db.Channels
             .Where(c => c.GuildId == cmd.GuildId && c.Type == ChannelType.Voice)
             .ToListAsync(ct);
@@ -40,10 +41,9 @@ public class DeleteGuildHandler
             {
                 await _voiceService.DisconnectAllFromChannelAsync(channel.Id, ct);
             }
-            catch { /* best-effort */ }
+            catch (Exception ex) { _logger.LogWarning(ex, "Failed to disconnect voice channel={ChannelId} during guild delete", channel.Id); }
         }
 
-        // Удалить гильдию и все связанные данные
         _db.Members.RemoveRange(_db.Members.Where(m => m.GuildId == cmd.GuildId));
         _db.Channels.RemoveRange(_db.Channels.Where(c => c.GuildId == cmd.GuildId));
         _db.Invites.RemoveRange(_db.Invites.Where(i => i.GuildId == cmd.GuildId));
@@ -52,11 +52,13 @@ public class DeleteGuildHandler
 
         await _db.SaveChangesAsync(ct);
 
-        // Broadcast об удалении гильдии
+        _logger.LogInformation("Guild deleted: id={GuildId} name={GuildName} caller={CallerId}",
+            cmd.GuildId, guild.Name, cmd.CallerId);
+
         try
         {
             await _wsGateway.BroadcastToGuildAsync(cmd.GuildId, "guild.deleted", new { GuildId = cmd.GuildId }, ct);
         }
-        catch { /* best-effort */ }
+        catch (Exception ex) { _logger.LogWarning(ex, "Failed to broadcast guild.deleted: id={GuildId}", cmd.GuildId); }
     }
 }

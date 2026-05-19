@@ -79,7 +79,11 @@ public sealed class ChatHub : Hub
             }
         }
 
-        _logger.LogInformation("User {UserId} disconnected ({ConnectionId})", userId, Context.ConnectionId);
+        if (exception is not null)
+            _logger.LogWarning(exception, "User {UserId} disconnected with error ({ConnectionId})", userId, Context.ConnectionId);
+        else
+            _logger.LogInformation("User {UserId} disconnected ({ConnectionId})", userId, Context.ConnectionId);
+
         await base.OnDisconnectedAsync(exception);
     }
 

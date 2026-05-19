@@ -12,13 +12,15 @@ public class DeleteChannelHandler
     private readonly RbacService _rbac;
     private readonly WsGatewayClient _wsGateway;
     private readonly VoiceServiceClient _voiceService;
+    private readonly ILogger<DeleteChannelHandler> _logger;
 
-    public DeleteChannelHandler(GuildDbContext db, RbacService rbac, WsGatewayClient wsGateway, VoiceServiceClient voiceService)
+    public DeleteChannelHandler(GuildDbContext db, RbacService rbac, WsGatewayClient wsGateway, VoiceServiceClient voiceService, ILogger<DeleteChannelHandler> logger)
     {
         _db = db;
         _rbac = rbac;
         _wsGateway = wsGateway;
         _voiceService = voiceService;
+        _logger = logger;
     }
 
     public async Task HandleAsync(DeleteChannelCommand cmd, CancellationToken ct = default)
@@ -31,17 +33,20 @@ public class DeleteChannelHandler
         if (channel.Type == ChannelType.Voice)
         {
             try { await _voiceService.DisconnectAllFromChannelAsync(cmd.ChannelId, ct); }
-            catch { /* best-effort */ }
+            catch (Exception ex) { _logger.LogWarning(ex, "Failed to disconnect voice channel={ChannelId} during delete", cmd.ChannelId); }
         }
 
         _db.Channels.Remove(channel);
         await _db.SaveChangesAsync(ct);
+
+        _logger.LogInformation("Channel deleted: id={ChannelId} name={ChannelName} guild={GuildId} caller={CallerId}",
+            cmd.ChannelId, channel.Name, cmd.GuildId, cmd.CallerId);
 
         try
         {
             await _wsGateway.BroadcastToGuildAsync(cmd.GuildId, "channel.deleted",
                 new { ChannelId = cmd.ChannelId, cmd.GuildId }, ct);
         }
-        catch { /* best-effort */ }
+        catch (Exception ex) { _logger.LogWarning(ex, "Failed to broadcast channel.deleted: id={ChannelId}", cmd.ChannelId); }
     }
 }

@@ -1,6 +1,7 @@
 using System.Net;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.SignalR;
@@ -230,6 +231,15 @@ if (app.Environment.IsDevelopment())
 app.UseForwardedHeaders();
 app.UseAuthentication();
 app.UseAuthorization();
+
+app.UseExceptionHandler(exApp => exApp.Run(async ctx =>
+{
+    var ex = ctx.Features.Get<IExceptionHandlerFeature>()?.Error;
+    ctx.RequestServices.GetRequiredService<ILogger<Program>>()
+        .LogError(ex, "Unhandled exception: {Path}", ctx.Request.Path);
+    ctx.Response.StatusCode = StatusCodes.Status500InternalServerError;
+    await ctx.Response.WriteAsJsonAsync(new { error = "An unexpected error occurred." });
+}));
 
 app.UseMiddleware<DeadlineMiddleware>();
 

@@ -283,6 +283,10 @@ app.UseExceptionHandler(exApp => exApp.Run(async ctx =>
         ex is BadRequestException ? (StatusCodes.Status400BadRequest, ex.Message) :
         (StatusCodes.Status500InternalServerError, "An unexpected error occurred.");
 
+    if (status == StatusCodes.Status500InternalServerError)
+        ctx.RequestServices.GetRequiredService<ILogger<Program>>()
+            .LogError(ex, "Unhandled exception: {Path}", ctx.Request.Path);
+
     ctx.Response.StatusCode = status;
     await ctx.Response.WriteAsJsonAsync(new { error = message });
 }));

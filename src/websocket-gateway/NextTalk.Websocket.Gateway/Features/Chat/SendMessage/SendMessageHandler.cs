@@ -26,7 +26,7 @@ public sealed class SendMessageHandler
         if (access is null)
         {
             _logger.LogWarning(
-                "Channel not found: channel={ChannelId} correlationId={CorrelationId}",
+                "Channel not found: channel={ChannelId} correlation={CorrelationId}",
                 command.ChannelId, command.CorrelationId);
             return new SendMessageResult(false, null, "Channel not found");
         }
@@ -34,7 +34,7 @@ public sealed class SendMessageHandler
         if (!access.HasAccess)
         {
             _logger.LogWarning(
-                "Access denied: user={UserId} channel={ChannelId} correlationId={CorrelationId}",
+                "Access denied: user={UserId} channel={ChannelId} correlation={CorrelationId}",
                 command.UserId, command.ChannelId, command.CorrelationId);
             return new SendMessageResult(false, null, "Access denied");
         }
@@ -48,13 +48,13 @@ public sealed class SendMessageHandler
         if (!success)
         {
             _logger.LogError(
-                "Failed to create message: user={UserId} channel={ChannelId} correlationId={CorrelationId} error={Error}",
+                "Failed to create message: user={UserId} channel={ChannelId} correlation={CorrelationId} error={Error}",
                 command.UserId, command.ChannelId, command.CorrelationId, error);
             return new SendMessageResult(false, null, error ?? "Failed to save message");
         }
 
         _logger.LogInformation(
-            "Message created: id={MessageId} channel={ChannelId} user={UserId} correlationId={CorrelationId}",
+            "Message created: id={MessageId} channel={ChannelId} user={UserId} correlation={CorrelationId}",
             message?.Id, command.ChannelId, command.UserId, command.CorrelationId);
 
         return new SendMessageResult(true, message, null);

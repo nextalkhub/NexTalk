@@ -12,13 +12,15 @@ public class BanMemberHandler
     private readonly RbacService _rbac;
     private readonly WsGatewayClient _wsGateway;
     private readonly VoiceServiceClient _voiceService;
+    private readonly ILogger<BanMemberHandler> _logger;
 
-    public BanMemberHandler(GuildDbContext db, RbacService rbac, WsGatewayClient wsGateway, VoiceServiceClient voiceService)
+    public BanMemberHandler(GuildDbContext db, RbacService rbac, WsGatewayClient wsGateway, VoiceServiceClient voiceService, ILogger<BanMemberHandler> logger)
     {
         _db = db;
         _rbac = rbac;
         _wsGateway = wsGateway;
         _voiceService = voiceService;
+        _logger = logger;
     }
 
     public async Task HandleAsync(BanMemberCommand cmd, CancellationToken ct = default)
@@ -45,11 +47,19 @@ public class BanMemberHandler
         _db.Members.Remove(target);
         await _db.SaveChangesAsync(ct);
 
+        _logger.LogInformation("Member banned: target={TargetUserId} guild={GuildId} caller={CallerId}",
+            cmd.TargetUserId, cmd.GuildId, cmd.CallerId);
+
         // Все вызовы - best-effort: сбой не откатывает бан.
         // Каждый вызов независим: сбой WS Gateway не должен блокировать отключение от голоса.
         try { await _wsGateway.BroadcastToGuildAsync(cmd.GuildId, "member.banned",
-            new { UserId = cmd.TargetUserId, cmd.GuildId }, ct); } catch { }
-        try { await _wsGateway.DisconnectUserFromGuildAsync(cmd.GuildId, cmd.TargetUserId, ct); } catch { }
-        try { await _voiceService.DisconnectUserAsync(cmd.TargetUserId, ct); } catch { }
+            new { UserId = cmd.TargetUserId, cmd.GuildId }, ct); }
+        catch (Exception ex) { _logger.LogWarning(ex, "Failed to broadcast member.banned: target={TargetUserId}", cmd.TargetUserId); }
+
+        try { await _wsGateway.DisconnectUserFromGuildAsync(cmd.GuildId, cmd.TargetUserId, ct); }
+        catch (Exception ex) { _logger.LogWarning(ex, "Failed to disconnect user from WS: target={TargetUserId}", cmd.TargetUserId); }
+
+        try { await _voiceService.DisconnectUserAsync(cmd.TargetUserId, ct); }
+        catch (Exception ex) { _logger.LogWarning(ex, "Failed to disconnect user from voice: target={TargetUserId}", cmd.TargetUserId); }
     }
 }
