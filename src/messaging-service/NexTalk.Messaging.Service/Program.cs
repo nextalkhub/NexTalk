@@ -114,6 +114,11 @@ builder.Services.AddAuthorizationBuilder()
         .RequireAuthenticatedUser()
         .Build());
 
+builder.Services.AddMemoryCache();
+builder.Services.AddSingleton<NexTalk.Messaging.Service.Shared.ZitadelUserInfoService>();
+builder.Services.AddTransient<Microsoft.AspNetCore.Authentication.IClaimsTransformation,
+    NexTalk.Messaging.Service.Shared.ZitadelClaimsEnricher>();
+
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(c =>
 {
