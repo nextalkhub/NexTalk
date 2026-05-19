@@ -16,6 +16,7 @@ export const ChannelSidebar: React.FC = () => {
     const { serverId, channelId } = useParams()
 
     const channels = useAppSelector(state => state.channels.channels)
+    const channelParticipants = useAppSelector(state => state.voice.channelParticipants)
 
     const [isModalOpen, setIsModalOpen] = useState(false)
 
@@ -82,16 +83,22 @@ export const ChannelSidebar: React.FC = () => {
                 <div className={styles.section}>
                     <div className={styles.sectionTitle}>Голосовые каналы</div>
 
-                    {voiceChannels.map(channel => (
-                        <div
-                            key={channel.id}
-                            onClick={() => handleChannelClick(channel)}
-                            className={`${styles.channel} ${channelId === channel.id ? styles.active : ''}`}
-                        >
-                            <Icon name="voice" size={16} />
-                            <span>{channel.name}</span>
-                        </div>
-                    ))}
+                    {voiceChannels.map(channel => {
+                        const count = (channelParticipants[channel.id] ?? []).length
+                        return (
+                            <div
+                                key={channel.id}
+                                onClick={() => handleChannelClick(channel)}
+                                className={`${styles.channel} ${channelId === channel.id ? styles.active : ''}`}
+                            >
+                                <Icon name="voice" size={16} />
+                                <span>{channel.name}</span>
+                                {count > 0 && (
+                                    <span className={styles.participantCount}>{count}</span>
+                                )}
+                            </div>
+                        )
+                    })}
                 </div>
             </div>
 

@@ -96,6 +96,7 @@ export interface VoiceParticipant {
     username: string
     isMuted: boolean
     isDeafened: boolean
+    isSpeaking: boolean
 }
 
 export interface VoiceRoomInfo {

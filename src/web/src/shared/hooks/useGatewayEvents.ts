@@ -2,6 +2,7 @@ import { useEffect } from 'react'
 import { useAppDispatch } from '../../store'
 import {messageReceived} from "../slices/chatSlice.ts";
 import {useSignalR} from "./useSignalR.ts";
+import { voiceParticipantJoined, voiceParticipantLeft } from '../slices/voiceSlice'
 
 interface MessageCreatedEvent {
     type: 'message.created'
@@ -18,16 +19,16 @@ interface MessageCreatedEvent {
 interface VoiceJoinedEvent {
     type: 'voice.joined'
     payload: {
-        channelId: string
-        userId: string
+        ChannelId: string
+        UserId: string
     }
 }
 
 interface VoiceLeftEvent {
     type: 'voice.left'
     payload: {
-        channelId: string
-        userId: string
+        ChannelId: string
+        UserId: string
     }
 }
 
@@ -68,11 +69,17 @@ export const useGatewayEvents = () => {
                     break
 
                 case 'voice.joined':
-                    console.log('voice joined')
+                    dispatch(voiceParticipantJoined({
+                        channelId: event.payload.ChannelId,
+                        userId: event.payload.UserId,
+                    }))
                     break
 
                 case 'voice.left':
-                    console.log('voice left')
+                    dispatch(voiceParticipantLeft({
+                        channelId: event.payload.ChannelId,
+                        userId: event.payload.UserId,
+                    }))
                     break
 
                 case 'presence.online':
