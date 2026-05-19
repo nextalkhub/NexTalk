@@ -91,7 +91,7 @@ resolve_oidc_app() {
         "{\"name\":\"${app_name}\",\
 \"redirectUris\":${redirect_uris_json},\
 \"responseTypes\":[\"OIDC_RESPONSE_TYPE_CODE\"],\
-\"grantTypes\":[\"OIDC_GRANT_TYPE_AUTHORIZATION_CODE\"],\
+\"grantTypes\":[\"OIDC_GRANT_TYPE_AUTHORIZATION_CODE\",\"OIDC_GRANT_TYPE_REFRESH_TOKEN\"],\
 \"appType\":\"OIDC_APP_TYPE_USER_AGENT\",\
 \"authMethodType\":\"OIDC_AUTH_METHOD_TYPE_NONE\",\
 \"postLogoutRedirectUris\":${post_logout_uris_json},\

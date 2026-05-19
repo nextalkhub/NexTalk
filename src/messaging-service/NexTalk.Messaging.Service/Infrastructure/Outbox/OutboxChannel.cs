@@ -5,7 +5,7 @@ namespace NexTalk.Messaging.Service.Infrastructure.Outbox;
 
 /// <summary>
 /// Внутрипроцессный ограниченный канал между OutboxWorker (продюсер) и BroadcastConsumer (консюмер).
-/// Bounded(100): если консюмер отстаёт, воркер блокируется вместо бесконтрольного накопления.
+/// Bounded(100): если консюмер отстает, воркер блокируется вместо бесконтрольного накопления.
 /// </summary>
 public sealed class OutboxChannel
 {

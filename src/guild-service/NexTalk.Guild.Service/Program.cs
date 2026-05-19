@@ -152,9 +152,9 @@ builder.Services
         o.MetadataAddress = zitadelMetadata;
         o.RequireHttpsMetadata = false;
         // Discovery doc возвращает jwks_uri с внешним hostname (http://localhost:8080/...).
-        // Изнутри Docker-контейнера localhost — это сам контейнер, а не nginx → Connection refused.
+        // Изнутри Docker-контейнера localhost - это сам контейнер, а не nginx → Connection refused.
         // Handler перенаправляет все backchannel-запросы на внутренний zitadel-api
-        // и проставляет Host: localhost:8080, чтобы Zitadel нашёл нужный инстанс.
+        // и проставляет Host: localhost:8080, чтобы Zitadel нашел нужный инстанс.
         o.BackchannelHttpHandler = new ZitadelBackchannelHandler(
             externalBase: zitadelAuthority,
             internalBase: new Uri(zitadelMetadata).GetLeftPart(UriPartial.Authority));
@@ -177,6 +177,12 @@ builder.Services.AddAuthorizationBuilder()
         .RequireAuthenticatedUser()
         .Build());
 
+builder.Services.AddMemoryCache();
+builder.Services.AddHttpContextAccessor();
+builder.Services.AddSingleton<NexTalk.Guild.Service.Shared.ZitadelUserInfoService>();
+builder.Services.AddTransient<Microsoft.AspNetCore.Authentication.IClaimsTransformation,
+    NexTalk.Guild.Service.Shared.ZitadelClaimsEnricher>();
+
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(c =>
 {
@@ -184,12 +190,14 @@ builder.Services.AddSwaggerGen(c =>
     {
         Title = "Guild Service",
         Version = "v1",
-        Description = "Управление серверами (гильдиями), каналами, участниками и приглашениями."
+        Description = "Управление серверами (гильдиями), каналами, участниками и приглашениями.\n\n" +
+                      "**Формат ошибок:** все 4xx/5xx возвращают `{ \"error\": \"сообщение\" }`."
     });
     c.AddServer(new OpenApiServer { Url = "/api", Description = "Через Nginx" });
     c.AddServer(new OpenApiServer { Url = "/",    Description = "Прямой доступ к сервису" });
     c.CustomSchemaIds(type => type.FullName?.Replace("+", ".") ?? type.Name);
     c.DocumentFilter<ExcludeNonPublicEndpointsFilter>();
+    c.OperationFilter<ParameterDocFilter>();
 
     var xmlPath = Path.Combine(AppContext.BaseDirectory, "NexTalk.Guild.Service.xml");
     if (File.Exists(xmlPath))
@@ -378,6 +386,27 @@ internal sealed class ExcludeNonPublicEndpointsFilter : IDocumentFilter
 
         foreach (var path in toRemove)
             swaggerDoc.Paths.Remove(path);
+    }
+}
+
+/// <summary>Описания параметров эндпоинта для Swagger.</summary>
+internal sealed record ParameterDoc(params (string Name, string Description)[] Params);
+
+internal sealed class ParameterDocFilter : IOperationFilter
+{
+    public void Apply(OpenApiOperation operation, OperationFilterContext context)
+    {
+        var docs = context.ApiDescription.ActionDescriptor.EndpointMetadata
+            .OfType<ParameterDoc>()
+            .SelectMany(d => d.Params);
+
+        foreach (var (name, desc) in docs)
+        {
+            var p = operation.Parameters?.FirstOrDefault(
+                x => string.Equals(x.Name, name, StringComparison.OrdinalIgnoreCase));
+            if (p is not null)
+                p.Description = desc;
+        }
     }
 }
 

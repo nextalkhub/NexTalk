@@ -1,37 +1,67 @@
-import React, { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import React, {useEffect} from 'react'
+import {login, selectIsLoading, selectAuthError, selectIsAuthenticated, register} from '../../../shared/slices/authSlice.ts'
 import { GradientBackground } from '../../../shared/components/GradientBackground/GradientBackground'
 import { AuthCard } from '../components/AuthCard'
 import styles from './AuthPage.module.scss'
+import {useAppDispatch, useAppSelector} from "../../../store.ts";
+import {useNavigate} from "react-router-dom";
 
 export const AuthPage: React.FC = () => {
+    const dispatch = useAppDispatch()
+    const isLoading = useAppSelector(selectIsLoading)
+    const error = useAppSelector(selectAuthError)
     const navigate = useNavigate()
-    const [isLogin, setIsLogin] = useState(true)
+    const isAuthenticated = useAppSelector(selectIsAuthenticated)
 
-    const handleLogin = (email: string, password: string) => {
-        console.log('Login:', email, password)
-        // Здесь будет логика авторизации
-        navigate('/profile')
+    useEffect(() => {
+        if (isAuthenticated) {
+            navigate('/servers')
+        }
+    }, [isAuthenticated, navigate])
+
+
+    const handleLogin = async () => {
+        try {
+            await dispatch(login()).unwrap()
+
+            if (import.meta.env.VITE_USE_AUTH_MOCK === 'true') {
+                navigate('/servers')
+            }
+        } catch (e) {
+            console.error(e)
+        }
     }
 
-    const handleRegister = (username: string, email: string, password: string, confirmPassword: string) => {
-        console.log('Register:', username, email, password, confirmPassword)
-        // Здесь будет логика регистрации
-        navigate('/profile')
-    }
+    const handleRegister = async () => {
+        if (import.meta.env.VITE_USE_AUTH_MOCK === 'true') {
+            try {
+                await dispatch(register()).unwrap()
+                navigate('/servers')
+            } catch (e) {
+                console.error(e)
+            }
+            return
+        }
 
-    const toggleMode = () => {
-        setIsLogin(!isLogin)
+        // OIDC
+        const authUrl = new URL(import.meta.env.VITE_OIDC_AUTHORITY + '/oauth/v2/authorize')
+        authUrl.searchParams.set('client_id', import.meta.env.VITE_OIDC_CLIENT_ID)
+        authUrl.searchParams.set('redirect_uri', import.meta.env.VITE_OIDC_REDIRECT_URI)
+        authUrl.searchParams.set('response_type', 'code')
+        authUrl.searchParams.set('scope', 'openid profile email offline_access')
+        authUrl.searchParams.set('prompt', 'create')
+
+        window.location.href = authUrl.toString()
     }
 
     return (
         <GradientBackground>
             <div className={styles.container}>
                 <AuthCard
-                    isLogin={isLogin}
                     onLogin={handleLogin}
                     onRegister={handleRegister}
-                    onToggleMode={toggleMode}
+                    isLoading={isLoading}
+                    error={error || undefined}
                 />
             </div>
         </GradientBackground>

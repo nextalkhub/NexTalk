@@ -57,7 +57,7 @@
 .form {
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: 15px;
   margin-bottom: 24px;
 }
 
@@ -68,7 +68,6 @@
 .label {
   display: flex;
   align-items: center;
-  gap: 8px;
   font-size: 13px;
   font-weight: 500;
   color: $text-secondary;
@@ -81,10 +80,10 @@
 
 .input {
   width: 100%;
-  padding: 14px 16px;
+  padding: 10px 12px;
   background: $bg-secondary;
   border: 1px solid $border-color;
-  border-radius: 20px;
+  border-radius: 10px;
   font-size: 14px;
   color: $text-primary;
   transition: all 0.2s ease;
@@ -150,13 +149,47 @@
 .toggleBtn {
   background: none;
   border: none;
-  color: $accent-purple;
   font-size: 14px;
   cursor: pointer;
   transition: all 0.2s ease;
+  color: $text-secondary;
+
+  > span > span {
+    color: $accent-purple;
+  }
 
   &:hover {
-    color: $accent-pink;
     text-decoration: underline;
+  }
+}
+
+.checkboxField {
+  margin-top: 12px;
+}
+
+.checkboxLabel {
+  display: flex;
+  gap: 8px;
+  font-size: 12px;
+  color: #aaa;
+  cursor: pointer;
+  align-items: flex-start;
+
+  input {
+    margin-top: 3px;
+  }
+
+  span {
+    text-align: justify;
+  }
+}
+
+.submitBtnDisabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+
+  &:hover {
+    transform: none;
+    filter: none;
   }
 }

@@ -1,5 +1,5 @@
 import {axiosInstance} from "../axiosInstance.ts";
-import {Channel, CreateChannelRequest} from "../../shared/types/requestTypes.ts";
+import {Channel, CreateChannelRequest} from "../../shared/types";
 
 export async function createChannel(
     guildId: string,

@@ -8,9 +8,7 @@ export interface VoiceParticipantProps {
     avatar: string
     isSpeaking: boolean
     isMuted: boolean
-    isDeafened?: boolean
     isCurrentUser?: boolean
-    volume?: number
     onMute?: (userId: string) => void
     onKick?: (userId: string) => void
 }
@@ -21,9 +19,7 @@ export const VoiceParticipant: React.FC<VoiceParticipantProps> = ({
                                                                       avatar,
                                                                       isSpeaking,
                                                                       isMuted,
-                                                                      isDeafened: _isDeafened = false,
                                                                       isCurrentUser = false,
-                                                                      volume = 50,
                                                                       onMute,
                                                                       onKick,
                                                                   }) => {
@@ -63,16 +59,6 @@ export const VoiceParticipant: React.FC<VoiceParticipantProps> = ({
                         <span className={styles.idle}>В сети</span>
                     )}
                 </div>
-
-                {isSpeaking && !isMuted && (
-                    <div className={styles.volumeWave}>
-                        <div className={styles.waveBar} style={{ height: `${20 + volume / 5}%` }} />
-                        <div className={styles.waveBar} style={{ height: `${30 + volume / 4}%` }} />
-                        <div className={styles.waveBar} style={{ height: `${40 + volume / 3}%` }} />
-                        <div className={styles.waveBar} style={{ height: `${30 + volume / 4}%` }} />
-                        <div className={styles.waveBar} style={{ height: `${20 + volume / 5}%` }} />
-                    </div>
-                )}
             </div>
 
             {showActions && !isCurrentUser && (

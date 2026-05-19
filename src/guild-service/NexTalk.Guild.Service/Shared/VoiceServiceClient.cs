@@ -11,7 +11,7 @@ public class VoiceServiceClient
 
     /// <summary>
     /// Принудительно отключает пользователя от голосового канала (при бане/кике).
-    /// Идемпотентен: если пользователь не в голосе — Voice Service вернёт 204 без ошибки.
+    /// Идемпотентен: если пользователь не в голосе - Voice Service вернет 204 без ошибки.
     /// </summary>
     public virtual Task DisconnectUserAsync(string userId, CancellationToken ct = default) =>
         _http.DeleteAsync($"/internal/voice/{userId}/disconnect", ct);

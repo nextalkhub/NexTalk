@@ -49,7 +49,7 @@ builder.Services
         // Discovery doc возвращает jwks_uri с внешним hostname (http://localhost:8080/...).
         // Изнутри Docker-контейнера localhost - это сам контейнер, а не nginx, поэтому Connection refused.
         // Handler перенаправляет все backchannel-запросы на внутренний zitadel-api
-        // и проставляет Host: localhost:8080, чтобы Zitadel нашёл нужный инстанс.
+        // и проставляет Host: localhost:8080, чтобы Zitadel нашел нужный инстанс.
         o.BackchannelHttpHandler = new ZitadelBackchannelHandler(
             externalBase: zitadelAuthority,
             internalBase: new Uri(zitadelMetadata).GetLeftPart(UriPartial.Authority));
@@ -80,6 +80,12 @@ builder.Services.AddAuthorizationBuilder()
     .SetFallbackPolicy(new AuthorizationPolicyBuilder()
         .RequireAuthenticatedUser()
         .Build());
+
+builder.Services.AddMemoryCache();
+builder.Services.AddHttpContextAccessor();
+builder.Services.AddSingleton<NextTalk.Websocket.Gateway.Shared.ZitadelUserInfoService>();
+builder.Services.AddTransient<Microsoft.AspNetCore.Authentication.IClaimsTransformation,
+    NextTalk.Websocket.Gateway.Shared.ZitadelClaimsEnricher>();
 
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(c =>

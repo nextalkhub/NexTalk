@@ -45,10 +45,10 @@ public sealed class JoinVoiceHandler
         if (!string.Equals(access.ChannelType, "voice", StringComparison.OrdinalIgnoreCase))
             throw new BadRequestException($"Channel {cmd.ChannelId} is not a voice channel.");
 
-        // 2. Создаем LiveKit-комнату, если ещё не существует.
+        // 2. Создаем LiveKit-комнату, если еще не существует.
         await _roomClient.EnsureRoomAsync(cmd.ChannelId, ct);
 
-        // 3. Регистрируем сессию (если был в другом канале — переносимся).
+        // 3. Регистрируем сессию (если был в другом канале - переносимся).
         _sessionStore.Join(cmd.UserId, cmd.ChannelId, access.GuildId);
 
         // 4. Генерируем токен для клиента.
@@ -85,4 +85,9 @@ public sealed class JoinVoiceHandler
     }
 }
 
+/// <summary>Данные для подключения к голосовому каналу.</summary>
+/// <param name="Token">JWT-токен LiveKit для подключения клиента к SFU.</param>
+/// <param name="LiveKitUrl">WebSocket URL LiveKit-сервера (wss://...).</param>
+/// <param name="ChannelId">Идентификатор голосового канала.</param>
+/// <param name="GuildId">Идентификатор гильдии, которой принадлежит канал.</param>
 public record JoinVoiceResult(string Token, string LiveKitUrl, Guid ChannelId, Guid GuildId);

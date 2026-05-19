@@ -16,5 +16,17 @@ public static class KickMemberEndpoint
             await handler.HandleAsync(
                 new KickMemberCommand(guildId, targetUserId, user.GetUserId()), ct);
             return Results.NoContent();
-        });
+        })
+        .WithTags("Members")
+        .WithSummary("Исключить участника")
+        .WithDescription(
+            "Удаляет пользователя из гильдии. Требует роль Admin или Owner. " +
+            "Нельзя исключить Owner гильдии.")
+        .Produces(204)
+        .Produces(401)
+        .Produces(403)
+        .Produces(404)
+        .WithMetadata(new ParameterDoc(
+            ("guildId", "Идентификатор гильдии."),
+            ("targetUserId", "Zitadel sub исключаемого пользователя.")));
 }

@@ -12,7 +12,7 @@ namespace NextTalk.Websocket.Gateway.Tests.Features;
 
 /// <summary>
 /// E2E-фрагмент broadcast-флоу: убеждаемся, что POST /internal/broadcast/guild/{guildId}
-/// доходит до SignalR-клиента, подключённого к ChatHub и входящего в группу гильдии.
+/// доходит до SignalR-клиента, подключенного к ChatHub и входящего в группу гильдии.
 ///
 /// Полный путь SendMessage → Outbox → Broadcast → ReceiveMessage опирается на 4 сервиса
 /// и БД; здесь мы покрываем последнее звено — путь от broadcast-эндпоинта WS Gateway

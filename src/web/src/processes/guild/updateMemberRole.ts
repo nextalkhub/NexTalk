@@ -1,5 +1,5 @@
 import {axiosInstance} from "../axiosInstance.ts";
-import {Member, UpdateMemberRoleRequest} from "../../shared/types/requestTypes.ts";
+import {Member, UpdateMemberRoleRequest} from "../../shared/types";
 
 export async function updateMemberRole(
     guildId: string,

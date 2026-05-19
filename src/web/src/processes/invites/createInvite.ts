@@ -1,5 +1,5 @@
 import {axiosInstance} from "../axiosInstance.ts";
-import {CreateInviteRequest, Invite} from "../../shared/types/requestTypes.ts";
+import {CreateInviteRequest, Invite} from "../../shared/types";
 
 export async function createInvite(
     guildId: string,

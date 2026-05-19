@@ -42,8 +42,8 @@ public class GuildServiceClient(HttpClient http, IHttpContextAccessor httpContex
             : new ChannelAccessResult(body.HasAccess, body.GuildId);
     }
 
-    // Проверка Admin/Owner через CheckChannelAccess (Flow 14 — удаление чужого сообщения).
-    // guild-service возвращает Role в теле — проверяем здесь.
+    // Проверка Admin/Owner через CheckChannelAccess (Flow 14 - удаление чужого сообщения).
+    // guild-service возвращает Role в теле - проверяем здесь.
     public virtual async Task RequireAdminOrOwnerAsync(Guid channelId, string userId, CancellationToken ct = default)
     {
         var req = new HttpRequestMessage(HttpMethod.Get,

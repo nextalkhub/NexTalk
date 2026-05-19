@@ -1,21 +1,31 @@
 import React, { useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { useChannelStore, Channel } from '../stores/channelStore'
 import { CreateChannelModal } from './CreateChannelModal'
 import { Icon } from '../../../shared/components/Icon/Icon'
 import styles from './ChannelSidebar.module.scss'
+import { useAppDispatch, useAppSelector } from '../../../store'
+import {
+    fetchChannels,
+    setCurrentChannel
+} from '../../../shared/slices/channelSlice'
+import { Channel } from "../../../shared/types"
 
 export const ChannelSidebar: React.FC = () => {
     const navigate = useNavigate()
+    const dispatch = useAppDispatch()
     const { serverId, channelId } = useParams()
-    const { channels, fetchChannels, setCurrentChannel } = useChannelStore()
+
+    const channels = useAppSelector(state => state.channels.channels)
+    const channelParticipants = useAppSelector(state => state.voice.channelParticipants)
+
     const [isModalOpen, setIsModalOpen] = useState(false)
 
-    const textChannels = channels.filter((c) => c.type === 'text')
-    const voiceChannels = channels.filter((c) => c.type === 'voice')
+    const textChannels = channels.filter(c => c.type === 'text')
+    const voiceChannels = channels.filter(c => c.type === 'voice')
 
     const handleChannelClick = (channel: Channel) => {
-        setCurrentChannel(channel.id)
+        dispatch(setCurrentChannel(channel.id))
+
         if (channel.type === 'text') {
             navigate(`/servers/${serverId}/channels/${channel.id}`)
         } else {
@@ -25,22 +35,39 @@ export const ChannelSidebar: React.FC = () => {
 
     const handleModalSuccess = () => {
         if (serverId) {
-            fetchChannels(serverId)
+            dispatch(fetchChannels(serverId))
         }
+    }
+
+    const handleBackToServers = () => {
+        navigate('/servers')
     }
 
     return (
         <>
             <div className={styles.sidebar}>
+                <div className={styles.backButton} onClick={handleBackToServers}>
+                    <Icon name="arrow-left" size={18} />
+                    <span>Все серверы</span>
+                </div>
+
                 <div className={styles.serverHeader}>
-                    <div className={styles.serverTitle}>
-                        Game Night
-                    </div>
+                    <span className={styles.serverTitle}>
+                        Каналы
+                    </span>
+                    <span
+                        className={styles.addChannel}
+                        onClick={() => setIsModalOpen(true)}
+                    >
+                        <Icon name="plus" size={14} />
+                        <span>Добавить канал</span>
+                    </span>
                 </div>
 
                 <div className={styles.section}>
                     <div className={styles.sectionTitle}>Текстовые каналы</div>
-                    {textChannels.map((channel) => (
+
+                    {textChannels.map(channel => (
                         <div
                             key={channel.id}
                             onClick={() => handleChannelClick(channel)}
@@ -50,27 +77,27 @@ export const ChannelSidebar: React.FC = () => {
                             <span>{channel.name}</span>
                         </div>
                     ))}
-                    <div
-                        className={styles.addChannel}
-                        onClick={() => setIsModalOpen(true)}
-                    >
-                        <Icon name="plus" size={14} />
-                        <span>Добавить канал</span>
-                    </div>
                 </div>
 
                 <div className={styles.section}>
                     <div className={styles.sectionTitle}>Голосовые каналы</div>
-                    {voiceChannels.map((channel) => (
-                        <div
-                            key={channel.id}
-                            onClick={() => handleChannelClick(channel)}
-                            className={`${styles.channel} ${channelId === channel.id ? styles.active : ''}`}
-                        >
-                            <Icon name="voice" size={16} />
-                            <span>{channel.name}</span>
-                        </div>
-                    ))}
+
+                    {voiceChannels.map(channel => {
+                        const count = (channelParticipants[channel.id] ?? []).length
+                        return (
+                            <div
+                                key={channel.id}
+                                onClick={() => handleChannelClick(channel)}
+                                className={`${styles.channel} ${channelId === channel.id ? styles.active : ''}`}
+                            >
+                                <Icon name="voice" size={16} />
+                                <span>{channel.name}</span>
+                                {count > 0 && (
+                                    <span className={styles.participantCount}>{count}</span>
+                                )}
+                            </div>
+                        )
+                    })}
                 </div>
             </div>
 

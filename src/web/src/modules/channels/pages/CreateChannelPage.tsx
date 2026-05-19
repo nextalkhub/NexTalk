@@ -1,27 +1,39 @@
 ﻿import React, { useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { useChannelStore } from '../stores/channelStore'
 import { Button } from '../../../shared/components/Button/Button'
 import { Input } from '../../../shared/components/Input/Input'
 import { GradientBackground } from '../../../shared/components/GradientBackground/GradientBackground'
 import styles from './CreateChannelPage.module.scss'
 import {Icon} from "../../../shared/components/Icon/Icon.tsx";
+import { createChannel } from '../../../shared/slices/channelSlice.ts'
+import { useAppDispatch } from '../../../store'
 
 export const CreateChannelPage: React.FC = () => {
   const navigate = useNavigate()
   const { serverId } = useParams()
-  const { createChannel } = useChannelStore()
   const [name, setName] = useState('')
   const [type, setType] = useState<'text' | 'voice'>('text')
   const [loading, setLoading] = useState(false)
 
+  const dispatch = useAppDispatch()
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!name.trim() || !serverId) return
+
     setLoading(true)
-    await createChannel(serverId, name.toLowerCase().replace(/\s/g, '-'), type)
+
+    const formattedName = name.toLowerCase().replace(/\s/g, '-')
+
+    await dispatch(createChannel({
+      serverId,
+      name: formattedName,
+      type
+    }))
+
     setLoading(false)
-    navigate(`/servers/${serverId}/channels/general`)
+
+    navigate(`/servers/${serverId}/channels/${formattedName}`)
   }
 
   return (
