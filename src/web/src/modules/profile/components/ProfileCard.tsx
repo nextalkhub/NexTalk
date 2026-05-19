@@ -20,7 +20,6 @@ interface ProfileCardProps {
 
 export const ProfileCard: React.FC<ProfileCardProps> = ({
                                                             user,
-                                                            onEdit,
                                                             onLogout,
                                                             onClose,
                                                             showActions = true,
@@ -63,12 +62,6 @@ export const ProfileCard: React.FC<ProfileCardProps> = ({
 
             {showActions && (
                 <div className={styles.actions}>
-                    {onEdit && (
-                        <button onClick={onEdit} className={styles.editBtn}>
-                            <Icon name="edit" size={16} />
-                            Редактировать
-                        </button>
-                    )}
                     {onLogout && (
                         <button onClick={onLogout} className={styles.logoutBtn}>
                             <Icon name="logout" size={16} />
