@@ -10,6 +10,6 @@ public record SendMessageCommand(
     Guid ChannelId,
     string Content,
     string IdempotencyKey,
-    Guid UserId,
+    string UserId,
     string AuthorName,
     string CorrelationId);

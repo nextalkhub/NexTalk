@@ -2,18 +2,25 @@ namespace NextTalk.Websocket.Gateway.Shared;
 
 /// <summary>
 /// Читает заголовок X-Deadline (UTC ISO 8601).
-/// Если дедлайн уже истёк — сразу возвращает 504.
-/// Иначе создаёт CancellationToken, привязанный к оставшемуся времени,
-/// и подменяет HttpContext.RequestAborted — все хендлеры получат его автоматически.
+/// Если дедлайн уже истек - сразу возвращает 504.
+/// Иначе создает CancellationToken, привязанный к оставшемуся времени,
+/// и подменяет HttpContext.RequestAborted - все хендлеры получат его автоматически.
 /// </summary>
-public sealed class DeadlineMiddleware(RequestDelegate next)
+public sealed class DeadlineMiddleware
 {
+    private readonly RequestDelegate _next;
+
+    public DeadlineMiddleware(RequestDelegate next)
+    {
+        _next = next;
+    }
+
     public async Task InvokeAsync(HttpContext ctx)
     {
         if (!ctx.Request.Headers.TryGetValue("X-Deadline", out var header) ||
             !DateTimeOffset.TryParse(header, out var deadline))
         {
-            await next(ctx);
+            await _next(ctx);
             return;
         }
 
@@ -24,9 +31,7 @@ public sealed class DeadlineMiddleware(RequestDelegate next)
             await ctx.Response.WriteAsJsonAsync(new { error = "Request timeout", retryAfter = 5 });
             return;
         }
-
-        // CancellationTokenSource принимает максимум ~49.7 дней; для сервис-сервис вызовов
-        // разумный потолок — 30 сек. Всё что больше практически означает "нет дедлайна".
+        
         var cappedRemaining = remaining < TimeSpan.FromSeconds(30) ? remaining : TimeSpan.FromSeconds(30);
         using var deadlineCts = new CancellationTokenSource(cappedRemaining);
         using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(ctx.RequestAborted, deadlineCts.Token);
@@ -34,7 +39,7 @@ public sealed class DeadlineMiddleware(RequestDelegate next)
 
         try
         {
-            await next(ctx);
+            await _next(ctx);
         }
         catch (OperationCanceledException) when (deadlineCts.IsCancellationRequested && !ctx.Response.HasStarted)
         {

@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.Extensions.Http.Resilience;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
@@ -38,15 +39,14 @@ var wsGatewayUrl = builder.Configuration["Services:WebSocketGateway"]
     ?? throw new InvalidOperationException("Services:WebSocketGateway is not configured");
 
 builder.Services.AddDbContext<MessagingDbContext>(opts =>
-    opts.UseNpgsql(pgConnectionString));
+    opts.UseNpgsql(pgConnectionString)
+        .UseSnakeCaseNamingConvention()
+        .ConfigureWarnings(w => w.Ignore(RelationalEventId.PendingModelChangesWarning)));
 
-// Outbox: in-process channel + background workers
 builder.Services.AddSingleton<OutboxChannel>();
 builder.Services.AddHostedService<OutboxWorker>();
 builder.Services.AddHostedService<BroadcastConsumer>();
 
-// WS Gateway client for Outbox broadcast — simple retry, no circuit breaker needed
-// (BroadcastConsumer retries at application level via OutboxWorker stale-threshold)
 builder.Services.AddHttpClient<WsGatewayClient>(c => c.BaseAddress = new Uri(wsGatewayUrl))
     .AddResilienceHandler("ws-gateway", pipeline =>
     {
@@ -62,7 +62,6 @@ builder.Services.AddHttpClient<WsGatewayClient>(c => c.BaseAddress = new Uri(wsG
 
 builder.Services.AddHttpContextAccessor();
 
-// HTTP client to Guild Service для проверки доступа к каналу (Flow 11)
 builder.Services.AddHttpClient<IGuildServiceClient, GuildServiceClient>(c =>
         c.BaseAddress = new Uri(builder.Configuration["Services:GuildService"]
             ?? throw new InvalidOperationException("Services:GuildService is not configured")))
@@ -77,7 +76,6 @@ builder.Services.AddScoped<CreateMessageHandler>();
 builder.Services.AddScoped<GetMessagesHandler>();
 builder.Services.AddScoped<DeleteMessageHandler>();
 
-// Аутентификация: проверка JWT access-токенов, выпущенных Zitadel.
 var zitadelAuthority = builder.Configuration["Zitadel:Authority"] ?? throw new InvalidOperationException("Zitadel:Authority is not configured");
 var zitadelMetadata = builder.Configuration["Zitadel:MetadataAddress"] ?? throw new InvalidOperationException("Zitadel:MetadataAddress is not configured");
 var zitadelProjectId = builder.Configuration["Zitadel:ProjectId"];
@@ -220,18 +218,6 @@ app.UseMiddleware<DeadlineMiddleware>();
 
 app.UseHttpMetrics();
 
-// Propagate JWT "sub" claim as X-User-Id so GetMessages endpoint can bind [FromHeader] Guid userId.
-app.Use(async (ctx, next) =>
-{
-    if (ctx.User.Identity?.IsAuthenticated == true)
-    {
-        var sub = ctx.User.FindFirst("sub")?.Value
-            ?? ctx.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
-        if (sub is not null) ctx.Request.Headers["X-User-Id"] = sub;
-    }
-    await next();
-});
-
 app.UseSerilogRequestLogging(opts =>
     opts.EnrichDiagnosticContext = (dc, ctx) =>
         dc.Set("CorrelationId",
@@ -239,10 +225,8 @@ app.UseSerilogRequestLogging(opts =>
             ?? ctx.Request.Headers["X-Correlation-Id"].FirstOrDefault()
             ?? ctx.TraceIdentifier));
 
-// Internal endpoint — вызывается WS Gateway, AllowAnonymous задан в эндпоинте
 CreateMessageEndpoint.Map(app);
 
-// Публичные эндпоинты — требуют валидного JWT
 var api = app.MapGroup("").RequireAuthorization();
 GetMessagesEndpoint.Map(api);
 DeleteMessageEndpoint.Map(api);
@@ -264,7 +248,7 @@ static void MigrateDatabase(WebApplication app)
 
     if (!db.Database.IsRelational())
         return;
-
+    
     if (db.Database.GetPendingMigrations().Any())
         db.Database.Migrate();
 }

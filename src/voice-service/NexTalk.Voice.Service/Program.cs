@@ -211,7 +211,7 @@ app.UseExceptionHandler(exApp => exApp.Run(async ctx =>
         NotFoundException e => (StatusCodes.Status404NotFound, e.Message),
         ForbiddenException e => (StatusCodes.Status403Forbidden, e.Message),
         BadRequestException e => (StatusCodes.Status400BadRequest, e.Message),
-        _ => (StatusCodes.Status500InternalServerError, "Произошла непредвиденная ошибка."),
+        _ => (StatusCodes.Status500InternalServerError, $"Произошла непредвиденная ошибка: {ex?.Message}"),
     };
     ctx.Response.StatusCode = status;
     await ctx.Response.WriteAsJsonAsync(new { error = message });

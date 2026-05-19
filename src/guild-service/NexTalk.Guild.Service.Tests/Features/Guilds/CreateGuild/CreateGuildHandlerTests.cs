@@ -17,8 +17,8 @@ public class CreateGuildHandlerTests
     public async Task Handle_CreatesGuild_WithCorrectData()
     {
         await using var db = CreateDb();
-        var ownerId = Guid.NewGuid();
-        var cmd = new CreateGuildCommand("My Server", "My Server", ownerId, "John", "john");
+        var ownerId = Guid.NewGuid().ToString();
+        var cmd = new CreateGuildCommand("My Server", ownerId, "John", "john");
 
         var guildId = await new CreateGuildHandler(db).HandleAsync(cmd);
 
@@ -32,8 +32,8 @@ public class CreateGuildHandlerTests
     public async Task Handle_CreatesOwnerMember()
     {
         await using var db = CreateDb();
-        var ownerId = Guid.NewGuid();
-        var cmd = new CreateGuildCommand("Test", "Test", ownerId, "Alice", "alice");
+        var ownerId = Guid.NewGuid().ToString();
+        var cmd = new CreateGuildCommand("Test", ownerId, "Alice", "alice");
 
         var guildId = await new CreateGuildHandler(db).HandleAsync(cmd);
 
@@ -48,20 +48,20 @@ public class CreateGuildHandlerTests
     public async Task Handle_CreatesGeneralTextChannel()
     {
         await using var db = CreateDb();
-        var cmd = new CreateGuildCommand("Test", "Test", Guid.NewGuid(), "User", "user");
+        var cmd = new CreateGuildCommand("Test", Guid.NewGuid().ToString(), "User", "user");
 
         var guildId = await new CreateGuildHandler(db).HandleAsync(cmd);
 
         var channel = await db.Channels.SingleAsync(c => c.GuildId == guildId);
         Assert.Equal("general", channel.Name);
-        Assert.Equal("text", channel.Type);
+        Assert.Equal(ChannelType.Text, channel.Type);
     }
 
     [Fact]
     public async Task Handle_CreatesGuildMemberAndChannel()
     {
         await using var db = CreateDb();
-        var cmd = new CreateGuildCommand("Test", "Test", Guid.NewGuid(), "User", "user");
+        var cmd = new CreateGuildCommand("Test", Guid.NewGuid().ToString(), "User", "user");
 
         var guildId = await new CreateGuildHandler(db).HandleAsync(cmd);
 
@@ -74,7 +74,7 @@ public class CreateGuildHandlerTests
     public async Task Handle_ReturnsNewGuildId()
     {
         await using var db = CreateDb();
-        var cmd = new CreateGuildCommand("Test", "Test", Guid.NewGuid(), "User", "user");
+        var cmd = new CreateGuildCommand("Test", Guid.NewGuid().ToString(), "User", "user");
 
         var guildId = await new CreateGuildHandler(db).HandleAsync(cmd);
 

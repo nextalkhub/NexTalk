@@ -3,8 +3,8 @@ namespace NexTalk.Guild.Service.Features.Internal.GetUserGuildsInternal;
 public static class GetUserGuildsInternalEndpoint
 {
     public static void Map(IEndpointRouteBuilder app) =>
-        app.MapGet("/internal/users/{userId:guid}/guilds", async (
-            Guid userId,
+        app.MapGet("/internal/users/{userId}/guilds", async (
+            string userId,
             GetUserGuildsInternalHandler handler,
             CancellationToken ct) =>
         {

@@ -22,7 +22,7 @@ public class GetChannelsHandlerTests
         await using var db = CreateDb();
         var guildId = Guid.NewGuid();
 
-        db.Guilds.Add(new GuildEntity { Id = guildId, Name = "Empty Guild", DisplayName = "Empty Guild", OwnerId = Guid.NewGuid() });
+        db.Guilds.Add(new GuildEntity { Id = guildId, Name = "Empty Guild", OwnerId = Guid.NewGuid().ToString() });
         await db.SaveChangesAsync();
 
         var handler = new GetChannelsHandler(db);
@@ -39,11 +39,11 @@ public class GetChannelsHandlerTests
         await using var db = CreateDb();
         var guildId = Guid.NewGuid();
 
-        db.Guilds.Add(new GuildEntity { Id = guildId, Name = "Test Guild", DisplayName = "Test Guild", OwnerId = Guid.NewGuid() });
+        db.Guilds.Add(new GuildEntity { Id = guildId, Name = "Test Guild", OwnerId = Guid.NewGuid().ToString() });
         db.Channels.AddRange(
-            new Channel { Id = Guid.NewGuid(), GuildId = guildId, Name = "general", Type = "text" },
-            new Channel { Id = Guid.NewGuid(), GuildId = guildId, Name = "voice", Type = "voice" },
-            new Channel { Id = Guid.NewGuid(), GuildId = guildId, Name = "announcements", Type = "text" }
+            new Channel { Id = Guid.NewGuid(), GuildId = guildId, Name = "general", Type = ChannelType.Text },
+            new Channel { Id = Guid.NewGuid(), GuildId = guildId, Name = "voice", Type = ChannelType.Voice },
+            new Channel { Id = Guid.NewGuid(), GuildId = guildId, Name = "announcements", Type = ChannelType.Text }
         );
         await db.SaveChangesAsync();
 
@@ -62,8 +62,8 @@ public class GetChannelsHandlerTests
         var guildId = Guid.NewGuid();
         var channelId = Guid.NewGuid();
 
-        db.Guilds.Add(new GuildEntity { Id = guildId, Name = "Test Guild", DisplayName = "Test Guild", OwnerId = Guid.NewGuid() });
-        db.Channels.Add(new Channel { Id = channelId, GuildId = guildId, Name = "test", Type = "text" });
+        db.Guilds.Add(new GuildEntity { Id = guildId, Name = "Test Guild", OwnerId = Guid.NewGuid().ToString() });
+        db.Channels.Add(new Channel { Id = channelId, GuildId = guildId, Name = "test", Type = ChannelType.Text });
         await db.SaveChangesAsync();
 
         var handler = new GetChannelsHandler(db);
@@ -87,13 +87,13 @@ public class GetChannelsHandlerTests
         var guildId2 = Guid.NewGuid();
 
         db.Guilds.AddRange(
-            new GuildEntity { Id = guildId1, Name = "Guild 1", DisplayName = "Guild 1", OwnerId = Guid.NewGuid() },
-            new GuildEntity { Id = guildId2, Name = "Guild 2", DisplayName = "Guild 2", OwnerId = Guid.NewGuid() }
+            new GuildEntity { Id = guildId1, Name = "Guild 1", OwnerId = Guid.NewGuid().ToString() },
+            new GuildEntity { Id = guildId2, Name = "Guild 2", OwnerId = Guid.NewGuid().ToString() }
         );
         db.Channels.AddRange(
-            new Channel { Id = Guid.NewGuid(), GuildId = guildId1, Name = "ch1", Type = "text" },
-            new Channel { Id = Guid.NewGuid(), GuildId = guildId1, Name = "ch2", Type = "text" },
-            new Channel { Id = Guid.NewGuid(), GuildId = guildId2, Name = "ch3", Type = "voice" }
+            new Channel { Id = Guid.NewGuid(), GuildId = guildId1, Name = "ch1", Type = ChannelType.Text },
+            new Channel { Id = Guid.NewGuid(), GuildId = guildId1, Name = "ch2", Type = ChannelType.Text },
+            new Channel { Id = Guid.NewGuid(), GuildId = guildId2, Name = "ch3", Type = ChannelType.Voice }
         );
         await db.SaveChangesAsync();
 
@@ -112,10 +112,10 @@ public class GetChannelsHandlerTests
         await using var db = CreateDb();
         var guildId = Guid.NewGuid();
 
-        db.Guilds.Add(new GuildEntity { Id = guildId, Name = "Test Guild", DisplayName = "Test Guild", OwnerId = Guid.NewGuid() });
+        db.Guilds.Add(new GuildEntity { Id = guildId, Name = "Test Guild", OwnerId = Guid.NewGuid().ToString() });
         db.Channels.AddRange(
-            new Channel { Id = Guid.NewGuid(), GuildId = guildId, Name = "text-ch", Type = "text" },
-            new Channel { Id = Guid.NewGuid(), GuildId = guildId, Name = "voice-ch", Type = "voice" }
+            new Channel { Id = Guid.NewGuid(), GuildId = guildId, Name = "text-ch", Type = ChannelType.Text },
+            new Channel { Id = Guid.NewGuid(), GuildId = guildId, Name = "voice-ch", Type = ChannelType.Voice }
         );
         await db.SaveChangesAsync();
 

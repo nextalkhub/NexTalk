@@ -5,7 +5,7 @@ public static class CheckChannelAccessEndpoint
     public static void Map(IEndpointRouteBuilder app) =>
         app.MapGet("/internal/channels/{channelId:guid}/access", async (
             Guid channelId,
-            Guid userId,
+            string userId,
             CheckChannelAccessHandler handler,
             CancellationToken ct) =>
         {

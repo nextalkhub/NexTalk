@@ -25,7 +25,7 @@ public class CreateChannelHandlerTests
         var wsGateway = new TestWsGatewayClient();
         var handler = new CreateChannelHandler(db, rbac, wsGateway);
 
-        var cmd = new CreateChannelCommand(Guid.NewGuid(), "test", "text", Guid.NewGuid());
+        var cmd = new CreateChannelCommand(Guid.NewGuid(), "test", ChannelType.Text, Guid.NewGuid().ToString());
 
         await Assert.ThrowsAsync<NotFoundException>(() => handler.HandleAsync(cmd));
     }
@@ -34,11 +34,10 @@ public class CreateChannelHandlerTests
     public async Task HandleAsync_OwnerCreatesChannel_Succeeds()
     {
         await using var db = CreateDb();
-        var ownerId = Guid.NewGuid();
+        var ownerId = Guid.NewGuid().ToString();
         var guildId = Guid.NewGuid();
 
-        // Setup: Create guild and owner member
-        var guild = new GuildEntity { Id = guildId, Name = "Test", DisplayName = "Test Guild", OwnerId = ownerId };
+        var guild = new GuildEntity { Id = guildId, Name = "Test", OwnerId = ownerId };
         var member = new Member { UserId = ownerId, GuildId = guildId, Role = MemberRole.Owner, DisplayName = "Owner", Username = "owner" };
         db.Guilds.Add(guild);
         db.Members.Add(member);
@@ -48,7 +47,7 @@ public class CreateChannelHandlerTests
         var wsGateway = new TestWsGatewayClient();
         var handler = new CreateChannelHandler(db, rbac, wsGateway);
 
-        var cmd = new CreateChannelCommand(guildId, "announcements", "text", ownerId);
+        var cmd = new CreateChannelCommand(guildId, "announcements", ChannelType.Text, ownerId);
         var result = await handler.HandleAsync(cmd);
 
         Assert.NotEqual(Guid.Empty, result.Id);
@@ -61,11 +60,11 @@ public class CreateChannelHandlerTests
     public async Task HandleAsync_AdminCreatesChannel_Succeeds()
     {
         await using var db = CreateDb();
-        var adminId = Guid.NewGuid();
-        var ownerId = Guid.NewGuid();
+        var adminId = Guid.NewGuid().ToString();
+        var ownerId = Guid.NewGuid().ToString();
         var guildId = Guid.NewGuid();
 
-        var guild = new GuildEntity { Id = guildId, Name = "Test", DisplayName = "Test Guild", OwnerId = ownerId };
+        var guild = new GuildEntity { Id = guildId, Name = "Test", OwnerId = ownerId };
         var ownerMember = new Member { UserId = ownerId, GuildId = guildId, Role = MemberRole.Owner, DisplayName = "Owner", Username = "owner" };
         var adminMember = new Member { UserId = adminId, GuildId = guildId, Role = MemberRole.Admin, DisplayName = "Admin", Username = "admin" };
         db.Guilds.Add(guild);
@@ -76,7 +75,7 @@ public class CreateChannelHandlerTests
         var wsGateway = new TestWsGatewayClient();
         var handler = new CreateChannelHandler(db, rbac, wsGateway);
 
-        var cmd = new CreateChannelCommand(guildId, "rules", "text", adminId);
+        var cmd = new CreateChannelCommand(guildId, "rules", ChannelType.Text, adminId);
         var result = await handler.HandleAsync(cmd);
 
         Assert.NotEqual(Guid.Empty, result.Id);
@@ -87,11 +86,11 @@ public class CreateChannelHandlerTests
     public async Task HandleAsync_MemberCreatesChannel_ThrowsForbidden()
     {
         await using var db = CreateDb();
-        var memberId = Guid.NewGuid();
-        var ownerId = Guid.NewGuid();
+        var memberId = Guid.NewGuid().ToString();
+        var ownerId = Guid.NewGuid().ToString();
         var guildId = Guid.NewGuid();
 
-        var guild = new GuildEntity { Id = guildId, Name = "Test", DisplayName = "Test Guild", OwnerId = ownerId };
+        var guild = new GuildEntity { Id = guildId, Name = "Test", OwnerId = ownerId };
         var ownerMember = new Member { UserId = ownerId, GuildId = guildId, Role = MemberRole.Owner, DisplayName = "Owner", Username = "owner" };
         var regularMember = new Member { UserId = memberId, GuildId = guildId, Role = MemberRole.Member, DisplayName = "User", Username = "user" };
         db.Guilds.Add(guild);
@@ -102,7 +101,7 @@ public class CreateChannelHandlerTests
         var wsGateway = new TestWsGatewayClient();
         var handler = new CreateChannelHandler(db, rbac, wsGateway);
 
-        var cmd = new CreateChannelCommand(guildId, "test", "text", memberId);
+        var cmd = new CreateChannelCommand(guildId, "test", ChannelType.Text, memberId);
 
         await Assert.ThrowsAsync<ForbiddenException>(() => handler.HandleAsync(cmd));
     }
@@ -111,10 +110,10 @@ public class CreateChannelHandlerTests
     public async Task HandleAsync_CreatesTextChannel()
     {
         await using var db = CreateDb();
-        var ownerId = Guid.NewGuid();
+        var ownerId = Guid.NewGuid().ToString();
         var guildId = Guid.NewGuid();
 
-        var guild = new GuildEntity { Id = guildId, Name = "Test", DisplayName = "Test Guild", OwnerId = ownerId };
+        var guild = new GuildEntity { Id = guildId, Name = "Test", OwnerId = ownerId };
         var member = new Member { UserId = ownerId, GuildId = guildId, Role = MemberRole.Owner, DisplayName = "Owner", Username = "owner" };
         db.Guilds.Add(guild);
         db.Members.Add(member);
@@ -124,21 +123,21 @@ public class CreateChannelHandlerTests
         var wsGateway = new TestWsGatewayClient();
         var handler = new CreateChannelHandler(db, rbac, wsGateway);
 
-        var cmd = new CreateChannelCommand(guildId, "chat", "text", ownerId);
+        var cmd = new CreateChannelCommand(guildId, "chat", ChannelType.Text, ownerId);
         await handler.HandleAsync(cmd);
 
         var channel = await db.Channels.SingleAsync(c => c.Name == "chat");
-        Assert.Equal("text", channel.Type);
+        Assert.Equal(ChannelType.Text, channel.Type);
     }
 
     [Fact]
     public async Task HandleAsync_CreatesVoiceChannel()
     {
         await using var db = CreateDb();
-        var ownerId = Guid.NewGuid();
+        var ownerId = Guid.NewGuid().ToString();
         var guildId = Guid.NewGuid();
 
-        var guild = new GuildEntity { Id = guildId, Name = "Test", DisplayName = "Test Guild", OwnerId = ownerId };
+        var guild = new GuildEntity { Id = guildId, Name = "Test", OwnerId = ownerId };
         var member = new Member { UserId = ownerId, GuildId = guildId, Role = MemberRole.Owner, DisplayName = "Owner", Username = "owner" };
         db.Guilds.Add(guild);
         db.Members.Add(member);
@@ -148,21 +147,21 @@ public class CreateChannelHandlerTests
         var wsGateway = new TestWsGatewayClient();
         var handler = new CreateChannelHandler(db, rbac, wsGateway);
 
-        var cmd = new CreateChannelCommand(guildId, "voice-room", "voice", ownerId);
+        var cmd = new CreateChannelCommand(guildId, "voice-room", ChannelType.Voice, ownerId);
         await handler.HandleAsync(cmd);
 
         var channel = await db.Channels.SingleAsync(c => c.Name == "voice-room");
-        Assert.Equal("voice", channel.Type);
+        Assert.Equal(ChannelType.Voice, channel.Type);
     }
 
     [Fact]
     public async Task HandleAsync_BroadcastFails_ContinuesSuccessfully()
     {
         await using var db = CreateDb();
-        var ownerId = Guid.NewGuid();
+        var ownerId = Guid.NewGuid().ToString();
         var guildId = Guid.NewGuid();
 
-        var guild = new GuildEntity { Id = guildId, Name = "Test", DisplayName = "Test Guild", OwnerId = ownerId };
+        var guild = new GuildEntity { Id = guildId, Name = "Test", OwnerId = ownerId };
         var member = new Member { UserId = ownerId, GuildId = guildId, Role = MemberRole.Owner, DisplayName = "Owner", Username = "owner" };
         db.Guilds.Add(guild);
         db.Members.Add(member);
@@ -172,7 +171,7 @@ public class CreateChannelHandlerTests
         var wsGateway = new TestWsGatewayClient { ShouldFail = true };
         var handler = new CreateChannelHandler(db, rbac, wsGateway);
 
-        var cmd = new CreateChannelCommand(guildId, "test", "text", ownerId);
+        var cmd = new CreateChannelCommand(guildId, "test", ChannelType.Text, ownerId);
         var result = await handler.HandleAsync(cmd);
 
         Assert.NotEqual(Guid.Empty, result.Id);

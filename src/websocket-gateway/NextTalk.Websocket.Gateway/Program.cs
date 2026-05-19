@@ -47,7 +47,7 @@ builder.Services
         o.MetadataAddress = zitadelMetadata;
         o.RequireHttpsMetadata = false;
         // Discovery doc возвращает jwks_uri с внешним hostname (http://localhost:8080/...).
-        // Изнутри Docker-контейнера localhost — это сам контейнер, а не nginx → Connection refused.
+        // Изнутри Docker-контейнера localhost - это сам контейнер, а не nginx, поэтому Connection refused.
         // Handler перенаправляет все backchannel-запросы на внутренний zitadel-api
         // и проставляет Host: localhost:8080, чтобы Zitadel нашёл нужный инстанс.
         o.BackchannelHttpHandler = new ZitadelBackchannelHandler(
@@ -68,10 +68,8 @@ builder.Services
         {
             OnMessageReceived = ctx =>
             {
-                // Nginx passes /ws/* through as-is to the service (no rewrite).
-                // Hub is mounted at /ws/chat, so we check for the /ws prefix here.
                 var token = ctx.Request.Query["access_token"];
-                if (!string.IsNullOrEmpty(token) && ctx.HttpContext.Request.Path.StartsWithSegments("/ws"))
+                if (!string.IsNullOrEmpty(token) && ctx.HttpContext.Request.Path.StartsWithSegments("/hubs"))
                     ctx.Token = token;
                 return Task.CompletedTask;
             }
@@ -145,7 +143,7 @@ builder.Services.AddSwaggerGen(c =>
     });
 });
 
-// SignalR — userId маппинг из JWT sub claim через SubClaimUserIdProvider
+// SignalR - userId маппинг из JWT sub claim через SubClaimUserIdProvider
 builder.Services.AddSignalR();
 builder.Services.AddSingleton<IUserIdProvider, SubClaimUserIdProvider>();
 
@@ -157,7 +155,7 @@ builder.Services.AddHostedService<PresenceMonitor>();
 // ChatHub is transient (one instance per connection), handler must be stateless
 builder.Services.AddTransient<SendMessageHandler>();
 
-// HTTP clients — resilience via Polly
+// HTTP clients - resilience via Polly
 var guildUrl = builder.Configuration["Services:GuildService"] ?? throw new InvalidOperationException("Services:GuildService is not configured");
 var messagingUrl = builder.Configuration["Services:MessagingService"] ?? throw new InvalidOperationException("Services:MessagingService is not configured");
 
@@ -246,13 +244,11 @@ app.MapHealthChecks("/readyz", new HealthCheckOptions
 }).AllowAnonymous();
 app.MapMetrics().AllowAnonymous();
 
-// Internal endpoints — accessible only within Docker/k8s network (nginx denies /internal externally)
+// Internal endpoints - accessible only within Docker/k8s network (nginx denies /internal externally)
 BroadcastEndpoints.Map(app);
 DisconnectEndpoints.Map(app);
 
-// Nginx passes /ws/* through unchanged (proxy_pass http://websocket-gateway/ws).
-// Hub must be mounted at the exact path the service receives.
-app.MapHub<ChatHub>("/ws/chat");
+app.MapHub<ChatHub>("/hubs/chat");
 
 app.Run();
 

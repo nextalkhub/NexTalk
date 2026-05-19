@@ -23,11 +23,11 @@ public class DeleteMessageEndpointTests : IAsyncLifetime
         _factory.Dispose();
     }
 
-    private async Task<(Message message, Guid authorId, Guid guildId, Guid channelId)> CreateMessageAsync()
+    private async Task<(Message message, string authorId, Guid guildId, Guid channelId)> CreateMessageAsync()
     {
         var guildId = Guid.NewGuid();
         var channelId = Guid.NewGuid();
-        var authorId = Guid.NewGuid();
+        var authorId = Guid.NewGuid().ToString();
 
         var message = new Message
         {
@@ -36,7 +36,7 @@ public class DeleteMessageEndpointTests : IAsyncLifetime
             ChannelId = channelId,
             AuthorId = authorId,
             Content = "Test message",
-            CreatedAt = DateTime.UtcNow
+            CreatedAt = DateTimeOffset.UtcNow
         };
 
         _db.Messages.Add(message);
@@ -72,7 +72,7 @@ public class DeleteMessageEndpointTests : IAsyncLifetime
     [Fact]
     public async Task Delete_WithNonExistentMessage_Returns404()
     {
-        var client = _factory.CreateAuthenticatedClient(Guid.NewGuid());
+        var client = _factory.CreateAuthenticatedClient(Guid.NewGuid().ToString());
         var nonExistentId = Guid.NewGuid();
 
         var response = await client.DeleteAsync($"/messages/{nonExistentId}");
@@ -84,7 +84,7 @@ public class DeleteMessageEndpointTests : IAsyncLifetime
     public async Task Delete_WithNonAuthorAdmin_Returns204()
     {
         var (message, _, _, _) = await CreateMessageAsync();
-        var client = _factory.CreateAuthenticatedClient(Guid.NewGuid());
+        var client = _factory.CreateAuthenticatedClient(Guid.NewGuid().ToString());
 
         var response = await client.DeleteAsync($"/messages/{message.Id}");
 
@@ -96,7 +96,7 @@ public class DeleteMessageEndpointTests : IAsyncLifetime
     {
         var (message, _, _, _) = await CreateMessageAsync();
         _factory.AdminCheckGranted = false;
-        var client = _factory.CreateAuthenticatedClient(Guid.NewGuid());
+        var client = _factory.CreateAuthenticatedClient(Guid.NewGuid().ToString());
 
         var response = await client.DeleteAsync($"/messages/{message.Id}");
 

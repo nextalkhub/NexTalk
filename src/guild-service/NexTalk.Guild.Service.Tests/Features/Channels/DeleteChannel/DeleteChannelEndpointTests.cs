@@ -14,7 +14,7 @@ public class DeleteChannelEndpointTests(GuildServiceFactory factory) : IClassFix
 {
     private HttpClient NewClient() => factory.CreateClient();
 
-    private static void Authorize(HttpClient client, Guid userId) =>
+    private static void Authorize(HttpClient client, string userId) =>
         client.DefaultRequestHeaders.Authorization =
             new AuthenticationHeaderValue("Bearer", TestJwt.Generate(userId, "Test User", "testuser"));
 
@@ -32,14 +32,14 @@ public class DeleteChannelEndpointTests(GuildServiceFactory factory) : IClassFix
     public async Task DeleteChannel_ChannelNotFound_Returns404()
     {
         var client = NewClient();
-        var ownerId = Guid.NewGuid();
+        var ownerId = Guid.NewGuid().ToString();
         var guildId = Guid.NewGuid();
         var channelId = Guid.NewGuid();
 
         using (var scope = factory.Services.CreateScope())
         {
             var db = scope.ServiceProvider.GetRequiredService<GuildDbContext>();
-            db.Guilds.Add(new GuildEntity { Id = guildId, Name = "Test", DisplayName = "Test Guild", OwnerId = ownerId });
+            db.Guilds.Add(new GuildEntity { Id = guildId, Name = "Test", OwnerId = ownerId });
             db.Members.Add(new Member { UserId = ownerId, GuildId = guildId, Role = MemberRole.Owner, DisplayName = "Owner", Username = "owner" });
             await db.SaveChangesAsync();
         }
@@ -54,16 +54,16 @@ public class DeleteChannelEndpointTests(GuildServiceFactory factory) : IClassFix
     [Fact]
     public async Task DeleteChannel_WithOwner_Returns204()
     {
-        var ownerId = Guid.NewGuid();
+        var ownerId = Guid.NewGuid().ToString();
         var guildId = Guid.NewGuid();
         var channelId = Guid.NewGuid();
 
         using (var scope = factory.Services.CreateScope())
         {
             var db = scope.ServiceProvider.GetRequiredService<GuildDbContext>();
-            db.Guilds.Add(new GuildEntity { Id = guildId, Name = "Test", DisplayName = "Test Guild", OwnerId = ownerId });
+            db.Guilds.Add(new GuildEntity { Id = guildId, Name = "Test", OwnerId = ownerId });
             db.Members.Add(new Member { UserId = ownerId, GuildId = guildId, Role = MemberRole.Owner, DisplayName = "Owner", Username = "owner" });
-            db.Channels.Add(new Channel { Id = channelId, GuildId = guildId, Name = "test", Type = "text" });
+            db.Channels.Add(new Channel { Id = channelId, GuildId = guildId, Name = "test", Type = ChannelType.Text });
             await db.SaveChangesAsync();
         }
 
@@ -78,20 +78,20 @@ public class DeleteChannelEndpointTests(GuildServiceFactory factory) : IClassFix
     [Fact]
     public async Task DeleteChannel_WithAdmin_Returns204()
     {
-        var ownerId = Guid.NewGuid();
-        var adminId = Guid.NewGuid();
+        var ownerId = Guid.NewGuid().ToString();
+        var adminId = Guid.NewGuid().ToString();
         var guildId = Guid.NewGuid();
         var channelId = Guid.NewGuid();
 
         using (var scope = factory.Services.CreateScope())
         {
             var db = scope.ServiceProvider.GetRequiredService<GuildDbContext>();
-            db.Guilds.Add(new GuildEntity { Id = guildId, Name = "Test", DisplayName = "Test Guild", OwnerId = ownerId });
+            db.Guilds.Add(new GuildEntity { Id = guildId, Name = "Test", OwnerId = ownerId });
             db.Members.AddRange(
                 new Member { UserId = ownerId, GuildId = guildId, Role = MemberRole.Owner, DisplayName = "Owner", Username = "owner" },
                 new Member { UserId = adminId, GuildId = guildId, Role = MemberRole.Admin, DisplayName = "Admin", Username = "admin" }
             );
-            db.Channels.Add(new Channel { Id = channelId, GuildId = guildId, Name = "test", Type = "text" });
+            db.Channels.Add(new Channel { Id = channelId, GuildId = guildId, Name = "test", Type = ChannelType.Text });
             await db.SaveChangesAsync();
         }
 
@@ -106,20 +106,20 @@ public class DeleteChannelEndpointTests(GuildServiceFactory factory) : IClassFix
     [Fact]
     public async Task DeleteChannel_WithMember_Returns403()
     {
-        var ownerId = Guid.NewGuid();
-        var memberId = Guid.NewGuid();
+        var ownerId = Guid.NewGuid().ToString();
+        var memberId = Guid.NewGuid().ToString();
         var guildId = Guid.NewGuid();
         var channelId = Guid.NewGuid();
 
         using (var scope = factory.Services.CreateScope())
         {
             var db = scope.ServiceProvider.GetRequiredService<GuildDbContext>();
-            db.Guilds.Add(new GuildEntity { Id = guildId, Name = "Test", DisplayName = "Test Guild", OwnerId = ownerId });
+            db.Guilds.Add(new GuildEntity { Id = guildId, Name = "Test", OwnerId = ownerId });
             db.Members.AddRange(
                 new Member { UserId = ownerId, GuildId = guildId, Role = MemberRole.Owner, DisplayName = "Owner", Username = "owner" },
                 new Member { UserId = memberId, GuildId = guildId, Role = MemberRole.Member, DisplayName = "User", Username = "user" }
             );
-            db.Channels.Add(new Channel { Id = channelId, GuildId = guildId, Name = "test", Type = "text" });
+            db.Channels.Add(new Channel { Id = channelId, GuildId = guildId, Name = "test", Type = ChannelType.Text });
             await db.SaveChangesAsync();
         }
 
@@ -134,16 +134,16 @@ public class DeleteChannelEndpointTests(GuildServiceFactory factory) : IClassFix
     [Fact]
     public async Task DeleteChannel_RemovesFromDatabase()
     {
-        var ownerId = Guid.NewGuid();
+        var ownerId = Guid.NewGuid().ToString();
         var guildId = Guid.NewGuid();
         var channelId = Guid.NewGuid();
 
         using (var scope = factory.Services.CreateScope())
         {
             var db = scope.ServiceProvider.GetRequiredService<GuildDbContext>();
-            db.Guilds.Add(new GuildEntity { Id = guildId, Name = "Test", DisplayName = "Test Guild", OwnerId = ownerId });
+            db.Guilds.Add(new GuildEntity { Id = guildId, Name = "Test", OwnerId = ownerId });
             db.Members.Add(new Member { UserId = ownerId, GuildId = guildId, Role = MemberRole.Owner, DisplayName = "Owner", Username = "owner" });
-            db.Channels.Add(new Channel { Id = channelId, GuildId = guildId, Name = "test", Type = "text" });
+            db.Channels.Add(new Channel { Id = channelId, GuildId = guildId, Name = "test", Type = ChannelType.Text });
             await db.SaveChangesAsync();
         }
 
