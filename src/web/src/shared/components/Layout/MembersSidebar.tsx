@@ -26,14 +26,14 @@ export const MembersSidebar: React.FC = () => {
             </div>
 
             <div className={styles.list}>
-                {members.map(member => (
+                {members.map((member, index) => (
                     <div
-                        key={member.id}
+                        key={member?.id || `member-${index}`}
                         onClick={() => navigate(`/servers/${serverId}/members`)}
                         className={styles.member}
                     >
-                        <div className={styles.name}>{member.displayName}</div>
-                        {member.role && (
+                        <div className={styles.name}>{member?.displayName || 'Unknown'}</div>
+                        {member?.role && (
                             <div className={styles.role}>{member.role}</div>
                         )}
                     </div>

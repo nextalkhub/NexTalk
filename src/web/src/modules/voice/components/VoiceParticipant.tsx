@@ -8,7 +8,6 @@ export interface VoiceParticipantProps {
     avatar: string
     isSpeaking: boolean
     isMuted: boolean
-    isDeafened?: boolean
     isCurrentUser?: boolean
     onMute?: (userId: string) => void
     onKick?: (userId: string) => void
@@ -20,7 +19,6 @@ export const VoiceParticipant: React.FC<VoiceParticipantProps> = ({
                                                                       avatar,
                                                                       isSpeaking,
                                                                       isMuted,
-                                                                      isDeafened: _isDeafened = false,
                                                                       isCurrentUser = false,
                                                                       onMute,
                                                                       onKick,

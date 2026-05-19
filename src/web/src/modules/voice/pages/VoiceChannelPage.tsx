@@ -1,84 +1,112 @@
-﻿import React, { useEffect, useState } from 'react'
+﻿import React, { useEffect, useRef } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { ServerSidebar } from '../../../shared/components/Layout/ServerSidebar'
 import { ChannelSidebar } from '../../channels/components/ChannelSidebar'
 import { VoiceControls } from '../components/VoiceControls'
 import { VoiceParticipantList } from '../components/VoiceParticipantList'
 import styles from './VoiceChannelPage.module.scss'
-import { useAppSelector } from "../../../store.ts"
-import { selectUser } from "../../../shared/slices/authSlice.ts"
-import { useVoice } from "../../../shared/hooks/useVoice.ts"
+import { useAppSelector } from "../../../store"
+import { selectUser } from "../../../shared/slices/authSlice"
+import { useVoice } from "../../../shared/hooks/useVoice"
 import type { VoiceParticipantProps } from '../components/VoiceParticipant'
 
 export const VoiceChannelPage: React.FC = () => {
-  const navigate = useNavigate()
-  const { serverId, channelId } = useParams<{ serverId: string; channelId: string }>()
-  const user = useAppSelector(selectUser)
-  const voice = useVoice()
 
-  const [isDeafened, setIsDeafened] = useState(false)
+  const navigate = useNavigate()
+
+  const { serverId, channelId } = useParams<{
+    serverId:string
+    channelId:string
+  }>()
+
+  const user = useAppSelector(selectUser)
+
+  const {
+    joinVoice,
+    leaveVoice,
+    participants,
+    isMuted,
+    isConnected,
+    toggleMic
+  } = useVoice()
+
+  const joinedRef = useRef(false)
 
   useEffect(() => {
-    if (!channelId || !user) return
 
-    const userArgs = {
-      id: user.id,
-      name: user.name
-    }
+    if (
+        !channelId ||
+        !user ||
+        joinedRef.current
+    ) return
 
-    voice.joinVoice(channelId, userArgs)
+    joinedRef.current = true
+
+    joinVoice(channelId,{
+      id:user.id,
+      name:user.name
+    })
 
     return () => {
-      voice.leaveVoice(channelId)
-    }
-  }, [channelId, user, voice])
 
-  const handleDisconnect = () => {
-    if (channelId) {
-      voice.leaveVoice(channelId)
+      joinedRef.current=false
+
+      leaveVoice(channelId)
     }
-    navigate(`/servers/${serverId}/channels`)
+
+  },[
+    channelId,
+    user?.id
+  ])
+
+  const handleDisconnect = async()=>{
+
+    if(channelId){
+      await leaveVoice(channelId)
+    }
+
+    navigate(
+        `/servers/${serverId}/channels`
+    )
   }
 
-  const participantsWithCurrent: VoiceParticipantProps[] = user
-      ? [
-        ...voice.participants.map(p => ({
-          id: p.userId,
-          name:  p.username,
-          avatar: p.username[0].toUpperCase(),
-          isSpeaking: false,
-          isMuted: p.isMuted,
-          isDeafened: p.isDeafened,
-          isCurrentUser: false,
-        })),
-        {
-          id: user.id,
-          name: user.name,
-          avatar: user.name[0].toUpperCase(),
-          isSpeaking: false,
-          isMuted: voice.isMuted,
-          isDeafened: isDeafened,
-          isCurrentUser: true,
-        },
-      ]
-      : voice.participants.map(p => ({
-        id: p.userId,
-        name: p.username,
-        avatar: p.username[0].toUpperCase(),
-        isSpeaking: false,
-        isMuted: p.isMuted,
-        isDeafened: p.isDeafened,
-        isCurrentUser: false,
-      }))
+  const participantsWithCurrent: VoiceParticipantProps[] =
+      user
+          ? [
+            {
+              id:user.id,
+              name:user.name,
+              avatar:user.name[0].toUpperCase(),
+              isSpeaking:false,
+              isMuted,
+              isCurrentUser:true
+            },
+
+            ...participants.map(p=>({
+
+              id:p.userId,
+              name:p.username,
+              avatar:p.username[0].toUpperCase(),
+              isSpeaking:false,
+              isMuted:p.isMuted,
+              isDeafened:p.isDeafened,
+              isCurrentUser:false
+            }))
+          ]
+          : []
 
   return (
       <div className={styles.layout}>
-        <ServerSidebar />
-        <ChannelSidebar />
+
+        <ServerSidebar/>
+        <ChannelSidebar/>
 
         <div className={styles.voiceArea}>
+
           <div className={styles.header}>
-            <div className={styles.title}>Voice Channel</div>
+            <div className={styles.title}>
+              Voice Channel
+            </div>
           </div>
 
           <div className={styles.content}>
@@ -90,14 +118,13 @@ export const VoiceChannelPage: React.FC = () => {
 
           <div className={styles.controlsSection}>
             <VoiceControls
-                isMuted={voice.isMuted}
-                isDeafened={isDeafened}
-                isConnected={voice.isConnected}
-                onToggleMute={voice.toggleMic}
-                onToggleDeafen={() => setIsDeafened(prev => !prev)}
+                isMuted={isMuted}
+                isConnected={isConnected}
+                onToggleMute={toggleMic}
                 onDisconnect={handleDisconnect}
             />
           </div>
+
         </div>
       </div>
   )

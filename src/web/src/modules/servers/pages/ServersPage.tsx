@@ -54,7 +54,7 @@ export const ServersPage: React.FC = () => {
             ).unwrap()
 
             navigate(
-                `/servers/${result.guildId}/channels/${result.channelId}`
+                `/servers/${result.guildId}/channels`
             )
         } catch (e) {
             console.error(e)

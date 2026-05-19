@@ -3,73 +3,64 @@
 .message {
   display: flex;
   gap: 12px;
-  padding: 4px 16px;
-
-  &:hover {
-    background: rgba(43, 42, 102, 0.3);
-  }
+  padding: 6px 16px;
 }
 
 .avatar {
   width: 40px;
   height: 40px;
-  background: $gradient-btn;
   border-radius: 50%;
+  background: $gradient-btn;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-weight: 700;
-  font-size: 14px;
-  flex-shrink: 0;
-}
-
-.avatarPlaceholder {
-  width: 40px;
   flex-shrink: 0;
 }
 
 .content {
-  flex: 1;
-  min-width: 0; // для обрезки длинного текста
+  display: flex;
+  flex-direction: column;
+  max-width: 70%;
 }
 
 .header {
   display: flex;
-  align-items: baseline;
   gap: 8px;
-  flex-wrap: wrap;
   margin-bottom: 4px;
 }
 
 .author {
-  font-weight: 700;
-  font-size: 14px;
-
-  &:hover {
-    text-decoration: underline;
-    cursor: pointer;
-  }
+  font-weight: 600;
 }
 
 .time {
-  color: $text-secondary;
   font-size: 11px;
+  color: $text-secondary;
 }
 
-.text {
-  color: $text-muted;
-  font-size: 14px;
-  line-height: 1.4;
-  word-wrap: break-word;
-  white-space: pre-wrap;
+.bubble {
+  padding: 10px 14px;
+  border-radius: 16px;
+  background: $bg-secondary;
+  color: $text-primary;
+  word-break: break-word;
 }
 
 .own {
-  .avatar {
-    background: $accent-purple;
+  justify-content: flex-end;
+
+  .content {
+    align-items: flex-end;
   }
 
-  .author {
-    color: $accent-pink;
+  .bubble {
+    background: $accent-purple;
+    border-bottom-right-radius: 4px;
   }
+}
+
+.timeOwn {
+  margin-left: 10px;
+  font-size: 11px;
+  opacity: .7;
 }

@@ -26,6 +26,15 @@ export const MembersPage: React.FC = () => {
   )
   const loading = useAppSelector(state => state.members.loading)
 
+  const currentUser = useAppSelector(state => state.auth.user)
+
+  const currentMember = members.find(
+      m => m.userId === currentUser?.id
+  )
+
+  const canManageMembers =
+      currentMember?.role === 'Owner' ||
+      currentMember?.role === 'Admin'
 
   useEffect(() => {
       if (serverId) {
@@ -77,9 +86,32 @@ export const MembersPage: React.FC = () => {
             </div>
 
             <div className={styles.membersList}>
-              <MemberGroup title="owner" members={owners} onKick={handleKick} onBan={handleBan} />
-              <MemberGroup title="admin" members={admins} onKick={handleKick} onBan={handleBan} />
-              <MemberGroup title="member" members={users} onKick={handleKick} onBan={handleBan} />
+              <MemberGroup
+                  title="owner"
+                  members={owners}
+                  onKick={handleKick}
+                  onBan={handleBan}
+                  canManageMembers={canManageMembers}
+                  currentUserId={currentUser?.id}
+              />
+
+              <MemberGroup
+                  title="admin"
+                  members={admins}
+                  onKick={handleKick}
+                  onBan={handleBan}
+                  canManageMembers={canManageMembers}
+                  currentUserId={currentUser?.id}
+              />
+
+              <MemberGroup
+                  title="member"
+                  members={users}
+                  onKick={handleKick}
+                  onBan={handleBan}
+                  canManageMembers={canManageMembers}
+                  currentUserId={currentUser?.id}
+              />
             </div>
           </div>
         </div>
@@ -92,9 +124,18 @@ interface GroupProps {
   members: Member[]
   onKick: (id: string, name: string) => void
   onBan: (id: string, name: string) => void
+  canManageMembers: boolean
+  currentUserId?: string
 }
 
-const MemberGroup: React.FC<GroupProps> = ({ title, members, onKick, onBan }) => {
+const MemberGroup: React.FC<GroupProps> = ({
+                                             title,
+                                             members,
+                                             onKick,
+                                             onBan,
+                                             canManageMembers,
+                                             currentUserId
+                                           }) => {
   if (members.length === 0) return null
 
   return (
@@ -109,6 +150,8 @@ const MemberGroup: React.FC<GroupProps> = ({ title, members, onKick, onBan }) =>
                 member={member}
                 onKick={onKick}
                 onBan={onBan}
+                canManageMembers={canManageMembers}
+                currentUserId={currentUserId}
             />
         ))}
       </>
@@ -119,27 +162,56 @@ interface MemberItemProps {
   member: Member
   onKick: (id: string, name: string) => void
   onBan: (id: string, name: string) => void
+  canManageMembers: boolean
+  currentUserId?: string
 }
 
-const MemberItem: React.FC<MemberItemProps> = ({ member, onKick, onBan }) => {
+const MemberItem: React.FC<MemberItemProps> = ({
+                                                 member,
+                                                 onKick,
+                                                 onBan,
+                                                 canManageMembers,
+                                                 currentUserId
+                                               }) => {
+
+  const isCurrentUser =
+      member.userId === currentUserId
+
+  const canShowActions =
+      canManageMembers &&
+      !isCurrentUser &&
+      member.role !== 'Owner' &&
+      member.role !== 'Admin'
+
   return (
       <div className={styles.memberItem}>
-
         <div className={styles.memberInfo}>
-          <div className={styles.memberName}>{member.displayName}</div>
-          <div className={styles.memberTag}>{member.username}</div>
+          <div className={styles.memberName}>
+            {member.displayName}
+          </div>
+
+          <div className={styles.memberTag}>
+            {member.username}
+          </div>
         </div>
 
-        {/*<div className={`${styles.memberStatus} ${member.status === 'online' ? styles.online : styles.offline}`}>*/}
-        {/*  {member.status === 'online' ? 'В сети' : 'Не в сети'}*/}
-        {/*</div>*/}
-
-        {member.role !== 'Owner' && (
+        {canShowActions && (
             <div className={styles.memberActions}>
-              <button onClick={() => onKick(member.id, member.displayName)} className={styles.kickBtn}>
+              <button
+                  onClick={() =>
+                      onKick(member.userId, member.displayName)
+                  }
+                  className={styles.kickBtn}
+              >
                 Исключить
               </button>
-              <button onClick={() => onBan(member.id, member.displayName)} className={styles.banBtn}>
+
+              <button
+                  onClick={() =>
+                      onBan(member.userId, member.displayName)
+                  }
+                  className={styles.banBtn}
+              >
                 Заблокировать
               </button>
             </div>

@@ -5,6 +5,7 @@ export interface MessageInterface {
     id: string
     channelId: string
     authorId: string
+    authorName: string
     content: string
     createdAt: string
 }
@@ -22,20 +23,6 @@ interface ChatState {
 
 const initialState: ChatState = {
     messages: {}
-}
-
-const USE_MOCK = import.meta.env.VITE_USE_AUTH_MOCK === 'true'
-
-const mockMessages: Record<string, MessageInterface[]> = {
-    '1': [
-        {
-            id: '1',
-            channelId: '1',
-            authorId: '1',
-            content: 'Привет',
-            createdAt: new Date().toISOString()
-        }
-    ]
 }
 
 export const fetchMessages = createAsyncThunk(
@@ -72,14 +59,6 @@ const chatSlice = createSlice({
             }
 
             state.messages[msg.channelId].items.push(msg)
-
-            if (USE_MOCK) {
-                if (!mockMessages[msg.channelId]) {
-                    mockMessages[msg.channelId] = []
-                }
-
-                mockMessages[msg.channelId].push(msg)
-            }
         },
         messageReceived: (state, action: PayloadAction<MessageInterface>) => {
             const msg = action.payload
@@ -93,13 +72,7 @@ const chatSlice = createSlice({
                 }
             }
 
-            const exists = state.messages[msg.channelId].items.some(
-                m => m.id === msg.id
-            )
-
-            if (!exists) {
-                state.messages[msg.channelId].items.push(msg)
-            }
+            state.messages[msg.channelId].items.push(msg)
         },
     },
     extraReducers: builder => {

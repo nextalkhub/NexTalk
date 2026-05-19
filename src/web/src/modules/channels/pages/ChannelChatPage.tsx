@@ -29,7 +29,6 @@ export const ChannelChatPage: React.FC = () => {
     useEffect(() => {
         if (channelId && user) {
             const userId = user.id
-            console.log("user: ", user)
             dispatch(fetchMessages({ channelId, userId }))
         }
     }, [channelId, dispatch, user])
@@ -41,7 +40,12 @@ export const ChannelChatPage: React.FC = () => {
     const { connection } = useSignalR()
 
     const handleSend = async (text: string) => {
-        if (!connection || !channelId) return
+        if (!connection || !channelId || !user) return
+
+        console.log(
+            'current route channel:',
+            channelId
+        )
 
         await connection.invoke(
             'SendMessage',
@@ -108,7 +112,10 @@ export const ChannelChatPage: React.FC = () => {
                     </Button>
                 </div>
 
-                <MessageList messages={currentMessages} />
+                <MessageList
+                    messages={currentMessages}
+                    currentUserId={user?.id}
+                />
 
                 <div className={styles.inputArea}>
                     <MessageInput

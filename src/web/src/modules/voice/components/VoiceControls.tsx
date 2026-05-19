@@ -4,20 +4,16 @@ import styles from './VoiceControls.module.scss'
 
 interface VoiceControlsProps {
     isMuted: boolean
-    isDeafened: boolean
     isConnected: boolean
     onToggleMute: () => void
-    onToggleDeafen: () => void
     onDisconnect: () => void
     onVolumeChange?: (volume: number) => void
 }
 
 export const VoiceControls: React.FC<VoiceControlsProps> = ({
                                                                 isMuted,
-                                                                isDeafened,
                                                                 isConnected,
                                                                 onToggleMute,
-                                                                onToggleDeafen,
                                                                 onDisconnect,
                                                             }) => {
     return (
@@ -39,14 +35,6 @@ export const VoiceControls: React.FC<VoiceControlsProps> = ({
                     title={isMuted ? 'Включить микрофон' : 'Выключить микрофон'}
                 >
                     <Icon name={isMuted ? 'mic-off' : 'mic'} size={20} />
-                </button>
-
-                <button
-                    onClick={onToggleDeafen}
-                    className={`${styles.controlBtn} ${isDeafened ? styles.active : ''}`}
-                    title={isDeafened ? 'Включить звук' : 'Выключить звук'}
-                >
-                    <Icon name={isDeafened ? 'headphones-off' : 'headphones'} size={20} />
                 </button>
 
                 <button

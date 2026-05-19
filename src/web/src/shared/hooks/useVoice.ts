@@ -1,110 +1,165 @@
-import { useCallback, useRef, useState } from 'react'
+import {useCallback,useRef,useState} from 'react'
 import {
     Room,
     RoomEvent,
-    RemoteParticipant,
+    RemoteParticipant
 } from 'livekit-client'
 
-import { joinVoiceChannel } from '../../processes/voice/joinVoiceChannel'
-import { leaveVoiceChannel } from '../../processes/voice/leaveVoiceChannel'
-import {VoiceParticipant} from "../types";
+import {joinVoiceChannel} from '../../processes/voice/joinVoiceChannel'
+import {leaveVoiceChannel} from '../../processes/voice/leaveVoiceChannel'
+import {VoiceParticipant} from "../types"
 
-export const useVoice = () => {
-    const roomRef = useRef<Room | null>(null)
+export const useVoice=()=>{
 
-    const [participants, setParticipants] = useState<VoiceParticipant[]>([])
-    const [isConnected, setIsConnected] = useState(false)
-    const [isMuted, setIsMuted] = useState(false)
+    const roomRef=useRef<Room|null>(null)
 
-    const syncParticipants = useCallback(() => {
-        const room = roomRef.current
-        if (!room) return
+    const connectingRef=useRef(false)
 
-        const list = Array.from(room.remoteParticipants.values()).map(
-            (p: RemoteParticipant) => ({
-                userId: p.identity,
-                username: p.name || p.identity,
-                isMuted: false,
-                isDeafened: false,
+    const [participants,setParticipants]=useState<VoiceParticipant[]>([])
+    const [isConnected,setIsConnected]=useState(false)
+    const [isMuted,setIsMuted]=useState(false)
+
+    const syncParticipants=useCallback(()=>{
+
+        const room=roomRef.current
+
+        if(!room) return
+
+        const list=Array.from(
+            room.remoteParticipants.values()
+        ).map(
+            (p:RemoteParticipant)=>({
+
+                userId:p.identity,
+                username:p.name || p.identity,
+                isMuted:false,
+                isDeafened:false
             })
         )
 
         setParticipants(list)
-    }, [])
 
-    const joinVoice = useCallback(async (
-        channelId: string,
-        _: { id: string; name: string }
-    ) => {
+    },[])
 
-        const response = await joinVoiceChannel(channelId)
+    const joinVoice=useCallback(async(
+        channelId:string,
+        _: {id:string,name:string}
+    )=>{
 
-        const room = new Room()
-
-        roomRef.current = room
-
-        room.on(RoomEvent.ParticipantConnected, () => {
-            syncParticipants()
-        })
-
-        room.on(RoomEvent.ParticipantDisconnected, () => {
-            syncParticipants()
-        })
-
-        room.on(RoomEvent.Disconnected, () => {
-            setIsConnected(false)
-            setParticipants([])
-        })
-
-        await room.connect(
-            response.url,
-            response.token
-        )
-
-        await room.localParticipant.setMicrophoneEnabled(true)
-
-        setIsConnected(true)
-        setIsMuted(false)
-
-        syncParticipants()
-
-    }, [syncParticipants])
-
-    const leaveVoice = useCallback(async (channelId: string) => {
-
-        try {
-            await leaveVoiceChannel(channelId)
-        } catch (e) {
-            console.error(e)
+        if(
+            connectingRef.current ||
+            roomRef.current
+        ){
+            return
         }
 
-        roomRef.current?.disconnect()
-        roomRef.current = null
+        connectingRef.current=true
+
+        try{
+
+            const response=
+                await joinVoiceChannel(channelId)
+
+            console.log(response)
+
+            const room=new Room()
+
+            roomRef.current=room
+
+            room.on(
+                RoomEvent.ParticipantConnected,
+                syncParticipants
+            )
+
+            room.on(
+                RoomEvent.ParticipantDisconnected,
+                syncParticipants
+            )
+
+            room.on(
+                RoomEvent.Disconnected,
+                ()=>{
+
+                    roomRef.current=null
+                    setParticipants([])
+                    setIsConnected(false)
+                }
+            )
+
+            await room.connect(
+                response.liveKitUrl,
+                response.token
+            )
+
+            await room.localParticipant.setMicrophoneEnabled(true)
+
+            setIsConnected(true)
+            setIsMuted(false)
+
+            syncParticipants()
+
+        }
+        catch(err){
+
+            console.error(
+                'Voice connect error:',
+                err
+            )
+        }
+        finally{
+            connectingRef.current=false
+        }
+
+    },[syncParticipants])
+
+    const leaveVoice=useCallback(async(
+        channelId:string
+    )=>{
+
+        const room=roomRef.current
+
+        if(!room) return
+
+        try{
+
+            await leaveVoiceChannel(channelId)
+
+        }
+        catch(err){
+
+            console.error(err)
+        }
+
+        room.disconnect()
+
+        roomRef.current=null
 
         setParticipants([])
         setIsConnected(false)
 
-    }, [])
+    },[])
 
-    const toggleMic = useCallback(async () => {
+    const toggleMic=useCallback(async()=>{
 
-        const room = roomRef.current
-        if (!room) return
+        const room=roomRef.current
 
-        const next = !isMuted
+        if(!room) return
 
-        await room.localParticipant.setMicrophoneEnabled(next)
+        const next=!isMuted
+
+        await room.localParticipant
+            .setMicrophoneEnabled(next)
 
         setIsMuted(!next)
 
-    }, [isMuted])
+    },[isMuted])
 
-    return {
+    return{
         participants,
         isConnected,
         isMuted,
         joinVoice,
         leaveVoice,
-        toggleMic,
+        toggleMic
     }
 }

@@ -6,11 +6,12 @@ import {useSignalR} from "./useSignalR.ts";
 interface MessageCreatedEvent {
     type: 'message.created'
     payload: {
-        messageId: string
-        channelId: string
-        authorId: string
-        content: string
-        createdAt: string
+        AuthorName: string;
+        Id: string
+        ChannelId: string
+        AuthorId: string
+        Content: string
+        CreatedAt: string
     }
 }
 
@@ -57,11 +58,12 @@ export const useGatewayEvents = () => {
 
                 case 'message.created':
                     dispatch(messageReceived({
-                        id: event.payload.messageId,
-                        channelId: event.payload.channelId,
-                        authorId: event.payload.authorId,
-                        content: event.payload.content,
-                        createdAt: event.payload.createdAt,
+                        id: event.payload.Id,
+                        channelId: event.payload.ChannelId,
+                        authorId: event.payload.AuthorId,
+                        authorName: event.payload.AuthorName,
+                        content: event.payload.Content,
+                        createdAt: event.payload.CreatedAt,
                     }))
                     break
 

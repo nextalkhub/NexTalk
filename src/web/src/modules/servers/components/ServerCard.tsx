@@ -1,7 +1,8 @@
-import React from 'react'
+import React, { useState, useEffect } from 'react'
 import styles from './ServerCard.module.scss'
 import { Guild } from "../../../shared/types"
 import { Icon } from '../../../shared/components/Icon/Icon'
+import { getGuildMembers } from "../../../processes/guild/getGuildMembers.ts"
 
 interface ServerCardProps {
     server: Guild
@@ -10,16 +11,31 @@ interface ServerCardProps {
 
 export const ServerCard: React.FC<ServerCardProps> = ({ server, onClick }) => {
     const firstLetter = server.name?.charAt(0).toUpperCase() || 'S'
+    const [membersCount, setMembersCount] = useState<number>(0)
+    const [loading, setLoading] = useState<boolean>(true)
+
+    useEffect(() => {
+        const fetchMembersCount = async () => {
+            try {
+                setLoading(true)
+                const members = await getGuildMembers(server.id)
+                setMembersCount(members.length)
+            } catch (error) {
+                console.error('Ошибка получения участников:', error)
+                setMembersCount(0)
+            } finally {
+                setLoading(false)
+            }
+        }
+
+        fetchMembersCount()
+    }, [server.id])
 
     return (
         <div className={styles.card} onClick={onClick}>
             <div className={styles.iconContainer}>
                 <div className={styles.serverIcon}>
-                    {server.icon ? (
-                        <img src={server.icon} alt={server.name} />
-                    ) : (
-                        <span className={styles.letter}>{firstLetter}</span>
-                    )}
+                    <span className={styles.letter}>{firstLetter}</span>
                 </div>
             </div>
 
@@ -31,12 +47,9 @@ export const ServerCard: React.FC<ServerCardProps> = ({ server, onClick }) => {
                     </div>
                     <div className={styles.stat}>
                         <Icon name="user" size={12} />
-                        <span>{server.memberCount || 0} участников</span>
+                        <span>{loading ? '...' : `${membersCount} участников`}</span>
                     </div>
                 </div>
-                {server.description && (
-                    <p className={styles.description}>{server.description}</p>
-                )}
             </div>
 
             <div className={styles.arrow}>
