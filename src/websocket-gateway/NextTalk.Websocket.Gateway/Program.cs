@@ -152,10 +152,11 @@ builder.Services.AddSwaggerGen(c =>
     });
 });
 
-// Redis
+// Redis — lazy: IConnectionMultiplexer создаётся при первом resolve, не при регистрации.
+// Это позволяет тестам подменить регистрацию до того, как соединение будет установлено.
 var redisConnectionString = builder.Configuration.GetConnectionString("Redis")
     ?? throw new InvalidOperationException("ConnectionStrings:Redis is not configured");
-builder.Services.AddSingleton<IConnectionMultiplexer>(
+builder.Services.AddSingleton<IConnectionMultiplexer>(_ =>
     ConnectionMultiplexer.Connect(redisConnectionString));
 
 // SignalR - userId маппинг из JWT sub claim через SubClaimUserIdProvider

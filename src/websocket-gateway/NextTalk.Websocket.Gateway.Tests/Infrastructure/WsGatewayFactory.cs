@@ -1,14 +1,19 @@
 using System.Net.Http.Headers;
+using System.Security.Claims;
 using System.Text;
+using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
+using Microsoft.AspNetCore.SignalR;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.IdentityModel.Protocols;
 using Microsoft.IdentityModel.Protocols.OpenIdConnect;
 using Microsoft.IdentityModel.Tokens;
+using NextTalk.Websocket.Gateway.Shared;
 
 namespace NextTalk.Websocket.Gateway.Tests.Infrastructure;
 
@@ -45,6 +50,27 @@ public class WsGatewayFactory : WebApplicationFactory<Program>
                 };
                 opts.BackchannelHttpHandler = null;
             });
+
+            // Заменяем Redis-реализации на in-memory — Redis недоступен в тестовом окружении.
+            services.RemoveAll<IConnectionManager>();
+            services.RemoveAll<IPresenceTracker>();
+            services.AddSingleton<IConnectionManager, ConnectionManager>();
+            services.AddSingleton<IPresenceTracker, PresenceTracker>();
+
+            // Заменяем ZitadelClaimsEnricher на no-op — в тестах нет Zitadel,
+            // HTTP-вызов к userinfo завис бы на DNS-таймауте (30+ с).
+            services.RemoveAll<IClaimsTransformation>();
+            services.AddTransient<IClaimsTransformation, PassThroughClaimsTransformation>();
+
+            // Снимаем Redis SignalR backplane, оставляем только дефолтный in-memory lifetime manager.
+            // AddStackExchangeRedis в Program.cs добавил RedisHubLifetimeManager<>; убираем все
+            // регистрации HubLifetimeManager<> и регистрируем только DefaultHubLifetimeManager<>.
+            var redisHubDescriptors = services
+                .Where(d => d.ServiceType == typeof(HubLifetimeManager<>))
+                .ToList();
+            foreach (var d in redisHubDescriptors)
+                services.Remove(d);
+            services.AddSingleton(typeof(HubLifetimeManager<>), typeof(DefaultHubLifetimeManager<>));
         });
     }
 
@@ -55,4 +81,10 @@ public class WsGatewayFactory : WebApplicationFactory<Program>
             new AuthenticationHeaderValue("Bearer", TestJwt.Generate(userId));
         return client;
     }
+}
+
+file sealed class PassThroughClaimsTransformation : IClaimsTransformation
+{
+    public Task<ClaimsPrincipal> TransformAsync(ClaimsPrincipal principal) =>
+        Task.FromResult(principal);
 }
