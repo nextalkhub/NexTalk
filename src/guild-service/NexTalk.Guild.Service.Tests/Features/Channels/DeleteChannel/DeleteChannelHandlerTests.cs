@@ -4,6 +4,7 @@ using NexTalk.Guild.Service.Features.Channels.DeleteChannel;
 using NexTalk.Guild.Service.Infrastructure;
 using NexTalk.Guild.Service.Shared;
 using NexTalk.Guild.Service.Shared.Exceptions;
+using Microsoft.Extensions.Logging.Abstractions;
 using Xunit;
 using GuildEntity = NexTalk.Guild.Service.Domain.Guild;
 using ChannelEntity = NexTalk.Guild.Service.Domain.Channel;
@@ -24,7 +25,7 @@ public class DeleteChannelHandlerTests
         var rbac = new RbacService(db);
         var wsGateway = new TestWsGatewayClient();
         var voiceService = new TestVoiceServiceClient();
-        var handler = new DeleteChannelHandler(db, rbac, wsGateway, voiceService);
+        var handler = new DeleteChannelHandler(db, rbac, wsGateway, voiceService, NullLogger<DeleteChannelHandler>.Instance);
 
         var cmd = new DeleteChannelCommand(Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid().ToString());
 
@@ -50,7 +51,7 @@ public class DeleteChannelHandlerTests
         var rbac = new RbacService(db);
         var wsGateway = new TestWsGatewayClient();
         var voiceService = new TestVoiceServiceClient();
-        var handler = new DeleteChannelHandler(db, rbac, wsGateway, voiceService);
+        var handler = new DeleteChannelHandler(db, rbac, wsGateway, voiceService, NullLogger<DeleteChannelHandler>.Instance);
 
         var cmd = new DeleteChannelCommand(guildId, channelId, ownerId);
         await handler.HandleAsync(cmd);
@@ -80,7 +81,7 @@ public class DeleteChannelHandlerTests
         var rbac = new RbacService(db);
         var wsGateway = new TestWsGatewayClient();
         var voiceService = new TestVoiceServiceClient();
-        var handler = new DeleteChannelHandler(db, rbac, wsGateway, voiceService);
+        var handler = new DeleteChannelHandler(db, rbac, wsGateway, voiceService, NullLogger<DeleteChannelHandler>.Instance);
 
         var cmd = new DeleteChannelCommand(guildId, channelId, adminId);
         await handler.HandleAsync(cmd);
@@ -110,7 +111,7 @@ public class DeleteChannelHandlerTests
         var rbac = new RbacService(db);
         var wsGateway = new TestWsGatewayClient();
         var voiceService = new TestVoiceServiceClient();
-        var handler = new DeleteChannelHandler(db, rbac, wsGateway, voiceService);
+        var handler = new DeleteChannelHandler(db, rbac, wsGateway, voiceService, NullLogger<DeleteChannelHandler>.Instance);
 
         var cmd = new DeleteChannelCommand(guildId, channelId, memberId);
 
@@ -136,7 +137,7 @@ public class DeleteChannelHandlerTests
         var rbac = new RbacService(db);
         var wsGateway = new TestWsGatewayClient();
         var voiceService = new TestVoiceServiceClient();
-        var handler = new DeleteChannelHandler(db, rbac, wsGateway, voiceService);
+        var handler = new DeleteChannelHandler(db, rbac, wsGateway, voiceService, NullLogger<DeleteChannelHandler>.Instance);
 
         var cmd = new DeleteChannelCommand(guildId, channelId, ownerId);
         await handler.HandleAsync(cmd);
@@ -164,7 +165,7 @@ public class DeleteChannelHandlerTests
         var rbac = new RbacService(db);
         var wsGateway = new TestWsGatewayClient();
         var voiceService = new TestVoiceServiceClient();
-        var handler = new DeleteChannelHandler(db, rbac, wsGateway, voiceService);
+        var handler = new DeleteChannelHandler(db, rbac, wsGateway, voiceService, NullLogger<DeleteChannelHandler>.Instance);
 
         var cmd = new DeleteChannelCommand(guildId, channelId, ownerId);
         await handler.HandleAsync(cmd);
@@ -191,7 +192,7 @@ public class DeleteChannelHandlerTests
         var rbac = new RbacService(db);
         var wsGateway = new TestWsGatewayClient { ShouldFail = true };
         var voiceService = new TestVoiceServiceClient();
-        var handler = new DeleteChannelHandler(db, rbac, wsGateway, voiceService);
+        var handler = new DeleteChannelHandler(db, rbac, wsGateway, voiceService, NullLogger<DeleteChannelHandler>.Instance);
 
         var cmd = new DeleteChannelCommand(guildId, channelId, ownerId);
         await handler.HandleAsync(cmd);

@@ -5,6 +5,7 @@ using NexTalk.Guild.Service.Infrastructure;
 using NexTalk.Guild.Service.Shared;
 using NexTalk.Guild.Service.Tests.Infrastructure;
 using System.Net;
+using Microsoft.Extensions.Logging.Abstractions;
 using Xunit;
 using GuildAggregate = NexTalk.Guild.Service.Domain.Guild;
 
@@ -26,7 +27,7 @@ public class AcceptInviteHandlerTests
     private static AcceptInviteHandler CreateHandler(
         GuildDbContext db,
         IInviteRepository? inviteRepo = null) =>
-        new(db, SilentWsGateway(), inviteRepo ?? new FakeInviteRepository(claimSucceeds: true));
+        new(db, SilentWsGateway(), inviteRepo ?? new FakeInviteRepository(claimSucceeds: true), NullLogger<AcceptInviteHandler>.Instance);
 
     private static async Task<(GuildDbContext db, Guid guildId, Guid inviteId)> SeedAsync(
         string code = "INVITE01",

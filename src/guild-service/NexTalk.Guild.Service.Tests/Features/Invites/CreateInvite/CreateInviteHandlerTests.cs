@@ -5,6 +5,7 @@ using NexTalk.Guild.Service.Features.Invites.CreateInvite;
 using NexTalk.Guild.Service.Infrastructure;
 using NexTalk.Guild.Service.Shared;
 using NexTalk.Guild.Service.Shared.Exceptions;
+using Microsoft.Extensions.Logging.Abstractions;
 using Xunit;
 using GuildAggregate = NexTalk.Guild.Service.Domain.Guild;
 
@@ -23,7 +24,7 @@ public class CreateInviteHandlerTests
             .Build();
 
     private static CreateInviteHandler CreateHandler(GuildDbContext db, IConfiguration? config = null) =>
-        new(db, new RbacService(db), config ?? CreateConfig());
+        new(db, new RbacService(db), config ?? CreateConfig(), NullLogger<CreateInviteHandler>.Instance);
 
     private static async Task<(Guid guildId, string callerId)> SeedGuildAsync(GuildDbContext db, MemberRole callerRole = MemberRole.Owner)
     {

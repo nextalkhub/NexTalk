@@ -4,6 +4,7 @@ using NexTalk.Guild.Service.Features.Guilds.DeleteGuild;
 using NexTalk.Guild.Service.Infrastructure;
 using NexTalk.Guild.Service.Shared;
 using NexTalk.Guild.Service.Shared.Exceptions;
+using Microsoft.Extensions.Logging.Abstractions;
 using Xunit;
 using GuildEntity = NexTalk.Guild.Service.Domain.Guild;
 using ChannelEntity = NexTalk.Guild.Service.Domain.Channel;
@@ -21,7 +22,7 @@ public class DeleteGuildHandlerTests
     public async Task HandleAsync_GuildNotFound_ThrowsNotFoundException()
     {
         await using var db = CreateDb();
-        var handler = new DeleteGuildHandler(db, new RbacService(db), new TestWsGatewayClient(), new TestVoiceServiceClient());
+        var handler = new DeleteGuildHandler(db, new RbacService(db), new TestWsGatewayClient(), new TestVoiceServiceClient(), NullLogger<DeleteGuildHandler>.Instance);
 
         var cmd = new DeleteGuildCommand(Guid.NewGuid(), Guid.NewGuid().ToString());
 
@@ -43,7 +44,7 @@ public class DeleteGuildHandlerTests
         db.Members.AddRange(ownerMember, regularMember);
         await db.SaveChangesAsync();
 
-        var handler = new DeleteGuildHandler(db, new RbacService(db), new TestWsGatewayClient(), new TestVoiceServiceClient());
+        var handler = new DeleteGuildHandler(db, new RbacService(db), new TestWsGatewayClient(), new TestVoiceServiceClient(), NullLogger<DeleteGuildHandler>.Instance);
         var cmd = new DeleteGuildCommand(guildId, memberId);
 
         await Assert.ThrowsAsync<ForbiddenException>(() => handler.HandleAsync(cmd));
@@ -62,7 +63,7 @@ public class DeleteGuildHandlerTests
         db.Members.Add(owner);
         await db.SaveChangesAsync();
 
-        var handler = new DeleteGuildHandler(db, new RbacService(db), new TestWsGatewayClient(), new TestVoiceServiceClient());
+        var handler = new DeleteGuildHandler(db, new RbacService(db), new TestWsGatewayClient(), new TestVoiceServiceClient(), NullLogger<DeleteGuildHandler>.Instance);
         var cmd = new DeleteGuildCommand(guildId, ownerId);
 
         await handler.HandleAsync(cmd);
@@ -87,7 +88,7 @@ public class DeleteGuildHandlerTests
         );
         await db.SaveChangesAsync();
 
-        var handler = new DeleteGuildHandler(db, new RbacService(db), new TestWsGatewayClient(), new TestVoiceServiceClient());
+        var handler = new DeleteGuildHandler(db, new RbacService(db), new TestWsGatewayClient(), new TestVoiceServiceClient(), NullLogger<DeleteGuildHandler>.Instance);
         var cmd = new DeleteGuildCommand(guildId, ownerId);
 
         await handler.HandleAsync(cmd);
@@ -113,7 +114,7 @@ public class DeleteGuildHandlerTests
         );
         await db.SaveChangesAsync();
 
-        var handler = new DeleteGuildHandler(db, new RbacService(db), new TestWsGatewayClient(), new TestVoiceServiceClient());
+        var handler = new DeleteGuildHandler(db, new RbacService(db), new TestWsGatewayClient(), new TestVoiceServiceClient(), NullLogger<DeleteGuildHandler>.Instance);
         var cmd = new DeleteGuildCommand(guildId, ownerId);
 
         await handler.HandleAsync(cmd);
@@ -139,7 +140,7 @@ public class DeleteGuildHandlerTests
         await db.SaveChangesAsync();
 
         var voiceService = new TestVoiceServiceClient();
-        var handler = new DeleteGuildHandler(db, new RbacService(db), new TestWsGatewayClient(), voiceService);
+        var handler = new DeleteGuildHandler(db, new RbacService(db), new TestWsGatewayClient(), voiceService, NullLogger<DeleteGuildHandler>.Instance);
         var cmd = new DeleteGuildCommand(guildId, ownerId);
 
         await handler.HandleAsync(cmd);
@@ -161,7 +162,7 @@ public class DeleteGuildHandlerTests
         await db.SaveChangesAsync();
 
         var wsGateway = new TestWsGatewayClient { ShouldFail = true };
-        var handler = new DeleteGuildHandler(db, new RbacService(db), wsGateway, new TestVoiceServiceClient());
+        var handler = new DeleteGuildHandler(db, new RbacService(db), wsGateway, new TestVoiceServiceClient(), NullLogger<DeleteGuildHandler>.Instance);
         var cmd = new DeleteGuildCommand(guildId, ownerId);
 
         await handler.HandleAsync(cmd);
