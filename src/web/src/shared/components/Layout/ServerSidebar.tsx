@@ -1,8 +1,9 @@
 import React from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { useServerStore } from '../../../modules/servers/stores/serverStore'
 import styles from './ServerSidebar.module.scss'
 import {ServerIcon} from "../../../modules/servers/components/ServerIcon/ServerIcon.tsx";
+import {useAppDispatch, useAppSelector} from "../../../store.ts";
+import {selectServers, setCurrentServer} from "../../slices/serverSlice.ts";
 
 const getServerType = (name: string): 'game' | 'dev' | 'music' | 'study' | 'friends' | 'default' => {
     const lowerName = name.toLowerCase()
@@ -16,12 +17,16 @@ const getServerType = (name: string): 'game' | 'dev' | 'music' | 'study' | 'frie
 
 export const ServerSidebar: React.FC = () => {
     const navigate = useNavigate()
-    const { servers, setCurrentServer } = useServerStore()
+    const servers = useAppSelector(selectServers)
+    const dispatch = useAppDispatch()
     const { serverId } = useParams()
 
-    const handleServerClick = (serverId: string) => {
-        setCurrentServer(serverId)
-        navigate(`/servers/${serverId}/channels/general`)
+    const handleServerClick = (id: string) => {
+        const server = servers.find(s => s.id === id)
+        if (!server) return
+
+        dispatch(setCurrentServer(server))
+        navigate(`/servers/${id}/channels`)
     }
 
     return (

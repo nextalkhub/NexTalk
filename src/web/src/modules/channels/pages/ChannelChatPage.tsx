@@ -1,8 +1,5 @@
 import React, { useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { useAuthStore } from '../../auth/stores/authStore'
-import { useChatStore } from '../../chat/stores/chatStore'
-import { useChannelStore } from '../stores/channelStore'
 import { MessageList } from '../../chat/components/MessageList'
 import { MessageInput } from '../../chat/components/MessageInput'
 import { ServerSidebar } from '../../../shared/components/Layout/ServerSidebar'
@@ -11,26 +8,51 @@ import { MembersSidebar } from '../../../shared/components/Layout/MembersSidebar
 import { Button } from '../../../shared/components/Button/Button'
 import { Icon } from '../../../shared/components/Icon/Icon'
 import styles from './ChannelChatPage.module.scss'
+import {useAppDispatch, useAppSelector} from "../../../store.ts";
+import {selectUser} from "../../../shared/slices/authSlice.ts";
+import {fetchChannels} from "../../../shared/slices/channelSlice.ts";
+import {fetchMessages} from "../../../shared/slices/chatSlice.ts";
+import {useSignalR} from "../../../shared/hooks/useSignalR.ts";
 
 export const ChannelChatPage: React.FC = () => {
     const { serverId, channelId } = useParams()
     const navigate = useNavigate()
-    const { user } = useAuthStore()
-    const { messages, sendMessage } = useChatStore()
-    const { channels, fetchChannels } = useChannelStore()
+    const user = useAppSelector(selectUser)
+    const dispatch = useAppDispatch()
+    const channels = useAppSelector(state => state.channels.channels)
+    const messages = useAppSelector(state => state.chat.messages)
 
     useEffect(() => {
-        if (serverId) {
-            fetchChannels(serverId)
-        }
-    }, [serverId, fetchChannels])
+        if (serverId) dispatch(fetchChannels(serverId))
+    }, [serverId, dispatch])
 
-    const currentMessages = messages[channelId || ''] || []
+    useEffect(() => {
+        if (channelId && user) {
+            const userId = user.id
+            dispatch(fetchMessages({ channelId, userId }))
+        }
+    }, [channelId, dispatch, user])
+
+    const currentMessages =
+        messages[channelId || '']?.items || []
     const currentChannel = channels.find(c => c.id === channelId)
 
-    const handleSend = (text: string) => {
-        if (!user || !channelId) return
-        sendMessage(channelId, text, user.id, user.username)
+    const { connection } = useSignalR()
+
+    const handleSend = async (text: string) => {
+        if (!connection || !channelId || !user) return
+
+        console.log(
+            'current route channel:',
+            channelId
+        )
+
+        await connection.invoke(
+            'SendMessage',
+            channelId,
+            text,
+            crypto.randomUUID(),
+        )
     }
 
     const handleInvite = () => {
@@ -50,38 +72,19 @@ export const ChannelChatPage: React.FC = () => {
         )
     }
 
-    if (!currentChannel && channels.length > 0) {
+    if (!currentChannel || channels.length === 0) {
         return (
             <div className={styles.layout}>
                 <ServerSidebar />
                 <ChannelSidebar />
                 <div className={styles.chatArea}>
-                    <div className={styles.header}>
-                        <div className={styles.title}>
-                            <Icon name="hash" size={20} />
-                            Канал не найден
-                        </div>
-                    </div>
                     <div className={styles.notFound}>
                         <Icon name="message" size={48} />
-                        <p>Канал не найден</p>
-                        <Button variant="secondary" onClick={() => window.history.back()}>
+                        <p>Выберите канал</p>
+                        <Button variant="secondary" onClick={() => navigate('./../..')}>
                             Вернуться назад
                         </Button>
                     </div>
-                </div>
-                <MembersSidebar />
-            </div>
-        )
-    }
-
-    if (!currentChannel) {
-        return (
-            <div className={styles.layout}>
-                <ServerSidebar />
-                <ChannelSidebar />
-                <div className={styles.chatArea}>
-                    <div className={styles.loading}>Загрузка канала...</div>
                 </div>
                 <MembersSidebar />
             </div>
@@ -109,7 +112,10 @@ export const ChannelChatPage: React.FC = () => {
                     </Button>
                 </div>
 
-                <MessageList messages={currentMessages} />
+                <MessageList
+                    messages={currentMessages}
+                    currentUserId={user?.id}
+                />
 
                 <div className={styles.inputArea}>
                     <MessageInput

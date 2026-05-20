@@ -137,8 +137,7 @@ services:
       ASPNETCORE_URLS: http://+:5003
       Zitadel__Authority: ${ZITADEL_PUBLIC_SCHEME}://${ZITADEL_DOMAIN}:${ZITADEL_EXTERNALPORT}
       Zitadel__MetadataAddress: http://zitadel-api:8080/.well-known/openid-configuration
-      LiveKit__Url: http://livekit:7880
-      LiveKit__PublicUrl: ws://${ZITADEL_DOMAIN}:${PROXY_HTTP_PUBLISHED_PORT}/livekit/
+      LiveKit__Host: http://livekit:7880
       LiveKit__ApiKey: ${LIVEKIT_API_KEY}
       LiveKit__SecretKey: ${LIVEKIT_SECRET_KEY}
       Services__GuildService: http://guild-service:5001
@@ -315,7 +314,7 @@ services:
     ports:
       - "7880:7880"
       - "7881:7881/tcp"
-      - "7882:7882/udp"
+      - "50000-50200:50000-50200/udp"
     volumes:
       - ./infra/livekit/livekit.yaml:/etc/livekit.yaml:ro
     command: --config /etc/livekit.yaml

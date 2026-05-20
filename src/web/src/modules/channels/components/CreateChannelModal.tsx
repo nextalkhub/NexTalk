@@ -1,10 +1,11 @@
 import React, { useState } from 'react'
 import { useParams } from 'react-router-dom'
-import { useChannelStore } from '../stores/channelStore'
 import { Button } from '../../../shared/components/Button/Button'
 import { Input } from '../../../shared/components/Input/Input'
 import { Icon } from '../../../shared/components/Icon/Icon'
 import styles from './CreateChannelModal.module.scss'
+import { createChannel } from '../../../shared/slices/channelSlice.ts'
+import { useAppDispatch } from '../../../store'
 
 interface CreateChannelModalProps {
     isOpen: boolean
@@ -18,17 +19,26 @@ export const CreateChannelModal: React.FC<CreateChannelModalProps> = ({
                                                                           onSuccess
                                                                       }) => {
     const { serverId } = useParams()
-    const { createChannel } = useChannelStore()
     const [name, setName] = useState('')
     const [type, setType] = useState<'text' | 'voice'>('text')
     const [loading, setLoading] = useState(false)
+
+    const dispatch = useAppDispatch()
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault()
         if (!name.trim() || !serverId) return
 
         setLoading(true)
-        await createChannel(serverId, name.toLowerCase().replace(/\s/g, '-'), type)
+
+        const formattedName = name.toLowerCase().replace(/\s/g, '-')
+
+        await dispatch(createChannel({
+            serverId,
+            name: formattedName,
+            type
+        }))
+
         setLoading(false)
 
         setName('')
