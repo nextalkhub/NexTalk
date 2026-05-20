@@ -17,6 +17,7 @@ using Polly;
 using Prometheus;
 using Serilog;
 using Serilog.Enrichers.Span;
+using StackExchange.Redis;
 using IPNetwork = System.Net.IPNetwork;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -151,13 +152,20 @@ builder.Services.AddSwaggerGen(c =>
     });
 });
 
+// Redis
+var redisConnectionString = builder.Configuration.GetConnectionString("Redis")
+    ?? throw new InvalidOperationException("ConnectionStrings:Redis is not configured");
+builder.Services.AddSingleton<IConnectionMultiplexer>(
+    ConnectionMultiplexer.Connect(redisConnectionString));
+
 // SignalR - userId маппинг из JWT sub claim через SubClaimUserIdProvider
-builder.Services.AddSignalR();
+builder.Services.AddSignalR()
+    .AddStackExchangeRedis(redisConnectionString);
 builder.Services.AddSingleton<IUserIdProvider, SubClaimUserIdProvider>();
 
-// Presence state (in-memory, per-replica)
-builder.Services.AddSingleton<ConnectionManager>();
-builder.Services.AddSingleton<PresenceTracker>();
+// Presence state (Redis-backed, shared across replicas)
+builder.Services.AddSingleton<IConnectionManager, RedisConnectionManager>();
+builder.Services.AddSingleton<IPresenceTracker, RedisPresenceTracker>();
 builder.Services.AddHostedService<PresenceMonitor>();
 
 // ChatHub is transient (one instance per connection), handler must be stateless

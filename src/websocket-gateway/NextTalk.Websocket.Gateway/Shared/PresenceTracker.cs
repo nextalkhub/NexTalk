@@ -2,17 +2,10 @@ using System.Collections.Concurrent;
 
 namespace NextTalk.Websocket.Gateway.Shared;
 
-/// <summary>
-/// Хранит время последнего heartbeat для каждого userId (in-memory)
-/// </summary>
-public sealed class PresenceTracker
+public sealed class PresenceTracker : IPresenceTracker
 {
     private readonly ConcurrentDictionary<string, DateTimeOffset> _lastSeen = new();
 
-    /// <summary>
-    /// Фиксирует heartbeat для userId.
-    /// </summary>
-    /// <returns>True, если пользователь был офлайн (только что появился в сети)</returns>
     public bool SetOnline(string userId)
     {
         var wasOffline = !_lastSeen.ContainsKey(userId);
@@ -24,9 +17,6 @@ public sealed class PresenceTracker
 
     public bool IsOnline(string userId) => _lastSeen.ContainsKey(userId);
 
-    /// <summary>
-    /// Возвращает userId, чей последний heartbeat старше заданного времени
-    /// </summary>
     public IReadOnlyList<string> GetStale(TimeSpan timeout)
     {
         return _lastSeen

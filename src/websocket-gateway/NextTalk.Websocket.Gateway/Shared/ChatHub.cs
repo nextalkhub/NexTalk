@@ -6,15 +6,15 @@ namespace NextTalk.Websocket.Gateway.Shared;
 
 public sealed class ChatHub : Hub
 {
-    private readonly ConnectionManager _connections;
-    private readonly PresenceTracker _presence;
+    private readonly IConnectionManager _connections;
+    private readonly IPresenceTracker _presence;
     private readonly SendMessageHandler _sendMessageHandler;
     private readonly GuildServiceClient _guildClient;
     private readonly ILogger<ChatHub> _logger;
 
     public ChatHub(
-        ConnectionManager connections,
-        PresenceTracker presence,
+        IConnectionManager connections,
+        IPresenceTracker presence,
         SendMessageHandler sendMessageHandler,
         GuildServiceClient guildClient,
         ILogger<ChatHub> logger)

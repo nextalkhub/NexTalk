@@ -12,15 +12,15 @@ public sealed class PresenceMonitor : BackgroundService
 {
     private static readonly TimeSpan ScanInterval = TimeSpan.FromSeconds(10);
 
-    private readonly PresenceTracker _tracker;
-    private readonly ConnectionManager _connections;
+    private readonly IPresenceTracker _tracker;
+    private readonly IConnectionManager _connections;
     private readonly IHubContext<ChatHub> _hubContext;
     private readonly TimeSpan _offlineTimeout;
     private readonly ILogger<PresenceMonitor> _logger;
 
     public PresenceMonitor(
-        PresenceTracker tracker, 
-        ConnectionManager connections, 
+        IPresenceTracker tracker,
+        IConnectionManager connections,
         IHubContext<ChatHub> hubContext,
         IOptions<PresenceOptions> options,
         ILogger<PresenceMonitor> logger)
