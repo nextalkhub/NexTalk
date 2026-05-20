@@ -24,7 +24,6 @@ public static class TestJwt
         return new JwtSecurityTokenHandler().WriteToken(token);
     }
 
-    // Перегрузка для обратной совместимости с тестами, передающими Guid.
     public static string Generate(Guid userId, string name = "Test User", string username = "testuser") =>
         Generate(userId.ToString(), name, username);
 }

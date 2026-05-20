@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
@@ -12,6 +13,7 @@ using Microsoft.IdentityModel.Protocols.OpenIdConnect;
 using Microsoft.IdentityModel.Tokens;
 using NexTalk.Guild.Service.Features.Invites.AcceptInvite;
 using NexTalk.Guild.Service.Infrastructure;
+using NexTalk.Guild.Service.Shared;
 using System.Net.Http.Headers;
 using System.Text;
 
@@ -37,11 +39,12 @@ public class GuildServiceFactory : WebApplicationFactory<Program>
 
         builder.ConfigureTestServices(services =>
         {
-            // Заменяем PostgreSQL на InMemory EF Core.
-            // Удаляем и DbContextOptions, и сам GuildDbContext, затем регистрируем опции напрямую
-            // как синглтон - в обход механизма AddDbContext и Npgsql-конфигурации, которая
-            // вызывала конфликт двух провайдеров. Фиксированное имя БД гарантирует, что все
-            // DI-скоупы работают с одним и тем же InMemory-хранилищем.
+            var zitadelEnricher = services.SingleOrDefault(d =>
+                d.ServiceType == typeof(IClaimsTransformation)
+                && d.ImplementationType == typeof(ZitadelClaimsEnricher));
+            if (zitadelEnricher is not null)
+                services.Remove(zitadelEnricher);
+
             var dbDescriptors = services
                 .Where(d =>
                     d.ServiceType == typeof(DbContextOptions<GuildDbContext>) ||
@@ -55,7 +58,6 @@ public class GuildServiceFactory : WebApplicationFactory<Program>
                 .Options);
             services.AddScoped<GuildDbContext>();
 
-            // Заменяем Redis на in-memory distributed cache
             var cacheDescriptors = services
                 .Where(d => d.ServiceType == typeof(IDistributedCache))
                 .ToList();
@@ -63,17 +65,12 @@ public class GuildServiceFactory : WebApplicationFactory<Program>
             services.AddSingleton<IDistributedCache, MemoryDistributedCache>();
             services.AddSingleton<IMemoryCache, MemoryCache>();
 
-            // Заменяем SQL-реализацию InviteRepository фейковой, которая всегда возвращает успех
             var inviteRepoDescriptors = services
                 .Where(d => d.ServiceType == typeof(IInviteRepository))
                 .ToList();
             foreach (var d in inviteRepoDescriptors) services.Remove(d);
             services.AddScoped<IInviteRepository>(_ => new FakeInviteRepository(claimSucceeds: true));
 
-            // Переопределяем валидацию JWT известным симметричным ключом.
-            // Системный JwtBearerPostConfigureOptions выполняется до этого коллбэка и создает
-            // настоящий ConfigurationManager из MetadataAddress. Мы заменяем его на
-            // StaticConfigurationManager - иначе хэндлер пытается обратиться по сети к http://test-authority.
             var signingKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(TestJwt.SigningKey));
             services.PostConfigure<JwtBearerOptions>(JwtBearerDefaults.AuthenticationScheme, opts =>
             {

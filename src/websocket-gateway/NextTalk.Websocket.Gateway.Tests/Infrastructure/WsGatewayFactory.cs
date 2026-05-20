@@ -1,5 +1,6 @@
 using System.Net.Http.Headers;
 using System.Text;
+using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
@@ -9,6 +10,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.IdentityModel.Protocols;
 using Microsoft.IdentityModel.Protocols.OpenIdConnect;
 using Microsoft.IdentityModel.Tokens;
+using NextTalk.Websocket.Gateway.Shared;
 
 namespace NextTalk.Websocket.Gateway.Tests.Infrastructure;
 
@@ -29,7 +31,12 @@ public class WsGatewayFactory : WebApplicationFactory<Program>
 
         builder.ConfigureTestServices(services =>
         {
-            // Подменяем discovery doc и валидацию JWT, чтобы не лезть по сети.
+            var zitadelEnricher = services.SingleOrDefault(d =>
+                d.ServiceType == typeof(IClaimsTransformation)
+                && d.ImplementationType == typeof(ZitadelClaimsEnricher));
+            if (zitadelEnricher is not null)
+                services.Remove(zitadelEnricher);
+
             var signingKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(TestJwt.SigningKey));
             services.PostConfigure<JwtBearerOptions>(JwtBearerDefaults.AuthenticationScheme, opts =>
             {

@@ -117,7 +117,6 @@ public class GetMessagesHandlerTests
 
         Assert.Equal(3, result.Messages.Count);
         Assert.NotNull(result.NextCursor);
-        // Cursor is the id of the last returned message (oldest in current page)
         Assert.Equal(result.Messages[^1].Id, result.NextCursor);
     }
 
@@ -149,13 +148,11 @@ public class GetMessagesHandlerTests
         for (var i = 0; i < 5; i++)
             ids.Add(await SeedMessageAsync(db, channelId, baseTime.AddSeconds(i), $"msg{i}"));
 
-        // First page: newest 2 (msg4, msg3); cursor = msg3.Id
         var firstPage = await CreateHandler(db).HandleAsync(
             new GetMessagesQuery(channelId, Guid.NewGuid().ToString(), null, 2));
         Assert.Equal("msg4", firstPage.Messages[0].Content);
         Assert.Equal("msg3", firstPage.Messages[1].Content);
 
-        // Second page: messages older than cursor → msg2, msg1
         var secondPage = await CreateHandler(db).HandleAsync(
             new GetMessagesQuery(channelId, Guid.NewGuid().ToString(), firstPage.NextCursor, 2));
 
@@ -187,7 +184,6 @@ public class GetMessagesHandlerTests
     [Fact]
     public async Task Handle_WithUnknownCursor_FallsBackToLatest()
     {
-        // If the cursor id doesn't exist in DB, the handler ignores it and returns latest messages.
         await using var db = CreateDb();
         var channelId = Guid.NewGuid();
         await SeedMessageAsync(db, channelId, DateTimeOffset.UtcNow, "only");

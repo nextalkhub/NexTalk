@@ -10,14 +10,6 @@ using Xunit;
 
 namespace NextTalk.Websocket.Gateway.Tests.Features;
 
-/// <summary>
-/// E2E-фрагмент broadcast-флоу: убеждаемся, что POST /internal/broadcast/guild/{guildId}
-/// доходит до SignalR-клиента, подключенного к ChatHub и входящего в группу гильдии.
-///
-/// Полный путь SendMessage → Outbox → Broadcast → ReceiveMessage опирается на 4 сервиса
-/// и БД; здесь мы покрываем последнее звено — путь от broadcast-эндпоинта WS Gateway
-/// до клиента. Outbox/SendMessage уже покрыт тестами Messaging.
-/// </summary>
 public class BroadcastEndToEndTests : IClassFixture<BroadcastEndToEndTests.E2EFactory>
 {
     private readonly E2EFactory _factory;
@@ -39,7 +31,6 @@ public class BroadcastEndToEndTests : IClassFixture<BroadcastEndToEndTests.E2EFa
             })
             .Build();
 
-        // OnConnectedAsync рассылает presence.online — фильтруем по нужному типу.
         var received = new TaskCompletionSource<JsonElement>();
         hub.On<JsonElement>("GatewayEvent", evt =>
         {
@@ -50,8 +41,6 @@ public class BroadcastEndToEndTests : IClassFixture<BroadcastEndToEndTests.E2EFa
         await hub.StartAsync();
         try
         {
-            // Дожидаемся, пока OnConnectedAsync добавит соединение в guild-группу.
-            // Это обязательное условие — broadcast рассылает только по группе.
             await Task.Delay(150);
 
             using var client = _factory.CreateClient();
@@ -86,8 +75,6 @@ public class BroadcastEndToEndTests : IClassFixture<BroadcastEndToEndTests.E2EFa
 
             builder.ConfigureTestServices(services =>
             {
-                // Перехватываем HTTP-вызовы GuildServiceClient: возвращаем фиксированный список гильдий
-                // вместо реального обращения к Guild Service.
                 services.AddHttpClient<NextTalk.Websocket.Gateway.Infrastructure.GuildServiceClient>(c =>
                         c.BaseAddress = new Uri("http://fake-guild.local"))
                     .ConfigurePrimaryHttpMessageHandler(() => new FakeGuildHandler(UserId, GuildId));

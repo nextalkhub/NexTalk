@@ -5,10 +5,6 @@ using Xunit;
 
 namespace NexTalk.Voice.Service.Tests.Features;
 
-/// <summary>
-/// Проверяет, что публичные voice-эндпоинты защищены JWT, а internal - нет
-/// (internal закрыт сетью, а не аутентификацией; nginx запрещает /internal извне).
-/// </summary>
 public class AuthRequiredTests(VoiceServiceFactory factory) : IClassFixture<VoiceServiceFactory>
 {
     [Fact]

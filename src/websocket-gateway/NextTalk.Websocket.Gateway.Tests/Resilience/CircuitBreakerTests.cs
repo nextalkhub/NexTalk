@@ -7,12 +7,6 @@ using Xunit;
 
 namespace NextTalk.Websocket.Gateway.Tests.Resilience;
 
-/// <summary>
-/// Integration-тест для Polly CircuitBreaker в HTTP-клиентах.
-/// Использует те же параметры, что и production-конфигурация в Program.cs,
-/// но укорочены: MinThroughput=5, FailureRatio=0.5, SamplingDuration=1s, BreakDuration=500ms.
-/// Цель - убедиться, что state-machine работает: 5 фейлов → OPEN → fail-fast → HalfOpen → Closed.
-/// </summary>
 public class CircuitBreakerTests
 {
     [Fact]
@@ -45,7 +39,6 @@ public class CircuitBreakerTests
         await using var sp = services.BuildServiceProvider();
         var http = sp.GetRequiredService<IHttpClientFactory>().CreateClient("test");
 
-        // 5 запросов с фейлами - должны попасть в downstream и накопить статистику.
         for (var i = 0; i < 5; i++)
         {
             var r = await http.GetAsync("/probe");
@@ -53,11 +46,9 @@ public class CircuitBreakerTests
         }
         Assert.Equal(5, realCallsToDownstream);
 
-        // 6-й запрос - circuit OPEN, до downstream не должен дойти.
         await Assert.ThrowsAsync<BrokenCircuitException>(() => http.GetAsync("/probe"));
         Assert.Equal(5, realCallsToDownstream);
 
-        // Ждем BreakDuration → HalfOpen → пробный запрос пройдет.
         downstreamFails = false;
         await Task.Delay(TimeSpan.FromMilliseconds(700));
 
@@ -65,7 +56,6 @@ public class CircuitBreakerTests
         Assert.Equal(HttpStatusCode.OK, probe.StatusCode);
         Assert.Equal(6, realCallsToDownstream);
 
-        // CLOSED - последующие запросы идут штатно.
         var ok = await http.GetAsync("/probe");
         Assert.Equal(HttpStatusCode.OK, ok.StatusCode);
         Assert.Equal(7, realCallsToDownstream);
