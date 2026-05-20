@@ -41,8 +41,12 @@ public sealed class PresenceMonitor : BackgroundService
             var staleUsers = _tracker.GetStale(_offlineTimeout);
             foreach (var userId in staleUsers)
             {
-                _tracker.Remove(userId);
-                
+                // Только под, который физически удалил запись, рассылает событие.
+                // Остальные реплики тоже видят stale-пользователей, но Remove вернёт false —
+                // атомарность ZREM гарантирует ровно один broadcast на пользователя.
+                if (!_tracker.Remove(userId))
+                    continue;
+
                 var entry = _connections.Get(userId);
                 if (entry is not null)
                 {
@@ -56,7 +60,7 @@ public sealed class PresenceMonitor : BackgroundService
                                 stoppingToken);
                     }
                 }
-                
+
                 _logger.LogDebug("User {UserId} went offline: heartbeat timeout", userId);
             }
         }
