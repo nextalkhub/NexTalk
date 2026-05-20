@@ -1,0 +1,64 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# Grafana — автоматическая провизия datasources
+#
+# Все три источника данных настраиваются при старте контейнера.
+# Не требует ручной конфигурации через UI.
+# ─────────────────────────────────────────────────────────────────────────────
+apiVersion: 1
+
+datasources:
+
+  # ── Prometheus ─────────────────────────────────────────────────────────────
+  - name:      Prometheus
+    type:      prometheus
+    uid:       prometheus
+    access:    proxy
+    url:       http://prometheus:9090
+    isDefault: true
+    jsonData:
+      timeInterval:    "15s"    # совпадает со scrape_interval
+      httpMethod:      POST
+      exemplarTraceIdDestinations:
+        - name:          TraceID
+          datasourceUid: jaeger
+
+  # ── Loki ───────────────────────────────────────────────────────────────────
+  - name:   Loki
+    type:   loki
+    uid:    loki
+    access: proxy
+    url:    http://loki:3100
+    jsonData:
+      # Derived fields: клик по TraceId в логе открывает трейс в Jaeger.
+      # matcherRegex ищет TraceId в JSON-строке лога (Serilog CompactJson).
+      derivedFields:
+        - name:          TraceID
+          matcherRegex:  '"TraceId":"([a-f0-9A-F]{32})"'
+          url:           "${__value.raw}"
+          datasourceUid: jaeger
+
+  # ── Jaeger ─────────────────────────────────────────────────────────────────
+  - name:   Jaeger
+    type:   jaeger
+    uid:    jaeger
+    access: proxy
+    url:    http://jaeger:16686
+    jsonData:
+      # nodeGraph позволяет видеть DAG зависимостей сервисов в трейсе.
+      nodeGraph:
+        enabled: true
+      # Linking traces → logs (Jaeger → Loki через трейс ID).
+      tracesToLogsV2:
+        datasourceUid:  loki
+        spanStartTimeShift: "-5m"
+        spanEndTimeShift:   "5m"
+        filterByTraceID:    true
+        filterBySpanID:     false
+        customQuery:        true
+        query:              '{service="${__span.tags["service.name"]}"} | json | trace_id="${__trace.traceId}"'
+      # Linking traces → metrics.
+      tracesToMetrics:
+        datasourceUid: prometheus
+        queries:
+          - name: "Request rate"
+            query: 'sum(rate(http_requests_received_total{job="${__tags[service]}"}[5m]))'

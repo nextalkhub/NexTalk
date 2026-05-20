@@ -78,6 +78,10 @@ services:
       Zitadel__MetadataAddress: http://zitadel-api:8080/.well-known/openid-configuration
       Services__WebSocketGateway: http://websocket-gateway:5004
       Services__VoiceService: http://voice-service:5003
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4318
+      OTEL_EXPORTER_OTLP_PROTOCOL: http/protobuf
+      OTEL_EXPORTER_OTLP_TRACES_ENDPOINT: http://otel-collector:4318/v1/traces
+      OTEL_EXPORTER_OTLP_TRACES_PROTOCOL: http/protobuf
     volumes:
       - zitadel-output:/zitadel-config:ro
     networks:
@@ -110,6 +114,10 @@ services:
       Zitadel__MetadataAddress: http://zitadel-api:8080/.well-known/openid-configuration
       Services__WebSocketGateway: http://websocket-gateway:5004
       Services__GuildService: http://guild-service:5001
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4318
+      OTEL_EXPORTER_OTLP_PROTOCOL: http/protobuf
+      OTEL_EXPORTER_OTLP_TRACES_ENDPOINT: http://otel-collector:4318/v1/traces
+      OTEL_EXPORTER_OTLP_TRACES_PROTOCOL: http/protobuf
     volumes:
       - zitadel-output:/zitadel-config:ro
     networks:
@@ -141,6 +149,10 @@ services:
       LiveKit__ApiKey: ${LIVEKIT_API_KEY}
       LiveKit__SecretKey: ${LIVEKIT_SECRET_KEY}
       Services__GuildService: http://guild-service:5001
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4318
+      OTEL_EXPORTER_OTLP_PROTOCOL: http/protobuf
+      OTEL_EXPORTER_OTLP_TRACES_ENDPOINT: http://otel-collector:4318/v1/traces
+      OTEL_EXPORTER_OTLP_TRACES_PROTOCOL: http/protobuf
     volumes:
       - zitadel-output:/zitadel-config:ro
     networks:
@@ -173,6 +185,10 @@ services:
       Services__MessagingService: http://messaging-service:5002
       Presence__HeartbeatInterval: 20
       Presence__OfflineTimeout: 30
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4318
+      OTEL_EXPORTER_OTLP_PROTOCOL: http/protobuf
+      OTEL_EXPORTER_OTLP_TRACES_ENDPOINT: http://otel-collector:4318/v1/traces
+      OTEL_EXPORTER_OTLP_TRACES_PROTOCOL: http/protobuf
     volumes:
       - zitadel-output:/zitadel-config:ro
     networks:

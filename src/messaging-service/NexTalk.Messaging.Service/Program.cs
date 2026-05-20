@@ -17,6 +17,8 @@ using NexTalk.Messaging.Service.Infrastructure;
 using NexTalk.Messaging.Service.Infrastructure.Outbox;
 using NexTalk.Messaging.Service.Shared;
 using NexTalk.Messaging.Service.Shared.Exceptions;
+using OpenTelemetry.Resources;
+using OpenTelemetry.Trace;
 using Polly;
 using Prometheus;
 using Serilog;
@@ -28,6 +30,24 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Configuration.AddJsonFile("/zitadel-config/swagger-config.json", optional: true, reloadOnChange: true);
 
 builder.Services.AddSerilog((_, lc) => lc.ReadFrom.Configuration(builder.Configuration).Enrich.WithSpan());
+
+builder.Services.AddOpenTelemetry()
+    .ConfigureResource(r => r
+        .AddService(
+            serviceName: "messaging-service",
+            serviceVersion: typeof(Program).Assembly.GetName().Version?.ToString() ?? "0.0.0"))
+    .WithTracing(tracing => tracing
+        .AddAspNetCoreInstrumentation(opts =>
+        {
+            opts.RecordException = true;
+            opts.Filter = ctx =>
+                !ctx.Request.Path.StartsWithSegments("/metrics") &&
+                !ctx.Request.Path.StartsWithSegments("/healthz") &&
+                !ctx.Request.Path.StartsWithSegments("/readyz");
+        })
+        .AddHttpClientInstrumentation()
+        .AddEntityFrameworkCoreInstrumentation()
+        .AddOtlpExporter());
 
 builder.Services.Configure<ForwardedHeadersOptions>(options =>
 {
