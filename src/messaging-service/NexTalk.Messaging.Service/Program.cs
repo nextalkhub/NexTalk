@@ -20,13 +20,14 @@ using NexTalk.Messaging.Service.Shared.Exceptions;
 using Polly;
 using Prometheus;
 using Serilog;
+using Serilog.Enrichers.Span;
 using IPNetwork = System.Net.IPNetwork;
 
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Configuration.AddJsonFile("/zitadel-config/swagger-config.json", optional: true, reloadOnChange: true);
 
-builder.Services.AddSerilog((_, lc) => lc.ReadFrom.Configuration(builder.Configuration));
+builder.Services.AddSerilog((_, lc) => lc.ReadFrom.Configuration(builder.Configuration).Enrich.WithSpan());
 
 builder.Services.Configure<ForwardedHeadersOptions>(options =>
 {
@@ -49,14 +50,21 @@ builder.Services.AddHostedService<OutboxWorker>();
 builder.Services.AddHostedService<BroadcastConsumer>();
 
 builder.Services.AddHttpClient<WsGatewayClient>(c => c.BaseAddress = new Uri(wsGatewayUrl))
-    .AddResilienceHandler("ws-gateway", pipeline =>
+    .AddResilienceHandler("ws-gateway", (pipeline, ctx) =>
     {
+        var logger = ctx.ServiceProvider.GetRequiredService<ILogger<Program>>();
         pipeline.AddRetry(new HttpRetryStrategyOptions
         {
             MaxRetryAttempts = 3,
             Delay = TimeSpan.FromMilliseconds(300),
             BackoffType = DelayBackoffType.Exponential,
             UseJitter = true,
+            OnRetry = args =>
+            {
+                logger.LogWarning(args.Outcome.Exception, "Retry {Attempt}/3 ws-gateway: {Status}",
+                    args.AttemptNumber + 1, args.Outcome.Result?.StatusCode);
+                return ValueTask.CompletedTask;
+            }
         });
         pipeline.AddTimeout(TimeSpan.FromSeconds(5));
     });

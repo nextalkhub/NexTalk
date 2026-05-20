@@ -10,7 +10,7 @@ public static class DisconnectEndpoints
         app.MapPost("/internal/disconnect/guild/{guildId:guid}/user/{userId}",
             async (Guid guildId, string userId, IHubContext<ChatHub> hub, ConnectionManager connections, ILoggerFactory loggerFactory) =>
             {
-                var logger = loggerFactory.CreateLogger<DisconnectEndpoints>();
+                var logger = loggerFactory.CreateLogger(nameof(DisconnectEndpoints));
                 logger.LogInformation("Force disconnect: user={UserId} guild={GuildId}", userId, guildId);
 
                 var entry = connections.Get(userId);

@@ -34,8 +34,8 @@ public class DeleteMessageHandler
         _db.Messages.Remove(message);
         await _db.SaveChangesAsync(ct);
 
-        _logger.LogInformation("Message deleted: id={MessageId} channel={ChannelId} guild={GuildId} caller={CallerId}",
-            cmd.MessageId, message.ChannelId, message.GuildId, cmd.CallerId);
+        _logger.LogInformation("Message deleted: id={MessageId} channel={ChannelId} guild={GuildId} caller={CallerId} correlation={CorrelationId}",
+            cmd.MessageId, message.ChannelId, message.GuildId, cmd.CallerId, cmd.CorrelationId);
 
         try
         {
@@ -43,9 +43,12 @@ public class DeleteMessageHandler
                 message.GuildId,
                 "message.deleted",
                 new { MessageId = cmd.MessageId, ChannelId = message.ChannelId },
-                Guid.NewGuid().ToString(),
+                string.IsNullOrEmpty(cmd.CorrelationId) ? Guid.NewGuid().ToString() : cmd.CorrelationId,
                 ct);
         }
-        catch (Exception ex) { _logger.LogWarning(ex, "Failed to broadcast message.deleted: id={MessageId}", cmd.MessageId); }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to broadcast message.deleted: id={MessageId}", cmd.MessageId);
+        }
     }
 }

@@ -16,13 +16,14 @@ using NextTalk.Websocket.Gateway.Shared;
 using Polly;
 using Prometheus;
 using Serilog;
+using Serilog.Enrichers.Span;
 using IPNetwork = System.Net.IPNetwork;
 
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Configuration.AddJsonFile("/zitadel-config/swagger-config.json", optional: true, reloadOnChange: true);
 
-builder.Services.AddSerilog((_, lc) => lc.ReadFrom.Configuration(builder.Configuration));
+builder.Services.AddSerilog((_, lc) => lc.ReadFrom.Configuration(builder.Configuration).Enrich.WithSpan());
 
 builder.Services.Configure<PresenceOptions>(builder.Configuration.GetSection("Presence"));
 
@@ -168,42 +169,78 @@ var messagingUrl = builder.Configuration["Services:MessagingService"] ?? throw n
 
 builder.Services.AddHttpClient<GuildServiceClient>(c =>
     c.BaseAddress = new Uri(guildUrl))
-    .AddResilienceHandler("guild", pipeline =>
+    .AddResilienceHandler("guild", (pipeline, ctx) =>
     {
+        var logger = ctx.ServiceProvider.GetRequiredService<ILogger<Program>>();
         pipeline.AddRetry(new HttpRetryStrategyOptions
         {
             MaxRetryAttempts = 3,
             Delay = TimeSpan.FromMilliseconds(200),
             BackoffType = DelayBackoffType.Exponential,
-            UseJitter = true
+            UseJitter = true,
+            OnRetry = args =>
+            {
+                logger.LogWarning(args.Outcome.Exception, "Retry {Attempt}/3 guild-service: {Status}",
+                    args.AttemptNumber + 1, args.Outcome.Result?.StatusCode);
+                return ValueTask.CompletedTask;
+            }
         });
         pipeline.AddCircuitBreaker(new HttpCircuitBreakerStrategyOptions
         {
             SamplingDuration = TimeSpan.FromSeconds(30),
             FailureRatio = 0.5,
             MinimumThroughput = 5,
-            BreakDuration = TimeSpan.FromSeconds(15)
+            BreakDuration = TimeSpan.FromSeconds(15),
+            OnOpened = args =>
+            {
+                logger.LogError(args.Outcome.Exception, "Circuit breaker opened guild-service for {Duration}s: {Status}",
+                    args.BreakDuration.TotalSeconds, args.Outcome.Result?.StatusCode);
+                return ValueTask.CompletedTask;
+            },
+            OnClosed = _ =>
+            {
+                logger.LogInformation("Circuit breaker closed guild-service");
+                return ValueTask.CompletedTask;
+            }
         });
         pipeline.AddTimeout(TimeSpan.FromSeconds(2));
     });
 
 builder.Services.AddHttpClient<MessagingServiceClient>(c =>
     c.BaseAddress = new Uri(messagingUrl))
-    .AddResilienceHandler("messaging", pipeline =>
+    .AddResilienceHandler("messaging", (pipeline, ctx) =>
     {
+        var logger = ctx.ServiceProvider.GetRequiredService<ILogger<Program>>();
         pipeline.AddRetry(new HttpRetryStrategyOptions
         {
             MaxRetryAttempts = 3,
             Delay = TimeSpan.FromMilliseconds(200),
             BackoffType = DelayBackoffType.Exponential,
-            UseJitter = true
+            UseJitter = true,
+            OnRetry = args =>
+            {
+                logger.LogWarning(args.Outcome.Exception, "Retry {Attempt}/3 messaging-service: {Status}",
+                    args.AttemptNumber + 1, args.Outcome.Result?.StatusCode);
+                return ValueTask.CompletedTask;
+            }
         });
         pipeline.AddCircuitBreaker(new HttpCircuitBreakerStrategyOptions
         {
             SamplingDuration = TimeSpan.FromSeconds(30),
             FailureRatio = 0.5,
             MinimumThroughput = 5,
-            BreakDuration = TimeSpan.FromSeconds(15)
+            BreakDuration = TimeSpan.FromSeconds(15),
+            OnOpened = args =>
+            {
+                logger.LogError(args.Outcome.Exception, "Circuit breaker opened messaging-service for {Duration}s: {Status}",
+                    args.BreakDuration.TotalSeconds, args.Outcome.Result?.StatusCode);
+                return ValueTask.CompletedTask;
+            },
+            OnClosed = _ =>
+            {
+                logger.LogInformation("Circuit breaker closed messaging-service");
+                return ValueTask.CompletedTask;
+            }
         });
         pipeline.AddTimeout(TimeSpan.FromSeconds(2));
     });

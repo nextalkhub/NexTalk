@@ -28,7 +28,7 @@ public class DeleteMessageHandlerTests
         _wsGatewayMock = new Mock<WsGatewayClient>(
             new HttpClient(new MockHttpMessageHandler()),
             Mock.Of<ILogger<WsGatewayClient>>());
-        _handler = new DeleteMessageHandler(_db, _guildServiceMock.Object, _wsGatewayMock.Object);
+        _handler = new DeleteMessageHandler(_db, _guildServiceMock.Object, _wsGatewayMock.Object, Mock.Of<ILogger<DeleteMessageHandler>>());
     }
 
     private async Task<Message> CreateMessageAsync(Guid guildId, Guid channelId, string authorId)

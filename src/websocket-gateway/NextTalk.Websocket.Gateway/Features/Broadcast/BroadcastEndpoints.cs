@@ -11,7 +11,7 @@ public static class BroadcastEndpoints
         app.MapPost("/internal/broadcast/guild/{guildId:guid}",
             async (Guid guildId, BroadcastGuildRequest request, IHubContext<ChatHub> hub, ILoggerFactory loggerFactory) =>
             {
-                var logger = loggerFactory.CreateLogger<BroadcastEndpoints>();
+                var logger = loggerFactory.CreateLogger(nameof(BroadcastEndpoints));
                 logger.LogDebug("Broadcast event={EventType} guild={GuildId}", request.Type, guildId);
 
                 await hub.Clients

@@ -18,13 +18,14 @@ using NexTalk.Voice.Service.Shared.Exceptions;
 using Polly;
 using Prometheus;
 using Serilog;
+using Serilog.Enrichers.Span;
 using IPNetwork = System.Net.IPNetwork;
 
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Configuration.AddJsonFile("/zitadel-config/swagger-config.json", optional: true, reloadOnChange: true);
 
-builder.Services.AddSerilog((_, lc) => lc.ReadFrom.Configuration(builder.Configuration));
+builder.Services.AddSerilog((_, lc) => lc.ReadFrom.Configuration(builder.Configuration).Enrich.WithSpan());
 
 builder.Services.Configure<ForwardedHeadersOptions>(options =>
 {
@@ -52,14 +53,21 @@ builder.Services.AddTransient<DeadlineForwardingHandler>();
 // HTTP-клиент к Guild Service
 builder.Services.AddHttpClient<GuildServiceClient>(c => c.BaseAddress = new Uri(guildUrl))
     .AddHttpMessageHandler<DeadlineForwardingHandler>()
-    .AddResilienceHandler("guild", pipeline =>
+    .AddResilienceHandler("guild", (pipeline, ctx) =>
     {
+        var logger = ctx.ServiceProvider.GetRequiredService<ILogger<Program>>();
         pipeline.AddRetry(new HttpRetryStrategyOptions
         {
             MaxRetryAttempts = 3,
             Delay = TimeSpan.FromMilliseconds(200),
             BackoffType = DelayBackoffType.Exponential,
             UseJitter = true,
+            OnRetry = args =>
+            {
+                logger.LogWarning(args.Outcome.Exception, "Retry {Attempt}/3 guild-service: {Status}",
+                    args.AttemptNumber + 1, args.Outcome.Result?.StatusCode);
+                return ValueTask.CompletedTask;
+            }
         });
         pipeline.AddCircuitBreaker(new HttpCircuitBreakerStrategyOptions
         {
@@ -67,20 +75,38 @@ builder.Services.AddHttpClient<GuildServiceClient>(c => c.BaseAddress = new Uri(
             FailureRatio = 0.5,
             MinimumThroughput = 5,
             BreakDuration = TimeSpan.FromSeconds(15),
+            OnOpened = args =>
+            {
+                logger.LogError(args.Outcome.Exception, "Circuit breaker opened guild-service for {Duration}s: {Status}",
+                    args.BreakDuration.TotalSeconds, args.Outcome.Result?.StatusCode);
+                return ValueTask.CompletedTask;
+            },
+            OnClosed = _ =>
+            {
+                logger.LogInformation("Circuit breaker closed guild-service");
+                return ValueTask.CompletedTask;
+            }
         });
         pipeline.AddTimeout(TimeSpan.FromSeconds(2));
     });
 
 // HTTP-клиент к WS Gateway
 builder.Services.AddHttpClient<WsGatewayClient>(c => c.BaseAddress = new Uri(wsGatewayUrl))
-    .AddResilienceHandler("ws-gateway", pipeline =>
+    .AddResilienceHandler("ws-gateway", (pipeline, ctx) =>
     {
+        var logger = ctx.ServiceProvider.GetRequiredService<ILogger<Program>>();
         pipeline.AddRetry(new HttpRetryStrategyOptions
         {
             MaxRetryAttempts = 3,
             Delay = TimeSpan.FromMilliseconds(300),
             BackoffType = DelayBackoffType.Exponential,
             UseJitter = true,
+            OnRetry = args =>
+            {
+                logger.LogWarning(args.Outcome.Exception, "Retry {Attempt}/3 ws-gateway: {Status}",
+                    args.AttemptNumber + 1, args.Outcome.Result?.StatusCode);
+                return ValueTask.CompletedTask;
+            }
         });
         pipeline.AddTimeout(TimeSpan.FromSeconds(5));
     });

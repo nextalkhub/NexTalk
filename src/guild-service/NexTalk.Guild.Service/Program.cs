@@ -31,6 +31,7 @@ using NexTalk.Guild.Service.Shared.Exceptions;
 using Polly;
 using Prometheus;
 using Serilog;
+using Serilog.Enrichers.Span;
 using Swashbuckle.AspNetCore.SwaggerGen;
 using IPNetwork = System.Net.IPNetwork;
 
@@ -42,7 +43,7 @@ var builder = WebApplication.CreateBuilder(args);
 // Вложенный объект "Zitadel" используется здесь через IConfiguration -> Zitadel:ProjectId и т.д.
 builder.Configuration.AddJsonFile("/zitadel-config/swagger-config.json", optional: true, reloadOnChange: true);
 
-builder.Services.AddSerilog((_, lc) => lc.ReadFrom.Configuration(builder.Configuration));
+builder.Services.AddSerilog((_, lc) => lc.ReadFrom.Configuration(builder.Configuration).Enrich.WithSpan());
 
 builder.Services.Configure<ForwardedHeadersOptions>(options =>
 {
@@ -69,14 +70,21 @@ builder.Services.AddTransient<DeadlineForwardingHandler>();
 builder.Services.AddHttpClient<WsGatewayClient>(c =>
         c.BaseAddress = new Uri(builder.Configuration["Services:WebSocketGateway"] ?? throw new InvalidOperationException("Services:WebSocketGateway is not configured")))
     .AddHttpMessageHandler<DeadlineForwardingHandler>()
-    .AddResilienceHandler("ws-gateway", pipeline =>
+    .AddResilienceHandler("ws-gateway", (pipeline, ctx) =>
     {
+        var logger = ctx.ServiceProvider.GetRequiredService<ILogger<Program>>();
         pipeline.AddRetry(new HttpRetryStrategyOptions
         {
             MaxRetryAttempts = 3,
             Delay = TimeSpan.FromMilliseconds(200),
             BackoffType = DelayBackoffType.Exponential,
             UseJitter = true,
+            OnRetry = args =>
+            {
+                logger.LogWarning(args.Outcome.Exception, "Retry {Attempt}/3 ws-gateway: {Status}",
+                    args.AttemptNumber + 1, args.Outcome.Result?.StatusCode);
+                return ValueTask.CompletedTask;
+            }
         });
         pipeline.AddCircuitBreaker(new HttpCircuitBreakerStrategyOptions
         {
@@ -84,6 +92,17 @@ builder.Services.AddHttpClient<WsGatewayClient>(c =>
             FailureRatio = 0.5,
             MinimumThroughput = 5,
             BreakDuration = TimeSpan.FromSeconds(15),
+            OnOpened = args =>
+            {
+                logger.LogError(args.Outcome.Exception, "Circuit breaker opened ws-gateway for {Duration}s: {Status}",
+                    args.BreakDuration.TotalSeconds, args.Outcome.Result?.StatusCode);
+                return ValueTask.CompletedTask;
+            },
+            OnClosed = _ =>
+            {
+                logger.LogInformation("Circuit breaker closed ws-gateway");
+                return ValueTask.CompletedTask;
+            }
         });
         pipeline.AddTimeout(TimeSpan.FromSeconds(2));
     });
@@ -91,14 +110,21 @@ builder.Services.AddHttpClient<WsGatewayClient>(c =>
 builder.Services.AddHttpClient<VoiceServiceClient>(c =>
         c.BaseAddress = new Uri(builder.Configuration["Services:VoiceService"] ?? throw new InvalidOperationException("Services:VoiceService is not configured")))
     .AddHttpMessageHandler<DeadlineForwardingHandler>()
-    .AddResilienceHandler("voice", pipeline =>
+    .AddResilienceHandler("voice", (pipeline, ctx) =>
     {
+        var logger = ctx.ServiceProvider.GetRequiredService<ILogger<Program>>();
         pipeline.AddRetry(new HttpRetryStrategyOptions
         {
             MaxRetryAttempts = 3,
             Delay = TimeSpan.FromMilliseconds(200),
             BackoffType = DelayBackoffType.Exponential,
             UseJitter = true,
+            OnRetry = args =>
+            {
+                logger.LogWarning(args.Outcome.Exception, "Retry {Attempt}/3 voice-service: {Status}",
+                    args.AttemptNumber + 1, args.Outcome.Result?.StatusCode);
+                return ValueTask.CompletedTask;
+            }
         });
         pipeline.AddCircuitBreaker(new HttpCircuitBreakerStrategyOptions
         {
@@ -106,6 +132,17 @@ builder.Services.AddHttpClient<VoiceServiceClient>(c =>
             FailureRatio = 0.5,
             MinimumThroughput = 5,
             BreakDuration = TimeSpan.FromSeconds(15),
+            OnOpened = args =>
+            {
+                logger.LogError(args.Outcome.Exception, "Circuit breaker opened voice-service for {Duration}s: {Status}",
+                    args.BreakDuration.TotalSeconds, args.Outcome.Result?.StatusCode);
+                return ValueTask.CompletedTask;
+            },
+            OnClosed = _ =>
+            {
+                logger.LogInformation("Circuit breaker closed voice-service");
+                return ValueTask.CompletedTask;
+            }
         });
         pipeline.AddTimeout(TimeSpan.FromSeconds(2));
     });

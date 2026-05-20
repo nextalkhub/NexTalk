@@ -9,10 +9,14 @@ public static class DeleteMessageEndpoint
         app.MapDelete("/messages/{messageId:guid}", async (
             Guid messageId,
             ClaimsPrincipal user,
+            HttpContext httpContext,
             DeleteMessageHandler handler,
             CancellationToken ct) =>
         {
-            await handler.HandleAsync(new DeleteMessageCommand(messageId, user.GetUserId()), ct);
+            var correlationId = httpContext.Request.Headers["X-Request-Id"].FirstOrDefault()
+                ?? httpContext.Request.Headers["X-Correlation-Id"].FirstOrDefault()
+                ?? httpContext.TraceIdentifier;
+            await handler.HandleAsync(new DeleteMessageCommand(messageId, user.GetUserId(), correlationId), ct);
             return Results.NoContent();
         })
         .WithTags("Messages")

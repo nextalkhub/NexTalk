@@ -37,7 +37,9 @@ public sealed class ChatHub : Hub
             return;
         }
 
-        var correlationId = Guid.NewGuid().ToString();
+        var correlationId = Context.GetHttpContext()?.Request.Headers["X-Request-Id"].FirstOrDefault()
+            ?? Context.GetHttpContext()?.Request.Headers["X-Correlation-Id"].FirstOrDefault()
+            ?? Guid.NewGuid().ToString();
         var guilds = await _guildClient.GetUserGuildsAsync(userId, correlationId);
         var guildIds = guilds.Select(guild => guild.Id).ToList();
 
