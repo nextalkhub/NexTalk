@@ -22,6 +22,20 @@ export const useVoice = () => {
     const [isConnected, setIsConnected] = useState(false)
     const [isMuted, setIsMuted] = useState(false)
     const [isLocalSpeaking, setIsLocalSpeaking] = useState(false)
+    const [hasMicrophonePermission, setHasMicrophonePermission] = useState<boolean | null>(null)
+
+    const checkMicrophonePermission = useCallback(async (): Promise<boolean> => {
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+            stream.getTracks().forEach(track => track.stop())
+            setHasMicrophonePermission(true)
+            return true
+        } catch (err) {
+            console.error('Microphone permission denied:', err)
+            setHasMicrophonePermission(false)
+            return false
+        }
+    }, [])
 
     const syncParticipants = useCallback(() => {
         const room = roomRef.current
@@ -153,6 +167,7 @@ export const useVoice = () => {
                         setParticipants([])
                         setIsConnected(false)
                         setIsLocalSpeaking(false)
+                        setIsMuted(false)
                     }
                 )
 
@@ -161,11 +176,22 @@ export const useVoice = () => {
                     response.token
                 )
 
-                await room.localParticipant
-                    .setMicrophoneEnabled(true)
+                const hasPermission = await checkMicrophonePermission()
+
+                if (hasPermission) {
+                    try {
+                        await room.localParticipant.setMicrophoneEnabled(true)
+                        setIsMuted(false)
+                    } catch (err) {
+                        console.error('Failed to enable microphone:', err)
+                        setIsMuted(true)
+                    }
+                } else {
+                    setIsMuted(true)
+                    console.warn('Microphone permission denied, cannot send audio')
+                }
 
                 setIsConnected(true)
-                setIsMuted(false)
 
                 syncParticipants()
 
@@ -179,7 +205,7 @@ export const useVoice = () => {
                 connectingRef.current = false
             }
         },
-        [syncParticipants]
+        [syncParticipants, checkMicrophonePermission]
     )
 
     const leaveVoice = useCallback(
@@ -203,32 +229,49 @@ export const useVoice = () => {
             setParticipants([])
             setIsConnected(false)
             setIsLocalSpeaking(false)
+            setIsMuted(false)
         },
         []
     )
 
     const toggleMic = useCallback(async () => {
-
         const room = roomRef.current
 
         if (!room) return
 
-        const enabled =
-            room.localParticipant
-                .isMicrophoneEnabled
+        if (hasMicrophonePermission === false) {
+            const granted = await checkMicrophonePermission()
+            if (!granted) {
+                console.warn('Cannot toggle mic: permission denied')
+                return
+            }
+        }
 
-        await room.localParticipant
-            .setMicrophoneEnabled(!enabled)
+        const enabled = room.localParticipant.isMicrophoneEnabled
 
-        setIsMuted(enabled)
-
-    }, [])
+        try {
+            if (enabled) {
+                await room.localParticipant.setMicrophoneEnabled(false)
+                setIsMuted(true)
+            } else {
+                await room.localParticipant.setMicrophoneEnabled(true)
+                setIsMuted(false)
+            }
+        } catch (err) {
+            console.error('Failed to toggle microphone:', err)
+            if (err instanceof Error && err.name === 'NotAllowedError') {
+                setHasMicrophonePermission(false)
+                setIsMuted(true)
+            }
+        }
+    }, [checkMicrophonePermission, hasMicrophonePermission])
 
     return {
         participants,
         isConnected,
         isMuted,
         isLocalSpeaking,
+        hasMicrophonePermission,
         joinVoice,
         leaveVoice,
         toggleMic,

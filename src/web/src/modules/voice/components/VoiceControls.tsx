@@ -8,6 +8,7 @@ interface VoiceControlsProps {
     onToggleMute: () => void
     onDisconnect: () => void
     onVolumeChange?: (volume: number) => void
+    hasMicrophonePermission?: boolean | null // добавляем
 }
 
 export const VoiceControls: React.FC<VoiceControlsProps> = ({
@@ -15,6 +16,7 @@ export const VoiceControls: React.FC<VoiceControlsProps> = ({
                                                                 isConnected,
                                                                 onToggleMute,
                                                                 onDisconnect,
+                                                                hasMicrophonePermission,
                                                             }) => {
     return (
         <div className={styles.controls}>
@@ -24,15 +26,20 @@ export const VoiceControls: React.FC<VoiceControlsProps> = ({
                     <span>{isConnected ? 'Подключен' : 'Не подключен'}</span>
                 </div>
 
+                {hasMicrophonePermission === false && (
+                    <div className={styles.permissionWarning}>
+                        <Icon name="alert" size={16} />
+                        <span>Нет доступа к микрофону</span>
+                    </div>
+                )}
             </div>
 
             <div className={styles.rightSection}>
-
-
                 <button
                     onClick={onToggleMute}
                     className={`${styles.controlBtn} ${isMuted ? styles.active : ''}`}
                     title={isMuted ? 'Включить микрофон' : 'Выключить микрофон'}
+                    disabled={hasMicrophonePermission === false}
                 >
                     <Icon name={isMuted ? 'mic-off' : 'mic'} size={20} />
                 </button>
