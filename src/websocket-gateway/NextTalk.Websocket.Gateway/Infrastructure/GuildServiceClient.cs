@@ -1,22 +1,32 @@
+using Microsoft.Extensions.Caching.Memory;
+
 namespace NextTalk.Websocket.Gateway.Infrastructure;
 
 public sealed class GuildServiceClient
 {
     private readonly HttpClient _httpClient;
+    private readonly IMemoryCache _cache;
     private readonly ILogger<GuildServiceClient> _logger;
+    private static readonly TimeSpan AccessCacheTtl = TimeSpan.FromSeconds(30);
 
-    public GuildServiceClient(HttpClient http, ILogger<GuildServiceClient> logger)
+    public GuildServiceClient(HttpClient http, IMemoryCache cache, ILogger<GuildServiceClient> logger)
     {
         _httpClient = http;
+        _cache = cache;
         _logger = logger;
     }
 
     /// <summary>
     /// Проверяет доступ пользователя к каналу и возвращает метаданные канала.
+    /// Результат кешируется на 30 секунд для снижения нагрузки на Guild Service.
     /// </summary>
     public async Task<ChannelAccessResult?> CheckChannelAccessAsync(
         Guid channelId, string userId, string correlationId, CancellationToken ct = default)
     {
+        var cacheKey = $"ch-access:{channelId}:{userId}";
+        if (_cache.TryGetValue(cacheKey, out ChannelAccessResult? cached))
+            return cached;
+
         using var request = new HttpRequestMessage(
             HttpMethod.Get,
             $"/internal/channels/{channelId}/access?userId={userId}");
@@ -35,7 +45,10 @@ public sealed class GuildServiceClient
             return null;
         }
 
-        return await response.Content.ReadFromJsonAsync<ChannelAccessResult>(ct);
+        var result = await response.Content.ReadFromJsonAsync<ChannelAccessResult>(ct);
+        if (result is not null)
+            _cache.Set(cacheKey, result, AccessCacheTtl);
+        return result;
     }
 
     /// <summary>
