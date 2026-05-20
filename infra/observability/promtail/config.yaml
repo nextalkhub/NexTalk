@@ -1,0 +1,90 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# Promtail — Docker log collection для NexTalk
+#
+# Использует Docker SD (docker_sd_configs) — читает логи через Docker API
+# без bind-mount /var/lib/docker/containers. Совместимо с Docker Desktop.
+#
+# Pipeline для микросервисов (.NET / Serilog CompactJsonFormatter):
+#   1. Парсим JSON-строку: извлекаем @l (level), @t (timestamp),
+#      TraceId, SpanId, CorrelationId, SourceContext.
+#   2. Устанавливаем label level (дефолт = Information, если @l отсутствует).
+#   3. Устанавливаем timestamp из @t.
+#   Для не-JSON контейнеров (nginx, redis, postgres, zitadel) pipeline
+#   обрабатывает строку как plain text — ошибок нет, логи всё равно собираются.
+# ─────────────────────────────────────────────────────────────────────────────
+
+server:
+  http_listen_port: 9080
+  grpc_listen_port: 0
+  log_level: warn
+
+positions:
+  filename: /tmp/promtail-positions.yaml
+
+clients:
+  - url: http://loki:3100/loki/api/v1/push
+    batchwait:    1s
+    batchsize:    1048576    # 1 MiB
+
+scrape_configs:
+
+  - job_name: docker
+    docker_sd_configs:
+      - host: unix:///var/run/docker.sock
+        refresh_interval: 5s
+        # Собираем только контейнеры проекта nextalk.
+        filters:
+          - name:   label
+            values: ["com.docker.compose.project=nextalk"]
+
+    relabel_configs:
+      # container — имя контейнера без ведущего слэша (/guild-service → guild-service).
+      - source_labels: [__meta_docker_container_name]
+        regex:         '/(.+)'
+        target_label:  container
+
+      # service — значение docker-compose label com.docker.compose.service.
+      - source_labels: [__meta_docker_container_label_com_docker_compose_service]
+        target_label:  service
+
+      # stream — stdout или stderr.
+      - source_labels: [__meta_docker_container_log_stream]
+        target_label:  stream
+
+    pipeline_stages:
+
+      # ── Serilog CompactJson parsing ────────────────────────────────────────
+      # Логи .NET сервисов: {"@t":"...","@m":"...","@l":"Warning","TraceId":"..."}
+      # Для non-JSON строк (nginx access log, redis, postgres) stage молча пропускает.
+      - json:
+          expressions:
+            _level:          "@l"
+            _timestamp:      "@t"
+            _trace_id:       "TraceId"
+            _span_id:        "SpanId"
+            _correlation_id: "CorrelationId"
+            _source_context: "SourceContext"
+
+      # Если @l отсутствует — уровень Information (Serilog опускает его по умолчанию).
+      - template:
+          source:   _level
+          template: '{{ if .Value }}{{ .Value }}{{ else }}Information{{ end }}'
+
+      # Labels с низкой кардинальностью: service (из relabel), level, stream.
+      # TraceId НЕ делаем label (высокая кардинальность) — только structured metadata.
+      - labels:
+          level: _level
+
+      # Structured metadata (Loki 3.x): trace_id и span_id для корреляции с Jaeger.
+      # Доступны в LogQL через | metadata `trace_id`="..." без label-кардинальности.
+      - structured_metadata:
+          trace_id: _trace_id
+          span_id:  _span_id
+
+      # Timestamp из @t (RFC3339Nano). Fallback — время получения Promtail.
+      - timestamp:
+          source: _timestamp
+          format: RFC3339Nano
+          fallback_formats:
+            - "2006-01-02T15:04:05.9999999Z07:00"
+            - RFC3339

@@ -1,0 +1,18 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# Grafana — провизия дашбордов из файловой системы
+# ─────────────────────────────────────────────────────────────────────────────
+apiVersion: 1
+
+providers:
+  - name:            NexTalk
+    orgId:           1
+    folder:          NexTalk
+    folderUid:       nextalk
+    type:            file
+    disableDeletion: false
+    editable:        true
+    updateIntervalSeconds: 30
+    allowUiUpdates:  true
+    options:
+      path: /etc/grafana/provisioning/dashboards
+      foldersFromFilesStructure: false

@@ -15,6 +15,8 @@ using NexTalk.Voice.Service.Features.Voice.Leave;
 using NexTalk.Voice.Service.Infrastructure;
 using NexTalk.Voice.Service.Shared;
 using NexTalk.Voice.Service.Shared.Exceptions;
+using OpenTelemetry.Resources;
+using OpenTelemetry.Trace;
 using Polly;
 using Prometheus;
 using Serilog;
@@ -26,6 +28,23 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Configuration.AddJsonFile("/zitadel-config/swagger-config.json", optional: true, reloadOnChange: true);
 
 builder.Services.AddSerilog((_, lc) => lc.ReadFrom.Configuration(builder.Configuration).Enrich.WithSpan());
+
+builder.Services.AddOpenTelemetry()
+    .ConfigureResource(r => r
+        .AddService(
+            serviceName: "voice-service",
+            serviceVersion: typeof(Program).Assembly.GetName().Version?.ToString() ?? "0.0.0"))
+    .WithTracing(tracing => tracing
+        .AddAspNetCoreInstrumentation(opts =>
+        {
+            opts.RecordException = true;
+            opts.Filter = ctx =>
+                !ctx.Request.Path.StartsWithSegments("/metrics") &&
+                !ctx.Request.Path.StartsWithSegments("/healthz") &&
+                !ctx.Request.Path.StartsWithSegments("/readyz");
+        })
+        .AddHttpClientInstrumentation()
+        .AddOtlpExporter());
 
 builder.Services.Configure<ForwardedHeadersOptions>(options =>
 {
