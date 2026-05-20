@@ -28,7 +28,8 @@ export const VoiceChannelPage: React.FC = () => {
     isMuted,
     isConnected,
     isLocalSpeaking,
-    toggleMic
+    toggleMic,
+    hasMicrophonePermission
   } = useVoice()
 
   const previousChannelRef = useRef<string | null>(null)
@@ -90,7 +91,7 @@ export const VoiceChannelPage: React.FC = () => {
               name:user.name,
               avatar:user.name[0].toUpperCase(),
               isSpeaking:isLocalSpeaking,
-              isMuted,
+              isMuted: isMuted || !hasMicrophonePermission, // фикс: muted если нет разрешения
               isCurrentUser:true
             },
 
