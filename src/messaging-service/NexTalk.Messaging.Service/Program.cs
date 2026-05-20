@@ -48,6 +48,7 @@ builder.Services.AddDbContext<MessagingDbContext>(opts =>
 builder.Services.AddSingleton<OutboxChannel>();
 builder.Services.AddHostedService<OutboxWorker>();
 builder.Services.AddHostedService<BroadcastConsumer>();
+builder.Services.AddHostedService<IdempotencyKeyCleanupService>();
 
 builder.Services.AddHttpClient<WsGatewayClient>(c => c.BaseAddress = new Uri(wsGatewayUrl))
     .AddResilienceHandler("ws-gateway", (pipeline, ctx) =>
