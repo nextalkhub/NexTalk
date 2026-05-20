@@ -30,16 +30,6 @@ export const useVoice = () => {
         const list = Array.from(
             room.remoteParticipants.values()
         ).map((p: RemoteParticipant) => {
-
-            console.log(
-                'participant:',
-                {
-                    identity: p.identity,
-                    name: p.name,
-                    metadata: p.metadata,
-                }, 'p: ', p
-            )
-
             return {
                 userId: p.identity,
                 username: p.name || p.identity,
