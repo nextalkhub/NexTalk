@@ -5,10 +5,6 @@ using Xunit;
 
 namespace NextTalk.Websocket.Gateway.Tests.Features;
 
-/// <summary>
-/// Internal broadcast эндпоинт без JWT (закрыт сетью + nginx).
-/// При отсутствии подписчиков в группе - 204 No Content (SignalR просто игнорирует send).
-/// </summary>
 public class BroadcastEndpointTests(WsGatewayFactory factory) : IClassFixture<WsGatewayFactory>
 {
     [Fact]
@@ -26,9 +22,6 @@ public class BroadcastEndpointTests(WsGatewayFactory factory) : IClassFixture<Ws
     [Fact]
     public async Task BareInternalBroadcast_Removed_NotReachableAsAnonymous()
     {
-        // Старый dead-endpoint удален. Запрос анонимного клиента к /internal/broadcast
-        // не должен попадать в 204 (как раньше), а должен отбиваться маршрутизатором
-        // (404) или фолбэк-политикой авторизации (401) - оба варианта валидны.
         var client = factory.CreateClient();
 
         var response = await client.PostAsJsonAsync(

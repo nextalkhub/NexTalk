@@ -132,7 +132,6 @@ public class GetMessagesEndpointTests(MessagingServiceFactory factory) : IClassF
 
         Assert.NotNull(secondBody);
         Assert.Equal(2, secondBody.Messages.Count);
-        // Pages must not overlap
         Assert.DoesNotContain(secondBody.Messages, m => firstBody.Messages.Any(f => f.Id == m.Id));
     }
 

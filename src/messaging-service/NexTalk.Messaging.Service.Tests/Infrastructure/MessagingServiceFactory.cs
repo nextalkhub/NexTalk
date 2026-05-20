@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
@@ -27,9 +28,6 @@ public class MessagingServiceFactory : WebApplicationFactory<Program>
 
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
-        // UseSetting() is applied BEFORE WebApplication.CreateBuilder reads its Configuration,
-        // so these are visible at the top of Program.cs where AddNpgSql() validates the value.
-        // ConfigureAppConfiguration() runs too late for this — it applies during host Build().
         builder.UseSetting("ConnectionStrings:PostgresConnection", "Host=placeholder;Database=placeholder");
         builder.UseSetting("Zitadel:Authority", "http://test-authority");
         builder.UseSetting("Zitadel:MetadataAddress", "http://test-authority/.well-known/openid-configuration");
@@ -38,8 +36,12 @@ public class MessagingServiceFactory : WebApplicationFactory<Program>
 
         builder.ConfigureTestServices(services =>
         {
-            // OutboxWorker и BroadcastConsumer не нужны в тестах: OutboxEvents пуст,
-            // HTTP-вызовов к WS Gateway не будет. Убираем, чтобы не засорять логи.
+            var zitadelEnricher = services.SingleOrDefault(d =>
+                d.ServiceType == typeof(IClaimsTransformation)
+                && d.ImplementationType == typeof(ZitadelClaimsEnricher));
+            if (zitadelEnricher is not null)
+                services.Remove(zitadelEnricher);
+
             var backgroundServices = services
                 .Where(d => d.ServiceType == typeof(IHostedService) &&
                             (d.ImplementationType == typeof(OutboxWorker) ||
@@ -47,7 +49,6 @@ public class MessagingServiceFactory : WebApplicationFactory<Program>
                 .ToList();
             foreach (var d in backgroundServices) services.Remove(d);
 
-            // Replace Npgsql with InMemory EF Core. Same descriptor-stripping pattern as guild-service tests.
             var dbDescriptors = services
                 .Where(d =>
                     d.ServiceType == typeof(DbContextOptions<MessagingDbContext>) ||
@@ -61,27 +62,19 @@ public class MessagingServiceFactory : WebApplicationFactory<Program>
             services.AddDbContext<MessagingDbContext>(opts =>
                 opts.UseInMemoryDatabase(_dbName, _dbRoot));
 
-            // Replace GuildServiceClient with a fake driven by the factory's GuildAccessResponse.
             var clientDescriptors = services
                 .Where(d => d.ServiceType == typeof(IGuildServiceClient))
                 .ToList();
             foreach (var d in clientDescriptors) services.Remove(d);
             services.AddScoped<IGuildServiceClient>(_ => new FakeGuildServiceClient(GuildAccessResponse, AdminCheckGranted));
 
-            // Override JwtBearer: clear Authority/MetadataAddress (no OIDC discovery to fake URL)
-            // and provide a symmetric IssuerSigningKey matching TestJwt.SigningKey.
             var signingKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(TestJwt.SigningKey));
             services.Configure<JwtBearerOptions>(JwtBearerDefaults.AuthenticationScheme, opts =>
             {
-                // null-forgiving: JwtBearer 9.0.0 declares these as non-nullable,
-                // but null is the documented way to disable OIDC discovery for tests.
                 opts.Authority = null!;
                 opts.MetadataAddress = null!;
                 opts.RequireHttpsMetadata = false;
                 opts.MapInboundClaims = false;
-                // Use the legacy SecurityTokenValidators path (JwtSecurityTokenHandler).
-                // Default in 9.0.0 is the newer TokenHandlers (JsonWebTokenHandler), but it
-                // fails to validate our HS256 tokens with IDX14102 in this test setup.
                 opts.UseSecurityTokenValidators = true;
                 opts.TokenValidationParameters = new TokenValidationParameters
                 {

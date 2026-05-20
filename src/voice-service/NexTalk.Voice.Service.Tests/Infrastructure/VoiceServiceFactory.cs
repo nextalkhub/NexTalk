@@ -1,5 +1,6 @@
 using System.Net.Http.Headers;
 using System.Text;
+using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
@@ -9,6 +10,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.IdentityModel.Protocols;
 using Microsoft.IdentityModel.Protocols.OpenIdConnect;
 using Microsoft.IdentityModel.Tokens;
+using NexTalk.Voice.Service.Shared;
 
 namespace NexTalk.Voice.Service.Tests.Infrastructure;
 
@@ -16,7 +18,6 @@ public class VoiceServiceFactory : WebApplicationFactory<Program>
 {
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
-        // ASPNETCORE_ENVIRONMENT=Development нужен только чтобы при необходимости открывать Swagger.
         builder.UseEnvironment("Development");
 
         builder.ConfigureAppConfiguration(config =>
@@ -34,8 +35,12 @@ public class VoiceServiceFactory : WebApplicationFactory<Program>
 
         builder.ConfigureTestServices(services =>
         {
-            // JWT-проверку перенастраиваем на симметричный ключ TestJwt, иначе
-            // JwtBearerHandler уходит по сети за discovery doc и валится.
+            var zitadelEnricher = services.SingleOrDefault(d =>
+                d.ServiceType == typeof(IClaimsTransformation)
+                && d.ImplementationType == typeof(ZitadelClaimsEnricher));
+            if (zitadelEnricher is not null)
+                services.Remove(zitadelEnricher);
+
             var signingKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(TestJwt.SigningKey));
             services.PostConfigure<JwtBearerOptions>(JwtBearerDefaults.AuthenticationScheme, opts =>
             {
