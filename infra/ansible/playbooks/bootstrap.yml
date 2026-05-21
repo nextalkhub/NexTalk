@@ -1,0 +1,14 @@
+---
+# Базовая настройка ВСЕХ серверов: пакеты, sysctl, swap, ufw.
+# Запускается первым, на голых VPS.
+#
+# Запуск:
+#   ansible-playbook -i inventory/hosts.ini playbooks/bootstrap.yml --ask-vault-pass
+
+- name: Bootstrap всех хостов (common + ufw)
+  hosts: all
+  become: true
+  gather_facts: true
+  roles:
+    - common
+    - ufw

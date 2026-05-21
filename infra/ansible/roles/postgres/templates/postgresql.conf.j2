@@ -1,0 +1,52 @@
+#
+# postgresql.conf — управляется Ansible. Ручные правки будут перезаписаны.
+#
+# Параметры рассчитаны под VPS 2 vCPU / 4 GB RAM.
+# Шаблон расчёта: https://pgtune.leopard.in.ua/
+#
+
+# --- Network -----------------------------------------------------------------
+listen_addresses = '{{ postgres_listen_address }}'
+port             = {{ postgres_port }}
+
+# --- Connections -------------------------------------------------------------
+max_connections  = {{ postgres_max_connections }}
+
+# --- Memory ------------------------------------------------------------------
+shared_buffers          = {{ postgres_shared_buffers }}
+effective_cache_size    = {{ postgres_effective_cache_size }}
+work_mem                = {{ postgres_work_mem }}
+maintenance_work_mem    = {{ postgres_maintenance_work_mem }}
+
+# --- WAL / Checkpoints -------------------------------------------------------
+wal_level               = replica
+max_wal_size            = 1GB
+min_wal_size            = 80MB
+checkpoint_timeout      = 15min
+checkpoint_completion_target = 0.9
+
+# --- Planner -----------------------------------------------------------------
+random_page_cost        = 1.1  # SSD
+effective_io_concurrency = 200
+
+# --- Logging -----------------------------------------------------------------
+logging_collector       = on
+log_directory           = 'log'
+log_filename            = 'postgresql-%a.log'
+log_rotation_age        = 1d
+log_rotation_size       = 0
+log_truncate_on_rotation = on
+log_min_duration_statement = 1000  # медленные запросы (>1s)
+log_line_prefix         = '%m [%p] %q%u@%d '
+
+# --- Autovacuum --------------------------------------------------------------
+autovacuum              = on
+
+# --- Locale / Defaults -------------------------------------------------------
+datestyle               = 'iso, mdy'
+timezone                = 'UTC'
+lc_messages             = 'C.UTF-8'
+lc_monetary             = 'C.UTF-8'
+lc_numeric              = 'C.UTF-8'
+lc_time                 = 'C.UTF-8'
+default_text_search_config = 'pg_catalog.english'

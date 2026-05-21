@@ -1,0 +1,99 @@
+---
+# Установка k3s в режиме server. Порядок:
+#   1. Положить config.yaml (со всеми флагами).
+#   2. На первом master'е — cluster-init.
+#   3. На остальных — server: https://VIP:6443.
+#
+# Документация: https://docs.k3s.io/installation/configuration
+# HA с embedded etcd: https://docs.k3s.io/datastore/ha-embedded
+
+- name: Создать /etc/rancher/k3s
+  ansible.builtin.file:
+    path: "{{ k3s_config_dir }}"
+    state: directory
+    owner: root
+    group: root
+    mode: '0755'
+  tags: [k3s, k3s_server]
+
+- name: Положить /etc/rancher/k3s/config.yaml
+  ansible.builtin.template:
+    src: config.yaml.j2
+    dest: "{{ k3s_config_dir }}/config.yaml"
+    owner: root
+    group: root
+    mode: '0600'
+  tags: [k3s, k3s_server]
+
+- name: Проверить наличие установленного k3s
+  ansible.builtin.stat:
+    path: /usr/local/bin/k3s
+  register: k3s_binary
+  tags: [k3s, k3s_server]
+
+# --- Установка первого master'а (cluster-init) -------------------------------
+- name: Установить k3s server на первом master'е
+  ansible.builtin.shell: |
+    set -euo pipefail
+    curl -sfL {{ k3s_install_script }} | \
+      INSTALL_K3S_EXEC="server" \
+      sh -
+  args:
+    creates: /usr/local/bin/k3s
+  when:
+    - inventory_hostname == groups['masters'][0]
+  tags: [k3s, k3s_server]
+
+- name: Дождаться готовности apiserver на первом master'е
+  ansible.builtin.wait_for:
+    host: "{{ ansible_host }}"
+    port: 6443
+    timeout: 180
+  when: inventory_hostname == groups['masters'][0]
+  tags: [k3s, k3s_server]
+
+# --- Установка остальных master'ов через VIP ---------------------------------
+- name: Подождать, пока VIP {{ k3s_vip }} поднимется (kube-vip)
+  ansible.builtin.wait_for:
+    host: "{{ k3s_vip }}"
+    port: 6443
+    timeout: 180
+  when: inventory_hostname != groups['masters'][0]
+  tags: [k3s, k3s_server]
+
+- name: Установить k3s server на остальных master'ах
+  ansible.builtin.shell: |
+    set -euo pipefail
+    curl -sfL {{ k3s_install_script }} | \
+      INSTALL_K3S_EXEC="server" \
+      sh -
+  args:
+    creates: /usr/local/bin/k3s
+  when: inventory_hostname != groups['masters'][0]
+  tags: [k3s, k3s_server]
+
+- name: Дождаться готовности apiserver на остальных master'ах
+  ansible.builtin.wait_for:
+    host: "{{ ansible_host }}"
+    port: 6443
+    timeout: 180
+  when: inventory_hostname != groups['masters'][0]
+  tags: [k3s, k3s_server]
+
+# --- Удобство: вытащить kubeconfig локально ----------------------------------
+- name: Прочитать kubeconfig с первого master'а
+  ansible.builtin.slurp:
+    src: "{{ k3s_kubeconfig_path }}"
+  register: k3s_kubeconfig
+  when: inventory_hostname == groups['masters'][0]
+  tags: [k3s, k3s_server, kubeconfig]
+
+- name: Сохранить kubeconfig локально (заменив 127.0.0.1 на VIP)
+  ansible.builtin.copy:
+    content: "{{ k3s_kubeconfig.content | b64decode | replace('127.0.0.1', k3s_vip) }}"
+    dest: "{{ playbook_dir }}/../kubeconfig"
+    mode: '0600'
+  when: inventory_hostname == groups['masters'][0]
+  delegate_to: localhost
+  become: false
+  tags: [k3s, k3s_server, kubeconfig]

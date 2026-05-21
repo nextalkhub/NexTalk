@@ -1,0 +1,31 @@
+---
+# Общие переменные для всех хостов
+
+ansible_user: root
+ansible_python_interpreter: /usr/bin/python3
+
+# SSH: bastion = worker-1 (публичный IP).
+# Все остальные хосты идут через ProxyJump.
+# Переопределяется per-host: bastion сам в себя не прыгает.
+ansible_ssh_common_args: >-
+  -o StrictHostKeyChecking=no
+  -o UserKnownHostsFile=/dev/null
+  -o ProxyJump=root@{{ hostvars['worker-1'].public_ip | default(hostvars['worker-1'].ansible_host) }}
+
+# Приватная сеть Beget
+private_network_cidr: "10.19.0.0/16"
+
+# kube-vip VIP — стабильный endpoint для apiserver
+k3s_vip: "10.19.0.10"
+
+# Версии (актуальные на момент написания плейбуков)
+k3s_channel: "stable"
+kube_vip_version: "v1.1.2"
+postgresql_version: "18"
+
+# Интерфейс приватной сети Beget. Если ip a показывает другое имя — поменять.
+private_iface: "eth1"
+
+# Service / Pod CIDR k3s (defaults). Используется в TLS-SAN и сетевых проверках.
+k3s_cluster_cidr: "10.42.0.0/16"
+k3s_service_cidr: "10.43.0.0/16"

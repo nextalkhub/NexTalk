@@ -1,0 +1,26 @@
+---
+# Установка Redis из стандартных репозиториев Debian/Ubuntu.
+
+- name: Установить redis-server
+  ansible.builtin.apt:
+    name: redis-server
+    state: present
+    update_cache: true
+  tags: [redis]
+
+- name: Положить redis.conf
+  ansible.builtin.template:
+    src: redis.conf.j2
+    dest: /etc/redis/redis.conf
+    owner: redis
+    group: redis
+    mode: '0640'
+  notify: restart redis
+  tags: [redis, config]
+
+- name: Включить и запустить redis
+  ansible.builtin.systemd:
+    name: redis-server
+    enabled: true
+    state: started
+  tags: [redis]

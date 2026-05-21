@@ -1,0 +1,71 @@
+---
+# Cluster-addons: ingress-nginx + cert-manager.
+# Запускается ОДИН РАЗ после k3s.yml — оттуда уже есть kubeconfig.
+#
+# ingress-nginx как DaemonSet с hostNetwork=true: трафик 80/443 идёт
+# напрямую на воркера, без NodePort/LoadBalancer.
+#
+# cert-manager + Let's Encrypt: ClusterIssuer лежит в Helm-чарте
+# (charts/nextalk/templates/clusterissuer.yaml).
+#
+# Запуск (с локалки, где есть kubeconfig):
+#   ansible-playbook -i inventory/hosts.ini playbooks/cluster-addons.yml
+
+- name: Cluster addons (ingress-nginx + cert-manager)
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  vars:
+    kubeconfig: "{{ playbook_dir }}/../kubeconfig"
+  tasks:
+    - name: Добавить Helm-репо ingress-nginx
+      kubernetes.core.helm_repository:
+        name: ingress-nginx
+        repo_url: https://kubernetes.github.io/ingress-nginx
+      tags: [addons, ingress]
+
+    - name: Установить ingress-nginx (DaemonSet + hostNetwork)
+      kubernetes.core.helm:
+        name: ingress-nginx
+        chart_ref: ingress-nginx/ingress-nginx
+        release_namespace: ingress-nginx
+        create_namespace: true
+        kubeconfig: "{{ kubeconfig }}"
+        values:
+          controller:
+            kind: DaemonSet
+            hostNetwork: true
+            hostPort:
+              enabled: true
+            dnsPolicy: ClusterFirstWithHostNet
+            service:
+              enabled: false  # нам не нужен Service типа LoadBalancer
+            nodeSelector:
+              kubernetes.io/os: linux
+              node-role.kubernetes.io/worker: ""
+            tolerations: []
+            ingressClassResource:
+              name: nginx
+              default: true
+            config:
+              use-forwarded-headers: "true"
+              compute-full-forwarded-for: "true"
+              proxy-body-size: "50m"
+      tags: [addons, ingress]
+
+    - name: Добавить Helm-репо jetstack (cert-manager)
+      kubernetes.core.helm_repository:
+        name: jetstack
+        repo_url: https://charts.jetstack.io
+      tags: [addons, cert-manager]
+
+    - name: Установить cert-manager
+      kubernetes.core.helm:
+        name: cert-manager
+        chart_ref: jetstack/cert-manager
+        release_namespace: cert-manager
+        create_namespace: true
+        kubeconfig: "{{ kubeconfig }}"
+        values:
+          installCRDs: true
+      tags: [addons, cert-manager]

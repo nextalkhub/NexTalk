@@ -1,0 +1,40 @@
+---
+# Деплой NexTalk Helm-чарта в k3s.
+#
+# Требует:
+#   - kubeconfig (получен после playbooks/k3s.yml).
+#   - cluster-addons установлены (ingress-nginx, cert-manager).
+#   - PostgreSQL и Redis доступны (db.yml).
+#   - secrets-файл с реальными значениями (charts/nextalk/secrets.values.yaml).
+#
+# Запуск:
+#   ansible-playbook -i inventory/hosts.ini playbooks/helm-deploy.yml \
+#     -e helm_secrets_file=charts/nextalk/secrets.values.yaml
+
+- name: Helm deploy NexTalk
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  vars:
+    kubeconfig: "{{ playbook_dir }}/../kubeconfig"
+    helm_chart_dir: "{{ playbook_dir }}/../../../charts/nextalk"
+    helm_release_name: nextalk
+    helm_namespace: nextalk
+    helm_values_files:
+      - "{{ helm_chart_dir }}/values.yaml"
+    # Опциональный override: -e helm_secrets_file=...
+    helm_secrets_file: ""
+  tasks:
+    - name: Установить/обновить релиз nextalk
+      kubernetes.core.helm:
+        name: "{{ helm_release_name }}"
+        chart_ref: "{{ helm_chart_dir }}"
+        release_namespace: "{{ helm_namespace }}"
+        create_namespace: true
+        kubeconfig: "{{ kubeconfig }}"
+        values_files: >-
+          {{ helm_values_files + ([helm_secrets_file] if helm_secrets_file else []) }}
+        atomic: true
+        wait: true
+        timeout: 10m
+      tags: [helm]

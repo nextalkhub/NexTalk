@@ -1,0 +1,39 @@
+---
+# Деплой observability-стека на obs-vps через docker compose.
+# Источник конфигов: infra/observability/ (репо). Копируем целиком.
+
+- name: Создать целевую директорию {{ obs_target_dir }}
+  ansible.builtin.file:
+    path: "{{ obs_target_dir }}"
+    state: directory
+    owner: root
+    group: root
+    mode: '0755'
+  tags: [obs]
+
+- name: Скопировать содержимое infra/observability/ на obs-vps
+  ansible.posix.synchronize:
+    src: "{{ playbook_dir }}/../../observability/"
+    dest: "{{ obs_target_dir }}/"
+    delete: false
+    rsync_opts:
+      - "--exclude=.git"
+      - "--exclude=*.log"
+  tags: [obs]
+
+- name: Положить docker-compose.yaml для obs-стека
+  ansible.builtin.template:
+    src: docker-compose.yaml.j2
+    dest: "{{ obs_target_dir }}/docker-compose.yaml"
+    owner: root
+    group: root
+    mode: '0644'
+  tags: [obs]
+
+- name: Запустить obs-стек через docker compose
+  community.docker.docker_compose_v2:
+    project_src: "{{ obs_target_dir }}"
+    state: present
+    pull: missing
+    remove_orphans: true
+  tags: [obs]

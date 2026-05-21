@@ -1,0 +1,14 @@
+---
+# Базовые порты по умолчанию. Расширяются в зависимости от роли хоста
+# через ufw_extra_rules в group_vars/*.yml.
+
+ufw_default_incoming_policy: deny
+ufw_default_outgoing_policy: allow
+
+# SSH открыт всегда (на bastion — публично, на остальных — только через приватную сеть,
+# но ufw тут не различает интерфейсы — это делает ProxyJump через bastion).
+ufw_base_rules:
+  - { rule: allow, port: '22', proto: tcp, comment: 'ssh' }
+
+# Доп. правила — формируются в group_vars для каждой группы (см. ниже).
+ufw_extra_rules: []

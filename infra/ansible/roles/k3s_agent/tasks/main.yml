@@ -1,0 +1,44 @@
+---
+# Установка k3s в режиме agent (worker-нода).
+
+- name: Создать /etc/rancher/k3s
+  ansible.builtin.file:
+    path: "{{ k3s_config_dir }}"
+    state: directory
+    owner: root
+    group: root
+    mode: '0755'
+  tags: [k3s, k3s_agent]
+
+- name: Положить /etc/rancher/k3s/config.yaml
+  ansible.builtin.template:
+    src: config.yaml.j2
+    dest: "{{ k3s_config_dir }}/config.yaml"
+    owner: root
+    group: root
+    mode: '0600'
+  tags: [k3s, k3s_agent]
+
+- name: Подождать VIP apiserver
+  ansible.builtin.wait_for:
+    host: "{{ k3s_vip }}"
+    port: 6443
+    timeout: 180
+  tags: [k3s, k3s_agent]
+
+- name: Установить k3s agent
+  ansible.builtin.shell: |
+    set -euo pipefail
+    curl -sfL {{ k3s_install_script }} | \
+      INSTALL_K3S_EXEC="agent" \
+      sh -
+  args:
+    creates: /usr/local/bin/k3s-agent
+  tags: [k3s, k3s_agent]
+
+- name: Включить и запустить k3s-agent
+  ansible.builtin.systemd:
+    name: k3s-agent
+    enabled: true
+    state: started
+  tags: [k3s, k3s_agent]

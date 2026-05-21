@@ -1,0 +1,16 @@
+---
+# Шаблон секретов. Скопируй в vault.yml, заполни и зашифруй:
+#   ansible-vault encrypt inventory/group_vars/vault.yml
+#
+# Запуск playbook'ов с vault:
+#   ansible-playbook -i inventory/hosts.ini playbooks/site.yml --ask-vault-pass
+#
+# Или через файл с паролем (НЕ коммитить):
+#   ansible-playbook ... --vault-password-file ~/.ansible_vault_pass
+
+vault_k3s_token: "REPLACE_ME"  # openssl rand -hex 32
+
+vault_postgres_nextalk_password: "REPLACE_ME"  # openssl rand -base64 24
+vault_postgres_zitadel_password: "REPLACE_ME"
+
+vault_redis_password: "REPLACE_ME"  # openssl rand -base64 24

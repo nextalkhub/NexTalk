@@ -1,0 +1,13 @@
+# Локальный inventory (содержит реальные IP)
+inventory/hosts.ini
+
+# Vault с настоящими секретами
+inventory/group_vars/vault.yml
+
+# Локально установленные collections и роли
+collections/
+.ansible/
+
+# Pull'енутый kubeconfig с master'а
+kubeconfig
+*.kubeconfig

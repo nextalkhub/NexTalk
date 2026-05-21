@@ -1,0 +1,44 @@
+---
+# Включаем ufw и накатываем правила. Сами правила приходят из group_vars.
+
+- name: Установить ufw
+  ansible.builtin.apt:
+    name: ufw
+    state: present
+  tags: [ufw]
+
+- name: Выставить дефолтные политики
+  community.general.ufw:
+    direction: "{{ item.direction }}"
+    policy: "{{ item.policy }}"
+  loop:
+    - { direction: incoming, policy: "{{ ufw_default_incoming_policy }}" }
+    - { direction: outgoing, policy: "{{ ufw_default_outgoing_policy }}" }
+  tags: [ufw]
+
+- name: Применить базовые правила (SSH)
+  community.general.ufw:
+    rule: "{{ item.rule }}"
+    port: "{{ item.port }}"
+    proto: "{{ item.proto | default('tcp') }}"
+    src: "{{ item.src | default(omit) }}"
+    comment: "{{ item.comment | default(omit) }}"
+  loop: "{{ ufw_base_rules }}"
+  tags: [ufw]
+
+- name: Применить специфичные правила для группы
+  community.general.ufw:
+    rule: "{{ item.rule }}"
+    port: "{{ item.port | default(omit) }}"
+    proto: "{{ item.proto | default('tcp') }}"
+    src: "{{ item.src | default(omit) }}"
+    comment: "{{ item.comment | default(omit) }}"
+  loop: "{{ ufw_extra_rules }}"
+  when: ufw_extra_rules | length > 0
+  tags: [ufw]
+
+- name: Включить ufw и logging
+  community.general.ufw:
+    state: enabled
+    logging: low
+  tags: [ufw]

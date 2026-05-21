@@ -1,0 +1,39 @@
+#
+# redis.conf — управляется Ansible. Ручные правки будут перезаписаны.
+# Документация: https://redis.io/docs/latest/operate/oss_and_stack/management/config/
+#
+
+# --- Network -----------------------------------------------------------------
+bind {{ redis_bind_address }} 127.0.0.1
+port {{ redis_port }}
+protected-mode yes
+tcp-backlog 511
+timeout 0
+tcp-keepalive 300
+
+# --- Auth --------------------------------------------------------------------
+requirepass {{ redis_password }}
+
+# --- Persistence -------------------------------------------------------------
+# В нашем кейсе Redis = cache + SignalR backplane + general. RDB-снепшоты раз в N мин
+# достаточно (потеря 5 мин кеша не критична).
+save 900 1
+save 300 10
+save 60  10000
+
+dir /var/lib/redis
+dbfilename dump.rdb
+rdbcompression yes
+rdbchecksum yes
+
+# --- Memory ------------------------------------------------------------------
+maxmemory {{ redis_maxmemory }}
+maxmemory-policy {{ redis_maxmemory_policy }}
+
+# --- Logging -----------------------------------------------------------------
+loglevel notice
+logfile /var/log/redis/redis-server.log
+
+# --- Misc --------------------------------------------------------------------
+databases 16
+supervised systemd

@@ -1,0 +1,20 @@
+---
+# Полный оркестратор: разворачивает ВСЁ с нуля.
+#
+# Запуск:
+#   ansible-playbook -i inventory/hosts.ini playbooks/site.yml --ask-vault-pass
+#
+# Порядок осознанный:
+#   1. bootstrap.yml  — пакеты, sysctl, ufw на всех нодах.
+#   2. db.yml         — Postgres + Redis (нужны для приложений).
+#   3. obs.yml        — observability stack (нужен до приложений, чтобы метрики ловились с первой секунды).
+#   4. k3s.yml        — кластер k3s с kube-vip.
+#   5. cluster-addons.yml — ingress-nginx + cert-manager.
+#   6. helm-deploy.yml — приложения NexTalk.
+
+- import_playbook: bootstrap.yml
+- import_playbook: db.yml
+- import_playbook: obs.yml
+- import_playbook: k3s.yml
+- import_playbook: cluster-addons.yml
+- import_playbook: helm-deploy.yml

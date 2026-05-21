@@ -1,0 +1,33 @@
+---
+# Установка k3s в режиме HA + kube-vip.
+#
+# Порядок:
+#   1. На всех master'ах: положить kube-vip RBAC и DaemonSet в manifests/.
+#   2. На первом master'е: установить k3s server с cluster-init.
+#   3. На остальных master'ах: установить k3s server с server=https://VIP.
+#   4. На воркерах: установить k3s agent.
+#
+# Запуск:
+#   ansible-playbook -i inventory/hosts.ini playbooks/k3s.yml --ask-vault-pass
+
+- name: Pre-deploy kube-vip manifests на master'ы
+  hosts: masters
+  become: true
+  gather_facts: true
+  roles:
+    - kube_vip
+
+- name: Установка k3s server (control-plane)
+  hosts: masters
+  become: true
+  gather_facts: true
+  serial: 1  # последовательно: сначала первый, потом остальные через VIP
+  roles:
+    - k3s_server
+
+- name: Установка k3s agent (workers)
+  hosts: workers
+  become: true
+  gather_facts: true
+  roles:
+    - k3s_agent

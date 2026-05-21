@@ -1,0 +1,41 @@
+---
+# kube-vip как DaemonSet через k3s auto-deploy manifests.
+# Документация: https://kube-vip.io/docs/installation/daemonset/
+#
+# ВАЖНО: kube-vip manifest + RBAC ДОЛЖНЫ оказаться в
+# /var/lib/rancher/k3s/server/manifests/ ДО первого старта k3s.
+# k3s подхватит их при старте через AddonsController.
+#
+# Mode: ARP + leaderElection (для control-plane VIP). Используем рендер
+# из Jinja-шаблона вместо ctr/docker — это идемпотентно и не требует
+# наличия containerd на ноде до установки k3s.
+
+- name: Создать директорию k3s manifests
+  ansible.builtin.file:
+    path: "{{ kube_vip_manifest_dir }}"
+    state: directory
+    owner: root
+    group: root
+    mode: '0755'
+  tags: [kube_vip]
+
+# RBAC для kube-vip берётся из официального источника при первом разворачивании.
+# Раз скачали — больше не дергаем (force: false).
+- name: Скачать RBAC manifest для kube-vip
+  ansible.builtin.get_url:
+    url: "{{ kube_vip_rbac_url }}"
+    dest: "{{ kube_vip_manifest_dir }}/kube-vip-rbac.yaml"
+    owner: root
+    group: root
+    mode: '0644'
+    force: false
+  tags: [kube_vip]
+
+- name: Сгенерировать DaemonSet manifest из шаблона
+  ansible.builtin.template:
+    src: kube-vip-ds.yaml.j2
+    dest: "{{ kube_vip_manifest_dir }}/kube-vip-ds.yaml"
+    owner: root
+    group: root
+    mode: '0644'
+  tags: [kube_vip]

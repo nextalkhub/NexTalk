@@ -1,0 +1,40 @@
+#
+# k3s server config — управляется Ansible.
+# Документация: https://docs.k3s.io/installation/configuration
+#
+
+# Токен общий для всех нод (server + agent).
+token: "{{ k3s_token }}"
+
+{% if inventory_hostname == groups['masters'][0] %}
+# Первый master — инициализирует embedded etcd кластер.
+cluster-init: true
+{% else %}
+# Остальные master'ы подключаются к существующему кластеру через VIP.
+server: "https://{{ k3s_vip }}:6443"
+{% endif %}
+
+# node-ip = адрес ноды в приватной сети.
+# bind-address НЕ задаём — apiserver слушает на 0.0.0.0, чтобы kube-vip мог
+# принять трафик на VIP (он добавляется как secondary IP на интерфейс).
+# На master'ах публичного IP нет — 0.0.0.0 фактически = приватная сеть.
+node-ip: "{{ ansible_host }}"
+
+# TLS SAN — VIP + IP каждого master'а. Иначе клиент через VIP получит invalid cert.
+tls-san:
+  - "{{ k3s_vip }}"
+{% for h in groups['masters'] %}
+  - "{{ hostvars[h]['ansible_host'] }}"
+{% endfor %}
+
+# Что отключаем из коробки.
+disable:
+{% for component in k3s_server_disable %}
+  - {{ component }}
+{% endfor %}
+
+# CNI — flannel через приватный интерфейс.
+flannel-iface: "{{ private_iface }}"
+
+# kubeconfig читаемый для не-root (нам нужно его утащить с master'а).
+write-kubeconfig-mode: "0644"

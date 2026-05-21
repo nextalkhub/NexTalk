@@ -1,0 +1,43 @@
+---
+# PostgreSQL
+postgres_listen_address: "{{ ansible_host }}"
+postgres_port: 5432
+postgres_max_connections: 100
+postgres_shared_buffers: "1GB"
+postgres_effective_cache_size: "2GB"
+postgres_work_mem: "8MB"
+postgres_maintenance_work_mem: "128MB"
+
+# Список БД и пользователей.
+# Пароли — через ansible-vault (vault_postgres_*).
+postgres_databases:
+  - name: guild
+    owner: nextalk_user
+  - name: messaging
+    owner: nextalk_user
+  - name: zitadel
+    owner: zitadel_user
+
+postgres_users:
+  - name: nextalk_user
+    password: "{{ vault_postgres_nextalk_password | default('REPLACE_ME') }}"
+  - name: zitadel_user
+    password: "{{ vault_postgres_zitadel_password | default('REPLACE_ME') }}"
+
+# Whitelist в pg_hba.conf — только worker-ноды k3s.
+postgres_allowed_hosts:
+  - "10.19.0.21/32"
+  - "10.19.0.22/32"
+  - "10.19.0.23/32"
+
+# Файрвол: 5432 и 6379 — только из приватной сети.
+ufw_extra_rules:
+  - { rule: allow, port: '5432', proto: tcp, src: "{{ private_network_cidr }}", comment: 'postgres' }
+  - { rule: allow, port: '6379', proto: tcp, src: "{{ private_network_cidr }}", comment: 'redis' }
+
+# Redis
+redis_bind_address: "{{ ansible_host }}"
+redis_port: 6379
+redis_password: "{{ vault_redis_password | default('REPLACE_ME') }}"
+redis_maxmemory: "512mb"
+redis_maxmemory_policy: "allkeys-lru"

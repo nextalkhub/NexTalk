@@ -1,0 +1,75 @@
+#
+# docker-compose для obs-vps — управляется Ansible.
+# Прометей/Loki/Tempo с retention под 40 GB диск.
+#
+# Порты публикуются на all interfaces, но защищены ufw (см. group_vars/obs.yml).
+#
+
+version: "3.9"
+
+networks:
+  obs:
+    driver: bridge
+
+volumes:
+  prometheus-data:
+  loki-data:
+  tempo-data:
+  grafana-data:
+
+services:
+  prometheus:
+    image: prom/prometheus:latest
+    restart: unless-stopped
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--storage.tsdb.path=/prometheus"
+      - "--storage.tsdb.retention.time={{ prometheus_retention }}"
+      - "--web.enable-lifecycle"
+    volumes:
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus-data:/prometheus
+    ports:
+      - "9090:9090"
+    networks: [obs]
+
+  loki:
+    image: grafana/loki:latest
+    restart: unless-stopped
+    command: ["-config.file=/etc/loki/loki-config.yaml"]
+    volumes:
+      - ./loki/loki-config.yaml:/etc/loki/loki-config.yaml:ro
+      - loki-data:/loki
+    environment:
+      - LOKI_RETENTION_PERIOD={{ loki_retention_period }}
+    ports:
+      - "3100:3100"
+    networks: [obs]
+
+  tempo:
+    image: grafana/tempo:latest
+    restart: unless-stopped
+    command: ["-config.file=/etc/tempo/tempo.yaml"]
+    volumes:
+      - ./tempo/tempo.yaml:/etc/tempo/tempo.yaml:ro
+      - tempo-data:/var/tempo
+    environment:
+      - TEMPO_RETENTION={{ tempo_retention_period }}
+    ports:
+      - "4317:4317"   # OTLP gRPC
+      - "4318:4318"   # OTLP HTTP
+      - "3200:3200"   # Tempo HTTP
+    networks: [obs]
+
+  grafana:
+    image: grafana/grafana:latest
+    restart: unless-stopped
+    volumes:
+      - ./grafana/provisioning:/etc/grafana/provisioning:ro
+      - grafana-data:/var/lib/grafana
+    environment:
+      - GF_SERVER_ROOT_URL=https://grafana.nextalk.fun
+      - GF_AUTH_ANONYMOUS_ENABLED=false
+    ports:
+      - "3000:3000"
+    networks: [obs]

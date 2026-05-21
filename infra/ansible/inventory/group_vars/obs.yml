@@ -1,0 +1,19 @@
+---
+# Целевая директория на obs-vps, куда копируется infra/observability/
+obs_target_dir: /opt/nextalk/observability
+
+# Retention под 40 GB диск.
+prometheus_retention: "7d"
+loki_retention_period: "168h"  # 7 дней
+tempo_retention_period: "72h"  # 3 дня
+
+# Файрвол: ресиверы (OTLP, Loki push, Prometheus federation, scrape) —
+# только из приватной сети. Grafana UI — публично, ходим по
+# https://grafana.nextalk.fun (через ingress на воркерах).
+# Но если решим выставить напрямую — оставим 3000 закрытым по умолчанию.
+ufw_extra_rules:
+  - { rule: allow, port: '4317', proto: tcp, src: "{{ private_network_cidr }}", comment: 'otlp grpc (tempo/loki)' }
+  - { rule: allow, port: '4318', proto: tcp, src: "{{ private_network_cidr }}", comment: 'otlp http' }
+  - { rule: allow, port: '3100', proto: tcp, src: "{{ private_network_cidr }}", comment: 'loki push' }
+  - { rule: allow, port: '9090', proto: tcp, src: "{{ private_network_cidr }}", comment: 'prometheus' }
+  - { rule: allow, port: '3000', proto: tcp, src: "{{ private_network_cidr }}", comment: 'grafana (через ingress)' }

@@ -1,0 +1,107 @@
+---
+# Установка PostgreSQL 18 из официального PGDG-репозитория Debian/Ubuntu.
+# Документация: https://www.postgresql.org/download/linux/debian/
+
+- name: Установить prerequisites для PGDG-репозитория
+  ansible.builtin.apt:
+    name:
+      - curl
+      - ca-certificates
+      - gnupg
+      - lsb-release
+    state: present
+  tags: [postgres]
+
+- name: Создать директорию для apt keyrings
+  ansible.builtin.file:
+    path: /etc/apt/keyrings
+    state: directory
+    mode: '0755'
+  tags: [postgres]
+
+- name: Импортировать GPG-ключ PGDG
+  ansible.builtin.get_url:
+    url: https://www.postgresql.org/media/keys/ACCC4CF8.asc
+    dest: /etc/apt/keyrings/postgresql.asc
+    mode: '0644'
+  tags: [postgres]
+
+- name: Добавить APT-репозиторий PGDG
+  ansible.builtin.apt_repository:
+    repo: >-
+      deb [signed-by=/etc/apt/keyrings/postgresql.asc]
+      http://apt.postgresql.org/pub/repos/apt
+      {{ ansible_distribution_release }}-pgdg main
+    state: present
+    filename: pgdg
+    update_cache: true
+  tags: [postgres]
+
+- name: Установить PostgreSQL {{ postgresql_version }}
+  ansible.builtin.apt:
+    name:
+      - "postgresql-{{ postgresql_version }}"
+      - "postgresql-client-{{ postgresql_version }}"
+      - "postgresql-contrib-{{ postgresql_version }}"
+      - python3-psycopg2
+    state: present
+  tags: [postgres]
+
+- name: Включить и запустить postgresql
+  ansible.builtin.systemd:
+    name: postgresql
+    enabled: true
+    state: started
+  tags: [postgres]
+
+- name: Положить postgresql.conf
+  ansible.builtin.template:
+    src: postgresql.conf.j2
+    dest: "/etc/postgresql/{{ postgresql_version }}/main/postgresql.conf"
+    owner: postgres
+    group: postgres
+    mode: '0644'
+  notify: restart postgres
+  tags: [postgres, config]
+
+- name: Положить pg_hba.conf
+  ansible.builtin.template:
+    src: pg_hba.conf.j2
+    dest: "/etc/postgresql/{{ postgresql_version }}/main/pg_hba.conf"
+    owner: postgres
+    group: postgres
+    mode: '0640'
+  notify: reload postgres
+  tags: [postgres, config]
+
+# Применяем конфиг ДО создания пользователей/БД, чтобы listen_address
+# и hba уже были правильные.
+- name: Прогнать handlers сейчас
+  ansible.builtin.meta: flush_handlers
+  tags: [postgres]
+
+- name: Создать пользователей
+  community.postgresql.postgresql_user:
+    name: "{{ item.name }}"
+    password: "{{ item.password }}"
+    role_attr_flags: LOGIN
+    state: present
+  loop: "{{ postgres_users }}"
+  no_log: true
+  become: true
+  become_user: postgres
+  tags: [postgres, users]
+
+- name: Создать БД
+  community.postgresql.postgresql_db:
+    name: "{{ item.name }}"
+    owner: "{{ item.owner }}"
+    encoding: UTF-8
+    lc_collate: en_US.UTF-8
+    lc_ctype: en_US.UTF-8
+    template: template0
+    state: present
+  loop: "{{ postgres_databases }}"
+  become: true
+  become_user: postgres
+  tags: [postgres, db]

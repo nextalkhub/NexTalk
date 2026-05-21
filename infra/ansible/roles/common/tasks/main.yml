@@ -1,0 +1,87 @@
+---
+# Базовая настройка любой ноды: пакеты, время, swap, sysctl под k8s.
+# Применяется ко ВСЕМ хостам (masters, workers, db, obs).
+
+- name: Обновить apt-кеш (раз в сутки максимум)
+  ansible.builtin.apt:
+    update_cache: true
+    cache_valid_time: 86400
+  tags: [common, apt]
+
+- name: Установить базовые пакеты
+  ansible.builtin.apt:
+    name:
+      - curl
+      - wget
+      - ca-certificates
+      - gnupg
+      - lsb-release
+      - apt-transport-https
+      - software-properties-common
+      - net-tools
+      - htop
+      - vim
+      - jq
+      - unzip
+      - python3
+      - python3-pip
+      - chrony
+    state: present
+  tags: [common, apt]
+
+- name: Выставить timezone в UTC
+  community.general.timezone:
+    name: Etc/UTC
+  tags: [common, tz]
+
+- name: Включить chrony (NTP) для синхронизации времени
+  ansible.builtin.systemd:
+    name: chrony
+    enabled: true
+    state: started
+  tags: [common, tz]
+
+# k8s требует выключенный swap. Иначе kubelet падает.
+- name: Выключить swap немедленно
+  ansible.builtin.command: swapoff -a
+  when: ansible_swaptotal_mb | int > 0
+  changed_when: true
+  tags: [common, swap]
+
+- name: Удалить swap из /etc/fstab, чтобы не включился после reboot
+  ansible.builtin.replace:
+    path: /etc/fstab
+    regexp: '^([^#].*\sswap\s.*)$'
+    replace: '# \1'
+  tags: [common, swap]
+
+# sysctl + modules — обязательны для k3s/CNI.
+- name: Загрузить модули ядра (overlay, br_netfilter)
+  community.general.modprobe:
+    name: "{{ item }}"
+    state: present
+  loop:
+    - overlay
+    - br_netfilter
+  tags: [common, kernel]
+
+- name: Прописать модули для автозагрузки
+  ansible.builtin.copy:
+    dest: /etc/modules-load.d/k3s.conf
+    content: |
+      overlay
+      br_netfilter
+    owner: root
+    group: root
+    mode: '0644'
+  tags: [common, kernel]
+
+- name: Применить sysctl для k3s (bridge nf-call, ip_forward)
+  ansible.builtin.copy:
+    src: sysctl-k3s.conf
+    dest: /etc/sysctl.d/99-k3s.conf
+    owner: root
+    group: root
+    mode: '0644'
+  notify: reload sysctl
+  tags: [common, sysctl]

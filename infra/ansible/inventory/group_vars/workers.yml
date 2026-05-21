@@ -1,0 +1,17 @@
+---
+# Файрвол правил для worker-нод k3s.
+# Воркеры публикуют 80/443 через ingress-nginx с hostNetwork=true —
+# поэтому эти порты должны быть открыты В ИНТЕРНЕТ.
+
+ufw_extra_rules:
+  # Внешний трафик (HTTP/HTTPS) — публично.
+  - { rule: allow, port: '80',    proto: tcp, comment: 'http (ingress-nginx)' }
+  - { rule: allow, port: '443',   proto: tcp, comment: 'https (ingress-nginx)' }
+
+  # Внутренние порты k3s — только из приватной сети.
+  - { rule: allow, port: '10250', proto: tcp, src: "{{ private_network_cidr }}", comment: 'kubelet' }
+  - { rule: allow, port: '8472',  proto: udp, src: "{{ private_network_cidr }}", comment: 'flannel vxlan' }
+  - { rule: allow, port: '51820', proto: udp, src: "{{ private_network_cidr }}", comment: 'flannel wg (опц.)' }
+
+  # NodePort range — пригодится если будем что-то выставлять напрямую.
+  # Пока не открываем, ingress-nginx через hostNetwork покрывает все нужды.
