@@ -14,10 +14,14 @@ spec:
       labels:
         app: voice-service
     spec:
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
       containers:
         - name: voice-service
-          image: {{ .Values.voiceService.image }}
-          imagePullPolicy: {{ .Values.voiceService.imagePullPolicy }}
+          image: "{{ .Values.voiceService.image.repository }}:{{ .Values.voiceService.image.tag }}"
+          imagePullPolicy: {{ .Values.voiceService.image.pullPolicy }}
+          securityContext:
+            {{- toYaml .Values.containerSecurityContext | nindent 12 }}
           ports:
             - containerPort: 5003
           env:

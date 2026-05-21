@@ -6,7 +6,7 @@ metadata:
   namespace: {{ .Values.namespace }}
 spec:
   serviceName: zitadel
-  replicas: 1
+  replicas: {{ .Values.zitadel.replicas }}
   selector:
     matchLabels:
       app: zitadel
@@ -16,14 +16,26 @@ spec:
         app: zitadel
     spec:
       securityContext:
-        runAsUser: 0
+        # Zitadel-образ собран под UID 1000, поэтому fsGroup тоже 1000 —
+        # чтобы /zitadel/bootstrap (PVC) принадлежал нужной группе.
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+        seccompProfile:
+          type: RuntimeDefault
       initContainers:
         - name: wait-for-postgres
           image: postgres:17-alpine
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
           command:
             - sh
             - -c
-            - until pg_isready -h postgres -p 5432 -U postgres; do echo "waiting for postgres..."; sleep 3; done
+            - until pg_isready -h {{ .Values.db.host }} -p {{ .Values.db.port }} -U {{ .Values.postgres.user }}; do echo "waiting for postgres..."; sleep 3; done
           env:
             - name: PGPASSWORD
               valueFrom:
@@ -32,7 +44,12 @@ spec:
                   key: postgres-password
       containers:
         - name: api
-          image: ghcr.io/zitadel/zitadel:v4.13.1
+          image: "{{ .Values.zitadel.image.repository }}:{{ .Values.zitadel.image.tag }}"
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: false
+            capabilities:
+              drop: ["ALL"]
           command:
             - zitadel
             - start-from-init
@@ -109,12 +126,16 @@ spec:
           volumeMounts:
             - name: bootstrap
               mountPath: /zitadel/bootstrap
+          startupProbe:
+            exec:
+              command: ["/app/zitadel", "ready"]
+            failureThreshold: 30
+            periodSeconds: 5
           readinessProbe:
             exec:
               command: ["/app/zitadel", "ready"]
-            initialDelaySeconds: 20
             periodSeconds: 10
-            failureThreshold: 12
+            failureThreshold: 3
           livenessProbe:
             exec:
               command: ["/app/zitadel", "ready"]
@@ -130,7 +151,12 @@ spec:
               memory: 512Mi
 
         - name: login
-          image: ghcr.io/zitadel/zitadel-login:v4.13.1
+          image: "{{ .Values.zitadel.loginImage.repository }}:{{ .Values.zitadel.loginImage.tag }}"
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: false
+            capabilities:
+              drop: ["ALL"]
           ports:
             - containerPort: 3000
               name: login

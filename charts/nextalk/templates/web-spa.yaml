@@ -14,10 +14,23 @@ spec:
       labels:
         app: web-spa
     spec:
+      securityContext:
+        # nginx-образ запускается под UID 101 (nginx). Подменяем стандартный 1000.
+        runAsNonRoot: true
+        runAsUser: 101
+        runAsGroup: 101
+        fsGroup: 101
+        seccompProfile:
+          type: RuntimeDefault
       containers:
         - name: web-spa
-          image: {{ .Values.webSpa.image }}
-          imagePullPolicy: {{ .Values.webSpa.imagePullPolicy }}
+          image: "{{ .Values.webSpa.image.repository }}:{{ .Values.webSpa.image.tag }}"
+          imagePullPolicy: {{ .Values.webSpa.image.pullPolicy }}
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: false
+            capabilities:
+              drop: ["ALL"]
           ports:
             - containerPort: 80
           livenessProbe:

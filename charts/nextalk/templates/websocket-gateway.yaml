@@ -14,10 +14,14 @@ spec:
       labels:
         app: websocket-gateway
     spec:
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
       containers:
         - name: websocket-gateway
-          image: {{ .Values.websocketGateway.image }}
-          imagePullPolicy: {{ .Values.websocketGateway.imagePullPolicy }}
+          image: "{{ .Values.websocketGateway.image.repository }}:{{ .Values.websocketGateway.image.tag }}"
+          imagePullPolicy: {{ .Values.websocketGateway.image.pullPolicy }}
+          securityContext:
+            {{- toYaml .Values.containerSecurityContext | nindent 12 }}
           ports:
             - containerPort: 5004
           env:
@@ -35,8 +39,13 @@ spec:
                   key: ZITADEL_AUTHORITY
             - name: Zitadel__MetadataAddress
               value: http://zitadel:8080/.well-known/openid-configuration
+            - name: REDIS_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: nextalk-secrets
+                  key: redis-password
             - name: ConnectionStrings__Redis
-              value: {{ printf "%s:%s,password=%s,defaultDatabase=2" .Values.db.redisHost .Values.db.redisPort .Values.db.redisPassword | quote }}
+              value: {{ printf "%s:%s,password=$(REDIS_PASSWORD),defaultDatabase=2" .Values.db.redisHost .Values.db.redisPort | quote }}
             - name: OTEL_EXPORTER_OTLP_ENDPOINT
               value: {{ .Values.observability.otelEndpoint }}
             - name: OTEL_EXPORTER_OTLP_PROTOCOL

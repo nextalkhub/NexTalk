@@ -14,10 +14,14 @@ spec:
       labels:
         app: messaging-service
     spec:
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
       containers:
         - name: messaging-service
-          image: {{ .Values.messagingService.image }}
-          imagePullPolicy: {{ .Values.messagingService.imagePullPolicy }}
+          image: "{{ .Values.messagingService.image.repository }}:{{ .Values.messagingService.image.tag }}"
+          imagePullPolicy: {{ .Values.messagingService.image.pullPolicy }}
+          securityContext:
+            {{- toYaml .Values.containerSecurityContext | nindent 12 }}
           ports:
             - containerPort: 5002
           env:
