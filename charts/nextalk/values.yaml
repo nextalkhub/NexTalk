@@ -1,6 +1,20 @@
-# -----------------------------------------------------------------------
-# Global
-# -----------------------------------------------------------------------
+# =======================================================================
+# NexTalk Helm chart values.
+#
+# Файл НЕ содержит секретов. Все пароли, masterkey, livekit-ключи
+# и acme-email подкатываются на этапе деплоя через -f vault-rendered.yaml
+# (см. infra/ansible/playbooks/helm-deploy.yml).
+#
+# Перед деплоем должны быть переопределены:
+#   db.host, db.redisHost           — приватные IP db-vps
+#   tls.email                       — email для Let's Encrypt
+#   postgres.password               — из vault.yml
+#   db.redisPassword                — из vault.yml
+#   zitadel.masterkey               — из vault.yml (ровно 32 символа)
+#   livekit.apiKey, secretKey       — из vault.yml
+#   *Service.image.tag              — конкретная версия (semver или sha)
+# =======================================================================
+
 namespace: nextalk
 
 # Внешний домен кластера. Используется в Ingress и Zitadel.
@@ -11,28 +25,32 @@ domain: "nextalk.fun"
 # -----------------------------------------------------------------------
 tls:
   enabled: true
-  # Сначала протестируй со staging, затем переключи на letsencrypt-prod.
+  # Сначала переключи на letsencrypt-staging для проверки HTTP-01 челленджа,
+  # затем — на letsencrypt-prod (5 сертификатов на домен в неделю).
   issuer: "letsencrypt-prod"
-  # Email для уведомлений Let's Encrypt об истечении сертификата.
-  email: "otpetiv860@outlook.com"
+  # Email для уведомлений Let's Encrypt. Подкатить через vault.
+  email: ""
 
 # -----------------------------------------------------------------------
 # DB VPS (Beget приватная сеть)
-# Замени host/redisHost на реальные приватные IP перед деплоем.
 # -----------------------------------------------------------------------
 db:
-  host: "10.0.0.1"       # Приватный IP DB VPS
+  host: ""               # Приватный IP db-vps
   port: "5432"
-  redisHost: "10.0.0.1"  # Тот же VPS или отдельный
+  # sslmode для подключений к Postgres.
+  # prefer — TLS если сервер поддерживает, иначе plain. БД в приватной сети
+  # Beget без TLS пока (roadmap: настроить TLS на db-vps и переключить на require).
+  sslmode: "prefer"
+  redisHost: ""          # Тот же db-vps или отдельный
   redisPort: "6379"
-  redisPassword: ""       # Должен совпадать с REDIS_PASSWORD в infra/db/.env
+  redisPassword: ""      # Подкатить через vault, совпадает с REDIS_PASSWORD в infra/db/.env
 
 # -----------------------------------------------------------------------
-# PostgreSQL credentials (хранятся в Secret)
+# PostgreSQL credentials (хранятся в Secret nextalk-secrets)
 # -----------------------------------------------------------------------
 postgres:
   user: "postgres"
-  password: "postgres"   # Замени перед деплоем!
+  password: ""           # Подкатить через vault
   db: "nextalk"
 
 # -----------------------------------------------------------------------
@@ -41,54 +59,111 @@ postgres:
 zitadel:
   domain: "nextalk.fun"
   externalPort: "443"
-  # Must be exactly 32 characters
-  masterkey: "MasterkeyNeedsToHave32Characters"
+  # Ровно 32 символа. Подкатить через vault (openssl rand -hex 16).
+  masterkey: ""
+  image:
+    repository: ghcr.io/zitadel/zitadel
+    tag: "v4.13.1"
+  loginImage:
+    repository: ghcr.io/zitadel/zitadel-login
+    tag: "v4.13.1"
+  replicas: 2
 
 # -----------------------------------------------------------------------
 # LiveKit (voice/video SFU)
 # -----------------------------------------------------------------------
 livekit:
-  apiKey: "devkey"
-  secretKey: "devsecret"
+  apiKey: ""             # Подкатить через vault
+  secretKey: ""          # Подкатить через vault
+  image:
+    repository: livekit/livekit-server
+    tag: "v1.11"
+  # UDP-диапазон для медиа. На воркерах должны быть открыты эти порты в ufw.
+  rtcPortStart: 50000
+  rtcPortEnd: 50200
+  # Redis для shared state (room metadata). База 0 — общая для LiveKit.
+  redisDb: 0
 
 # -----------------------------------------------------------------------
 # Observability (Obs VPS, Beget приватная сеть)
-# Замени IP на реальный приватный IP Obs VPS перед деплоем.
 # -----------------------------------------------------------------------
 observability:
-  # OTLP gRPC endpoint OTel Collector на Obs VPS
   otelEndpoint: "http://10.0.0.2:4317"
-  # Loki endpoint на Obs VPS (для Alloy DaemonSet и Grafana datasource)
   lokiUrl: "http://10.0.0.2:3100"
-  # Jaeger Query API на Obs VPS (для Grafana datasource)
   jaegerUrl: "http://10.0.0.2:16686"
-  # Prometheus remote_write receiver на Obs VPS
   prometheusRemoteWriteUrl: "http://10.0.0.2:9090/api/v1/write"
 
 # -----------------------------------------------------------------------
-# Application services
+# In-cluster Prometheus (scrape + remote_write на Obs VPS)
+# -----------------------------------------------------------------------
+prometheus:
+  image:
+    repository: prom/prometheus
+    tag: "v3.11.3"
+  retention: "1d"
+  storage: "2Gi"
+
+# -----------------------------------------------------------------------
+# Alloy (logs collector → Loki на Obs VPS)
+# -----------------------------------------------------------------------
+alloy:
+  image:
+    repository: grafana/alloy
+    tag: "v1.16.1"
+
+# -----------------------------------------------------------------------
+# Дефолтный securityContext для всех сервисов NexTalk.
+# Совместим с PSA baseline и почти со всем restricted (кроме seccomp).
+# -----------------------------------------------------------------------
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 1000
+  runAsGroup: 1000
+  fsGroup: 1000
+  seccompProfile:
+    type: RuntimeDefault
+
+containerSecurityContext:
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: false  # ASP.NET пишет временные файлы; включить позже с emptyDir для /tmp
+  capabilities:
+    drop: ["ALL"]
+
+# -----------------------------------------------------------------------
+# Application services. Теги фиксированы — никаких :latest в проде.
+# Перед каждым деплоем обновлять tag вручную (или из CI).
 # -----------------------------------------------------------------------
 guildService:
   replicas: 2
-  image: "nextalk/guild-service:latest"
-  imagePullPolicy: Always
+  image:
+    repository: "nextalk/guild-service"
+    tag: "0.1.0"
+    pullPolicy: IfNotPresent
 
 messagingService:
   replicas: 2
-  image: "nextalk/messaging-service:latest"
-  imagePullPolicy: Always
+  image:
+    repository: "nextalk/messaging-service"
+    tag: "0.1.0"
+    pullPolicy: IfNotPresent
 
 voiceService:
-  replicas: 1
-  image: "nextalk/voice-service:latest"
-  imagePullPolicy: Always
+  replicas: 2
+  image:
+    repository: "nextalk/voice-service"
+    tag: "0.1.0"
+    pullPolicy: IfNotPresent
 
 websocketGateway:
   replicas: 2
-  image: "nextalk/websocket-gateway:latest"
-  imagePullPolicy: Always
+  image:
+    repository: "nextalk/websocket-gateway"
+    tag: "0.1.0"
+    pullPolicy: IfNotPresent
 
 webSpa:
-  replicas: 1
-  image: "nextalk/web-spa:latest"
-  imagePullPolicy: Always
+  replicas: 2
+  image:
+    repository: "nextalk/web-spa"
+    tag: "0.1.0"
+    pullPolicy: IfNotPresent

@@ -12,8 +12,11 @@ metadata:
     {{- else }}
     nginx.ingress.kubernetes.io/ssl-redirect: "false"
     {{- end }}
+    # WebSocket / long-poll: окно жизни соединения.
     nginx.ingress.kubernetes.io/proxy-read-timeout: "3600"
     nginx.ingress.kubernetes.io/proxy-send-timeout: "3600"
+    # Zitadel ждёт gRPC-Web заголовки и большие cookies в HTTP/2.
+    nginx.ingress.kubernetes.io/proxy-buffer-size: "16k"
 spec:
   ingressClassName: nginx
   {{- if .Values.tls.enabled }}
@@ -26,6 +29,7 @@ spec:
     - host: {{ .Values.domain }}
       http:
         paths:
+          # ---- NexTalk API ----
           - path: /api/guilds
             pathType: Prefix
             backend:
@@ -61,6 +65,7 @@ spec:
                 name: voice-service
                 port:
                   number: 5003
+          # ---- WebSocket ----
           - path: /ws
             pathType: Prefix
             backend:
@@ -68,6 +73,51 @@ spec:
                 name: websocket-gateway
                 port:
                   number: 5004
+          # ---- Zitadel: OIDC API на 8080 (discovery, oauth2, token, userinfo) ----
+          - path: /.well-known
+            pathType: Prefix
+            backend:
+              service:
+                name: zitadel
+                port:
+                  number: 8080
+          - path: /oauth/v2
+            pathType: Prefix
+            backend:
+              service:
+                name: zitadel
+                port:
+                  number: 8080
+          - path: /openid
+            pathType: Prefix
+            backend:
+              service:
+                name: zitadel
+                port:
+                  number: 8080
+          - path: /oidc/v1
+            pathType: Prefix
+            backend:
+              service:
+                name: zitadel
+                port:
+                  number: 8080
+          # Zitadel UI / Console / assets — отдельные пути, чтобы не задеть SPA.
+          - path: /ui
+            pathType: Prefix
+            backend:
+              service:
+                name: zitadel
+                port:
+                  number: 8080
+          - path: /assets
+            pathType: Prefix
+            backend:
+              service:
+                name: zitadel
+                port:
+                  number: 8080
+          # ---- Zitadel login UI (port 3000) ----
           - path: /ui/v2/login
             pathType: Prefix
             backend:
@@ -75,6 +125,7 @@ spec:
                 name: zitadel
                 port:
                   number: 3000
+          # ---- Web SPA: catch-all ----
           - path: /
             pathType: Prefix
             backend:

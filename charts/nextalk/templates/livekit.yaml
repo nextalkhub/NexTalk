@@ -1,4 +1,7 @@
 ---
+# Конфиг LiveKit подтягивает Redis address и keys из env через ${...}.
+# Это значит ключи остаются только в Secret nextalk-secrets, не утекают в ConfigMap.
+# Документация: https://docs.livekit.io/home/self-hosting/deployment/
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -11,16 +14,17 @@ data:
 
     rtc:
       tcp_port: 7881
-      port_range_start: 50000
-      port_range_end: 50200
-      use_external_ip: false
-      node_ip: 0.0.0.0
+      port_range_start: {{ .Values.livekit.rtcPortStart }}
+      port_range_end: {{ .Values.livekit.rtcPortEnd }}
+      use_external_ip: true
 
     redis:
-      address: redis:6379
+      address: {{ printf "%s:%s" .Values.db.redisHost .Values.db.redisPort | quote }}
+      password: ${REDIS_PASSWORD}
+      db: {{ .Values.livekit.redisDb }}
 
     keys:
-      {{ .Values.livekit.apiKey }}: {{ .Values.livekit.secretKey }}
+      ${LIVEKIT_KEYS}
 
     room:
       auto_create: true
@@ -33,6 +37,8 @@ metadata:
   name: livekit
   namespace: {{ .Values.namespace }}
 spec:
+  # LiveKit в single-node режиме. Для HA нужен LiveKit Cloud / mesh с
+  # одной точкой входа — это вне scope текущей итерации.
   replicas: 1
   selector:
     matchLabels:
@@ -42,33 +48,70 @@ spec:
       labels:
         app: livekit
     spec:
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
       containers:
         - name: livekit
-          image: livekit/livekit-server:v1.11
+          image: "{{ .Values.livekit.image.repository }}:{{ .Values.livekit.image.tag }}"
           args: ["--config", "/etc/livekit.yaml"]
+          securityContext:
+            {{- toYaml .Values.containerSecurityContext | nindent 12 }}
+          env:
+            - name: REDIS_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: nextalk-secrets
+                  key: redis-password
+            # LiveKit ждёт keys как "apiKey: secretKey" одной строкой.
+            - name: LIVEKIT_KEYS
+              value: "$(LIVEKIT_API_KEY): $(LIVEKIT_SECRET_KEY)"
+            - name: LIVEKIT_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: nextalk-secrets
+                  key: livekit-api-key
+            - name: LIVEKIT_SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: nextalk-secrets
+                  key: livekit-secret-key
           ports:
             - containerPort: 7880
               name: http
             - containerPort: 7881
               name: rtc-tcp
               protocol: TCP
-            - containerPort: 50000
-              hostPort: 50000
+            # UDP-диапазон для медиа. hostPort = portmap прямо на ноду
+            # (под должен быть на ноде с публичным IP — pin через nodeSelector).
+            - containerPort: {{ .Values.livekit.rtcPortStart }}
+              hostPort: {{ .Values.livekit.rtcPortStart }}
               protocol: UDP
-            - containerPort: 50200
-              hostPort: 50200
+            - containerPort: {{ .Values.livekit.rtcPortEnd }}
+              hostPort: {{ .Values.livekit.rtcPortEnd }}
               protocol: UDP
           volumeMounts:
             - name: config
               mountPath: /etc/livekit.yaml
               subPath: livekit.yaml
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 7880
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /
+              port: 7880
+            initialDelaySeconds: 30
+            periodSeconds: 20
           resources:
             requests:
-              cpu: 50m
-              memory: 128Mi
+              cpu: 100m
+              memory: 256Mi
             limits:
-              cpu: 500m
-              memory: 512Mi
+              cpu: 1000m
+              memory: 1Gi
       volumes:
         - name: config
           configMap:
