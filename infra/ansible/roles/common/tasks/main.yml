@@ -1,6 +1,6 @@
 ---
 # Базовая настройка любой ноды: пакеты, время, swap, sysctl под k8s.
-# Применяется ко ВСЕМ хостам (masters, workers, db, obs).
+# Применяется ко ВСЕМ хостам (masters, workers, db, observability).
 
 - name: Обновить apt-кеш (раз в сутки максимум)
   ansible.builtin.apt:
@@ -85,3 +85,32 @@
     mode: '0644'
   notify: reload sysctl
   tags: [common, sysctl]
+
+# Автоматические security-обновления Debian/Ubuntu.
+# Документация: https://wiki.debian.org/UnattendedUpgrades
+- name: Установить unattended-upgrades
+  ansible.builtin.apt:
+    name:
+      - unattended-upgrades
+      - apt-listchanges
+    state: present
+  tags: [common, security]
+
+- name: Включить ежедневный апдейт и security-only режим
+  ansible.builtin.copy:
+    dest: /etc/apt/apt.conf.d/20auto-upgrades
+    content: |
+      APT::Periodic::Update-Package-Lists "1";
+      APT::Periodic::Unattended-Upgrade "1";
+      APT::Periodic::AutocleanInterval "7";
+    owner: root
+    group: root
+    mode: '0644'
+  tags: [common, security]
+
+- name: Включить и запустить unattended-upgrades
+  ansible.builtin.systemd:
+    name: unattended-upgrades
+    enabled: true
+    state: started
+  tags: [common, security]

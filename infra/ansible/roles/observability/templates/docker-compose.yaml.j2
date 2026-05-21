@@ -1,14 +1,15 @@
 #
-# docker-compose для obs-vps — управляется Ansible.
+# docker-compose для observability-vps — управляется Ansible.
 # Прометей/Loki/Tempo с retention под 40 GB диск.
 #
-# Порты публикуются на all interfaces, но защищены ufw (см. group_vars/obs.yml).
+# Порты публикуются на all interfaces, но защищены ufw
+# (см. inventory/group_vars/observability.yml).
 #
 
 version: "3.9"
 
 networks:
-  obs:
+  observability:
     driver: bridge
 
 volumes:
@@ -19,7 +20,7 @@ volumes:
 
 services:
   prometheus:
-    image: prom/prometheus:latest
+    image: "prom/prometheus:{{ observability_prometheus_version }}"
     restart: unless-stopped
     command:
       - "--config.file=/etc/prometheus/prometheus.yml"
@@ -31,10 +32,10 @@ services:
       - prometheus-data:/prometheus
     ports:
       - "9090:9090"
-    networks: [obs]
+    networks: [observability]
 
   loki:
-    image: grafana/loki:latest
+    image: "grafana/loki:{{ observability_loki_version }}"
     restart: unless-stopped
     command: ["-config.file=/etc/loki/loki-config.yaml"]
     volumes:
@@ -44,10 +45,10 @@ services:
       - LOKI_RETENTION_PERIOD={{ loki_retention_period }}
     ports:
       - "3100:3100"
-    networks: [obs]
+    networks: [observability]
 
   tempo:
-    image: grafana/tempo:latest
+    image: "grafana/tempo:{{ observability_tempo_version }}"
     restart: unless-stopped
     command: ["-config.file=/etc/tempo/tempo.yaml"]
     volumes:
@@ -59,10 +60,10 @@ services:
       - "4317:4317"   # OTLP gRPC
       - "4318:4318"   # OTLP HTTP
       - "3200:3200"   # Tempo HTTP
-    networks: [obs]
+    networks: [observability]
 
   grafana:
-    image: grafana/grafana:latest
+    image: "grafana/grafana:{{ observability_grafana_version }}"
     restart: unless-stopped
     volumes:
       - ./grafana/provisioning:/etc/grafana/provisioning:ro
@@ -72,4 +73,4 @@ services:
       - GF_AUTH_ANONYMOUS_ENABLED=false
     ports:
       - "3000:3000"
-    networks: [obs]
+    networks: [observability]

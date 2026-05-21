@@ -38,3 +38,13 @@ flannel-iface: "{{ private_iface }}"
 
 # kubeconfig читаемый для не-root (нам нужно его утащить с master'а).
 write-kubeconfig-mode: "0644"
+
+# Шифрование Secret-ов в etcd at-rest. Без этого Secret лежат в base64
+# и читаются любым, кто получил доступ к диску master'а.
+# Документация: https://docs.k3s.io/security/secrets-encryption
+secrets-encryption: true
+
+# PodSecurity admission controller: enforce baseline по умолчанию.
+# Конфиг лежит рядом, см. /var/lib/rancher/k3s/server/psa.yaml.
+kube-apiserver-arg:
+  - "admission-control-config-file=/var/lib/rancher/k3s/server/psa.yaml"

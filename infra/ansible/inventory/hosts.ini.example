@@ -21,8 +21,8 @@ worker-3 ansible_host=10.19.0.23 public_ip=CHANGE_ME
 [db]
 db-vps ansible_host=10.19.0.31
 
-[obs]
-obs-vps ansible_host=10.19.0.41
+[observability]
+observability-vps ansible_host=10.19.0.41
 
 # Группа для совместных play'ев k3s (server + agent).
 [k3s_cluster:children]

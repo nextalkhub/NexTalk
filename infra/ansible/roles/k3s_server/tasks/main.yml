@@ -25,6 +25,26 @@
     mode: '0600'
   tags: [k3s, k3s_server]
 
+# PSA config должен существовать ДО первого старта kube-apiserver,
+# иначе apiserver не поднимется из-за невалидного флага.
+- name: Создать /var/lib/rancher/k3s/server
+  ansible.builtin.file:
+    path: "{{ k3s_data_dir }}/server"
+    state: directory
+    owner: root
+    group: root
+    mode: '0700'
+  tags: [k3s, k3s_server]
+
+- name: Положить PodSecurity admission config
+  ansible.builtin.template:
+    src: psa.yaml.j2
+    dest: "{{ k3s_data_dir }}/server/psa.yaml"
+    owner: root
+    group: root
+    mode: '0600'
+  tags: [k3s, k3s_server]
+
 - name: Проверить наличие установленного k3s
   ansible.builtin.stat:
     path: /usr/local/bin/k3s

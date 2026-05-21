@@ -20,13 +20,13 @@ infra/ansible/
 │       ├── workers.yml       # ufw rules для воркеров (открытые 80/443)
 │       ├── k3s_cluster.yml   # k3s_token, disable list
 │       ├── db.yml            # postgres/redis настройки + whitelist
-│       ├── obs.yml           # retention для obs-стека
+│       ├── observability.yml # retention для observability-стека
 │       └── vault.yml.example # секреты (скопировать → encrypt)
 ├── playbooks/
 │   ├── site.yml              # полный оркестратор
 │   ├── bootstrap.yml         # пакеты + sysctl + ufw на всех хостах
 │   ├── db.yml                # postgres + redis на db-vps
-│   ├── obs.yml               # observability на obs-vps
+│   ├── observability.yml     # observability stack на observability-vps
 │   ├── k3s.yml               # k3s HA + kube-vip
 │   ├── cluster-addons.yml    # ingress-nginx + cert-manager
 │   └── helm-deploy.yml       # деплой Helm-чарта nextalk
@@ -74,7 +74,7 @@ make deploy
 ```bash
 make bootstrap   # пакеты + sysctl + ufw
 make db          # postgres + redis
-make obs         # prometheus + loki + tempo + grafana
+make observability  # prometheus + loki + tempo + grafana
 make k3s         # k3s + kube-vip
 make addons      # ingress-nginx + cert-manager
 make helm        # деплой приложений

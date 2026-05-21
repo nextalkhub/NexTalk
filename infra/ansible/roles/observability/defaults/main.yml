@@ -1,0 +1,8 @@
+---
+# Версии образов observability-стека. Обновлять ОСОЗНАННО, читать changelog.
+# latest НИКОГДА не использовать — невоспроизводимо + supply-chain риск.
+
+observability_prometheus_version: "v3.1.0"
+observability_loki_version: "3.3.2"
+observability_tempo_version: "2.7.0"
+observability_grafana_version: "11.4.0"

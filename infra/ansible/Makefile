@@ -6,7 +6,7 @@
 #   make ping          # проверить SSH до всех хостов
 #   make bootstrap     # базовая настройка всех VPS
 #   make db            # PostgreSQL + Redis
-#   make obs           # observability stack
+#   make observability # observability stack
 #   make k3s           # k3s HA + kube-vip
 #   make addons        # ingress-nginx + cert-manager
 #   make helm          # деплой приложений NexTalk
@@ -17,7 +17,7 @@ INVENTORY    ?= inventory/hosts.ini
 VAULT_PASS   ?= --ask-vault-pass
 ANSIBLE      = ansible-playbook -i $(INVENTORY) $(VAULT_PASS)
 
-.PHONY: galaxy ping bootstrap db obs k3s addons helm deploy smoke clean-kubeconfig
+.PHONY: galaxy ping bootstrap db observability k3s addons helm deploy smoke clean-kubeconfig
 
 galaxy:
 	ansible-galaxy collection install -r requirements.yml
@@ -31,8 +31,8 @@ bootstrap:
 db:
 	$(ANSIBLE) playbooks/db.yml
 
-obs:
-	$(ANSIBLE) playbooks/obs.yml
+observability:
+	$(ANSIBLE) playbooks/observability.yml
 
 k3s:
 	$(ANSIBLE) playbooks/k3s.yml

@@ -1,6 +1,6 @@
 ---
-# Целевая директория на obs-vps, куда копируется infra/observability/
-obs_target_dir: /opt/nextalk/observability
+# Целевая директория на observability-vps, куда копируется infra/observability/
+observability_target_dir: /opt/nextalk/observability
 
 # Retention под 40 GB диск.
 prometheus_retention: "7d"
