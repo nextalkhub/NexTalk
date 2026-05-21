@@ -5,6 +5,7 @@ using NexTalk.Guild.Service.Features.Members.AssignRole;
 using NexTalk.Guild.Service.Infrastructure;
 using NexTalk.Guild.Service.Shared;
 using NexTalk.Guild.Service.Shared.Exceptions;
+using Microsoft.Extensions.Logging.Abstractions;
 using Xunit;
 using System.Net.Http;
 using GuildDomain = NexTalk.Guild.Service.Domain.Guild;
@@ -28,7 +29,7 @@ public class AssignRoleHandlerTests
         _rbac = new RbacService(_db);
         var httpClient = new HttpClient(new MockHttpMessageHandler());
         _wsGatewayMock = new Mock<WsGatewayClient>(httpClient);
-        _handler = new AssignRoleHandler(_db, _rbac, _wsGatewayMock.Object);
+        _handler = new AssignRoleHandler(_db, _rbac, _wsGatewayMock.Object, NullLogger<AssignRoleHandler>.Instance);
     }
 
     private async Task<(GuildDomain guild, Member owner, Member target)> SetupGuildWithMembersAsync()

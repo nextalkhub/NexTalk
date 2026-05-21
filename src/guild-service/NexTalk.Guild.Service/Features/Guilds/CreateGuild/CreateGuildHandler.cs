@@ -8,10 +8,12 @@ namespace NexTalk.Guild.Service.Features.Guilds.CreateGuild;
 public class CreateGuildHandler
 {
     private readonly GuildDbContext _db;
+    private readonly ILogger<CreateGuildHandler> _logger;
 
-    public CreateGuildHandler(GuildDbContext db)
+    public CreateGuildHandler(GuildDbContext db, ILogger<CreateGuildHandler> logger)
     {
         _db = db;
+        _logger = logger;
     }
 
     public async Task<Guid> HandleAsync(CreateGuildCommand cmd, CancellationToken ct = default)
@@ -47,6 +49,9 @@ public class CreateGuildHandler
         _db.Members.Add(owner);
         _db.Channels.Add(general);
         await _db.SaveChangesAsync(ct);
+
+        _logger.LogInformation("Guild created: id={GuildId} name={GuildName} owner={OwnerId}",
+            guild.Id, guild.Name, cmd.OwnerId);
 
         return guild.Id;
     }

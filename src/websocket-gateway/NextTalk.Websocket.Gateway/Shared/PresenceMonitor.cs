@@ -12,15 +12,15 @@ public sealed class PresenceMonitor : BackgroundService
 {
     private static readonly TimeSpan ScanInterval = TimeSpan.FromSeconds(10);
 
-    private readonly PresenceTracker _tracker;
-    private readonly ConnectionManager _connections;
+    private readonly IPresenceTracker _tracker;
+    private readonly IConnectionManager _connections;
     private readonly IHubContext<ChatHub> _hubContext;
     private readonly TimeSpan _offlineTimeout;
     private readonly ILogger<PresenceMonitor> _logger;
 
     public PresenceMonitor(
-        PresenceTracker tracker, 
-        ConnectionManager connections, 
+        IPresenceTracker tracker,
+        IConnectionManager connections,
         IHubContext<ChatHub> hubContext,
         IOptions<PresenceOptions> options,
         ILogger<PresenceMonitor> logger)
@@ -41,8 +41,12 @@ public sealed class PresenceMonitor : BackgroundService
             var staleUsers = _tracker.GetStale(_offlineTimeout);
             foreach (var userId in staleUsers)
             {
-                _tracker.Remove(userId);
-                
+                // Только под, который физически удалил запись, рассылает событие.
+                // Остальные реплики тоже видят stale-пользователей, но Remove вернёт false —
+                // атомарность ZREM гарантирует ровно один broadcast на пользователя.
+                if (!_tracker.Remove(userId))
+                    continue;
+
                 var entry = _connections.Get(userId);
                 if (entry is not null)
                 {
@@ -56,7 +60,7 @@ public sealed class PresenceMonitor : BackgroundService
                                 stoppingToken);
                     }
                 }
-                
+
                 _logger.LogDebug("User {UserId} went offline: heartbeat timeout", userId);
             }
         }

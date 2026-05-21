@@ -17,16 +17,37 @@ using NexTalk.Messaging.Service.Infrastructure;
 using NexTalk.Messaging.Service.Infrastructure.Outbox;
 using NexTalk.Messaging.Service.Shared;
 using NexTalk.Messaging.Service.Shared.Exceptions;
+using OpenTelemetry.Resources;
+using OpenTelemetry.Trace;
 using Polly;
 using Prometheus;
 using Serilog;
+using Serilog.Enrichers.Span;
 using IPNetwork = System.Net.IPNetwork;
 
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Configuration.AddJsonFile("/zitadel-config/swagger-config.json", optional: true, reloadOnChange: true);
 
-builder.Services.AddSerilog((_, lc) => lc.ReadFrom.Configuration(builder.Configuration));
+builder.Services.AddSerilog((_, lc) => lc.ReadFrom.Configuration(builder.Configuration).Enrich.WithSpan());
+
+builder.Services.AddOpenTelemetry()
+    .ConfigureResource(r => r
+        .AddService(
+            serviceName: "messaging-service",
+            serviceVersion: typeof(Program).Assembly.GetName().Version?.ToString() ?? "0.0.0"))
+    .WithTracing(tracing => tracing
+        .AddAspNetCoreInstrumentation(opts =>
+        {
+            opts.RecordException = true;
+            opts.Filter = ctx =>
+                !ctx.Request.Path.StartsWithSegments("/metrics") &&
+                !ctx.Request.Path.StartsWithSegments("/healthz") &&
+                !ctx.Request.Path.StartsWithSegments("/readyz");
+        })
+        .AddHttpClientInstrumentation()
+        .AddEntityFrameworkCoreInstrumentation()
+        .AddOtlpExporter());
 
 builder.Services.Configure<ForwardedHeadersOptions>(options =>
 {
@@ -47,16 +68,24 @@ builder.Services.AddDbContext<MessagingDbContext>(opts =>
 builder.Services.AddSingleton<OutboxChannel>();
 builder.Services.AddHostedService<OutboxWorker>();
 builder.Services.AddHostedService<BroadcastConsumer>();
+builder.Services.AddHostedService<IdempotencyKeyCleanupService>();
 
 builder.Services.AddHttpClient<WsGatewayClient>(c => c.BaseAddress = new Uri(wsGatewayUrl))
-    .AddResilienceHandler("ws-gateway", pipeline =>
+    .AddResilienceHandler("ws-gateway", (pipeline, ctx) =>
     {
+        var logger = ctx.ServiceProvider.GetRequiredService<ILogger<Program>>();
         pipeline.AddRetry(new HttpRetryStrategyOptions
         {
             MaxRetryAttempts = 3,
             Delay = TimeSpan.FromMilliseconds(300),
             BackoffType = DelayBackoffType.Exponential,
             UseJitter = true,
+            OnRetry = args =>
+            {
+                logger.LogWarning(args.Outcome.Exception, "Retry {Attempt}/3 ws-gateway: {Status}",
+                    args.AttemptNumber + 1, args.Outcome.Result?.StatusCode);
+                return ValueTask.CompletedTask;
+            }
         });
         pipeline.AddTimeout(TimeSpan.FromSeconds(5));
     });
@@ -217,6 +246,11 @@ app.UseExceptionHandler(exApp => exApp.Run(async ctx =>
         BadRequestException e => (StatusCodes.Status400BadRequest, e.Message),
         _ => (StatusCodes.Status500InternalServerError, "An unexpected error occurred.")
     };
+
+    if (status == StatusCodes.Status500InternalServerError)
+        ctx.RequestServices.GetRequiredService<ILogger<Program>>()
+            .LogError(ex, "Unhandled exception: {Path}", ctx.Request.Path);
+
     ctx.Response.StatusCode = status;
     await ctx.Response.WriteAsJsonAsync(new { error = message });
 }));

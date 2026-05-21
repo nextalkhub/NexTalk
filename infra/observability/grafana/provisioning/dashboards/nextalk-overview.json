@@ -1,0 +1,548 @@
+{
+  "__inputs": [],
+  "__requires": [
+    { "type": "datasource", "id": "prometheus", "name": "Prometheus", "version": "1.0.0" },
+    { "type": "datasource", "id": "loki",       "name": "Loki",       "version": "1.0.0" }
+  ],
+  "annotations": {
+    "list": [
+      {
+        "builtIn": 1,
+        "datasource": { "type": "grafana", "uid": "-- Grafana --" },
+        "enable": true,
+        "hide": true,
+        "iconColor": "rgba(0, 211, 255, 1)",
+        "name": "Annotations & Alerts",
+        "type": "dashboard"
+      }
+    ]
+  },
+  "description": "NexTalk microservices — HTTP metrics, .NET runtime, log stream",
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 1,
+  "id": null,
+  "links": [],
+  "panels": [
+
+    {
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 0 },
+      "id": 100,
+      "title": "Service Health",
+      "type": "row"
+    },
+
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "mappings": [
+            { "options": { "0": { "color": "red",   "index": 1, "text": "DOWN" },
+                           "1": { "color": "green", "index": 0, "text": "UP"   } },
+              "type": "value" }
+          ],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "red",   "value": null },
+              { "color": "green", "value": 1    }
+            ]
+          },
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "gridPos": { "h": 4, "w": 6, "x": 0, "y": 1 },
+      "id": 1,
+      "options": { "colorMode": "background", "graphMode": "none", "justifyMode": "center",
+                   "orientation": "auto", "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+                   "textMode": "auto", "wideLayout": true },
+      "title": "Guild Service",
+      "type": "stat",
+      "targets": [
+        { "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "expr": "up{job=\"guild-service\"}",
+          "instant": true,
+          "legendFormat": "guild-service",
+          "refId": "A" }
+      ]
+    },
+
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "mappings": [
+            { "options": { "0": { "color": "red",   "index": 1, "text": "DOWN" },
+                           "1": { "color": "green", "index": 0, "text": "UP"   } },
+              "type": "value" }
+          ],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [ { "color": "red", "value": null }, { "color": "green", "value": 1 } ]
+          },
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "gridPos": { "h": 4, "w": 6, "x": 6, "y": 1 },
+      "id": 2,
+      "options": { "colorMode": "background", "graphMode": "none", "justifyMode": "center",
+                   "orientation": "auto", "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+                   "textMode": "auto", "wideLayout": true },
+      "title": "Messaging Service",
+      "type": "stat",
+      "targets": [
+        { "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "expr": "up{job=\"messaging-service\"}",
+          "instant": true,
+          "legendFormat": "messaging-service",
+          "refId": "A" }
+      ]
+    },
+
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "mappings": [
+            { "options": { "0": { "color": "red",   "index": 1, "text": "DOWN" },
+                           "1": { "color": "green", "index": 0, "text": "UP"   } },
+              "type": "value" }
+          ],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [ { "color": "red", "value": null }, { "color": "green", "value": 1 } ]
+          },
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "gridPos": { "h": 4, "w": 6, "x": 12, "y": 1 },
+      "id": 3,
+      "options": { "colorMode": "background", "graphMode": "none", "justifyMode": "center",
+                   "orientation": "auto", "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+                   "textMode": "auto", "wideLayout": true },
+      "title": "Voice Service",
+      "type": "stat",
+      "targets": [
+        { "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "expr": "up{job=\"voice-service\"}",
+          "instant": true,
+          "legendFormat": "voice-service",
+          "refId": "A" }
+      ]
+    },
+
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "mappings": [
+            { "options": { "0": { "color": "red",   "index": 1, "text": "DOWN" },
+                           "1": { "color": "green", "index": 0, "text": "UP"   } },
+              "type": "value" }
+          ],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [ { "color": "red", "value": null }, { "color": "green", "value": 1 } ]
+          },
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "gridPos": { "h": 4, "w": 6, "x": 18, "y": 1 },
+      "id": 4,
+      "options": { "colorMode": "background", "graphMode": "none", "justifyMode": "center",
+                   "orientation": "auto", "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+                   "textMode": "auto", "wideLayout": true },
+      "title": "WebSocket Gateway",
+      "type": "stat",
+      "targets": [
+        { "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "expr": "up{job=\"websocket-gateway\"}",
+          "instant": true,
+          "legendFormat": "websocket-gateway",
+          "refId": "A" }
+      ]
+    },
+
+    {
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 5 },
+      "id": 101,
+      "title": "HTTP Traffic",
+      "type": "row"
+    },
+
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": {
+            "axisBorderShow": false, "axisCenteredZero": false, "axisColorMode": "text",
+            "axisLabel": "", "axisPlacement": "auto", "barAlignment": 0,
+            "drawStyle": "line", "fillOpacity": 10, "gradientMode": "none",
+            "hideFrom": { "legend": false, "tooltip": false, "viz": false },
+            "insertNulls": false, "lineInterpolation": "linear", "lineWidth": 2,
+            "pointSize": 5, "scaleDistribution": { "type": "linear" },
+            "showPoints": "never", "spanNulls": false,
+            "stacking": { "group": "A", "mode": "none" },
+            "thresholdsStyle": { "mode": "off" }
+          },
+          "mappings": [],
+          "thresholds": { "mode": "absolute", "steps": [ { "color": "green", "value": null } ] },
+          "unit": "reqps"
+        },
+        "overrides": []
+      },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 6 },
+      "id": 10,
+      "options": {
+        "legend": { "calcs": ["mean", "max"], "displayMode": "table", "placement": "bottom", "showLegend": true },
+        "tooltip": { "mode": "multi", "sort": "desc" }
+      },
+      "title": "Request Rate (req/s)",
+      "type": "timeseries",
+      "targets": [
+        { "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "expr": "sum(rate(http_requests_received_total{job=\"guild-service\"}[2m]))",
+          "legendFormat": "guild-service", "refId": "A" },
+        { "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "expr": "sum(rate(http_requests_received_total{job=\"messaging-service\"}[2m]))",
+          "legendFormat": "messaging-service", "refId": "B" },
+        { "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "expr": "sum(rate(http_requests_received_total{job=\"voice-service\"}[2m]))",
+          "legendFormat": "voice-service", "refId": "C" },
+        { "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "expr": "sum(rate(http_requests_received_total{job=\"websocket-gateway\"}[2m]))",
+          "legendFormat": "websocket-gateway", "refId": "D" }
+      ]
+    },
+
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": {
+            "axisBorderShow": false, "axisCenteredZero": false, "axisColorMode": "text",
+            "axisLabel": "", "axisPlacement": "auto", "barAlignment": 0,
+            "drawStyle": "line", "fillOpacity": 10, "gradientMode": "none",
+            "hideFrom": { "legend": false, "tooltip": false, "viz": false },
+            "insertNulls": false, "lineInterpolation": "linear", "lineWidth": 2,
+            "pointSize": 5, "scaleDistribution": { "type": "linear" },
+            "showPoints": "never", "spanNulls": false,
+            "stacking": { "group": "A", "mode": "none" },
+            "thresholdsStyle": { "mode": "off" }
+          },
+          "mappings": [],
+          "thresholds": { "mode": "absolute", "steps": [ { "color": "green", "value": null } ] },
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 6 },
+      "id": 11,
+      "options": {
+        "legend": { "calcs": ["mean", "max"], "displayMode": "table", "placement": "bottom", "showLegend": true },
+        "tooltip": { "mode": "multi", "sort": "desc" }
+      },
+      "title": "In-Progress Requests",
+      "type": "timeseries",
+      "targets": [
+        { "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "expr": "sum(http_requests_in_progress{job=\"guild-service\"})",
+          "legendFormat": "guild-service", "refId": "A" },
+        { "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "expr": "sum(http_requests_in_progress{job=\"messaging-service\"})",
+          "legendFormat": "messaging-service", "refId": "B" },
+        { "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "expr": "sum(http_requests_in_progress{job=\"voice-service\"})",
+          "legendFormat": "voice-service", "refId": "C" },
+        { "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "expr": "sum(http_requests_in_progress{job=\"websocket-gateway\"})",
+          "legendFormat": "websocket-gateway", "refId": "D" }
+      ]
+    },
+
+    {
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 14 },
+      "id": 102,
+      "title": "Latency & Errors",
+      "type": "row"
+    },
+
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": {
+            "axisBorderShow": false, "axisCenteredZero": false, "axisColorMode": "text",
+            "axisLabel": "", "axisPlacement": "auto", "barAlignment": 0,
+            "drawStyle": "line", "fillOpacity": 10, "gradientMode": "none",
+            "hideFrom": { "legend": false, "tooltip": false, "viz": false },
+            "insertNulls": false, "lineInterpolation": "linear", "lineWidth": 2,
+            "pointSize": 5, "scaleDistribution": { "type": "linear" },
+            "showPoints": "never", "spanNulls": false,
+            "stacking": { "group": "A", "mode": "none" },
+            "thresholdsStyle": {
+              "mode": "line",
+              "steps": [ { "color": "transparent", "value": null }, { "color": "orange", "value": 0.5 }, { "color": "red", "value": 1 } ]
+            }
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [ { "color": "green", "value": null }, { "color": "orange", "value": 0.5 }, { "color": "red", "value": 1 } ]
+          },
+          "unit": "s"
+        },
+        "overrides": []
+      },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 15 },
+      "id": 20,
+      "options": {
+        "legend": { "calcs": ["mean", "max"], "displayMode": "table", "placement": "bottom", "showLegend": true },
+        "tooltip": { "mode": "multi", "sort": "desc" }
+      },
+      "title": "P99 Latency (s)",
+      "type": "timeseries",
+      "targets": [
+        { "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "expr": "histogram_quantile(0.99, sum(rate(http_request_duration_seconds_bucket{job=\"guild-service\"}[2m])) by (le))",
+          "legendFormat": "guild-service p99", "refId": "A" },
+        { "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "expr": "histogram_quantile(0.99, sum(rate(http_request_duration_seconds_bucket{job=\"messaging-service\"}[2m])) by (le))",
+          "legendFormat": "messaging-service p99", "refId": "B" },
+        { "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "expr": "histogram_quantile(0.99, sum(rate(http_request_duration_seconds_bucket{job=\"voice-service\"}[2m])) by (le))",
+          "legendFormat": "voice-service p99", "refId": "C" },
+        { "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "expr": "histogram_quantile(0.99, sum(rate(http_request_duration_seconds_bucket{job=\"websocket-gateway\"}[2m])) by (le))",
+          "legendFormat": "websocket-gateway p99", "refId": "D" },
+        { "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "expr": "histogram_quantile(0.50, sum(rate(http_request_duration_seconds_bucket{job=~\"guild-service|messaging-service|voice-service|websocket-gateway\"}[2m])) by (job, le))",
+          "legendFormat": "{{job}} p50", "refId": "E" }
+      ]
+    },
+
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": {
+            "axisBorderShow": false, "axisCenteredZero": false, "axisColorMode": "text",
+            "axisLabel": "", "axisPlacement": "auto", "barAlignment": 0,
+            "drawStyle": "line", "fillOpacity": 20, "gradientMode": "none",
+            "hideFrom": { "legend": false, "tooltip": false, "viz": false },
+            "insertNulls": false, "lineInterpolation": "linear", "lineWidth": 2,
+            "pointSize": 5, "scaleDistribution": { "type": "linear" },
+            "showPoints": "never", "spanNulls": false,
+            "stacking": { "group": "A", "mode": "none" },
+            "thresholdsStyle": { "mode": "off" }
+          },
+          "color": { "mode": "fixed", "fixedColor": "red" },
+          "mappings": [],
+          "thresholds": { "mode": "absolute", "steps": [ { "color": "green", "value": null }, { "color": "red", "value": 0.01 } ] },
+          "unit": "reqps"
+        },
+        "overrides": []
+      },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 15 },
+      "id": 21,
+      "options": {
+        "legend": { "calcs": ["mean", "max"], "displayMode": "table", "placement": "bottom", "showLegend": true },
+        "tooltip": { "mode": "multi", "sort": "desc" }
+      },
+      "title": "5xx Error Rate (req/s)",
+      "type": "timeseries",
+      "targets": [
+        { "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "expr": "sum(rate(http_requests_received_total{job=\"guild-service\",statusCode=~\"5..\"}[2m]))",
+          "legendFormat": "guild-service", "refId": "A" },
+        { "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "expr": "sum(rate(http_requests_received_total{job=\"messaging-service\",statusCode=~\"5..\"}[2m]))",
+          "legendFormat": "messaging-service", "refId": "B" },
+        { "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "expr": "sum(rate(http_requests_received_total{job=\"voice-service\",statusCode=~\"5..\"}[2m]))",
+          "legendFormat": "voice-service", "refId": "C" },
+        { "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "expr": "sum(rate(http_requests_received_total{job=\"websocket-gateway\",statusCode=~\"5..\"}[2m]))",
+          "legendFormat": "websocket-gateway", "refId": "D" }
+      ]
+    },
+
+    {
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 23 },
+      "id": 103,
+      "title": ".NET Runtime",
+      "type": "row"
+    },
+
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": {
+            "axisBorderShow": false, "axisCenteredZero": false, "axisColorMode": "text",
+            "axisLabel": "", "axisPlacement": "auto", "barAlignment": 0,
+            "drawStyle": "line", "fillOpacity": 10, "gradientMode": "none",
+            "hideFrom": { "legend": false, "tooltip": false, "viz": false },
+            "insertNulls": false, "lineInterpolation": "linear", "lineWidth": 2,
+            "pointSize": 5, "scaleDistribution": { "type": "linear" },
+            "showPoints": "never", "spanNulls": false,
+            "stacking": { "group": "A", "mode": "none" },
+            "thresholdsStyle": { "mode": "off" }
+          },
+          "mappings": [],
+          "thresholds": { "mode": "absolute", "steps": [ { "color": "green", "value": null } ] },
+          "unit": "decbytes"
+        },
+        "overrides": []
+      },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 24 },
+      "id": 30,
+      "options": {
+        "legend": { "calcs": ["mean", "max"], "displayMode": "table", "placement": "bottom", "showLegend": true },
+        "tooltip": { "mode": "multi", "sort": "desc" }
+      },
+      "title": "GC Heap Size (bytes)",
+      "type": "timeseries",
+      "targets": [
+        { "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "expr": "dotnet_gc_heap_size_bytes{job=\"guild-service\"}",
+          "legendFormat": "guild-service {{generation}}", "refId": "A" },
+        { "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "expr": "dotnet_gc_heap_size_bytes{job=\"messaging-service\"}",
+          "legendFormat": "messaging-service {{generation}}", "refId": "B" },
+        { "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "expr": "dotnet_gc_heap_size_bytes{job=\"voice-service\"}",
+          "legendFormat": "voice-service {{generation}}", "refId": "C" },
+        { "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "expr": "dotnet_gc_heap_size_bytes{job=\"websocket-gateway\"}",
+          "legendFormat": "websocket-gateway {{generation}}", "refId": "D" }
+      ]
+    },
+
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": {
+            "axisBorderShow": false, "axisCenteredZero": false, "axisColorMode": "text",
+            "axisLabel": "", "axisPlacement": "auto", "barAlignment": 0,
+            "drawStyle": "line", "fillOpacity": 10, "gradientMode": "none",
+            "hideFrom": { "legend": false, "tooltip": false, "viz": false },
+            "insertNulls": false, "lineInterpolation": "linear", "lineWidth": 2,
+            "pointSize": 5, "scaleDistribution": { "type": "linear" },
+            "showPoints": "never", "spanNulls": false,
+            "stacking": { "group": "A", "mode": "none" },
+            "thresholdsStyle": { "mode": "off" }
+          },
+          "mappings": [],
+          "thresholds": { "mode": "absolute", "steps": [ { "color": "green", "value": null } ] },
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 24 },
+      "id": 31,
+      "options": {
+        "legend": { "calcs": ["mean", "max"], "displayMode": "table", "placement": "bottom", "showLegend": true },
+        "tooltip": { "mode": "multi", "sort": "desc" }
+      },
+      "title": "ThreadPool Threads",
+      "type": "timeseries",
+      "targets": [
+        { "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "expr": "dotnet_threadpool_num_threads{job=~\"guild-service|messaging-service|voice-service|websocket-gateway\"}",
+          "legendFormat": "{{job}}", "refId": "A" }
+      ]
+    },
+
+    {
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 32 },
+      "id": 104,
+      "title": "Logs",
+      "type": "row"
+    },
+
+    {
+      "datasource": { "type": "loki", "uid": "loki" },
+      "gridPos": { "h": 10, "w": 24, "x": 0, "y": 33 },
+      "id": 40,
+      "options": {
+        "dedupStrategy": "none",
+        "enableLogDetails": true,
+        "prettifyLogMessage": false,
+        "showCommonLabels": false,
+        "showLabels": false,
+        "showTime": true,
+        "sortOrder": "Descending",
+        "wrapLogMessage": false
+      },
+      "title": "Live Logs (all services)",
+      "type": "logs",
+      "targets": [
+        { "datasource": { "type": "loki", "uid": "loki" },
+          "expr": "{service=~\"guild-service|messaging-service|voice-service|websocket-gateway\"} | json",
+          "legendFormat": "",
+          "queryType": "range",
+          "refId": "A" }
+      ]
+    },
+
+    {
+      "datasource": { "type": "loki", "uid": "loki" },
+      "gridPos": { "h": 10, "w": 24, "x": 0, "y": 43 },
+      "id": 41,
+      "options": {
+        "dedupStrategy": "none",
+        "enableLogDetails": true,
+        "prettifyLogMessage": false,
+        "showCommonLabels": false,
+        "showLabels": true,
+        "showTime": true,
+        "sortOrder": "Descending",
+        "wrapLogMessage": false
+      },
+      "title": "Errors & Warnings",
+      "type": "logs",
+      "targets": [
+        { "datasource": { "type": "loki", "uid": "loki" },
+          "expr": "{service=~\"guild-service|messaging-service|voice-service|websocket-gateway\", level=~\"Error|Warning|Fatal\"} | json",
+          "legendFormat": "",
+          "queryType": "range",
+          "refId": "A" }
+      ]
+    }
+
+  ],
+
+  "preload": false,
+  "refresh": "30s",
+  "schemaVersion": 39,
+  "tags": ["nextalk", "overview", "microservices"],
+  "templating": { "list": [] },
+  "time": { "from": "now-1h", "to": "now" },
+  "timepicker": {},
+  "timezone": "browser",
+  "title": "NexTalk — Overview",
+  "uid": "nextalk-overview",
+  "version": 1,
+  "weekStart": ""
+}

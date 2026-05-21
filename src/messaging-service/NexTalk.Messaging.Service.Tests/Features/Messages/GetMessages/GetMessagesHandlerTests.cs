@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging.Abstractions;
 using NexTalk.Messaging.Service.Domain;
 using NexTalk.Messaging.Service.Features.Messages.GetMessages;
 using NexTalk.Messaging.Service.Infrastructure;
@@ -20,7 +21,7 @@ public class GetMessagesHandlerTests
         MessagingDbContext db,
         bool allowed = true,
         Guid? guildId = null) =>
-        new(db, new FakeGuildServiceClient(new ChannelAccessResult(allowed, guildId ?? Guid.NewGuid())));
+        new(db, new FakeGuildServiceClient(new ChannelAccessResult(allowed, guildId ?? Guid.NewGuid())), NullLogger<GetMessagesHandler>.Instance);
 
     private static async Task<Guid> SeedMessageAsync(MessagingDbContext db, Guid channelId, DateTimeOffset createdAt, string content = "msg")
     {
@@ -44,7 +45,8 @@ public class GetMessagesHandlerTests
     {
         await using var db = CreateDb();
         var handler = new GetMessagesHandler(db,
-            new FakeGuildServiceClient(new ChannelAccessResult(false, null)));
+            new FakeGuildServiceClient(new ChannelAccessResult(false, null)),
+            NullLogger<GetMessagesHandler>.Instance);
 
         var query = new GetMessagesQuery(Guid.NewGuid(), Guid.NewGuid().ToString(), null, 50);
 
@@ -56,7 +58,8 @@ public class GetMessagesHandlerTests
     {
         await using var db = CreateDb();
         var handler = new GetMessagesHandler(db,
-            new FakeGuildServiceClient(new ChannelAccessResult(false, Guid.NewGuid())));
+            new FakeGuildServiceClient(new ChannelAccessResult(false, Guid.NewGuid())),
+            NullLogger<GetMessagesHandler>.Instance);
 
         var query = new GetMessagesQuery(Guid.NewGuid(), Guid.NewGuid().ToString(), null, 50);
 
@@ -202,7 +205,7 @@ public class GetMessagesHandlerTests
         var channelId = Guid.NewGuid();
         var userId = Guid.NewGuid().ToString();
         var fake = new FakeGuildServiceClient(new ChannelAccessResult(true, Guid.NewGuid()));
-        var handler = new GetMessagesHandler(db, fake);
+        var handler = new GetMessagesHandler(db, fake, NullLogger<GetMessagesHandler>.Instance);
 
         await handler.HandleAsync(new GetMessagesQuery(channelId, userId, null, 50));
 

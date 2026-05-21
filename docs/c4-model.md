@@ -81,7 +81,7 @@
 | App | Voice Service | ASP.NET | Голосовые сессии, LiveKit-токены |
 | App | Zitadel | Go | IdP: OIDC, регистрация, логин, JWT |
 | Store | PostgreSQL | PostgreSQL 17 | БД nextalk (guild, messaging) + БД zitadel |
-| Store | Redis | Redis 8 | Состояние комнат и участников LiveKit |
+| Store | Redis | Redis 8 | Distributed cache (Guild Service: Zitadel UserInfo) + LiveKit: состояние комнат и участников |
 | App | LiveKit | Go | SFU + встроенный TURN |
 | App | Prometheus | Prometheus | Сбор метрик /metrics |
 | App | Grafana | Grafana | Дашборды |
@@ -94,20 +94,20 @@
 |:--|:--|
 | Reverse Proxy | Маршрутизация по location → upstream сервисы |
 | Rate Limiter | limit_req_zone: 100 RPS на IP |
-| WebSocket Proxy | proxy_pass с Upgrade для SignalR |
+| WebSocket Proxy | proxy_pass с Upgrade для SignalR (/hubs/*) и LiveKit signaling (/livekit/) |
 | Correlation ID | proxy_set_header X-Request-Id $request_id |
 
 #### WebSocket Gateway
 
 | Компонент | Описание |
 |:--|:--|
-| ChatHub (SignalR) | SendMessage, ReceiveMessage, Heartbeat |
+| ChatHub (SignalR) | Client→server: SendMessage, Heartbeat. Server→client: GatewayEvent (broadcast), MessageAck, Error |
 | ConnectionManager | userId ↔ connectionId маппинг |
 | PresenceTracker | In-memory ConcurrentDictionary, heartbeat TTL |
 | MessagingHttpClient | HTTP → Messaging Service (Polly: Retry + CB) |
 | GuildHttpClient | HTTP → Guild Service (Polly: Retry + CB) |
 | BroadcastController | POST /internal/broadcast/guild/{guildId} (от Outbox Worker, Guild Service, Voice Service) |
-| DisconnectController | POST /internal/disconnect/{userId} - принудительное отключение |
+| DisconnectController | POST /internal/disconnect/guild/{guildId}/user/{userId} - принудительное отключение |
 
 #### Guild Service
 
@@ -311,7 +311,7 @@ modelObjects:
   name: Redis
   type: store
   parentId: system-nextalk
-  description: 'Используется LiveKit для хранения состояния комнат и участников (room registry, participant tracking).'
+  description: 'Distributed cache. Guild Service: кэш Zitadel UserInfo (ключ zitadel:ui:{sub}, TTL до истечения access_token). LiveKit: состояние комнат и участников (room registry, participant tracking).'
   caption: Redis 8
   tagIds: [tag-storage]
 
@@ -346,7 +346,7 @@ modelObjects:
   name: ChatHub
   type: component
   parentId: app-ws-gateway
-  description: 'SignalR Hub: SendMessage, ReceiveMessage, Heartbeat'
+  description: 'SignalR Hub. Client→server: SendMessage, Heartbeat. Server→client: GatewayEvent (broadcast), MessageAck, Error'
 
 - id: comp-ws-presence
   name: PresenceTracker
@@ -364,7 +364,7 @@ modelObjects:
   name: DisconnectController
   type: component
   parentId: app-ws-gateway
-  description: POST /internal/disconnect/{userId} - принудительное отключение (при бане)
+  description: POST /internal/disconnect/guild/{guildId}/user/{userId} - принудительное отключение (при бане)
 
 - id: comp-ws-connmgr
   name: ConnectionManager
@@ -491,13 +491,20 @@ modelObjects:
 
 modelConnections:
 
-# --- User → Frontend ---
-- id: conn-user-spa
-  name: Использует
+# --- User → Nginx (единственная точка входа) ---
+- id: conn-user-nginx
+  name: HTTP/HTTPS
   originId: actor-user
+  targetId: app-nginx
+  direction: outgoing
+  description: 'Браузер. Весь трафик — SPA, REST, WS, OIDC — входит через Nginx.'
+
+- id: conn-nginx-spa
+  name: HTTP (статика)
+  originId: app-nginx
   targetId: app-spa
   direction: outgoing
-  description: Браузер
+  description: 'Nginx проксирует location / → web-spa:80 (отдельный nginx-контейнер с Vite build). Раздаёт index.html + ассеты с долгим кэшем.'
 
 - id: conn-admin-grafana
   name: Мониторинг
@@ -506,13 +513,13 @@ modelConnections:
   direction: outgoing
   description: Grafana дашборды
 
-# --- SPA → nginx ---
+# --- SPA → Nginx (API/WS запросы) ---
 - id: conn-spa-nginx
-  name: HTTPS
+  name: HTTP/WS (same-origin)
   originId: app-spa
   targetId: app-nginx
   direction: outgoing
-  description: 'SPA получена с nginx (статика). Все REST/WS/OIDC запросы идут через nginx (same-origin — CORS не нужен).'
+  description: 'Все запросы браузера идут через Nginx (same-origin — CORS не нужен). REST: /api/*. WS: /hubs/chat (SignalR). OIDC: /oauth/*, /ui/*. LiveKit signaling: /livekit/.'
 
 # --- SPA → Zitadel (через Nginx) ---
 - id: conn-spa-zitadel
@@ -524,11 +531,11 @@ modelConnections:
 
 # --- SPA → LiveKit ---
 - id: conn-spa-livekit
-  name: WebRTC
+  name: WebRTC (UDP media)
   originId: app-spa
   targetId: app-livekit
   direction: bidirectional
-  description: 'WS signaling: ws://nginx/livekit/ → livekit:7880 (через nginx для SSL-терминации). UDP media (50000-50200): напрямую браузер → LiveKit, nginx UDP не проксирует.'
+  description: 'UDP SRTP media: напрямую браузер ↔ LiveKit (порты 50000-50200). WS signaling идёт через Nginx /livekit/ (см. conn-spa-nginx + conn-nginx-livekit).'
 
 # --- nginx → Services ---
 - id: conn-nginx-guild
@@ -553,11 +560,18 @@ modelConnections:
   description: Proxy
 
 - id: conn-nginx-wsgw
-  name: '/ws (WebSocket upgrade)'
+  name: '/hubs/* (WebSocket upgrade)'
   originId: app-nginx
   targetId: app-ws-gateway
   direction: outgoing
-  description: SignalR WebSocket proxy
+  description: SignalR WebSocket proxy (location /hubs → websocket-gateway:5004)
+
+- id: conn-nginx-livekit
+  name: '/livekit/ (WebSocket upgrade)'
+  originId: app-nginx
+  targetId: app-livekit
+  direction: outgoing
+  description: 'LiveKit WS signaling proxy (location /livekit/ → livekit:7880). TCP/WS termination — nginx не проксирует UDP (50000-50200).'
 
 - id: conn-nginx-zitadel
   name: '/.well-known/, /oauth/, /oidc/, /ui/ → Zitadel'
@@ -586,7 +600,7 @@ modelConnections:
   originId: app-messaging
   targetId: app-guild
   direction: outgoing
-  description: Проверка прав на отправку
+  description: Проверка прав доступа к каналу (GET /internal/channels/{id}/access)
 
 - id: conn-messaging-wsgw
   name: HTTP
@@ -616,12 +630,19 @@ modelConnections:
   direction: outgoing
   description: Хранение состояния комнат и участников (room registry, participant tracking)
 
+- id: conn-guild-redis
+  name: Cache
+  originId: app-guild
+  targetId: store-redis
+  direction: outgoing
+  description: 'Distributed cache: Zitadel UserInfo (ключ zitadel:ui:{sub}, TTL до истечения access_token). Probe-ключ для демонстрации shared cache между репликами.'
+
 - id: conn-guild-wsgw
   name: HTTP
   originId: app-guild
   targetId: app-ws-gateway
   direction: outgoing
-  description: 'POST /internal/broadcast/guild/{guildId} (member/channel/guild events) + POST /internal/disconnect/{userId} (при бане)'
+  description: 'POST /internal/broadcast/guild/{guildId} (member/channel/guild events) + POST /internal/disconnect/guild/{guildId}/user/{userId} (при бане)'
 
 - id: conn-guild-voice
   name: HTTP
@@ -776,7 +797,7 @@ modelConnections:
     POST /internal/broadcast/guild/{guildId} { type: 'message.created', payload: { message } }
     [При ошибке → exponential backoff retry, макс 5 попыток]
 13. WS Gateway → React SPA (участники канала, SignalR):
-    ReceiveMessage({ id, channelId, authorId, authorName, content, createdAt })
+    GatewayEvent { type: 'message.created', payload: { id, channelId, authorId, authorName, content, createdAt } }
 14. Messaging Service (OutboxWorker) → PostgreSQL:
     UPDATE outbox_events SET processed = true WHERE id = ...
 ```
@@ -801,14 +822,15 @@ modelConnections:
 9. Voice Service → SessionStore: Добавить userId в список участников channelId
 10. Voice Service → Nginx → React SPA: 200 OK { token: "<LiveKit JWT>", livekitUrl }
 
-11. React SPA (livekit-client): room.connect(livekitUrl, token)
-12. React SPA → LiveKit (WebRTC): публикация аудио-трека
+11. React SPA → Nginx → LiveKit: room.connect(livekitUrl, token)
+    [WS signaling через /livekit/ — livekitUrl = http://domain:port/livekit]
+12. React SPA ↔ LiveKit (WebRTC/UDP): аудио-трек напрямую (порты 50000-50200, nginx UDP не проксирует)
 13. LiveKit: пересылает SRTP-пакеты остальным участникам комнаты
 
 14. Voice Service → WS Gateway (HTTP):
     POST /internal/broadcast/guild/{guildId} { type: 'voice.joined', payload: { userId, channelId } }
-15. WS Gateway → React SPA (участники канала, SignalR):
-    { type: 'voice.joined', userId, channelId }
+15. WS Gateway → React SPA (участники гильдии, SignalR):
+    GatewayEvent { type: 'voice.joined', payload: { userId, channelId } }
 ```
 
 ### Flow 5: Вступление по инвайту
@@ -831,7 +853,8 @@ modelConnections:
 
 9. Guild Service → WS Gateway (HTTP):
    POST /internal/broadcast/guild/{guildId} { type: 'member.joined', payload: { userId, guildId } }
-10. WS Gateway → React SPA (онлайн-участники): Обновить список
+10. WS Gateway → React SPA (онлайн-участники гильдии, SignalR):
+    GatewayEvent { type: 'member.joined', payload: { userId, guildId } }
 ```
 
 ### Flow 6: Кик/Бан
@@ -881,13 +904,13 @@ modelConnections:
    a. WS Gateway → Guild Service (HTTP, Polly: Retry+CB): GET /internal/users/{userId}/guilds
       (получить список серверов, чтобы знать кому слать уведомление)
    b. WS Gateway → React SPA (участники общих серверов, SignalR):
-      { type: 'presence.online', userId }
+      GatewayEvent { type: 'presence.online', payload: { userId } }
 
 4. PresenceMonitor (BackgroundService, каждые 10 сек):
    Сканирует dictionary → если lastSeen > 30 сек назад:
    a. WS Gateway → PresenceTracker: Удалить userId из dictionary
    b. WS Gateway → React SPA (участники общих серверов, SignalR):
-      { type: 'presence.offline', userId }
+      GatewayEvent { type: 'presence.offline', payload: { userId } }
 ```
 
 ### Flow 8: Демонстрация Circuit Breaker
@@ -1058,7 +1081,7 @@ modelConnections:
 7. Messaging Service → WS Gateway (HTTP):
    POST /internal/broadcast/guild/{guildId} { type: 'message.deleted', payload: { messageId, channelId } }
 8. WS Gateway → React SPA (участники канала, SignalR):
-   { type: 'message.deleted', messageId }
+   GatewayEvent { type: 'message.deleted', payload: { messageId, channelId } }
    (UI убирает сообщение из чата)
 
 9. Messaging Service → Nginx → React SPA: 204 No Content
@@ -1149,8 +1172,8 @@ modelConnections:
 
 7. Guild Service → WS Gateway (HTTP):
    POST /internal/broadcast/guild/{guildId} { type: 'channel.created', payload: { guildId, channel: { id, name, type } } }
-8. WS Gateway → React SPA (участники гильда, SignalR):
-   { type: 'channel.created', channel: { id, name, type } }
+8. WS Gateway → React SPA (участники гильдии, SignalR):
+   GatewayEvent { type: 'channel.created', payload: { guildId, channel: { id, name, type } } }
    (UI добавляет канал в список без перезагрузки)
 
 9. Guild Service → Nginx → React SPA: 201 Created { id, name, type, guildId }
@@ -1181,8 +1204,8 @@ modelConnections:
 
 8. Guild Service → WS Gateway (HTTP):
    POST /internal/broadcast/guild/{guildId} { type: 'channel.deleted', payload: { guildId, channelId } }
-9. WS Gateway → React SPA (участники гильда, SignalR):
-   { type: 'channel.deleted', channelId }
+9. WS Gateway → React SPA (участники гильдии, SignalR):
+   GatewayEvent { type: 'channel.deleted', payload: { guildId, channelId } }
    (UI убирает канал из списка; если пользователь был в этом канале - переводит на general)
 
 10. Guild Service → Nginx → React SPA: 204 No Content
@@ -1220,8 +1243,8 @@ modelConnections:
 
 8. Guild Service → WS Gateway (HTTP):
    POST /internal/broadcast/guild/{guildId} { type: 'guild.deleted', payload: { guildId } }
-9. WS Gateway → React SPA (все участники гильда, SignalR):
-   { type: 'guild.deleted', guildId }
+9. WS Gateway → React SPA (все участники гильдии, SignalR):
+   GatewayEvent { type: 'guild.deleted', payload: { guildId } }
    (UI убирает сервер из панели, переводит пользователей на главный экран)
 
 10. Guild Service → Nginx → React SPA: 204 No Content

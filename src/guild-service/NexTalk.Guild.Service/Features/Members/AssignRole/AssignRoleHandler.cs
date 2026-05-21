@@ -11,12 +11,14 @@ public class AssignRoleHandler
     private readonly GuildDbContext _db;
     private readonly RbacService _rbac;
     private readonly WsGatewayClient _wsGateway;
+    private readonly ILogger<AssignRoleHandler> _logger;
 
-    public AssignRoleHandler(GuildDbContext db, RbacService rbac, WsGatewayClient wsGateway)
+    public AssignRoleHandler(GuildDbContext db, RbacService rbac, WsGatewayClient wsGateway, ILogger<AssignRoleHandler> logger)
     {
         _db = db;
         _rbac = rbac;
         _wsGateway = wsGateway;
+        _logger = logger;
     }
 
     public async Task HandleAsync(AssignRoleCommand cmd, CancellationToken ct = default)
@@ -31,11 +33,14 @@ public class AssignRoleHandler
         target.Role = cmd.Role;
         await _db.SaveChangesAsync(ct);
 
+        _logger.LogInformation("Role assigned: target={TargetUserId} role={Role} guild={GuildId} caller={CallerId}",
+            cmd.TargetUserId, cmd.Role, cmd.GuildId, cmd.CallerId);
+
         try
         {
             await _wsGateway.BroadcastToGuildAsync(cmd.GuildId, "role.assigned",
                 new { UserId = cmd.TargetUserId, Role = cmd.Role.ToString(), cmd.GuildId }, ct);
         }
-        catch { /* best-effort */ }
+        catch (Exception ex) { _logger.LogWarning(ex, "Failed to broadcast role.assigned: target={TargetUserId}", cmd.TargetUserId); }
     }
 }

@@ -1,0 +1,87 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# OpenTelemetry Collector — NexTalk
+#
+# Pipeline:
+#   Receivers  : OTLP gRPC (4317) + HTTP (4318)  ← микросервисы шлют сюда (Фаза 2)
+#   Processors : memory_limiter → batch → resource
+#   Exporters  : Jaeger (traces via OTLP), debug (базовая диагностика)
+#
+# Метрики самого коллектора доступны на :8888/metrics (скрейпит Prometheus).
+# Health check : :13133/
+# ─────────────────────────────────────────────────────────────────────────────
+
+extensions:
+  health_check:
+    endpoint: 0.0.0.0:13133
+  pprof:
+    endpoint: 0.0.0.0:1777
+
+receivers:
+  otlp:
+    protocols:
+      grpc:
+        endpoint: 0.0.0.0:4317
+      http:
+        endpoint: 0.0.0.0:4318
+
+processors:
+  # Защита от OOM: если память превышает лимит — начинает дропать данные.
+  # Должен идти ПЕРВЫМ в каждом pipeline.
+  memory_limiter:
+    check_interval: 1s
+    limit_mib: 256
+    spike_limit_mib: 64
+
+  # Группирует элементы перед экспортом — снижает нагрузку на сеть и бэкенд.
+  batch:
+    send_batch_size: 512
+    send_batch_max_size: 1024
+    timeout: 5s
+
+  # Добавляет/перезаписывает атрибуты ресурса на всех трейсах.
+  resource:
+    attributes:
+      - key: deployment.environment
+        value: development
+        action: upsert
+      - key: service.namespace
+        value: nextalk
+        action: upsert
+
+exporters:
+  # Отправка трейсов в Jaeger v2 по OTLP (Jaeger v2 принимает OTLP нативно).
+  otlp/jaeger:
+    endpoint: jaeger:4317
+    tls:
+      insecure: true
+
+  # Базовая диагностика в stdout коллектора (только имена спанов, без деталей).
+  debug:
+    verbosity: basic
+
+service:
+  extensions: [health_check, pprof]
+
+  pipelines:
+    traces:
+      receivers: [otlp]
+      processors: [memory_limiter, batch, resource]
+      exporters: [otlp/jaeger]
+
+    # Логи через OTLP (Фаза 2: сервисы с OTel SDK).
+    # Пока просто дебаг-вывод; в Фазе 2 добавим exporter в Loki.
+    logs:
+      receivers: [otlp]
+      processors: [memory_limiter, batch]
+      exporters: [debug]
+
+  telemetry:
+    logs:
+      level: warn
+    metrics:
+      readers:
+        - pull:
+            exporter:
+              prometheus:
+                host: 0.0.0.0
+                port: 8888

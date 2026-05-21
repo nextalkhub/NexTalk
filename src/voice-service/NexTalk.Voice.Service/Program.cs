@@ -15,16 +15,36 @@ using NexTalk.Voice.Service.Features.Voice.Leave;
 using NexTalk.Voice.Service.Infrastructure;
 using NexTalk.Voice.Service.Shared;
 using NexTalk.Voice.Service.Shared.Exceptions;
+using OpenTelemetry.Resources;
+using OpenTelemetry.Trace;
 using Polly;
 using Prometheus;
 using Serilog;
+using Serilog.Enrichers.Span;
 using IPNetwork = System.Net.IPNetwork;
 
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Configuration.AddJsonFile("/zitadel-config/swagger-config.json", optional: true, reloadOnChange: true);
 
-builder.Services.AddSerilog((_, lc) => lc.ReadFrom.Configuration(builder.Configuration));
+builder.Services.AddSerilog((_, lc) => lc.ReadFrom.Configuration(builder.Configuration).Enrich.WithSpan());
+
+builder.Services.AddOpenTelemetry()
+    .ConfigureResource(r => r
+        .AddService(
+            serviceName: "voice-service",
+            serviceVersion: typeof(Program).Assembly.GetName().Version?.ToString() ?? "0.0.0"))
+    .WithTracing(tracing => tracing
+        .AddAspNetCoreInstrumentation(opts =>
+        {
+            opts.RecordException = true;
+            opts.Filter = ctx =>
+                !ctx.Request.Path.StartsWithSegments("/metrics") &&
+                !ctx.Request.Path.StartsWithSegments("/healthz") &&
+                !ctx.Request.Path.StartsWithSegments("/readyz");
+        })
+        .AddHttpClientInstrumentation()
+        .AddOtlpExporter());
 
 builder.Services.Configure<ForwardedHeadersOptions>(options =>
 {
@@ -52,14 +72,21 @@ builder.Services.AddTransient<DeadlineForwardingHandler>();
 // HTTP-клиент к Guild Service
 builder.Services.AddHttpClient<GuildServiceClient>(c => c.BaseAddress = new Uri(guildUrl))
     .AddHttpMessageHandler<DeadlineForwardingHandler>()
-    .AddResilienceHandler("guild", pipeline =>
+    .AddResilienceHandler("guild", (pipeline, ctx) =>
     {
+        var logger = ctx.ServiceProvider.GetRequiredService<ILogger<Program>>();
         pipeline.AddRetry(new HttpRetryStrategyOptions
         {
             MaxRetryAttempts = 3,
             Delay = TimeSpan.FromMilliseconds(200),
             BackoffType = DelayBackoffType.Exponential,
             UseJitter = true,
+            OnRetry = args =>
+            {
+                logger.LogWarning(args.Outcome.Exception, "Retry {Attempt}/3 guild-service: {Status}",
+                    args.AttemptNumber + 1, args.Outcome.Result?.StatusCode);
+                return ValueTask.CompletedTask;
+            }
         });
         pipeline.AddCircuitBreaker(new HttpCircuitBreakerStrategyOptions
         {
@@ -67,20 +94,38 @@ builder.Services.AddHttpClient<GuildServiceClient>(c => c.BaseAddress = new Uri(
             FailureRatio = 0.5,
             MinimumThroughput = 5,
             BreakDuration = TimeSpan.FromSeconds(15),
+            OnOpened = args =>
+            {
+                logger.LogError(args.Outcome.Exception, "Circuit breaker opened guild-service for {Duration}s: {Status}",
+                    args.BreakDuration.TotalSeconds, args.Outcome.Result?.StatusCode);
+                return ValueTask.CompletedTask;
+            },
+            OnClosed = _ =>
+            {
+                logger.LogInformation("Circuit breaker closed guild-service");
+                return ValueTask.CompletedTask;
+            }
         });
         pipeline.AddTimeout(TimeSpan.FromSeconds(2));
     });
 
 // HTTP-клиент к WS Gateway
 builder.Services.AddHttpClient<WsGatewayClient>(c => c.BaseAddress = new Uri(wsGatewayUrl))
-    .AddResilienceHandler("ws-gateway", pipeline =>
+    .AddResilienceHandler("ws-gateway", (pipeline, ctx) =>
     {
+        var logger = ctx.ServiceProvider.GetRequiredService<ILogger<Program>>();
         pipeline.AddRetry(new HttpRetryStrategyOptions
         {
             MaxRetryAttempts = 3,
             Delay = TimeSpan.FromMilliseconds(300),
             BackoffType = DelayBackoffType.Exponential,
             UseJitter = true,
+            OnRetry = args =>
+            {
+                logger.LogWarning(args.Outcome.Exception, "Retry {Attempt}/3 ws-gateway: {Status}",
+                    args.AttemptNumber + 1, args.Outcome.Result?.StatusCode);
+                return ValueTask.CompletedTask;
+            }
         });
         pipeline.AddTimeout(TimeSpan.FromSeconds(5));
     });
@@ -220,8 +265,13 @@ app.UseExceptionHandler(exApp => exApp.Run(async ctx =>
         NotFoundException e => (StatusCodes.Status404NotFound, e.Message),
         ForbiddenException e => (StatusCodes.Status403Forbidden, e.Message),
         BadRequestException e => (StatusCodes.Status400BadRequest, e.Message),
-        _ => (StatusCodes.Status500InternalServerError, $"Произошла непредвиденная ошибка: {ex?.Message}"),
+        _ => (StatusCodes.Status500InternalServerError, "An unexpected error occurred."),
     };
+
+    if (status == StatusCodes.Status500InternalServerError)
+        ctx.RequestServices.GetRequiredService<ILogger<Program>>()
+            .LogError(ex, "Unhandled exception: {Path}", ctx.Request.Path);
+
     ctx.Response.StatusCode = status;
     await ctx.Response.WriteAsJsonAsync(new { error = message });
 }));

@@ -9,20 +9,28 @@ public class GetMessagesHandler
 {
     private readonly MessagingDbContext _db;
     private readonly IGuildServiceClient _guildClient;
+    private readonly ILogger<GetMessagesHandler> _logger;
 
-    public GetMessagesHandler(MessagingDbContext db, IGuildServiceClient guildClient)
+    public GetMessagesHandler(MessagingDbContext db, IGuildServiceClient guildClient, ILogger<GetMessagesHandler> logger)
     {
         _db = db;
         _guildClient = guildClient;
+        _logger = logger;
     }
 
     public async Task<GetMessagesResponse> HandleAsync(GetMessagesQuery query, CancellationToken ct = default)
     {
         var access = await _guildClient.CheckChannelAccessAsync(query.ChannelId, query.UserId, ct);
         if (access.GuildId is null)
+        {
+            _logger.LogWarning("Channel not found: channel={ChannelId} user={UserId}", query.ChannelId, query.UserId);
             throw new NotFoundException("Channel not found.");
+        }
         if (!access.Allowed)
+        {
+            _logger.LogWarning("Forbidden access to channel: channel={ChannelId} user={UserId}", query.ChannelId, query.UserId);
             throw new ForbiddenException("You do not have access to this channel.");
+        }
         
         var q = _db.Messages.AsNoTracking()
             .Where(m => m.ChannelId == query.ChannelId);

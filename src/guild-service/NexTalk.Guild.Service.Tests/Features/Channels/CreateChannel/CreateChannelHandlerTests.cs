@@ -4,6 +4,7 @@ using NexTalk.Guild.Service.Features.Channels.CreateChannel;
 using NexTalk.Guild.Service.Infrastructure;
 using NexTalk.Guild.Service.Shared;
 using NexTalk.Guild.Service.Shared.Exceptions;
+using Microsoft.Extensions.Logging.Abstractions;
 using Xunit;
 using GuildEntity = NexTalk.Guild.Service.Domain.Guild;
 using ChannelEntity = NexTalk.Guild.Service.Domain.Channel;
@@ -23,7 +24,7 @@ public class CreateChannelHandlerTests
         await using var db = CreateDb();
         var rbac = new RbacService(db);
         var wsGateway = new TestWsGatewayClient();
-        var handler = new CreateChannelHandler(db, rbac, wsGateway);
+        var handler = new CreateChannelHandler(db, rbac, wsGateway, NullLogger<CreateChannelHandler>.Instance);
 
         var cmd = new CreateChannelCommand(Guid.NewGuid(), "test", ChannelType.Text, Guid.NewGuid().ToString());
 
@@ -45,7 +46,7 @@ public class CreateChannelHandlerTests
 
         var rbac = new RbacService(db);
         var wsGateway = new TestWsGatewayClient();
-        var handler = new CreateChannelHandler(db, rbac, wsGateway);
+        var handler = new CreateChannelHandler(db, rbac, wsGateway, NullLogger<CreateChannelHandler>.Instance);
 
         var cmd = new CreateChannelCommand(guildId, "announcements", ChannelType.Text, ownerId);
         var result = await handler.HandleAsync(cmd);
@@ -73,7 +74,7 @@ public class CreateChannelHandlerTests
 
         var rbac = new RbacService(db);
         var wsGateway = new TestWsGatewayClient();
-        var handler = new CreateChannelHandler(db, rbac, wsGateway);
+        var handler = new CreateChannelHandler(db, rbac, wsGateway, NullLogger<CreateChannelHandler>.Instance);
 
         var cmd = new CreateChannelCommand(guildId, "rules", ChannelType.Text, adminId);
         var result = await handler.HandleAsync(cmd);
@@ -99,7 +100,7 @@ public class CreateChannelHandlerTests
 
         var rbac = new RbacService(db);
         var wsGateway = new TestWsGatewayClient();
-        var handler = new CreateChannelHandler(db, rbac, wsGateway);
+        var handler = new CreateChannelHandler(db, rbac, wsGateway, NullLogger<CreateChannelHandler>.Instance);
 
         var cmd = new CreateChannelCommand(guildId, "test", ChannelType.Text, memberId);
 
@@ -121,7 +122,7 @@ public class CreateChannelHandlerTests
 
         var rbac = new RbacService(db);
         var wsGateway = new TestWsGatewayClient();
-        var handler = new CreateChannelHandler(db, rbac, wsGateway);
+        var handler = new CreateChannelHandler(db, rbac, wsGateway, NullLogger<CreateChannelHandler>.Instance);
 
         var cmd = new CreateChannelCommand(guildId, "chat", ChannelType.Text, ownerId);
         await handler.HandleAsync(cmd);
@@ -145,7 +146,7 @@ public class CreateChannelHandlerTests
 
         var rbac = new RbacService(db);
         var wsGateway = new TestWsGatewayClient();
-        var handler = new CreateChannelHandler(db, rbac, wsGateway);
+        var handler = new CreateChannelHandler(db, rbac, wsGateway, NullLogger<CreateChannelHandler>.Instance);
 
         var cmd = new CreateChannelCommand(guildId, "voice-room", ChannelType.Voice, ownerId);
         await handler.HandleAsync(cmd);
@@ -169,7 +170,7 @@ public class CreateChannelHandlerTests
 
         var rbac = new RbacService(db);
         var wsGateway = new TestWsGatewayClient { ShouldFail = true };
-        var handler = new CreateChannelHandler(db, rbac, wsGateway);
+        var handler = new CreateChannelHandler(db, rbac, wsGateway, NullLogger<CreateChannelHandler>.Instance);
 
         var cmd = new CreateChannelCommand(guildId, "test", ChannelType.Text, ownerId);
         var result = await handler.HandleAsync(cmd);

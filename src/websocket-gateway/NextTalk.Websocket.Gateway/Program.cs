@@ -1,6 +1,7 @@
 using System.Net;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.SignalR;
@@ -12,16 +13,37 @@ using NextTalk.Websocket.Gateway.Features.Chat.SendMessage;
 using NextTalk.Websocket.Gateway.Features.Disconnect;
 using NextTalk.Websocket.Gateway.Infrastructure;
 using NextTalk.Websocket.Gateway.Shared;
+using OpenTelemetry.Resources;
+using OpenTelemetry.Trace;
 using Polly;
 using Prometheus;
 using Serilog;
+using Serilog.Enrichers.Span;
+using StackExchange.Redis;
 using IPNetwork = System.Net.IPNetwork;
 
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Configuration.AddJsonFile("/zitadel-config/swagger-config.json", optional: true, reloadOnChange: true);
 
-builder.Services.AddSerilog((_, lc) => lc.ReadFrom.Configuration(builder.Configuration));
+builder.Services.AddSerilog((_, lc) => lc.ReadFrom.Configuration(builder.Configuration).Enrich.WithSpan());
+
+builder.Services.AddOpenTelemetry()
+    .ConfigureResource(r => r
+        .AddService(
+            serviceName: "websocket-gateway",
+            serviceVersion: typeof(Program).Assembly.GetName().Version?.ToString() ?? "0.0.0"))
+    .WithTracing(tracing => tracing
+        .AddAspNetCoreInstrumentation(opts =>
+        {
+            opts.RecordException = true;
+            opts.Filter = ctx =>
+                !ctx.Request.Path.StartsWithSegments("/metrics") &&
+                !ctx.Request.Path.StartsWithSegments("/healthz") &&
+                !ctx.Request.Path.StartsWithSegments("/readyz");
+        })
+        .AddHttpClientInstrumentation()
+        .AddOtlpExporter());
 
 builder.Services.Configure<PresenceOptions>(builder.Configuration.GetSection("Presence"));
 
@@ -149,13 +171,21 @@ builder.Services.AddSwaggerGen(c =>
     });
 });
 
+// Redis — lazy: IConnectionMultiplexer создаётся при первом resolve, не при регистрации.
+// Это позволяет тестам подменить регистрацию до того, как соединение будет установлено.
+var redisConnectionString = builder.Configuration.GetConnectionString("Redis")
+    ?? throw new InvalidOperationException("ConnectionStrings:Redis is not configured");
+builder.Services.AddSingleton<IConnectionMultiplexer>(_ =>
+    ConnectionMultiplexer.Connect(redisConnectionString));
+
 // SignalR - userId маппинг из JWT sub claim через SubClaimUserIdProvider
-builder.Services.AddSignalR();
+builder.Services.AddSignalR()
+    .AddStackExchangeRedis(redisConnectionString);
 builder.Services.AddSingleton<IUserIdProvider, SubClaimUserIdProvider>();
 
-// Presence state (in-memory, per-replica)
-builder.Services.AddSingleton<ConnectionManager>();
-builder.Services.AddSingleton<PresenceTracker>();
+// Presence state (Redis-backed, shared across replicas)
+builder.Services.AddSingleton<IConnectionManager, RedisConnectionManager>();
+builder.Services.AddSingleton<IPresenceTracker, RedisPresenceTracker>();
 builder.Services.AddHostedService<PresenceMonitor>();
 
 // ChatHub is transient (one instance per connection), handler must be stateless
@@ -167,42 +197,78 @@ var messagingUrl = builder.Configuration["Services:MessagingService"] ?? throw n
 
 builder.Services.AddHttpClient<GuildServiceClient>(c =>
     c.BaseAddress = new Uri(guildUrl))
-    .AddResilienceHandler("guild", pipeline =>
+    .AddResilienceHandler("guild", (pipeline, ctx) =>
     {
+        var logger = ctx.ServiceProvider.GetRequiredService<ILogger<Program>>();
         pipeline.AddRetry(new HttpRetryStrategyOptions
         {
             MaxRetryAttempts = 3,
             Delay = TimeSpan.FromMilliseconds(200),
             BackoffType = DelayBackoffType.Exponential,
-            UseJitter = true
+            UseJitter = true,
+            OnRetry = args =>
+            {
+                logger.LogWarning(args.Outcome.Exception, "Retry {Attempt}/3 guild-service: {Status}",
+                    args.AttemptNumber + 1, args.Outcome.Result?.StatusCode);
+                return ValueTask.CompletedTask;
+            }
         });
         pipeline.AddCircuitBreaker(new HttpCircuitBreakerStrategyOptions
         {
             SamplingDuration = TimeSpan.FromSeconds(30),
             FailureRatio = 0.5,
             MinimumThroughput = 5,
-            BreakDuration = TimeSpan.FromSeconds(15)
+            BreakDuration = TimeSpan.FromSeconds(15),
+            OnOpened = args =>
+            {
+                logger.LogError(args.Outcome.Exception, "Circuit breaker opened guild-service for {Duration}s: {Status}",
+                    args.BreakDuration.TotalSeconds, args.Outcome.Result?.StatusCode);
+                return ValueTask.CompletedTask;
+            },
+            OnClosed = _ =>
+            {
+                logger.LogInformation("Circuit breaker closed guild-service");
+                return ValueTask.CompletedTask;
+            }
         });
         pipeline.AddTimeout(TimeSpan.FromSeconds(2));
     });
 
 builder.Services.AddHttpClient<MessagingServiceClient>(c =>
     c.BaseAddress = new Uri(messagingUrl))
-    .AddResilienceHandler("messaging", pipeline =>
+    .AddResilienceHandler("messaging", (pipeline, ctx) =>
     {
+        var logger = ctx.ServiceProvider.GetRequiredService<ILogger<Program>>();
         pipeline.AddRetry(new HttpRetryStrategyOptions
         {
             MaxRetryAttempts = 3,
             Delay = TimeSpan.FromMilliseconds(200),
             BackoffType = DelayBackoffType.Exponential,
-            UseJitter = true
+            UseJitter = true,
+            OnRetry = args =>
+            {
+                logger.LogWarning(args.Outcome.Exception, "Retry {Attempt}/3 messaging-service: {Status}",
+                    args.AttemptNumber + 1, args.Outcome.Result?.StatusCode);
+                return ValueTask.CompletedTask;
+            }
         });
         pipeline.AddCircuitBreaker(new HttpCircuitBreakerStrategyOptions
         {
             SamplingDuration = TimeSpan.FromSeconds(30),
             FailureRatio = 0.5,
             MinimumThroughput = 5,
-            BreakDuration = TimeSpan.FromSeconds(15)
+            BreakDuration = TimeSpan.FromSeconds(15),
+            OnOpened = args =>
+            {
+                logger.LogError(args.Outcome.Exception, "Circuit breaker opened messaging-service for {Duration}s: {Status}",
+                    args.BreakDuration.TotalSeconds, args.Outcome.Result?.StatusCode);
+                return ValueTask.CompletedTask;
+            },
+            OnClosed = _ =>
+            {
+                logger.LogInformation("Circuit breaker closed messaging-service");
+                return ValueTask.CompletedTask;
+            }
         });
         pipeline.AddTimeout(TimeSpan.FromSeconds(2));
     });
@@ -230,6 +296,15 @@ if (app.Environment.IsDevelopment())
 app.UseForwardedHeaders();
 app.UseAuthentication();
 app.UseAuthorization();
+
+app.UseExceptionHandler(exApp => exApp.Run(async ctx =>
+{
+    var ex = ctx.Features.Get<IExceptionHandlerFeature>()?.Error;
+    ctx.RequestServices.GetRequiredService<ILogger<Program>>()
+        .LogError(ex, "Unhandled exception: {Path}", ctx.Request.Path);
+    ctx.Response.StatusCode = StatusCodes.Status500InternalServerError;
+    await ctx.Response.WriteAsJsonAsync(new { error = "An unexpected error occurred." });
+}));
 
 app.UseMiddleware<DeadlineMiddleware>();
 

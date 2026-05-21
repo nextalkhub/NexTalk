@@ -35,19 +35,31 @@ public sealed class ZitadelUserInfoService
         req.Headers.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
         req.Headers.Host = _hostHeader;
 
-        using var resp = await client.SendAsync(req, ct);
-        if (!resp.IsSuccessStatusCode)
+        HttpResponseMessage resp;
+        try
+        {
+            resp = await client.SendAsync(req, ct);
+        }
+        catch (HttpRequestException)
+        {
             return null;
+        }
 
-        using var doc = JsonDocument.Parse(await resp.Content.ReadAsStringAsync(ct));
-        var r = doc.RootElement;
-        var info = new UserInfo(
-            Name:     r.TryGetProperty("name",               out var n) ? n.GetString() ?? "" : "",
-            Username: r.TryGetProperty("preferred_username", out var u) ? u.GetString() ?? "" : "",
-            Email:    r.TryGetProperty("email",              out var e) ? e.GetString() ?? "" : "");
+        using (resp)
+        {
+            if (!resp.IsSuccessStatusCode)
+                return null;
 
-        _cache.Set(key, info, tokenExpiry);
-        return info;
+            using var doc = JsonDocument.Parse(await resp.Content.ReadAsStringAsync(ct));
+            var r = doc.RootElement;
+            var info = new UserInfo(
+                Name:     r.TryGetProperty("name",               out var n) ? n.GetString() ?? "" : "",
+                Username: r.TryGetProperty("preferred_username", out var u) ? u.GetString() ?? "" : "",
+                Email:    r.TryGetProperty("email",              out var e) ? e.GetString() ?? "" : "");
+
+            _cache.Set(key, info, tokenExpiry);
+            return info;
+        }
     }
 }
 

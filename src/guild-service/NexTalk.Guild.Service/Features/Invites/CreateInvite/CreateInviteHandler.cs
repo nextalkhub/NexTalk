@@ -13,12 +13,14 @@ public class CreateInviteHandler
     private readonly GuildDbContext _db;
     private readonly RbacService _rbac;
     private readonly IConfiguration _config;
+    private readonly ILogger<CreateInviteHandler> _logger;
 
-    public CreateInviteHandler(GuildDbContext db, RbacService rbac, IConfiguration config)
+    public CreateInviteHandler(GuildDbContext db, RbacService rbac, IConfiguration config, ILogger<CreateInviteHandler> logger)
     {
         _db = db;
         _rbac = rbac;
         _config = config;
+        _logger = logger;
     }
 
     /// <summary>Созданное приглашение.</summary>
@@ -65,6 +67,9 @@ public class CreateInviteHandler
 
         _db.Invites.Add(invite);
         await _db.SaveChangesAsync(ct);
+
+        _logger.LogInformation("Invite created: id={InviteId} guild={GuildId} caller={CallerId} code={InviteCode}",
+            invite.Id, cmd.GuildId, cmd.CallerId, invite.Code);
 
         var baseUrl = _config["Invites:BaseUrl"] ?? "https://nextalk.fun/invite";
         var url = $"{baseUrl.TrimEnd('/')}/{invite.Code}";

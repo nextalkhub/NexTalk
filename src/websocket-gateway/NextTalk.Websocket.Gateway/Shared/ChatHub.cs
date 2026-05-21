@@ -6,15 +6,15 @@ namespace NextTalk.Websocket.Gateway.Shared;
 
 public sealed class ChatHub : Hub
 {
-    private readonly ConnectionManager _connections;
-    private readonly PresenceTracker _presence;
+    private readonly IConnectionManager _connections;
+    private readonly IPresenceTracker _presence;
     private readonly SendMessageHandler _sendMessageHandler;
     private readonly GuildServiceClient _guildClient;
     private readonly ILogger<ChatHub> _logger;
 
     public ChatHub(
-        ConnectionManager connections,
-        PresenceTracker presence,
+        IConnectionManager connections,
+        IPresenceTracker presence,
         SendMessageHandler sendMessageHandler,
         GuildServiceClient guildClient,
         ILogger<ChatHub> logger)
@@ -37,7 +37,9 @@ public sealed class ChatHub : Hub
             return;
         }
 
-        var correlationId = Guid.NewGuid().ToString();
+        var correlationId = Context.GetHttpContext()?.Request.Headers["X-Request-Id"].FirstOrDefault()
+            ?? Context.GetHttpContext()?.Request.Headers["X-Correlation-Id"].FirstOrDefault()
+            ?? Guid.NewGuid().ToString();
         var guilds = await _guildClient.GetUserGuildsAsync(userId, correlationId);
         var guildIds = guilds.Select(guild => guild.Id).ToList();
 
@@ -79,7 +81,11 @@ public sealed class ChatHub : Hub
             }
         }
 
-        _logger.LogInformation("User {UserId} disconnected ({ConnectionId})", userId, Context.ConnectionId);
+        if (exception is not null)
+            _logger.LogWarning(exception, "User {UserId} disconnected with error ({ConnectionId})", userId, Context.ConnectionId);
+        else
+            _logger.LogInformation("User {UserId} disconnected ({ConnectionId})", userId, Context.ConnectionId);
+
         await base.OnDisconnectedAsync(exception);
     }
 

@@ -13,12 +13,14 @@ public class AcceptInviteHandler
     private readonly GuildDbContext _db;
     private readonly WsGatewayClient _wsGateway;
     private readonly IInviteRepository _inviteRepository;
+    private readonly ILogger<AcceptInviteHandler> _logger;
 
-    public AcceptInviteHandler(GuildDbContext db, WsGatewayClient wsGateway, IInviteRepository inviteRepository)
+    public AcceptInviteHandler(GuildDbContext db, WsGatewayClient wsGateway, IInviteRepository inviteRepository, ILogger<AcceptInviteHandler> logger)
     {
         _db = db;
         _wsGateway = wsGateway;
         _inviteRepository = inviteRepository;
+        _logger = logger;
     }
 
     public async Task<GuildResponse> HandleAsync(AcceptInviteCommand cmd, CancellationToken ct = default)
@@ -57,12 +59,15 @@ public class AcceptInviteHandler
         _db.Members.Add(member);
         await _db.SaveChangesAsync(ct);
 
+        _logger.LogInformation("Member joined via invite: user={UserId} guild={GuildId} code={InviteCode}",
+            cmd.UserId, row.GuildId, cmd.Code);
+
         try
         {
             await _wsGateway.BroadcastToGuildAsync(row.GuildId, "member.joined",
                 new { member.UserId, member.DisplayName, member.Username, member.GuildId }, ct);
         }
-        catch { /* best-effort */ }
+        catch (Exception ex) { _logger.LogWarning(ex, "Failed to broadcast member.joined: user={UserId} guild={GuildId}", cmd.UserId, row.GuildId); }
 
         return new GuildResponse(guild.Id, guild.Name, guild.OwnerId, guild.CreatedAt);
     }

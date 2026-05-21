@@ -16,7 +16,8 @@ http {
                     '$status $body_bytes_sent "$http_referer" '
                     '"$http_user_agent" "$http_x_forwarded_for" '
                     'rt=$request_time uct="$upstream_connect_time" '
-                    'uht="$upstream_header_time" urt="$upstream_response_time"';
+                    'uht="$upstream_header_time" urt="$upstream_response_time" '
+                    'reqid=$request_id';
 
     access_log /var/log/nginx/access.log main;
 
@@ -253,6 +254,7 @@ http {
             proxy_set_header X-Forwarded-For $remote_addr;
             proxy_set_header X-Real-IP $remote_addr;
             proxy_set_header X-Request-Id $request_id;
+            add_header X-Request-Id $request_id always;
             add_header X-Upstream-Service "guild-service" always;
         }
 
@@ -265,6 +267,7 @@ http {
             proxy_set_header X-Forwarded-For $remote_addr;
             proxy_set_header X-Real-IP $remote_addr;
             proxy_set_header X-Request-Id $request_id;
+            add_header X-Request-Id $request_id always;
             add_header X-Upstream-Service "guild-service" always;
         }
 
@@ -278,6 +281,7 @@ http {
             proxy_set_header X-Forwarded-For $remote_addr;
             proxy_set_header X-Real-IP $remote_addr;
             proxy_set_header X-Request-Id $request_id;
+            add_header X-Request-Id $request_id always;
             add_header X-Upstream-Service "messaging-service" always;
         }
 
@@ -290,6 +294,7 @@ http {
             proxy_set_header X-Forwarded-For $remote_addr;
             proxy_set_header X-Real-IP $remote_addr;
             proxy_set_header X-Request-Id $request_id;
+            add_header X-Request-Id $request_id always;
             add_header X-Upstream-Service "messaging-service" always;
         }
 
@@ -303,6 +308,7 @@ http {
             proxy_set_header X-Forwarded-For $remote_addr;
             proxy_set_header X-Real-IP $remote_addr;
             proxy_set_header X-Request-Id $request_id;
+            add_header X-Request-Id $request_id always;
             add_header X-Upstream-Service "voice-service" always;
         }
 
@@ -324,6 +330,7 @@ http {
 
             proxy_buffering off;
 
+            add_header X-Request-Id $request_id always;
             add_header X-Upstream-Service "websocket-gateway" always;
         }
 
