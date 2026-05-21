@@ -1,6 +1,13 @@
 apiVersion: v2
 name: nextalk
-description: NexTalk - A self-hosted team communication platform (text & voice)
+description: NexTalk — самохостящаяся платформа командной коммуникации (текст и голос).
 type: application
-version: 0.1.0
-appVersion: "latest"
+version: 0.2.0
+appVersion: "0.1.0"
+kubeVersion: ">=1.27.0-0"
+home: https://github.com/nextalkhub/NexTalk
+sources:
+  - https://github.com/nextalkhub/NexTalk
+maintainers:
+  - name: NexTalk Team
+    url: https://github.com/nextalkhub

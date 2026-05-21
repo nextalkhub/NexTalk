@@ -1,0 +1,114 @@
+---
+# Default-deny на весь namespace. Любой ingress/egress, не разрешённый
+# отдельной NetworkPolicy ниже, дропается.
+# В k3s NetworkPolicy реализуется через встроенный kube-router controller.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: default-deny
+  namespace: {{ .Values.namespace }}
+spec:
+  podSelector: {}
+  policyTypes: [Ingress, Egress]
+
+---
+# DNS — всегда нужен. Разрешаем UDP/TCP 53 в kube-system.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-dns
+  namespace: {{ .Values.namespace }}
+spec:
+  podSelector: {}
+  policyTypes: [Egress]
+  egress:
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+      ports:
+        - protocol: UDP
+          port: 53
+        - protocol: TCP
+          port: 53
+
+---
+# Ingress nginx из ingress-nginx namespace может ходить во все сервисы NexTalk.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-from-ingress
+  namespace: {{ .Values.namespace }}
+spec:
+  podSelector: {}
+  policyTypes: [Ingress]
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: ingress-nginx
+
+---
+# Внутрикластерные походы между сервисами NexTalk: все в namespace nextalk могут
+# говорить друг с другом. Для тонкой настройки разбить на per-service позже.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-intra-namespace
+  namespace: {{ .Values.namespace }}
+spec:
+  podSelector: {}
+  policyTypes: [Ingress, Egress]
+  ingress:
+    - from:
+        - podSelector: {}
+  egress:
+    - to:
+        - podSelector: {}
+
+---
+# Egress наружу: postgres/redis на db-vps, otel/loki на observability-vps,
+# Let's Encrypt ACME-challenge через 443, ghcr/dockerhub для pull.
+# Подсети — Beget внутренняя сеть; внешний egress нужен Zitadel и cert-manager.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-egress-external
+  namespace: {{ .Values.namespace }}
+spec:
+  podSelector: {}
+  policyTypes: [Egress]
+  egress:
+    # Postgres / Redis на db-vps (приватная подсеть Beget).
+    - to:
+        - ipBlock:
+            cidr: 10.0.0.0/8
+      ports:
+        - protocol: TCP
+          port: 5432
+        - protocol: TCP
+          port: 6379
+    # OTel / Loki / Prometheus remote_write на obs-vps.
+    - to:
+        - ipBlock:
+            cidr: 10.0.0.0/8
+      ports:
+        - protocol: TCP
+          port: 4317
+        - protocol: TCP
+          port: 3100
+        - protocol: TCP
+          port: 9090
+    # HTTPS (внешний интернет): cert-manager ACME, image pull, OIDC discovery.
+    - to:
+        - ipBlock:
+            cidr: 0.0.0.0/0
+            except:
+              - 10.0.0.0/8
+              - 172.16.0.0/12
+              - 192.168.0.0/16
+      ports:
+        - protocol: TCP
+          port: 443
+        - protocol: TCP
+          port: 80
