@@ -7,33 +7,58 @@ metadata:
 data:
   prometheus.yml: |
     global:
-      scrape_interval: 15s
+      scrape_interval:     15s
       evaluation_interval: 15s
 
+      external_labels:
+        environment: production
+        project:     nextalk
+        cluster:     k3s
+
+    # Метрики отправляются на Obs VPS Prometheus через приватную сеть Beget.
+    # Obs VPS Prometheus запущен с --web.enable-remote-write-receiver.
+    remote_write:
+      - url: {{ .Values.observability.prometheusRemoteWriteUrl }}
+        queue_config:
+          max_shards: 5
+          max_samples_per_send: 1000
+          batch_send_deadline: 5s
+        metadata_config:
+          send_interval: 1m
+
     scrape_configs:
+
       - job_name: guild-service
         static_configs:
-          - targets: ['guild-service:5001']
+          - targets: ["guild-service:5001"]
+            labels:
+              service: guild-service
         metrics_path: /metrics
 
       - job_name: messaging-service
         static_configs:
-          - targets: ['messaging-service:5002']
+          - targets: ["messaging-service:5002"]
+            labels:
+              service: messaging-service
         metrics_path: /metrics
 
       - job_name: voice-service
         static_configs:
-          - targets: ['voice-service:5003']
+          - targets: ["voice-service:5003"]
+            labels:
+              service: voice-service
         metrics_path: /metrics
 
       - job_name: websocket-gateway
         static_configs:
-          - targets: ['websocket-gateway:5004']
+          - targets: ["websocket-gateway:5004"]
+            labels:
+              service: websocket-gateway
         metrics_path: /metrics
 
       - job_name: prometheus
         static_configs:
-          - targets: ['localhost:9090']
+          - targets: ["localhost:9090"]
 
 ---
 apiVersion: v1
@@ -66,11 +91,13 @@ spec:
     spec:
       containers:
         - name: prometheus
-          image: prom/prometheus:v2.53.0
+          image: prom/prometheus:v3.11.3
           args:
             - --config.file=/etc/prometheus/prometheus.yml
             - --storage.tsdb.path=/prometheus
-            - --storage.tsdb.retention.time=7d
+            # Короткий retention: данные хранятся локально 1 день,
+            # долгосрочное хранение — на Obs VPS через remote_write.
+            - --storage.tsdb.retention.time=1d
           ports:
             - containerPort: 9090
           volumeMounts:
@@ -88,9 +115,9 @@ spec:
           resources:
             requests:
               cpu: 50m
-              memory: 256Mi
+              memory: 128Mi
             limits:
-              cpu: 500m
+              cpu: 300m
               memory: 512Mi
       volumes:
         - name: config

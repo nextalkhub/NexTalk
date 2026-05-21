@@ -34,25 +34,22 @@ spec:
                   name: nextalk-secrets
                   key: postgres-dsn-nextalk
             - name: ConnectionStrings__Redis
-              value: redis:6379,defaultDatabase=1
-            - name: ZITADEL_DOMAIN
-              valueFrom:
-                configMapKeyRef:
-                  name: nextalk-config
-                  key: ZITADEL_DOMAIN
-            - name: ZITADEL_EXTERNALPORT
-              valueFrom:
-                configMapKeyRef:
-                  name: nextalk-config
-                  key: ZITADEL_EXTERNALPORT
+              value: {{ printf "%s:%s,password=%s,defaultDatabase=1" .Values.db.redisHost .Values.db.redisPort .Values.db.redisPassword | quote }}
             - name: Zitadel__Authority
-              value: "http://$(ZITADEL_DOMAIN):$(ZITADEL_EXTERNALPORT)"
+              valueFrom:
+                configMapKeyRef:
+                  name: nextalk-config
+                  key: ZITADEL_AUTHORITY
             - name: Zitadel__MetadataAddress
               value: http://zitadel:8080/.well-known/openid-configuration
             - name: Services__WebSocketGateway
               value: http://websocket-gateway:5004
             - name: Services__VoiceService
               value: http://voice-service:5003
+            - name: OTEL_EXPORTER_OTLP_ENDPOINT
+              value: {{ .Values.observability.otelEndpoint }}
+            - name: OTEL_EXPORTER_OTLP_PROTOCOL
+              value: grpc
           startupProbe:
             httpGet:
               path: /healthz

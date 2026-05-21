@@ -28,20 +28,17 @@ spec:
                   key: ASPNETCORE_ENVIRONMENT
             - name: ASPNETCORE_URLS
               value: http://+:5003
-            - name: ZITADEL_DOMAIN
-              valueFrom:
-                configMapKeyRef:
-                  name: nextalk-config
-                  key: ZITADEL_DOMAIN
-            - name: ZITADEL_EXTERNALPORT
-              valueFrom:
-                configMapKeyRef:
-                  name: nextalk-config
-                  key: ZITADEL_EXTERNALPORT
             - name: Zitadel__Authority
-              value: "http://$(ZITADEL_DOMAIN):$(ZITADEL_EXTERNALPORT)"
+              valueFrom:
+                configMapKeyRef:
+                  name: nextalk-config
+                  key: ZITADEL_AUTHORITY
             - name: Zitadel__MetadataAddress
               value: http://zitadel:8080/.well-known/openid-configuration
+            - name: OTEL_EXPORTER_OTLP_ENDPOINT
+              value: {{ .Values.observability.otelEndpoint }}
+            - name: OTEL_EXPORTER_OTLP_PROTOCOL
+              value: grpc
             - name: LiveKit__Host
               value: http://livekit:7880
             - name: LiveKit__ApiKey

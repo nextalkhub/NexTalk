@@ -5,13 +5,26 @@ metadata:
   name: nextalk
   namespace: {{ .Values.namespace }}
   annotations:
+    {{- if .Values.tls.enabled }}
+    cert-manager.io/cluster-issuer: {{ .Values.tls.issuer | quote }}
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
+    {{- else }}
     nginx.ingress.kubernetes.io/ssl-redirect: "false"
+    {{- end }}
     nginx.ingress.kubernetes.io/proxy-read-timeout: "3600"
     nginx.ingress.kubernetes.io/proxy-send-timeout: "3600"
 spec:
   ingressClassName: nginx
+  {{- if .Values.tls.enabled }}
+  tls:
+    - hosts:
+        - {{ .Values.domain }}
+      secretName: nextalk-tls
+  {{- end }}
   rules:
-    - http:
+    - host: {{ .Values.domain }}
+      http:
         paths:
           - path: /api/guilds
             pathType: Prefix
@@ -55,20 +68,6 @@ spec:
                 name: websocket-gateway
                 port:
                   number: 5004
-          - path: /monitoring/grafana
-            pathType: Prefix
-            backend:
-              service:
-                name: grafana
-                port:
-                  number: 3000
-          - path: /monitoring/kibana
-            pathType: Prefix
-            backend:
-              service:
-                name: kibana
-                port:
-                  number: 5601
           - path: /ui/v2/login
             pathType: Prefix
             backend:

@@ -3,22 +3,46 @@
 # -----------------------------------------------------------------------
 namespace: nextalk
 
+# Внешний домен кластера. Используется в Ingress и Zitadel.
+domain: "nextalk.fun"
+
+# -----------------------------------------------------------------------
+# TLS (cert-manager + Let's Encrypt)
+# -----------------------------------------------------------------------
+tls:
+  enabled: true
+  # Сначала протестируй со staging, затем переключи на letsencrypt-prod.
+  issuer: "letsencrypt-prod"
+  # Email для уведомлений Let's Encrypt об истечении сертификата.
+  email: "otpetiv860@outlook.com"
+
+# -----------------------------------------------------------------------
+# DB VPS (Beget приватная сеть)
+# Замени host/redisHost на реальные приватные IP перед деплоем.
+# -----------------------------------------------------------------------
+db:
+  host: "10.0.0.1"       # Приватный IP DB VPS
+  port: "5432"
+  redisHost: "10.0.0.1"  # Тот же VPS или отдельный
+  redisPort: "6379"
+  redisPassword: ""       # Должен совпадать с REDIS_PASSWORD в infra/db/.env
+
+# -----------------------------------------------------------------------
+# PostgreSQL credentials (хранятся в Secret)
+# -----------------------------------------------------------------------
+postgres:
+  user: "postgres"
+  password: "postgres"   # Замени перед деплоем!
+  db: "nextalk"
+
 # -----------------------------------------------------------------------
 # Zitadel (OIDC identity provider)
 # -----------------------------------------------------------------------
 zitadel:
-  domain: "localhost"
-  externalPort: "80"
+  domain: "nextalk.fun"
+  externalPort: "443"
   # Must be exactly 32 characters
   masterkey: "MasterkeyNeedsToHave32Characters"
-
-# -----------------------------------------------------------------------
-# PostgreSQL
-# -----------------------------------------------------------------------
-postgres:
-  user: "postgres"
-  password: "postgres"
-  db: "nextalk"
 
 # -----------------------------------------------------------------------
 # LiveKit (voice/video SFU)
@@ -28,11 +52,18 @@ livekit:
   secretKey: "devsecret"
 
 # -----------------------------------------------------------------------
-# Grafana
+# Observability (Obs VPS, Beget приватная сеть)
+# Замени IP на реальный приватный IP Obs VPS перед деплоем.
 # -----------------------------------------------------------------------
-grafana:
-  adminUser: "admin"
-  adminPassword: "admin"
+observability:
+  # OTLP gRPC endpoint OTel Collector на Obs VPS
+  otelEndpoint: "http://10.0.0.2:4317"
+  # Loki endpoint на Obs VPS (для Alloy DaemonSet и Grafana datasource)
+  lokiUrl: "http://10.0.0.2:3100"
+  # Jaeger Query API на Obs VPS (для Grafana datasource)
+  jaegerUrl: "http://10.0.0.2:16686"
+  # Prometheus remote_write receiver на Obs VPS
+  prometheusRemoteWriteUrl: "http://10.0.0.2:9090/api/v1/write"
 
 # -----------------------------------------------------------------------
 # Application services
@@ -43,7 +74,7 @@ guildService:
   imagePullPolicy: Always
 
 messagingService:
-  replicas: 1
+  replicas: 2
   image: "nextalk/messaging-service:latest"
   imagePullPolicy: Always
 
@@ -53,7 +84,7 @@ voiceService:
   imagePullPolicy: Always
 
 websocketGateway:
-  replicas: 1
+  replicas: 2
   image: "nextalk/websocket-gateway:latest"
   imagePullPolicy: Always
 
@@ -61,16 +92,3 @@ webSpa:
   replicas: 1
   image: "nextalk/web-spa:latest"
   imagePullPolicy: Always
-
-# -----------------------------------------------------------------------
-# ELK stack (log aggregation)
-# -----------------------------------------------------------------------
-elasticsearch:
-  image: "elasticsearch:8.13.0"
-  storage: "10Gi"
-
-kibana:
-  image: "kibana:8.13.0"
-
-filebeat:
-  image: "elastic/filebeat:8.13.0"

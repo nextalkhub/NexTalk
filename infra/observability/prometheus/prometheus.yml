@@ -1,14 +1,12 @@
 # ─────────────────────────────────────────────────────────────────────────────
-# Prometheus — NexTalk scrape configuration
+# Prometheus — Obs VPS
 #
-# Все микросервисы используют prometheus-net + app.UseHttpMetrics() +
-# app.MapMetrics(), что добавляет эндпоинт /metrics в формате OpenMetrics.
+# Получает метрики двумя способами:
+#   1. remote_write от k3s Prometheus (метрики NexTalk микросервисов)
+#   2. Локальный scrape сервисов Obs VPS (OTel Collector, Loki, сам Prometheus)
 #
-# Метрики (.NET + HTTP):
-#   http_requests_received_total{method, endpoint, statusCode}
-#   http_request_duration_seconds{method, endpoint, statusCode}
-#   http_requests_in_progress{method, endpoint}
-#   dotnet_gc_*  /  process_*
+# Запущен с флагом --web.enable-remote-write-receiver в docker-compose.observability.yaml.
+# Grafana читает данные отсюда по http://prometheus:9090.
 # ─────────────────────────────────────────────────────────────────────────────
 
 global:
@@ -17,48 +15,18 @@ global:
   scrape_timeout:      10s
 
   external_labels:
-    environment: development
+    environment: production
     project:     nextalk
 
-# ─── Микросервисы NexTalk ────────────────────────────────────────────────────
+# ─── Локальные сервисы Obs VPS ───────────────────────────────────────────────
 scrape_configs:
-
-  - job_name: guild-service
-    static_configs:
-      - targets: ["guild-service:5001"]
-        labels:
-          service: guild-service
-    metrics_path: /metrics
-
-  - job_name: messaging-service
-    static_configs:
-      - targets: ["messaging-service:5002"]
-        labels:
-          service: messaging-service
-    metrics_path: /metrics
-
-  - job_name: voice-service
-    static_configs:
-      - targets: ["voice-service:5003"]
-        labels:
-          service: voice-service
-    metrics_path: /metrics
-
-  - job_name: websocket-gateway
-    static_configs:
-      - targets: ["websocket-gateway:5004"]
-        labels:
-          service: websocket-gateway
-    metrics_path: /metrics
-
-# ─── Observability infrastructure ───────────────────────────────────────────
 
   # Self-monitoring Prometheus
   - job_name: prometheus
     static_configs:
       - targets: ["localhost:9090"]
 
-  # OTel Collector self-metrics (активны после того как хоть один pipeline запущен)
+  # OTel Collector self-metrics
   - job_name: otel-collector
     static_configs:
       - targets: ["otel-collector:8888"]
