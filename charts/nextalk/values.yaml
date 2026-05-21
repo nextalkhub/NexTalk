@@ -21,6 +21,13 @@ namespace: nextalk
 domain: "nextalk.fun"
 
 # -----------------------------------------------------------------------
+# Сеть. Один CIDR — используется в NetworkPolicy egress правилах
+# для доступа к db-vps и obs-vps по приватной сети Beget.
+# -----------------------------------------------------------------------
+network:
+  privateCidr: "10.0.0.0/8"
+
+# -----------------------------------------------------------------------
 # TLS (cert-manager + Let's Encrypt)
 # -----------------------------------------------------------------------
 tls:
@@ -67,7 +74,9 @@ zitadel:
   loginImage:
     repository: ghcr.io/zitadel/zitadel-login
     tag: "v4.13.1"
-  replicas: 2
+  # Пока 1 реплика. HA требует разделить bootstrap (Job с start-from-init)
+  # и runtime (StatefulSet с start без init) — отдельная итерация.
+  replicas: 1
 
 # -----------------------------------------------------------------------
 # LiveKit (voice/video SFU)

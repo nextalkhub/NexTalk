@@ -82,7 +82,7 @@ spec:
     # Postgres / Redis на db-vps (приватная подсеть Beget).
     - to:
         - ipBlock:
-            cidr: 10.0.0.0/8
+            cidr: {{ .Values.network.privateCidr }}
       ports:
         - protocol: TCP
           port: 5432
@@ -91,7 +91,7 @@ spec:
     # OTel / Loki / Prometheus remote_write на obs-vps.
     - to:
         - ipBlock:
-            cidr: 10.0.0.0/8
+            cidr: {{ .Values.network.privateCidr }}
       ports:
         - protocol: TCP
           port: 4317
@@ -104,7 +104,7 @@ spec:
         - ipBlock:
             cidr: 0.0.0.0/0
             except:
-              - 10.0.0.0/8
+              - {{ .Values.network.privateCidr }}
               - 172.16.0.0/12
               - 192.168.0.0/16
       ports:
