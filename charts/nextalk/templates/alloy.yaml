@@ -87,6 +87,11 @@ spec:
             - name: config
               mountPath: /etc/alloy/config.alloy
               subPath: config.alloy
+            # readOnlyRootFilesystem: true — нужны writable пути для WAL и tmp.
+            - name: data
+              mountPath: /var/lib/alloy/data
+            - name: tmp
+              mountPath: /tmp
           resources:
             requests:
               cpu: 50m
@@ -109,3 +114,7 @@ spec:
         - name: config
           configMap:
             name: alloy-config
+        - name: data
+          emptyDir: {}
+        - name: tmp
+          emptyDir: {}

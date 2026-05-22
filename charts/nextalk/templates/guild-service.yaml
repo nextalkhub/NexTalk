@@ -44,7 +44,7 @@ spec:
                   name: nextalk-secrets
                   key: redis-password
             - name: ConnectionStrings__Redis
-              value: {{ printf "%s:%s,password=$(REDIS_PASSWORD),defaultDatabase=1" .Values.db.redisHost .Values.db.redisPort | quote }}
+              value: {{ printf "%s:%s,password=$(REDIS_PASSWORD),defaultDatabase=1" (required "db.redisHost обязателен" .Values.db.redisHost) .Values.db.redisPort | quote }}
             - name: Zitadel__Authority
               valueFrom:
                 configMapKeyRef:

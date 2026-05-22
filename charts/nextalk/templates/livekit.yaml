@@ -19,7 +19,7 @@ data:
       use_external_ip: true
 
     redis:
-      address: {{ printf "%s:%s" .Values.db.redisHost .Values.db.redisPort | quote }}
+      address: {{ printf "%s:%s" (required "db.redisHost обязателен" .Values.db.redisHost) .Values.db.redisPort | quote }}
       password: ${REDIS_PASSWORD}
       db: {{ .Values.livekit.redisDb }}
 

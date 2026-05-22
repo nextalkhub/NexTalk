@@ -145,34 +145,34 @@ containerSecurityContext:
 guildService:
   replicas: 2
   image:
-    repository: "nextalk/guild-service"
+    repository: "ghcr.io/nextalkhub/nextalk/guild-service"
     tag: "0.1.0"
     pullPolicy: IfNotPresent
 
 messagingService:
   replicas: 2
   image:
-    repository: "nextalk/messaging-service"
+    repository: "ghcr.io/nextalkhub/nextalk/messaging-service"
     tag: "0.1.0"
     pullPolicy: IfNotPresent
 
 voiceService:
   replicas: 2
   image:
-    repository: "nextalk/voice-service"
+    repository: "ghcr.io/nextalkhub/nextalk/voice-service"
     tag: "0.1.0"
     pullPolicy: IfNotPresent
 
 websocketGateway:
   replicas: 2
   image:
-    repository: "nextalk/websocket-gateway"
+    repository: "ghcr.io/nextalkhub/nextalk/websocket-gateway"
     tag: "0.1.0"
     pullPolicy: IfNotPresent
 
 webSpa:
   replicas: 2
   image:
-    repository: "nextalk/web-spa"
+    repository: "ghcr.io/nextalkhub/nextalk/web-spa"
     tag: "0.1.0"
     pullPolicy: IfNotPresent
