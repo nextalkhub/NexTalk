@@ -9,20 +9,18 @@ postgres_work_mem: "8MB"
 postgres_maintenance_work_mem: "128MB"
 
 # Список БД и пользователей.
-# Пароли — через ansible-vault (vault_postgres_*).
+# Один app-юзер на обе БД (nextalk + zitadel) — см. docs/decisions.md.
+# Системный postgres не трогаем: postgresql_user с role_attr_flags: LOGIN
+# снёс бы у него SUPERUSER. Поэтому отдельный nextalk_app.
 postgres_databases:
-  - name: guild
-    owner: nextalk_user
-  - name: messaging
-    owner: nextalk_user
+  - name: nextalk
+    owner: nextalk_app
   - name: zitadel
-    owner: zitadel_user
+    owner: nextalk_app
 
 postgres_users:
-  - name: nextalk_user
-    password: "{{ vault_postgres_nextalk_password | default('REPLACE_ME') }}"
-  - name: zitadel_user
-    password: "{{ vault_postgres_zitadel_password | default('REPLACE_ME') }}"
+  - name: nextalk_app
+    password: "{{ vault_postgres_password | default('REPLACE_ME') }}"
 
 # Whitelist в pg_hba.conf — только worker-ноды k3s.
 postgres_allowed_hosts:

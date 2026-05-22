@@ -56,8 +56,8 @@ db:
 # PostgreSQL credentials (хранятся в Secret nextalk-secrets)
 # -----------------------------------------------------------------------
 postgres:
-  user: "postgres"
-  password: ""           # Подкатить через vault
+  user: "nextalk_app"
+  password: ""           # Подкатить через vault (vault_postgres_password)
   db: "nextalk"
 
 # -----------------------------------------------------------------------
@@ -97,10 +97,10 @@ livekit:
 # Observability (Obs VPS, Beget приватная сеть)
 # -----------------------------------------------------------------------
 observability:
-  otelEndpoint: "http://10.0.0.2:4317"
-  lokiUrl: "http://10.0.0.2:3100"
-  jaegerUrl: "http://10.0.0.2:16686"
-  prometheusRemoteWriteUrl: "http://10.0.0.2:9090/api/v1/write"
+  otelEndpoint: "http://10.19.0.41:4317"
+  lokiUrl: "http://10.19.0.41:3100"
+  jaegerUrl: "http://10.19.0.41:16686"
+  prometheusRemoteWriteUrl: "http://10.19.0.41:9090/api/v1/write"
 
 # -----------------------------------------------------------------------
 # In-cluster Prometheus (scrape + remote_write на Obs VPS)
