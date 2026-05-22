@@ -5,10 +5,28 @@
 # Запуск:
 #   ansible-playbook -i inventory/hosts.ini playbooks/bootstrap.yml --ask-vault-pass
 
-- name: Bootstrap всех хостов (common + ufw)
+- name: Bootstrap всех хостов (common + ufw + ssh_keys)
   hosts: all
   become: true
   gather_facts: true
   roles:
     - common
     - ufw
+    - ssh_keys
+
+# bastion (worker-1) — единственный SSH-эндпоинт извне.
+# Дополнительно ставим fail2ban на этот хост.
+# ssh_keys уже раскатаны выше — здесь только защита от перебора.
+- name: SSH-hardening на bastion
+  hosts: bastion
+  become: true
+  gather_facts: true
+  tasks:
+    - name: fail2ban + hardening tags
+      ansible.builtin.include_role:
+        name: ssh_keys
+        tasks_from: main.yml
+      vars:
+        ssh_keys_install_fail2ban: true
+        # ВНИМАНИЕ: переключить в true только после раскатки ключей и проверки!
+        ssh_keys_disable_passwords: false

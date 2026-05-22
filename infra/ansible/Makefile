@@ -5,6 +5,7 @@
 #   make galaxy        # установить collections (один раз)
 #   make ping          # проверить SSH до всех хостов
 #   make bootstrap     # базовая настройка всех VPS
+#   make ssh           # раскатать SSH-ключи (без полного bootstrap)
 #   make db            # PostgreSQL + Redis
 #   make observability # observability stack
 #   make k3s           # k3s HA + kube-vip
@@ -17,7 +18,7 @@ INVENTORY    ?= inventory/hosts.ini
 VAULT_PASS   ?= --ask-vault-pass
 ANSIBLE      = ansible-playbook -i $(INVENTORY) $(VAULT_PASS)
 
-.PHONY: galaxy ping bootstrap db observability k3s addons helm deploy smoke clean-kubeconfig
+.PHONY: galaxy ping bootstrap ssh db observability k3s addons helm deploy smoke clean-kubeconfig
 
 galaxy:
 	ansible-galaxy collection install -r requirements.yml
@@ -27,6 +28,9 @@ ping:
 
 bootstrap:
 	$(ANSIBLE) playbooks/bootstrap.yml
+
+ssh:
+	$(ANSIBLE) playbooks/bootstrap.yml --tags ssh_keys
 
 db:
 	$(ANSIBLE) playbooks/db.yml
