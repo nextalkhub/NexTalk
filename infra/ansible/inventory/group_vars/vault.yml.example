@@ -1,16 +1,38 @@
 ---
 # Шаблон секретов. Скопируй в vault.yml, заполни и зашифруй:
+#   cp inventory/group_vars/vault.yml.example inventory/group_vars/vault.yml
+#   # вписать значения
 #   ansible-vault encrypt inventory/group_vars/vault.yml
 #
 # Запуск playbook'ов с vault:
 #   ansible-playbook -i inventory/hosts.ini playbooks/site.yml --ask-vault-pass
 #
 # Или через файл с паролем (НЕ коммитить):
-#   ansible-playbook ... --vault-password-file ~/.ansible_vault_pass
+#   echo "<vault-password>" > ~/.ansible_vault_pass && chmod 600 ~/.ansible_vault_pass
+#   export ANSIBLE_VAULT_PASSWORD_FILE=~/.ansible_vault_pass
 
-vault_k3s_token: "REPLACE_ME"  # openssl rand -hex 32
+# k3s server-token для join серверов и агентов в HA-кластер.
+# openssl rand -hex 32
+vault_k3s_token: "REPLACE_ME"
 
-vault_postgres_nextalk_password: "REPLACE_ME"  # openssl rand -base64 24
-vault_postgres_zitadel_password: "REPLACE_ME"
+# PostgreSQL: один user (postgres) обслуживает обе БД (nextalk и zitadel).
+# openssl rand -base64 32
+vault_postgres_password: "REPLACE_ME"
 
-vault_redis_password: "REPLACE_ME"  # openssl rand -base64 24
+# Redis: один пароль на все БД.
+# openssl rand -base64 32
+vault_redis_password: "REPLACE_ME"
+
+# Zitadel masterkey — РОВНО 32 символа, иначе start-from-init упадёт.
+# openssl rand -hex 16
+vault_zitadel_masterkey: "REPLACE_ME_EXACTLY_32_CHARACTERS"
+
+# LiveKit API ключ и secret. apiKey — идентификатор, secretKey — подпись.
+# openssl rand -hex 16
+vault_livekit_api_key: "REPLACE_ME"
+# openssl rand -base64 48
+vault_livekit_secret_key: "REPLACE_ME"
+
+# Email для Let's Encrypt уведомлений (просрочка сертификата).
+# Не личный — лучше группа: ops@nextalk.fun или admin@nextalk.fun.
+vault_acme_email: "REPLACE_ME@nextalk.fun"
