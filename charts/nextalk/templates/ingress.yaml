@@ -1,8 +1,15 @@
 ---
+# Несколько Ingress объектов на одном хосте: ingress-nginx их склеит.
+# Разделение нужно из-за per-Ingress аннотаций (rewrite-target, use-regex,
+# proxy-buffering): на /api/* нужен strip префикса, на /zitadel.*/ — regex
+# + выключенная буферизация (gRPC-Web streaming), на остальном — длинные
+# WebSocket таймауты.
+
+# ---------- 1) /api/* → бэкенды с снятием префикса /api ----------
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
-  name: nextalk
+  name: nextalk-api
   namespace: {{ .Values.namespace }}
   annotations:
     {{- if .Values.tls.enabled }}
@@ -12,10 +19,78 @@ metadata:
     {{- else }}
     nginx.ingress.kubernetes.io/ssl-redirect: "false"
     {{- end }}
-    # WebSocket / long-poll: окно жизни соединения.
-    nginx.ingress.kubernetes.io/proxy-read-timeout: "3600"
-    nginx.ingress.kubernetes.io/proxy-send-timeout: "3600"
-    # Zitadel ждёт gRPC-Web заголовки и большие cookies в HTTP/2.
+    # /api/guilds/abc → /guilds/abc на upstream.
+    nginx.ingress.kubernetes.io/use-regex: "true"
+    nginx.ingress.kubernetes.io/rewrite-target: /$2
+spec:
+  ingressClassName: nginx
+  {{- if .Values.tls.enabled }}
+  tls:
+    - hosts:
+        - {{ .Values.domain }}
+      secretName: nextalk-tls
+  {{- end }}
+  rules:
+    - host: {{ .Values.domain }}
+      http:
+        paths:
+          - path: /api/guilds(/|$)(.*)
+            pathType: ImplementationSpecific
+            backend:
+              service:
+                name: guild-service
+                port:
+                  number: 5001
+          - path: /api/invites(/|$)(.*)
+            pathType: ImplementationSpecific
+            backend:
+              service:
+                name: guild-service
+                port:
+                  number: 5001
+          - path: /api/channels(/|$)(.*)
+            pathType: ImplementationSpecific
+            backend:
+              service:
+                name: messaging-service
+                port:
+                  number: 5002
+          - path: /api/messages(/|$)(.*)
+            pathType: ImplementationSpecific
+            backend:
+              service:
+                name: messaging-service
+                port:
+                  number: 5002
+          - path: /api/voice(/|$)(.*)
+            pathType: ImplementationSpecific
+            backend:
+              service:
+                name: voice-service
+                port:
+                  number: 5003
+
+---
+# ---------- 2) gRPC-Web вызовы Console (/zitadel.<pkg>.<v>.<Svc>/<Method>) ----------
+# Console шлёт POST /zitadel.user.v2.UserService/GetUserByID и т.п.
+# proxy_buffering off — иначе server-streaming ответы залипают в буфере nginx.
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: nextalk-grpc-web
+  namespace: {{ .Values.namespace }}
+  annotations:
+    {{- if .Values.tls.enabled }}
+    cert-manager.io/cluster-issuer: {{ .Values.tls.issuer | quote }}
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
+    {{- else }}
+    nginx.ingress.kubernetes.io/ssl-redirect: "false"
+    {{- end }}
+    nginx.ingress.kubernetes.io/use-regex: "true"
+    nginx.ingress.kubernetes.io/proxy-buffering: "off"
+    nginx.ingress.kubernetes.io/proxy-request-buffering: "off"
+    # Zitadel cookies + gRPC-Web заголовки лезут крупными чанками.
     nginx.ingress.kubernetes.io/proxy-buffer-size: "16k"
 spec:
   ingressClassName: nginx
@@ -29,51 +104,68 @@ spec:
     - host: {{ .Values.domain }}
       http:
         paths:
-          # ---- NexTalk API ----
-          - path: /api/guilds
-            pathType: Prefix
+          - path: /zitadel\.[a-zA-Z0-9_.]+/.*
+            pathType: ImplementationSpecific
             backend:
               service:
-                name: guild-service
+                name: zitadel
                 port:
-                  number: 5001
-          - path: /api/invites
-            pathType: Prefix
-            backend:
-              service:
-                name: guild-service
-                port:
-                  number: 5001
-          - path: /api/channels
-            pathType: Prefix
-            backend:
-              service:
-                name: messaging-service
-                port:
-                  number: 5002
-          - path: /api/messages
-            pathType: Prefix
-            backend:
-              service:
-                name: messaging-service
-                port:
-                  number: 5002
-          - path: /api/voice
-            pathType: Prefix
-            backend:
-              service:
-                name: voice-service
-                port:
-                  number: 5003
-          # ---- WebSocket ----
-          - path: /ws
+                  number: 8080
+
+---
+# ---------- 3) Основной маршрут: hubs / Zitadel REST/OIDC / login UI / livekit / SPA ----------
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: nextalk-main
+  namespace: {{ .Values.namespace }}
+  annotations:
+    {{- if .Values.tls.enabled }}
+    cert-manager.io/cluster-issuer: {{ .Values.tls.issuer | quote }}
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
+    {{- else }}
+    nginx.ingress.kubernetes.io/ssl-redirect: "false"
+    {{- end }}
+    # SignalR /hubs и LiveKit signaling — долгоживущие WebSocket'ы.
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "3600"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "3600"
+    # Zitadel: большие cookies + OIDC заголовки.
+    nginx.ingress.kubernetes.io/proxy-buffer-size: "16k"
+spec:
+  ingressClassName: nginx
+  {{- if .Values.tls.enabled }}
+  tls:
+    - hosts:
+        - {{ .Values.domain }}
+      secretName: nextalk-tls
+  {{- end }}
+  rules:
+    - host: {{ .Values.domain }}
+      http:
+        paths:
+          # ---- SignalR Hubs (.NET WebSocket gateway) ----
+          - path: /hubs
             pathType: Prefix
             backend:
               service:
                 name: websocket-gateway
                 port:
                   number: 5004
-          # ---- Zitadel: OIDC API на 8080 (discovery, oauth2, token, userinfo) ----
+
+          # ---- Zitadel Login UI (Next.js, отдельный listener на 3000) ----
+          # Должен идти ДО /ui/ — ingress-nginx сортирует по длине, /ui/v2/login
+          # длиннее, поэтому победит.
+          - path: /ui/v2/login
+            pathType: Prefix
+            backend:
+              service:
+                name: zitadel
+                port:
+                  number: 3000
+
+          # ---- Zitadel API на 8080: OIDC discovery, OAuth2, SAML, OpenID Connect ----
+          # Дефис в /openid-connect — критичен (доки Zitadel v4).
           - path: /.well-known
             pathType: Prefix
             backend:
@@ -81,28 +173,81 @@ spec:
                 name: zitadel
                 port:
                   number: 8080
-          - path: /oauth/v2
+          - path: /oauth
             pathType: Prefix
             backend:
               service:
                 name: zitadel
                 port:
                   number: 8080
-          - path: /openid
+          - path: /oidc
             pathType: Prefix
             backend:
               service:
                 name: zitadel
                 port:
                   number: 8080
-          - path: /oidc/v1
+          - path: /openid-connect
             pathType: Prefix
             backend:
               service:
                 name: zitadel
                 port:
                   number: 8080
-          # Zitadel UI / Console / assets — отдельные пути, чтобы не задеть SPA.
+          - path: /saml
+            pathType: Prefix
+            backend:
+              service:
+                name: zitadel
+                port:
+                  number: 8080
+
+          # ---- Zitadel REST/Connect API (Console v4 + management/admin/system) ----
+          # /v2beta — обязателен, иначе Console циклит на /ui/v2/login.
+          - path: /auth
+            pathType: Prefix
+            backend:
+              service:
+                name: zitadel
+                port:
+                  number: 8080
+          - path: /management
+            pathType: Prefix
+            backend:
+              service:
+                name: zitadel
+                port:
+                  number: 8080
+          - path: /admin
+            pathType: Prefix
+            backend:
+              service:
+                name: zitadel
+                port:
+                  number: 8080
+          - path: /system
+            pathType: Prefix
+            backend:
+              service:
+                name: zitadel
+                port:
+                  number: 8080
+          - path: /v2
+            pathType: Prefix
+            backend:
+              service:
+                name: zitadel
+                port:
+                  number: 8080
+          - path: /v2beta
+            pathType: Prefix
+            backend:
+              service:
+                name: zitadel
+                port:
+                  number: 8080
+
+          # ---- Zitadel Console UI (Angular SPA) + ассеты ----
           - path: /ui
             pathType: Prefix
             backend:
@@ -117,15 +262,17 @@ spec:
                 name: zitadel
                 port:
                   number: 8080
-          # ---- Zitadel login UI (port 3000) ----
-          - path: /ui/v2/login
+
+          # ---- LiveKit signaling (WebSocket :7880). UDP media идёт мимо ingress. ----
+          - path: /livekit
             pathType: Prefix
             backend:
               service:
-                name: zitadel
+                name: livekit
                 port:
-                  number: 3000
-          # ---- Web SPA: catch-all ----
+                  number: 7880
+
+          # ---- React SPA: catch-all (должен быть последним) ----
           - path: /
             pathType: Prefix
             backend:
