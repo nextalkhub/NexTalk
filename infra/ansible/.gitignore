@@ -11,3 +11,6 @@ collections/
 # Pull'енутый kubeconfig с master'а
 kubeconfig
 *.kubeconfig
+
+# Отрендеренный helm-deploy секретный values (см. playbooks/helm-deploy.yml)
+.helm-secrets.values.yaml

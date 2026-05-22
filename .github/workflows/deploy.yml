@@ -47,6 +47,16 @@ jobs:
           echo "$VAULT_PASSWORD" > ~/.ansible_vault_pass
           chmod 600 ~/.ansible_vault_pass
 
+      - name: Write encrypted vault.yml from secret
+        env:
+          VAULT_YML: ${{ secrets.ANSIBLE_VAULT_YML }}
+        run: |
+          # vault.yml — ansible-vault-зашифрованный файл, gitignored.
+          # Хранится в GH secret целиком (двойной слой: GH secrets + ansible-vault).
+          # Расшифровывается на этапе helm-deploy через ANSIBLE_VAULT_PASSWORD_FILE.
+          echo "$VAULT_YML" > infra/ansible/inventory/group_vars/vault.yml
+          chmod 600 infra/ansible/inventory/group_vars/vault.yml
+
       - name: Render hosts.ini from secret
         env:
           HOSTS_INI: ${{ secrets.ANSIBLE_HOSTS_INI }}

@@ -5,30 +5,41 @@
 #   - kubeconfig (получен после playbooks/k3s.yml).
 #   - cluster-addons установлены (ingress-nginx, cert-manager).
 #   - PostgreSQL и Redis доступны (db.yml).
-#   - secrets-файл с реальными значениями (charts/nextalk/secrets.values.yaml).
+#   - inventory/group_vars/vault.yml (зашифрован ansible-vault) с секретами.
 #
 # Запуск:
 #   ansible-playbook -i inventory/hosts.ini playbooks/helm-deploy.yml \
-#     -e helm_secrets_file=charts/nextalk/secrets.values.yaml \
-#     -e image_tag=<sha-or-semver>
+#     -e image_tag=<sha-or-semver> --ask-vault-pass
 
 - name: Helm deploy NexTalk
   hosts: localhost
   connection: local
   gather_facts: false
+  vars_files:
+    # localhost не в группах из inventory — group_vars/vault.yml авто не подхватится.
+    - "{{ playbook_dir }}/../inventory/group_vars/vault.yml"
   vars:
     kubeconfig: "{{ playbook_dir }}/../kubeconfig"
     helm_chart_dir: "{{ playbook_dir }}/../../../charts/nextalk"
     helm_release_name: nextalk
     helm_namespace: nextalk
+    # Рендерится из templates/helm-secrets.values.yaml.j2 ниже.
+    helm_secrets_rendered: "{{ playbook_dir }}/../.helm-secrets.values.yaml"
     helm_values_files:
       - "{{ helm_chart_dir }}/values.yaml"
-    # Опциональный override: -e helm_secrets_file=...
-    helm_secrets_file: ""
+      - "{{ helm_secrets_rendered }}"
     # Опциональный override тегов всех 5 наших сервисов одним значением.
     # Если пусто — берутся теги из values.yaml.
     image_tag: ""
   tasks:
+    - name: Рендер секретного values-файла из vault + inventory
+      ansible.builtin.template:
+        src: helm-secrets.values.yaml.j2
+        dest: "{{ helm_secrets_rendered }}"
+        mode: '0600'
+      no_log: true
+      tags: [helm]
+
     - name: Собрать --set для image_tag (если задан)
       ansible.builtin.set_fact:
         helm_set_values: >-
@@ -49,10 +60,15 @@
         release_namespace: "{{ helm_namespace }}"
         create_namespace: true
         kubeconfig: "{{ kubeconfig }}"
-        values_files: >-
-          {{ helm_values_files + ([helm_secrets_file] if helm_secrets_file else []) }}
+        values_files: "{{ helm_values_files }}"
         set_values: "{{ helm_set_values }}"
         atomic: true
         wait: true
         timeout: 10m
+      tags: [helm]
+
+    - name: Удалить отрендеренный secrets-файл
+      ansible.builtin.file:
+        path: "{{ helm_secrets_rendered }}"
+        state: absent
       tags: [helm]
