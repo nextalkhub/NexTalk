@@ -10,7 +10,7 @@ metadata:
 spec:
   acme:
     server: https://acme-staging-v02.api.letsencrypt.org/directory
-    email: {{ .Values.tls.email }}
+    email: {{ required "tls.email обязателен (Let's Encrypt откажет в регистрации ACME-аккаунта без email)" .Values.tls.email }}
     privateKeySecretRef:
       name: letsencrypt-staging-key
     solvers:
@@ -28,7 +28,7 @@ metadata:
 spec:
   acme:
     server: https://acme-v02.api.letsencrypt.org/directory
-    email: {{ .Values.tls.email }}
+    email: {{ required "tls.email обязателен (Let's Encrypt откажет в регистрации ACME-аккаунта без email)" .Values.tls.email }}
     privateKeySecretRef:
       name: letsencrypt-prod-key
     solvers:
