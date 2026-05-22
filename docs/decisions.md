@@ -9,13 +9,14 @@
 | Тема | Решение | Причина | Когда вернуться |
 |:--|:--|:--|:--|
 | Swagger UI в кластере | Не выставлять через Ingress. Доступ через `kubectl port-forward svc/<service> <port>:<port> -n nextalk` локально | Лишний слой ConfigMap'ов + IP whitelist ради того, чем пользуется один человек раз в неделю | Когда захочется быстро шарить Swagger команде |
-| Zitadel HA (2+ реплики) | 1 реплика, `start-from-init`, PVC под PAT | Bootstrap пишет PAT на локальный PVC и создаёт первую Organization в Postgres — двух реплик гонять одновременно нельзя. HA требует разделить Job (init) и Deployment (start) + вынести PAT в Secret | Когда упрёмся в окно даунтайма при апгрейде Zitadel |
+| Zitadel HA (2+ реплики) | 1 реплика, `start-from-init`, PVC под PAT | Bootstrap пишет PAT на локальный PVC и создаёт первую Organization в Postgres — двух реплик гонять одновременно нельзя. По докам Zitadel HA-схема: отдельные Job `zitadel init` + `zitadel setup` → Deployment `zitadel start` N реплик; PAT хранится в Secret и монтируется как файл в login UI | Когда упрёмся в окно даунтайма при апгрейде Zitadel |
+| Zitadel PAT в Secret вместо PVC | PVC `bootstrap` 100Mi | PVC проще на 1 реплике, login sidecar читает файл из общего volume. В проде по докам PAT должен быть в Secret + mount как файл (`ZITADEL_SERVICE_USER_TOKEN_FILE`) — это позволит разнести api и login по разным подам | Перед переездом на HA |
 | etcd snapshots на S3 | Локальные snapshots в `/var/lib/rancher/k3s/server/db/snapshots/` | S3 для бэкапа на старте — overhead. 8 VPS, embedded etcd на 3 master'ах, потеря одного master'а не критична | Когда появятся данные, потеря которых стоит дороже S3 |
 | Аудит-лог k3s в Loki | Не включаем | Лишний шум на старте. В Loki и так пойдут логи приложений + ingress | Когда появится compliance-требование или security-инцидент |
 | ExternalSecrets / Sealed Secrets | Секреты через `ansible-vault` + render на helm-deploy | Один отдельный слой управления секретами проще двух. Vault уже работает | Когда подключим ArgoCD (нужен механизм secrets-in-git) |
 | ArgoCD | Скелет [argocd/](../argocd/) лежит, не подключаем | GitHub Actions + Ansible делают то же без extra-секретного слоя. ArgoCD имеет смысл при 2+ окружениях | Когда появится staging |
 | TLS на Postgres (`sslmode=require`) | `sslmode=prefer` | Postgres в приватной сети Beget, TLS на нём ещё не настроен. `prefer` — TLS если сервер поддерживает, иначе plain | Когда выкатим cert-manager на db-vps |
-| Trivy в CI | Не подключаем | Польза реальная (CVE в base-образах и NuGet/npm deps), но на старте лишний шум + время билда. Подключим точечно на `push to main` | Когда базовые образы постареют на пару месяцев и появятся CRITICAL CVE |
+| Trivy в CI: блокировать билд | `exit-code: 0` (информирует, не падает) | На старте корпус ignore'ов пуст — любая случайная CVE упадёт билд. Сначала набираем `.trivyignore` | Когда отчёты стабилизируются и появится приоритезация CVE |
 | Zabbix | Не используем | Дублирует Prometheus + Loki + Jaeger, которые уже есть | Никогда (с большой вероятностью) |
 
 ## Принято и сделано

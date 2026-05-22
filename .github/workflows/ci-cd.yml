@@ -202,3 +202,48 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+
+  # Скан образов на известные CVE (OS пакеты + NuGet/npm deps).
+  # Запускается только после push в main, не блокирует билд на старте
+  # (exit-code: 0). Когда наберём корпус ignore'ов — поставить '1'.
+  # Trivy DB ездит через OCI registry, кэшируется в GHA автоматически.
+  trivy-scan:
+    needs: [docker-build-push]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
+      packages: read
+
+    strategy:
+      fail-fast: false
+      matrix:
+        image: [guild-service, messaging-service, voice-service, websocket-gateway, web-spa]
+
+    name: Trivy ${{ matrix.image }}
+    steps:
+      # Pin на v0.36.0 — после supply-chain компрометации марта 2026 теги
+      # 0.0.1–0.34.2 (без v-префикса) признаны небезопасными. v0.35.0 был
+      # единственным защищённым во время инцидента, v0.36.0 — текущий.
+      # Доп. безопасность — пин на full commit SHA, см. advisory:
+      # https://github.com/aquasecurity/trivy/security/advisories/GHSA-69fq-xp46-6x23
+      - name: Run Trivy vulnerability scanner
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          image-ref: ${{ env.IMAGE_PREFIX }}/${{ matrix.image }}:latest
+          format: sarif
+          output: trivy-${{ matrix.image }}.sarif
+          severity: HIGH,CRITICAL
+          ignore-unfixed: true
+          exit-code: '0'
+        env:
+          TRIVY_DB_REPOSITORY: ghcr.io/aquasecurity/trivy-db:2
+          TRIVY_JAVA_DB_REPOSITORY: ghcr.io/aquasecurity/trivy-java-db:1
+
+      - name: Upload SARIF to GitHub Security
+        if: always()
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: trivy-${{ matrix.image }}.sarif
+          category: trivy-${{ matrix.image }}
