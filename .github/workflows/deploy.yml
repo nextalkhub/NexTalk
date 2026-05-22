@@ -55,6 +55,16 @@ jobs:
           # их в репо класть нельзя.
           echo "$HOSTS_INI" > infra/ansible/inventory/hosts.ini
 
+      - name: Write kubeconfig from secret
+        env:
+          KUBECONFIG_B64: ${{ secrets.KUBECONFIG_B64 }}
+        run: |
+          # kubeconfig получен через playbooks/k3s.yml (см. role k3s_server),
+          # сохранён в GH secret в base64 (gh secret set KUBECONFIG_B64 < kubeconfig | base64).
+          # helm-deploy playbook ожидает его по пути infra/ansible/kubeconfig.
+          echo "$KUBECONFIG_B64" | base64 -d > infra/ansible/kubeconfig
+          chmod 600 infra/ansible/kubeconfig
+
       - name: Run helm-deploy playbook
         working-directory: infra/ansible
         env:

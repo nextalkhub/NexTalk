@@ -9,7 +9,8 @@
 #
 # Запуск:
 #   ansible-playbook -i inventory/hosts.ini playbooks/helm-deploy.yml \
-#     -e helm_secrets_file=charts/nextalk/secrets.values.yaml
+#     -e helm_secrets_file=charts/nextalk/secrets.values.yaml \
+#     -e image_tag=<sha-or-semver>
 
 - name: Helm deploy NexTalk
   hosts: localhost
@@ -24,7 +25,23 @@
       - "{{ helm_chart_dir }}/values.yaml"
     # Опциональный override: -e helm_secrets_file=...
     helm_secrets_file: ""
+    # Опциональный override тегов всех 5 наших сервисов одним значением.
+    # Если пусто — берутся теги из values.yaml.
+    image_tag: ""
   tasks:
+    - name: Собрать --set для image_tag (если задан)
+      ansible.builtin.set_fact:
+        helm_set_values: >-
+          {{
+            [
+              {'value': 'guildService.image.tag=' ~ image_tag},
+              {'value': 'messagingService.image.tag=' ~ image_tag},
+              {'value': 'voiceService.image.tag=' ~ image_tag},
+              {'value': 'websocketGateway.image.tag=' ~ image_tag},
+              {'value': 'webSpa.image.tag=' ~ image_tag},
+            ] if image_tag else []
+          }}
+
     - name: Установить/обновить релиз nextalk
       kubernetes.core.helm:
         name: "{{ helm_release_name }}"
@@ -34,6 +51,7 @@
         kubeconfig: "{{ kubeconfig }}"
         values_files: >-
           {{ helm_values_files + ([helm_secrets_file] if helm_secrets_file else []) }}
+        set_values: "{{ helm_set_values }}"
         atomic: true
         wait: true
         timeout: 10m
