@@ -27,10 +27,13 @@ vault_redis_password: "REPLACE_ME"
 # openssl rand -hex 16
 vault_zitadel_masterkey: "REPLACE_ME_EXACTLY_32_CHARACTERS"
 
-# LiveKit API ключ и secret. apiKey — идентификатор, secretKey — подпись.
-# openssl rand -hex 16
+# LiveKit API ключ и secret.
+# apiKey — короткий идентификатор. Доки рекомендуют префикс APIxxx.
+# openssl rand -hex 8 → "APIxxxxxxxxxxx" (опционально вручную добавить префикс)
 vault_livekit_api_key: "REPLACE_ME"
-# openssl rand -base64 48
+# secretKey — минимум 32 символа (256 бит). НЕ короче, доки LiveKit:
+# https://docs.livekit.io/realtime/concepts/authentication/
+# openssl rand -base64 32  (32 байта = 256 бит = 44 base64 символа)
 vault_livekit_secret_key: "REPLACE_ME"
 
 # Email для Let's Encrypt уведомлений (просрочка сертификата).
