@@ -45,12 +45,12 @@
 ### Изоляция подов
 - PodSecurity admission: `enforce: baseline`, `warn: restricted` по дефолту.
 - Exemption-ы: `kube-system`, `ingress-nginx`, `cert-manager`, `kube-public`, `kube-node-lease`.
-- ⚠ NetworkPolicy default-deny НЕ настроены. Любой под ходит к любому. Следующая итерация.
+- NetworkPolicy: default-deny на ns `nextalk` + allow-list (DNS в kube-system, ingress-nginx → all, intra-ns, egress на private CIDR для Postgres/Redis/OTel/Loki/Prometheus, HTTPS наружу для ACME/OIDC discovery). См. [charts/nextalk/templates/networkpolicy.yaml](../charts/nextalk/templates/networkpolicy.yaml).
 
 ### Образы контейнеров
 - observability-стек — все версии запиннены в `roles/observability/defaults/main.yml`.
 - Сервисы NexTalk — версии в `charts/nextalk/values.yaml` (контроль CI).
-- ⚠ Image scanning (trivy) не настроен.
+- Image scanning: Trivy в CI (`.github/workflows/ci-cd.yml`) — SARIF в GitHub Security tab, exit-code: 0 (информирует, не блокирует — см. [decisions.md](decisions.md)).
 
 ### Обновления
 - `unattended-upgrades` включён на всех нодах, security-канал, ежедневно.
@@ -68,10 +68,9 @@
 
 ## Roadmap (порядок снижения риска)
 
-1. NetworkPolicy default-deny на namespace `nextalk`.
-2. SSH ключи-only + fail2ban на bastion.
-3. etcd snapshot backup + offload.
-4. ExternalSecrets / SealedSecrets вместо env.
+1. SSH ключи-only + fail2ban на bastion.
+2. etcd snapshot backup + offload.
+3. ExternalSecrets / SealedSecrets вместо env.
 5. k3s audit log + парсинг в Loki.
 6. Image scanning в CI (trivy).
 7. mTLS между сервисами — когда вырастет нагрузка и появится бюджет на ресурсы.
