@@ -79,8 +79,9 @@ spec:
                 configMapKeyRef:
                   name: nextalk-config
                   key: ZITADEL_PUBLIC_SCHEME
-            - name: ZITADEL_PORT
-              value: "8080"
+            # ZITADEL_PORT по умолчанию 8080 — не задаём.
+            # Zitadel сам собирает issuer/discovery URL из ExternalDomain
+            # + ExternalSecure; ExternalPort при дефолтных 443/80 опускается.
             - name: ZITADEL_EXTERNALDOMAIN
               value: "$(ZITADEL_DOMAIN)"
             - name: ZITADEL_EXTERNALSECURE
@@ -88,6 +89,7 @@ spec:
                 configMapKeyRef:
                   name: nextalk-config
                   key: ZITADEL_EXTERNALSECURE
+            # TLS терминируется на ingress-nginx → внутри Zitadel HTTP.
             - name: ZITADEL_TLS_ENABLED
               value: "false"
             - name: ZITADEL_DATABASE_POSTGRES_DSN
@@ -110,14 +112,17 @@ spec:
                   key: LOGIN_CLIENT_PAT_EXPIRATION
             - name: ZITADEL_DEFAULTINSTANCE_FEATURES_LOGINV2_REQUIRED
               value: "true"
+            # URL'ы login UI без явного :port (Zitadel docs: ExternalPort
+            # опускается из публичных URL при 443/80). Артефакт `:8080` из
+            # docker-compose снят — в проде домен идёт чистым.
             - name: ZITADEL_DEFAULTINSTANCE_FEATURES_LOGINV2_BASEURI
-              value: "$(ZITADEL_PUBLIC_SCHEME)://$(ZITADEL_DOMAIN):$(ZITADEL_EXTERNALPORT)/ui/v2/login/"
+              value: "$(ZITADEL_PUBLIC_SCHEME)://$(ZITADEL_DOMAIN)/ui/v2/login/"
             - name: ZITADEL_OIDC_DEFAULTLOGINURLV2
-              value: "$(ZITADEL_PUBLIC_SCHEME)://$(ZITADEL_DOMAIN):$(ZITADEL_EXTERNALPORT)/ui/v2/login/login?authRequest="
+              value: "$(ZITADEL_PUBLIC_SCHEME)://$(ZITADEL_DOMAIN)/ui/v2/login/login?authRequest="
             - name: ZITADEL_OIDC_DEFAULTLOGOUTURLV2
-              value: "$(ZITADEL_PUBLIC_SCHEME)://$(ZITADEL_DOMAIN):$(ZITADEL_EXTERNALPORT)/ui/v2/login/logout?post_logout_redirect="
+              value: "$(ZITADEL_PUBLIC_SCHEME)://$(ZITADEL_DOMAIN)/ui/v2/login/logout?post_logout_redirect="
             - name: ZITADEL_SAML_DEFAULTLOGINURLV2
-              value: "$(ZITADEL_PUBLIC_SCHEME)://$(ZITADEL_DOMAIN):$(ZITADEL_EXTERNALPORT)/ui/v2/login/login?samlRequest="
+              value: "$(ZITADEL_PUBLIC_SCHEME)://$(ZITADEL_DOMAIN)/ui/v2/login/login?samlRequest="
             - name: ZITADEL_LOGSTORE_ACCESS_STDOUT_ENABLED
               valueFrom:
                 configMapKeyRef:
@@ -172,18 +177,15 @@ spec:
                 configMapKeyRef:
                   name: nextalk-config
                   key: ZITADEL_DOMAIN
-            - name: ZITADEL_EXTERNALPORT
-              valueFrom:
-                configMapKeyRef:
-                  name: nextalk-config
-                  key: ZITADEL_EXTERNALPORT
             - name: ZITADEL_PUBLIC_SCHEME
               valueFrom:
                 configMapKeyRef:
                   name: nextalk-config
                   key: ZITADEL_PUBLIC_SCHEME
+            # SSR login → API через localhost:8080, но снаружи URL'ы должны
+            # быть на публичном домене. Host без :port (443/80 опущен).
             - name: CUSTOM_REQUEST_HEADERS
-              value: "Host:$(ZITADEL_DOMAIN):$(ZITADEL_EXTERNALPORT),X-Forwarded-Proto:$(ZITADEL_PUBLIC_SCHEME)"
+              value: "Host:$(ZITADEL_DOMAIN),X-Forwarded-Proto:$(ZITADEL_PUBLIC_SCHEME)"
           volumeMounts:
             - name: bootstrap
               mountPath: /zitadel/bootstrap
