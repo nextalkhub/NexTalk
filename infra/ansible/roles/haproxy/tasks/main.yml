@@ -1,0 +1,31 @@
+---
+# HAProxy — TCP балансировщик для k3s apiserver (port 6443).
+# Все ноды (cp-2/cp-3, workers, kubectl) подключаются к HAProxy,
+# который проксирует на живой control-plane узел.
+#
+# Документация: https://docs.k3s.io/datastore/cluster-loadbalancer
+
+- name: Установить haproxy
+  ansible.builtin.apt:
+    name: haproxy
+    state: present
+    update_cache: true
+  tags: [haproxy]
+
+- name: Положить /etc/haproxy/haproxy.cfg
+  ansible.builtin.template:
+    src: haproxy.cfg.j2
+    dest: "{{ haproxy_cfg_path }}"
+    owner: root
+    group: root
+    mode: '0644'
+    validate: haproxy -c -f %s
+  notify: restart haproxy
+  tags: [haproxy]
+
+- name: Включить и запустить haproxy
+  ansible.builtin.systemd:
+    name: haproxy
+    enabled: true
+    state: started
+  tags: [haproxy]

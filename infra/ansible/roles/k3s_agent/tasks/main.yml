@@ -19,11 +19,11 @@
     mode: '0600'
   tags: [k3s, k3s_agent]
 
-- name: Подождать VIP apiserver
+- name: Подождать apiserver через HAProxy
   ansible.builtin.wait_for:
-    host: "{{ k3s_vip }}"
+    host: "{{ k3s_api_endpoint }}"
     port: 6443
-    timeout: 180
+    timeout: 60
   tags: [k3s, k3s_agent]
 
 - name: Установить k3s agent
@@ -33,6 +33,7 @@
       INSTALL_K3S_EXEC="agent" \
       sh -
   args:
+    executable: /bin/bash
     creates: /usr/local/bin/k3s-agent
   tags: [k3s, k3s_agent]
 

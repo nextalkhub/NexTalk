@@ -15,12 +15,16 @@ ansible_ssh_common_args: >-
 # Приватная сеть Beget
 private_network_cidr: "10.19.0.0/16"
 
-# kube-vip VIP — стабильный endpoint для apiserver
-k3s_vip: "10.19.0.10"
+# worker-1 выступает NAT-шлюзом для приватных нод (control-plane + db).
+# Приватные ноды маршрутизируют интернет-трафик через этот IP.
+nat_gateway_ip: "10.19.0.21"
+
+# Стабильный endpoint для k3s apiserver — HAProxy нода.
+# Все ноды (cp-2/cp-3, workers, kubectl) подключаются сюда.
+k3s_api_endpoint: "{{ hostvars[groups['haproxy'][0]]['ansible_host'] }}"
 
 # Версии (актуальные на момент написания плейбуков)
 k3s_channel: "stable"
-kube_vip_version: "v1.1.2"
 postgresql_version: "18"
 
 # Интерфейс приватной сети Beget. Если ip a показывает другое имя — поменять.

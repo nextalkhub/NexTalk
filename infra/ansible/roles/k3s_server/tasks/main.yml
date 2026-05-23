@@ -59,6 +59,7 @@
       INSTALL_K3S_EXEC="server" \
       sh -
   args:
+    executable: /bin/bash
     creates: /usr/local/bin/k3s
   when:
     - inventory_hostname == groups['control_plane'][0]
@@ -72,12 +73,12 @@
   when: inventory_hostname == groups['control_plane'][0]
   tags: [k3s, k3s_server]
 
-# --- Установка остальных control-plane нод через VIP -------------------------
-- name: Подождать, пока VIP {{ k3s_vip }} поднимется (kube-vip)
+# --- Установка остальных control-plane нод через HAProxy --------------------
+- name: Подождать apiserver через HAProxy
   ansible.builtin.wait_for:
-    host: "{{ k3s_vip }}"
+    host: "{{ k3s_api_endpoint }}"
     port: 6443
-    timeout: 180
+    timeout: 120
   when: inventory_hostname != groups['control_plane'][0]
   tags: [k3s, k3s_server]
 
@@ -88,6 +89,7 @@
       INSTALL_K3S_EXEC="server" \
       sh -
   args:
+    executable: /bin/bash
     creates: /usr/local/bin/k3s
   when: inventory_hostname != groups['control_plane'][0]
   tags: [k3s, k3s_server]
@@ -108,9 +110,9 @@
   when: inventory_hostname == groups['control_plane'][0]
   tags: [k3s, k3s_server, kubeconfig]
 
-- name: Сохранить kubeconfig локально (заменив 127.0.0.1 на VIP)
+- name: Сохранить kubeconfig локально (заменив 127.0.0.1 на HAProxy IP)
   ansible.builtin.copy:
-    content: "{{ k3s_kubeconfig.content | b64decode | replace('127.0.0.1', k3s_vip) }}"
+    content: "{{ k3s_kubeconfig.content | b64decode | replace('127.0.0.1', k3s_api_endpoint) }}"
     dest: "{{ playbook_dir }}/../kubeconfig"
     mode: '0600'
   when: inventory_hostname == groups['control_plane'][0]

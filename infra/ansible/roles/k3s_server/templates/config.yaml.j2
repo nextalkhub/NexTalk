@@ -10,19 +10,17 @@ token: "{{ k3s_token }}"
 # Первая control-plane нода — инициализирует embedded etcd кластер.
 cluster-init: true
 {% else %}
-# Остальные control-plane ноды подключаются к существующему кластеру через VIP.
-server: "https://{{ k3s_vip }}:6443"
+# Остальные control-plane ноды подключаются через HAProxy.
+server: "https://{{ k3s_api_endpoint }}:6443"
 {% endif %}
 
-# node-ip = адрес ноды в приватной сети.
-# bind-address НЕ задаём — apiserver слушает на 0.0.0.0, чтобы kube-vip мог
-# принять трафик на VIP (он добавляется как secondary IP на интерфейс).
-# На control-plane публичного IP нет — 0.0.0.0 фактически = приватная сеть.
+# node-ip = адрес ноды в приватной сети (apiserver слушает 0.0.0.0).
 node-ip: "{{ ansible_host }}"
 
-# TLS SAN — VIP + IP каждой control-plane ноды. Иначе клиент через VIP получит invalid cert.
+# TLS SAN — HAProxy IP + IP каждой control-plane ноды.
+# kubectl и ноды подключаются через HAProxy, поэтому его IP обязан быть в SAN.
 tls-san:
-  - "{{ k3s_vip }}"
+  - "{{ k3s_api_endpoint }}"
 {% for h in groups['control_plane'] %}
   - "{{ hostvars[h]['ansible_host'] }}"
 {% endfor %}
