@@ -18,6 +18,8 @@
 | TLS на Postgres (`sslmode=require`) | `sslmode=prefer` | Postgres в приватной сети Beget, TLS на нём ещё не настроен. `prefer` — TLS если сервер поддерживает, иначе plain | Когда выкатим cert-manager на db-vps |
 | Trivy в CI: блокировать билд | `exit-code: 0` (информирует, не падает) | На старте корпус ignore'ов пуст — любая случайная CVE упадёт билд. Сначала набираем `.trivyignore` | Когда отчёты стабилизируются и появится приоритезация CVE |
 | Zabbix | Не используем | Дублирует Prometheus + Loki + Jaeger, которые уже есть | Никогда (с большой вероятностью) |
+| `helm` CLI на CI-runner | Не установлен в `.github/workflows/deploy.yml` | `kubernetes.core.helm` шеллит `helm` из PATH. На `ubuntu-latest` helm иногда предустановлен, но это нестабильное предположение. Фикс — `azure/setup-helm@v4` перед helm-deploy шагом | При первом запуске deploy.yml (если упадёт `helm: command not found`) |
+| Достижимость k3s API с CI-runner | Не решена. Kubeconfig указывает на VIP `10.19.0.10` (приватная Beget-сеть) — runner из публичного интернета туда не достучится | Варианты: A) SSH-tunnel через bastion (нужно ещё `127.0.0.1` в `tls-san` k3s config + перенакат k3s.yml); B) делегировать helm-task на master через ProxyJump (чище, но рефактор playbook'а); C) self-hosted runner внутри Beget VPC; D) публичный kube-apiserver через nginx-proxy на bastion (security-риск) | Перед первым реальным деплоем через GH Actions — пока деплой только локально с машины, у которой есть SSH в Beget |
 
 ## Принято и сделано
 
