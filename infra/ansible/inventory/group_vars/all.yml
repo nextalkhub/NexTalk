@@ -10,7 +10,7 @@ ansible_python_interpreter: /usr/bin/python3
 ansible_ssh_common_args: >-
   -o StrictHostKeyChecking=no
   -o UserKnownHostsFile=/dev/null
-  -o ProxyJump=root@{{ hostvars['worker-1'].public_ip | default(hostvars['worker-1'].ansible_host) }}
+  -o "ProxyCommand=ssh -W %h:%p -i ~/.ssh/nextalk_deploy -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null root@{{ hostvars['worker-1'].public_ip | default(hostvars['worker-1'].ansible_host) }}"
 
 # Приватная сеть Beget
 private_network_cidr: "10.19.0.0/16"
