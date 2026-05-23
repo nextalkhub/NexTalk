@@ -10,30 +10,28 @@
 //                                                         │
 //                                                   loki.write ──► Loki (Obs VPS)
 
-// ── 1. Обнаружение подов в namespace nextalk ──────────────────────────────
+// ── 1. Обнаружение подов в namespace nextalk на текущей ноде ─────────────
+// Фильтр по spec.nodeName уходит на kube-apiserver через field selector —
+// API возвращает только нужные поды, не нагружая клиент списком со всего кластера.
+// env("HOSTNAME") = имя ноды в k8s (задаётся в DaemonSet через fieldRef spec.nodeName).
 discovery.kubernetes "pods" {
   role = "pod"
   namespaces {
     names = ["nextalk"]
   }
+  selectors {
+    role  = "pod"
+    field = "spec.nodeName=" + env("HOSTNAME")
+  }
 }
 
-// ── 2. Relabeling + фильтр: только поды на текущей ноде ──────────────────
+// ── 2. Relabeling: оставляем только поды с label app=<имя-сервиса> ────────
 discovery.relabel "pods" {
   targets = discovery.kubernetes.pods.targets
 
-  // Только поды с label app=<имя-сервиса>
   rule {
     source_labels = ["__meta_kubernetes_pod_label_app"]
     regex         = ".+"
-    action        = "keep"
-  }
-
-  // Только поды на текущей ноде DaemonSet — предотвращает дублирование логов.
-  // env("HOSTNAME") = имя ноды в k8s (задаётся в DaemonSet через fieldRef).
-  rule {
-    source_labels = ["__meta_kubernetes_pod_node_name"]
-    regex         = env("HOSTNAME")
     action        = "keep"
   }
 
