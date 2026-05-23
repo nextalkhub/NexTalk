@@ -22,10 +22,9 @@
   become: true
   gather_facts: true
   tasks:
-    - name: fail2ban + hardening tags
+    - name: Установить fail2ban (re-run роли с override fail2ban)
       ansible.builtin.include_role:
         name: ssh_keys
-        tasks_from: main.yml
       vars:
         ssh_keys_install_fail2ban: true
         # ВНИМАНИЕ: переключить в true только после раскатки ключей и проверки!

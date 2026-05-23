@@ -16,7 +16,6 @@
       - ca-certificates
       - gnupg
       - lsb-release
-      - apt-transport-https
       - software-properties-common
       - net-tools
       - htop
@@ -42,10 +41,11 @@
   tags: [common, tz]
 
 # k8s требует выключенный swap. Иначе kubelet падает.
+# changed_when привязан к факту: репортим changed только если swap реально был.
 - name: Выключить swap немедленно
   ansible.builtin.command: swapoff -a
   when: ansible_swaptotal_mb | int > 0
-  changed_when: true
+  changed_when: ansible_swaptotal_mb | int > 0
   tags: [common, swap]
 
 - name: Удалить swap из /etc/fstab, чтобы не включился после reboot

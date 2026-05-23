@@ -34,7 +34,6 @@
     src: "{{ item.src | default(omit) }}"
     comment: "{{ item.comment | default(omit) }}"
   loop: "{{ ufw_extra_rules }}"
-  when: ufw_extra_rules | length > 0
   tags: [ufw]
 
 - name: Включить ufw и logging
