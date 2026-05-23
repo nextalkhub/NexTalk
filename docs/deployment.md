@@ -92,7 +92,7 @@ graph TB
         end
 
         DB["db-vps 10.19.0.31<br/>PostgreSQL 18 + Redis"]
-        OBS["observability-vps 10.19.0.41<br/>Prometheus + Loki + Grafana + Jaeger"]
+        OBS["observability-vps 10.19.0.41<br/>Prometheus + Loki + Grafana + Tempo"]
 
         W1 --> VIP
         W2 --> VIP
@@ -127,7 +127,7 @@ graph TB
 | k3s master  | 3      | нет       | k3s server, embedded etcd, kube-vip (DaemonSet)                                                         |
 | k3s worker  | 3      | да        | ingress-nginx (DaemonSet/hostNetwork), guild/messaging/voice/ws, zitadel, prometheus-forwarder, alloy   |
 | db-vps      | 1      | нет       | PostgreSQL 18 (3 БД: guild, messaging, zitadel), Redis, node_exporter                                   |
-| observability-vps     | 1      | опц.      | docker-compose: Prometheus, Loki, Jaeger, Grafana, OTel Collector, Alloy                                |
+| observability-vps     | 1      | опц.      | docker-compose: Prometheus, Loki, Tempo, Grafana                                                        |
 
 **Итого:** 8 VPS, 16 vCPU, 32 GB RAM, 320 GB SSD, 3 публичных IP.
 
@@ -284,7 +284,7 @@ nginx выбран за объём документации и community, осо
 │  │ stdout  │───▶│ Alloy DS   │              │         │  └────────────────────┘  │
 │  └─────────┘    └────────────┘              │         │                          │
 │                                             │  OTLP   │  ┌────────────────────┐  │
-│  ┌─────────┐                                ├─gRPC───▶│  │ OTel → Tempo/Jaeger│  │
+│  ┌─────────┐                                ├─gRPC───▶│  │ Tempo (OTLP :4317) │  │
 │  │ traces  │                                │         │  └────────────────────┘  │
 │  └─────────┘                                │         │                          │
 │                                             │         │  ┌────────────────────┐  │
@@ -299,7 +299,7 @@ nginx выбран за объём документации и community, осо
 
 ### 8.3 Стек на observability-vps
 
-`docker-compose.observability.yaml` (см. [infra/observability/](../infra/observability/)): Prometheus, Loki, Tempo (или Jaeger), OTel Collector, Grafana с провизионированными [datasources](../infra/observability/grafana/provisioning/datasources/datasources.yaml).
+[docker-compose.yaml.j2](../infra/ansible/roles/observability/templates/docker-compose.yaml.j2) поднимает: Prometheus, Loki, Tempo (OTLP-приём на 4317/4318), Grafana с провизионированными [datasources](../infra/observability/grafana/provisioning/datasources/datasources.yaml).
 
 Retention под 40 GB диск:
 - **Prometheus** — 7 дней (`--storage.tsdb.retention.time=7d`)

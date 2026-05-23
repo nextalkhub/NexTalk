@@ -99,7 +99,8 @@ livekit:
 observability:
   otelEndpoint: "http://10.19.0.41:4317"
   lokiUrl: "http://10.19.0.41:3100"
-  jaegerUrl: "http://10.19.0.41:16686"
+  # Tempo HTTP API (для UI и query). OTLP-приём идёт по otelEndpoint.
+  tempoUrl: "http://10.19.0.41:3200"
   prometheusRemoteWriteUrl: "http://10.19.0.41:9090/api/v1/write"
 
 # -----------------------------------------------------------------------
