@@ -1,6 +1,6 @@
 ---
 # Базовая настройка любой ноды: пакеты, время, swap, sysctl под k8s.
-# Применяется ко ВСЕМ хостам (masters, workers, db, observability).
+# Применяется ко ВСЕМ хостам (control-plane, workers, db, observability).
 
 - name: Обновить apt-кеш (раз в сутки максимум)
   ansible.builtin.apt:

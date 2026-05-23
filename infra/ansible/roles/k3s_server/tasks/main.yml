@@ -1,7 +1,7 @@
 ---
 # Установка k3s в режиме server. Порядок:
 #   1. Положить config.yaml (со всеми флагами).
-#   2. На первом master'е — cluster-init.
+#   2. На первой control-plane ноде — cluster-init.
 #   3. На остальных — server: https://VIP:6443.
 #
 # Документация: https://docs.k3s.io/installation/configuration
@@ -51,8 +51,8 @@
   register: k3s_binary
   tags: [k3s, k3s_server]
 
-# --- Установка первого master'а (cluster-init) -------------------------------
-- name: Установить k3s server на первом master'е
+# --- Установка первой control-plane ноды (cluster-init) ----------------------
+- name: Установить k3s server на первой control-plane ноде
   ansible.builtin.shell: |
     set -euo pipefail
     curl -sfL {{ k3s_install_script }} | \
@@ -61,27 +61,27 @@
   args:
     creates: /usr/local/bin/k3s
   when:
-    - inventory_hostname == groups['masters'][0]
+    - inventory_hostname == groups['control_plane'][0]
   tags: [k3s, k3s_server]
 
-- name: Дождаться готовности apiserver на первом master'е
+- name: Дождаться готовности apiserver на первой control-plane ноде
   ansible.builtin.wait_for:
     host: "{{ ansible_host }}"
     port: 6443
     timeout: 180
-  when: inventory_hostname == groups['masters'][0]
+  when: inventory_hostname == groups['control_plane'][0]
   tags: [k3s, k3s_server]
 
-# --- Установка остальных master'ов через VIP ---------------------------------
+# --- Установка остальных control-plane нод через VIP -------------------------
 - name: Подождать, пока VIP {{ k3s_vip }} поднимется (kube-vip)
   ansible.builtin.wait_for:
     host: "{{ k3s_vip }}"
     port: 6443
     timeout: 180
-  when: inventory_hostname != groups['masters'][0]
+  when: inventory_hostname != groups['control_plane'][0]
   tags: [k3s, k3s_server]
 
-- name: Установить k3s server на остальных master'ах
+- name: Установить k3s server на остальных control-plane нодах
   ansible.builtin.shell: |
     set -euo pipefail
     curl -sfL {{ k3s_install_script }} | \
@@ -89,23 +89,23 @@
       sh -
   args:
     creates: /usr/local/bin/k3s
-  when: inventory_hostname != groups['masters'][0]
+  when: inventory_hostname != groups['control_plane'][0]
   tags: [k3s, k3s_server]
 
-- name: Дождаться готовности apiserver на остальных master'ах
+- name: Дождаться готовности apiserver на остальных control-plane нодах
   ansible.builtin.wait_for:
     host: "{{ ansible_host }}"
     port: 6443
     timeout: 180
-  when: inventory_hostname != groups['masters'][0]
+  when: inventory_hostname != groups['control_plane'][0]
   tags: [k3s, k3s_server]
 
 # --- Удобство: вытащить kubeconfig локально ----------------------------------
-- name: Прочитать kubeconfig с первого master'а
+- name: Прочитать kubeconfig с первой control-plane ноды
   ansible.builtin.slurp:
     src: "{{ k3s_kubeconfig_path }}"
   register: k3s_kubeconfig
-  when: inventory_hostname == groups['masters'][0]
+  when: inventory_hostname == groups['control_plane'][0]
   tags: [k3s, k3s_server, kubeconfig]
 
 - name: Сохранить kubeconfig локально (заменив 127.0.0.1 на VIP)
@@ -113,7 +113,7 @@
     content: "{{ k3s_kubeconfig.content | b64decode | replace('127.0.0.1', k3s_vip) }}"
     dest: "{{ playbook_dir }}/../kubeconfig"
     mode: '0600'
-  when: inventory_hostname == groups['masters'][0]
+  when: inventory_hostname == groups['control_plane'][0]
   delegate_to: localhost
   become: false
   tags: [k3s, k3s_server, kubeconfig]

@@ -56,7 +56,7 @@ Host nextalk-*
   User root
   IdentityFile ~/.ssh/id_ed25519
 
-Host nextalk-master-1
+Host nextalk-control-plane-1
   HostName 10.19.0.11
 Host nextalk-db
   HostName 10.19.0.20
@@ -64,8 +64,8 @@ Host nextalk-db
 ```
 
 ```bash
-ssh nextalk-bastion        # на воркер-1 напрямую
-ssh nextalk-master-1       # через ProxyJump
+ssh nextalk-bastion              # на воркер-1 напрямую
+ssh nextalk-control-plane-1      # через ProxyJump
 ```
 
 ## Удалить разработчика

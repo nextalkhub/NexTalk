@@ -26,7 +26,7 @@ blue "==> k3s cluster"
 check "kubeconfig доступен"        test -f "$KUBECONFIG"
 check "apiserver отвечает"          kubectl cluster-info
 check "все ноды Ready"              bash -c "kubectl get nodes --no-headers | awk '{print \$2}' | grep -qvE 'NotReady|Unknown'"
-check "3 master'а"                  bash -c "[ \$(kubectl get nodes -l node-role.kubernetes.io/control-plane --no-headers | wc -l) -eq 3 ]"
+check "3 control-plane ноды"        bash -c "[ \$(kubectl get nodes -l node-role.kubernetes.io/control-plane --no-headers | wc -l) -eq 3 ]"
 check "3 worker'а"                  bash -c "[ \$(kubectl get nodes -l '!node-role.kubernetes.io/control-plane' --no-headers | wc -l) -eq 3 ]"
 
 blue "==> kube-vip"

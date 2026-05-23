@@ -1,10 +1,10 @@
 ---
-# Файрвол правил для master-нод k3s.
+# Файрвол правил для control-plane нод k3s.
 # Открыто только из приватной сети 10.19.0.0/16.
 #
 # Порты k3s/etcd: https://docs.k3s.io/installation/requirements#networking
 #   6443/tcp       — kube-apiserver
-#   2379-2380/tcp  — etcd client/peer (между master'ами)
+#   2379-2380/tcp  — etcd client/peer (между control-plane нодами)
 #   10250/tcp      — kubelet
 #   8472/udp       — flannel vxlan (CNI)
 #   51820/udp      — flannel wireguard (если включён)

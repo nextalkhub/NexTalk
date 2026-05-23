@@ -14,9 +14,9 @@
 
 | Роль | Hostname | Private IP | Public IP |
 |:--|:--|:--|:--|
-| master-1 | master-1 | 10.19.0.11 | — |
-| master-2 | master-2 | 10.19.0.12 | — |
-| master-3 | master-3 | 10.19.0.13 | — |
+| control-plane-1 | control-plane-1 | 10.19.0.11 | — |
+| control-plane-2 | control-plane-2 | 10.19.0.12 | — |
+| control-plane-3 | control-plane-3 | 10.19.0.13 | — |
 | worker-1 (bastion) | worker-1 | 10.19.0.21 | да, статический |
 | worker-2 | worker-2 | 10.19.0.22 | да, статический |
 | worker-3 | worker-3 | 10.19.0.23 | да, статический |
@@ -210,15 +210,15 @@ redis-cli -h 10.19.0.31 -a <vault_redis_password> ping  # PONG
 ansible-playbook -i inventory/hosts.ini playbooks/k3s.yml
 ```
 **Что делает:**
-1. Кладёт kube-vip DaemonSet manifests на 3 master'а ([role kube_vip](../infra/ansible/roles/kube_vip)).
-2. `serial: 1` — ставит k3s server на master-1 с `--cluster-init`, ждёт apiserver, потом master-2/3 через VIP `https://10.19.0.10:6443`.
+1. Кладёт kube-vip DaemonSet manifests на 3 control-plane ноды ([role kube_vip](../infra/ansible/roles/kube_vip)).
+2. `serial: 1` — ставит k3s server на control-plane-1 с `--cluster-init`, ждёт apiserver, потом control-plane-2/3 через VIP `https://10.19.0.10:6443`.
 3. Ставит k3s agent на 3 worker'ах.
-4. **Главное:** скачивает kubeconfig с master-1, **заменяет `127.0.0.1` → `10.19.0.10` (VIP)**, кладёт в `infra/ansible/kubeconfig`. См. [k3s_server/tasks/main.yml:104-119](../infra/ansible/roles/k3s_server/tasks/main.yml#L104-L119).
+4. **Главное:** скачивает kubeconfig с control-plane-1, **заменяет `127.0.0.1` → `10.19.0.10` (VIP)**, кладёт в `infra/ansible/kubeconfig`. См. [k3s_server/tasks/main.yml:104-119](../infra/ansible/roles/k3s_server/tasks/main.yml#L104-L119).
 
 **Проверка после:**
 ```bash
 export KUBECONFIG=infra/ansible/kubeconfig
-kubectl get nodes  # 3 master Ready + 3 worker Ready, 6 строк
+kubectl get nodes  # 3 control-plane Ready + 3 worker Ready, 6 строк
 kubectl get pods -n kube-system | grep kube-vip  # 3 пода Running
 ```
 **Если `kubectl get nodes` не работает с локалки:** ожидаемо — у тебя нет route до 10.19.0.10. Это [decisions.md → Достижимость k3s API с CI-runner](decisions.md). Для проверки сделать SSH-tunnel:
@@ -226,8 +226,8 @@ kubectl get pods -n kube-system | grep kube-vip  # 3 пода Running
 ssh -L 6443:10.19.0.10:6443 -J root@<worker-1-public> root@10.19.0.11 -N &
 # Подправить kubeconfig: server: https://127.0.0.1:6443 + insecure-skip-tls-verify
 ```
-Либо `kubectl` запускать прямо на master'е: `ssh root@master-1 'kubectl get nodes'`.
-**Если master-2/3 не присоединяются:** VIP не поднялся. На master-1: `ip addr show | grep 10.19.0.10` — должен быть. Иначе смотри `journalctl -u k3s` и логи kube-vip пода.
+Либо `kubectl` запускать прямо на control-plane: `ssh root@control-plane-1 'kubectl get nodes'`.
+**Если control-plane-2/3 не присоединяются:** VIP не поднялся. На control-plane-1: `ip addr show | grep 10.19.0.10` — должен быть. Иначе смотри `journalctl -u k3s` и логи kube-vip пода.
 
 ### 4.4 cluster-addons — ingress-nginx + cert-manager
 
@@ -244,7 +244,7 @@ kubectl get crd | grep cert-manager.io  # 6+ CRD: Certificate, ClusterIssuer, ..
 # Внешняя проверка:
 curl -I http://<любой-worker-public-ip>  # 404 от nginx — это OK, ingress слушает
 ```
-**Если падает:** обычно либо kubeconfig недоступен с локалки (см. 4.3), либо нет интернета у master/worker для скачивания чарта/CRD.
+**Если падает:** обычно либо kubeconfig недоступен с локалки (см. 4.3), либо нет интернета у control-plane/worker для скачивания чарта/CRD.
 
 ### 4.5 observability — Loki + Prometheus + Tempo + Grafana на obs-vps
 
@@ -314,9 +314,9 @@ kubectl get pods -n nextalk
 # Все Running, 0 Pending/CrashLoopBackOff. Должно быть:
 #   guildService x2, messagingService x2, voiceService x2,
 #   websocketGateway x2, webSpa x2, zitadel x1, livekit x1, prometheus x1,
-#   alloy — DaemonSet, по поду на КАЖДУЮ ноду k3s (включая master'ы,
+#   alloy — DaemonSet, по поду на КАЖДУЮ ноду k3s (включая control-plane,
 #   так как в alloy.yaml:108-112 есть toleration для control-plane).
-#   3 master + 3 worker = 6 подов alloy.
+#   3 control-plane + 3 worker = 6 подов alloy.
 
 kubectl get certificate -n nextalk
 # nextalk-tls и auth-nextalk-tls — READY=True (может занять 1-2 мин на ACME)

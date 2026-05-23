@@ -24,10 +24,10 @@
 - `ufw` deny-by-default. Открыто:
   - 22 — только на bastion (worker-1).
   - 80/443 — на воркерах (ingress-nginx).
-  - 6443 / 2379-2380 / 10250 — на master'ах из `10.19.0.0/16`.
+  - 6443 / 2379-2380 / 10250 — на control-plane нодах из `10.19.0.0/16`.
   - 5432 / 6379 — на db только из `10.19.0.0/16`.
 - PostgreSQL и Redis bind на private IP.
-- k3s apiserver недоступен из интернета (мастера без public IP).
+- k3s apiserver недоступен из интернета (control-plane без public IP).
 
 ### SSH
 - Bastion-only через ProxyJump. 7 из 8 серверов не имеют SSH-порта в интернете.
@@ -64,7 +64,7 @@
 - ⚠ k3s audit log отключён. Без него инцидент через apiserver не разобрать. Следующая итерация — включить `audit-log-path`.
 
 ### Бэкап
-- ⚠ etcd snapshot не настроен. Потеря всех 3 master'ов = безвозвратная потеря состояния кластера. План: `k3s etcd-snapshot save` по cron + offload в S3-совместимое хранилище.
+- ⚠ etcd snapshot не настроен. Потеря всех 3 control-plane нод = безвозвратная потеря состояния кластера. План: `k3s etcd-snapshot save` по cron + offload в S3-совместимое хранилище.
 
 ## Roadmap (порядок снижения риска)
 

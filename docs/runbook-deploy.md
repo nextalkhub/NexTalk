@@ -98,11 +98,11 @@ Host nextalk-*
     IdentityFile ~/.ssh/nextalk_deploy
     ProxyJump nextalk-bastion
 
-Host nextalk-master-1
+Host nextalk-control-plane-1
     HostName 10.19.0.11
-Host nextalk-master-2
+Host nextalk-control-plane-2
     HostName 10.19.0.12
-Host nextalk-master-3
+Host nextalk-control-plane-3
     HostName 10.19.0.13
 Host nextalk-worker-2
     HostName 10.19.0.22
@@ -114,7 +114,7 @@ Host nextalk-obs
     HostName 10.19.0.41
 ```
 
-**Проверка:** `ssh nextalk-master-1 hostname` отвечает `master-1`.
+**Проверка:** `ssh nextalk-control-plane-1 hostname` отвечает `control-plane-1`.
 
 ### 1.4 Проверь, что приватная сеть Beget работает
 
@@ -129,7 +129,7 @@ ssh nextalk-bastion 'ping -c2 10.19.0.31'  # пинг до db-vps
 
 В [group_vars/all.yml:28](../infra/ansible/inventory/group_vars/all.yml#L28) написано `private_iface: "eth1"`. Beget может назвать иначе. С любой VPS:
 ```bash
-ssh nextalk-master-1 'ip -br addr'
+ssh nextalk-control-plane-1 'ip -br addr'
 ```
 **Найди интерфейс с IP `10.19.0.X/16`.** Если он не `eth1` (а, например, `ens4` или `enp7s0`) — **отредактируй** [group_vars/all.yml:28](../infra/ansible/inventory/group_vars/all.yml#L28) под реальное имя.
 
@@ -370,22 +370,22 @@ ansible-playbook -i inventory/hosts.ini playbooks/k3s.yml
 ```
 **Время:** 8-12 мин.
 **Что делает:**
-1. Кладёт kube-vip DaemonSet manifests на 3 master'а.
-2. `serial: 1` — ставит k3s на master-1 c `--cluster-init`, ждёт VIP, потом master-2 → master-3 через VIP `https://10.19.0.10:6443`.
+1. Кладёт kube-vip DaemonSet manifests на 3 control-plane ноды.
+2. `serial: 1` — ставит k3s на control-plane-1 c `--cluster-init`, ждёт VIP, потом control-plane-2 → control-plane-3 через VIP `https://10.19.0.10:6443`.
 3. Ставит k3s agent на 3 worker'ах.
-4. **Скачивает kubeconfig с master-1**, заменяет `127.0.0.1` → `10.19.0.10` (VIP), кладёт в `infra/ansible/kubeconfig` (gitignored).
+4. **Скачивает kubeconfig с control-plane-1**, заменяет `127.0.0.1` → `10.19.0.10` (VIP), кладёт в `infra/ansible/kubeconfig` (gitignored).
 
-**Проверка с master'а (через bastion):**
+**Проверка с control-plane (через bastion):**
 ```bash
 ssh -J root@nextalk-bastion root@10.19.0.11 'kubectl get nodes'
-# 6 нод Ready: 3 master с ролями control-plane,etcd,master; 3 worker
+# 6 нод Ready: 3 control-plane с ролями control-plane,etcd,master; 3 worker
 ```
 
 **Проверка с локалки (kubeconfig у тебя есть, но 10.19.0.10 недостижим):**
 SSH-tunnel:
 ```bash
 # В отдельном терминале
-ssh -L 6443:10.19.0.10:6443 -N nextalk-master-1
+ssh -L 6443:10.19.0.10:6443 -N nextalk-control-plane-1
 
 # В основном терминале
 export KUBECONFIG=$PWD/kubeconfig
@@ -396,14 +396,14 @@ kubectl --insecure-skip-tls-verify get nodes
 (Это разовая боль — см. [decisions.md → "Достижимость k3s API с CI-runner"](decisions.md).)
 
 **Частые проблемы:**
-- `wait_for: VIP timeout`: kube-vip не поднялся. На master-1: `journalctl -u k3s | grep kube-vip`. Обычно — `private_iface` в [group_vars/all.yml:28](../infra/ansible/inventory/group_vars/all.yml#L28) не совпадает с реальным (см. Шаг 1.5).
-- `master-2 не присоединяется`: `vault_k3s_token` различается между прогонами или master-1 не отдаёт `/var/lib/rancher/k3s/server/token`. Откатить: `ssh master-N '/usr/local/bin/k3s-uninstall.sh'` и заново.
+- `wait_for: VIP timeout`: kube-vip не поднялся. На control-plane-1: `journalctl -u k3s | grep kube-vip`. Обычно — `private_iface` в [group_vars/all.yml:28](../infra/ansible/inventory/group_vars/all.yml#L28) не совпадает с реальным (см. Шаг 1.5).
+- `control-plane-2 не присоединяется`: `vault_k3s_token` различается между прогонами или control-plane-1 не отдаёт `/var/lib/rancher/k3s/server/token`. Откатить: `ssh control-plane-N '/usr/local/bin/k3s-uninstall.sh'` и заново.
 
 ### 5.5 cluster-addons — ingress-nginx + cert-manager
 
 Запускается с локалки (`hosts: localhost`), требует kubeconfig из 5.4. Если у тебя SSH-tunnel из 5.4 — оставь его открытым; иначе временно подними:
 ```bash
-ssh -L 6443:10.19.0.10:6443 -N nextalk-master-1 &
+ssh -L 6443:10.19.0.10:6443 -N nextalk-control-plane-1 &
 TUNNEL_PID=$!
 # Подправь kubeconfig как в 5.4
 ```
@@ -565,7 +565,7 @@ Reference: [decisions.md → "Отложено"](decisions.md). Высокопр
 |:--|:--|
 | `ping`/SSH не работает | Шаг 1.4 (private network), Beget panel |
 | ansible-playbook ругается на vault | `ANSIBLE_VAULT_PASSWORD_FILE` (Шаг 4.4) или `ansible-vault view ...` |
-| k3s упал на VIP | Шаг 1.5 (`private_iface`), `journalctl -u k3s` на мастере |
+| k3s упал на VIP | Шаг 1.5 (`private_iface`), `journalctl -u k3s` на control-plane ноде |
 | HTTP-01 challenge не проходит | DNS (Шаг 2), `kubectl describe challenge -A` |
 | Под падает с DB error | Шаг 5.2, pg_hba whitelist, vault_postgres_password |
 | Zitadel masterkey error | Шаг 4.2 проверка длины 32 |

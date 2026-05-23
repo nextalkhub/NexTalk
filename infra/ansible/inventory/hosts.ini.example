@@ -8,10 +8,10 @@
 # Bastion = worker-1. Все остальные хосты доступны только через него.
 # SSH proxy настроен в group_vars/all.yml через ansible_ssh_common_args.
 
-[masters]
-master-1 ansible_host=10.19.0.11
-master-2 ansible_host=10.19.0.12
-master-3 ansible_host=10.19.0.13
+[control_plane]
+control-plane-1 ansible_host=10.19.0.11
+control-plane-2 ansible_host=10.19.0.12
+control-plane-3 ansible_host=10.19.0.13
 
 [workers]
 worker-1 ansible_host=10.19.0.21 public_ip=CHANGE_ME
@@ -26,7 +26,7 @@ observability-vps ansible_host=10.19.0.41
 
 # Группа для совместных play'ев k3s (server + agent).
 [k3s_cluster:children]
-masters
+control_plane
 workers
 
 # Bastion — единственный хост с прямым SSH из интернета.

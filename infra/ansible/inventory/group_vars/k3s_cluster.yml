@@ -1,5 +1,5 @@
 ---
-# Переменные общие для всех k3s-нод (master + worker)
+# Переменные общие для всех k3s-нод (control-plane + worker)
 
 # Токен подключения. ОБЯЗАТЕЛЬНО заменить через ansible-vault или env.
 # Сгенерировать: openssl rand -hex 32
@@ -10,5 +10,5 @@ k3s_server_disable:
   - traefik
   - servicelb
 
-# TLS SAN для apiserver: VIP + IP каждого master'а.
+# TLS SAN для apiserver: VIP + IP каждой control-plane ноды.
 # Заполняется в roles/k3s_server из inventory.

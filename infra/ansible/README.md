@@ -16,7 +16,7 @@ infra/ansible/
 │   └── group_vars/
 │       ├── all.yml           # общие переменные (VIP, CIDR, версии)
 │       ├── bastion.yml       # override для bastion (без ProxyJump)
-│       ├── masters.yml       # ufw rules для master'ов
+│       ├── control_plane.yml # ufw rules для control-plane нод
 │       ├── workers.yml       # ufw rules для воркеров (открытые 80/443)
 │       ├── k3s_cluster.yml   # k3s_token, disable list
 │       ├── db.yml            # postgres/redis настройки + whitelist

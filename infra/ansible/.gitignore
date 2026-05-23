@@ -8,7 +8,7 @@ inventory/group_vars/vault.yml
 collections/
 .ansible/
 
-# Pull'енутый kubeconfig с master'а
+# Pull'енутый kubeconfig с control-plane ноды
 kubeconfig
 *.kubeconfig
 
