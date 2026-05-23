@@ -37,5 +37,6 @@ vault_livekit_api_key: "REPLACE_ME"
 vault_livekit_secret_key: "REPLACE_ME"
 
 # Email для Let's Encrypt уведомлений (просрочка сертификата).
-# Не личный — лучше группа: ops@nextalk.fun или admin@nextalk.fun.
+# Нужен только при tls.provider: letsencrypt в values.yaml.
+# При tls.provider: cloudflare (default) — не используется.
 vault_acme_email: "REPLACE_ME@nextalk.fun"

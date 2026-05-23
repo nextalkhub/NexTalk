@@ -28,14 +28,21 @@ network:
   privateCidr: "10.0.0.0/8"
 
 # -----------------------------------------------------------------------
-# TLS (cert-manager + Let's Encrypt)
+# TLS
 # -----------------------------------------------------------------------
 tls:
   enabled: true
-  # Сначала переключи на letsencrypt-staging для проверки HTTP-01 челленджа,
-  # затем — на letsencrypt-prod (5 сертификатов на домен в неделю).
+  # cloudflare — использует предсозданный Secret с CF Origin Certificate.
+  #              ClusterIssuer не создаётся, cert-manager не нужен.
+  # letsencrypt — создаёт ClusterIssuer, cert-manager управляет сертификатами.
+  provider: "cloudflare"
+  # Имя TLS Secret (для cloudflare — создать вручную до helm install):
+  #   kubectl create secret tls cloudflare-origin-cert \
+  #     --cert=cert.pem --key=key.pem -n nextalk
+  # Сертификат должен покрывать domain и *.domain (wildcard CF Origin Cert).
+  secretName: "cloudflare-origin-cert"
+  # --- Только для provider: letsencrypt ---
   issuer: "letsencrypt-prod"
-  # Email для уведомлений Let's Encrypt. Подкатить через vault.
   email: ""
 
 # -----------------------------------------------------------------------
