@@ -253,15 +253,10 @@ spec:
                 port:
                   number: 8080
 
-          # ---- Zitadel Console UI (Angular SPA) + ассеты ----
+          # ---- Zitadel Console UI (Angular SPA) ----
+          # /assets не добавляем — SPA тоже кладёт ассеты в /assets/, Zitadel
+          # их отдаёт через /ui/console/assets/ и /ui/v2/login/ внутри /ui.
           - path: /ui
-            pathType: Prefix
-            backend:
-              service:
-                name: zitadel
-                port:
-                  number: 8080
-          - path: /assets
             pathType: Prefix
             backend:
               service:

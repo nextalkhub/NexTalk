@@ -33,7 +33,8 @@ spec:
           port: 53
 
 ---
-# Ingress nginx из ingress-nginx namespace может ходить во все сервисы NexTalk.
+# Ingress nginx: DaemonSet работает с hostNetwork=true, трафик идёт с IP ноды
+# (10.19.0.x), а не из пода — namespaceSelector не работает. Разрешаем по CIDR.
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
@@ -47,6 +48,8 @@ spec:
         - namespaceSelector:
             matchLabels:
               kubernetes.io/metadata.name: ingress-nginx
+        - ipBlock:
+            cidr: {{ .Values.network.privateCidr }}
 
 ---
 # Внутрикластерные походы между сервисами NexTalk: все в namespace nextalk могут
