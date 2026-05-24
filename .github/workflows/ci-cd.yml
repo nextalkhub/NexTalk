@@ -214,7 +214,7 @@ jobs:
             VITE_OIDC_REDIRECT_URI=https://nextalk.fun/callback
             VITE_WS_URL=wss://nextalk.fun/hubs
             VITE_LIVEKIT_URL=wss://nextalk.fun/livekit
-            VITE_API_URL=https://nextalk.fun/api
+            VITE_API_URL=https://nextalk.fun
 
   # Скан образов на известные CVE (OS пакеты + NuGet/npm deps).
   # Запускается только после push в main, не блокирует билд на старте
