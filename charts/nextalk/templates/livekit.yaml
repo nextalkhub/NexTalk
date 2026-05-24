@@ -63,9 +63,6 @@ spec:
                 secretKeyRef:
                   name: nextalk-secrets
                   key: redis-password
-            # LiveKit ждёт keys как "apiKey: secretKey" одной строкой.
-            - name: LIVEKIT_KEYS
-              value: "$(LIVEKIT_API_KEY): $(LIVEKIT_SECRET_KEY)"
             - name: LIVEKIT_API_KEY
               valueFrom:
                 secretKeyRef:
@@ -76,6 +73,10 @@ spec:
                 secretKeyRef:
                   name: nextalk-secrets
                   key: livekit-secret-key
+            # LIVEKIT_API_KEY и LIVEKIT_SECRET_KEY должны быть выше —
+            # k8s подставляет $(VAR) только из переменных выше по списку.
+            - name: LIVEKIT_KEYS
+              value: "$(LIVEKIT_API_KEY): $(LIVEKIT_SECRET_KEY)"
           ports:
             - containerPort: 7880
               name: http
