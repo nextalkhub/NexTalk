@@ -102,6 +102,14 @@ spec:
           port: 3100
         - protocol: TCP
           port: 9090
+    # Kubernetes API (ClusterIP 10.43.0.1:443) — нужен Alloy для discovery.kubernetes.
+    # Без этого правила Alloy не видит поды и логи не собираются.
+    - to:
+        - ipBlock:
+            cidr: {{ .Values.network.clusterServiceCidr }}
+      ports:
+        - protocol: TCP
+          port: 443
     # HTTPS (внешний интернет): cert-manager ACME, image pull, OIDC discovery.
     - to:
         - ipBlock:

@@ -26,6 +26,9 @@ domain: "nextalk.fun"
 # -----------------------------------------------------------------------
 network:
   privateCidr: "10.0.0.0/8"
+  # Service CIDR k3s-кластера. Kubernetes API доступен по ClusterIP 10.43.0.1:443.
+  # Нужен Alloy для discovery.kubernetes. Должен совпадать с k3s_service_cidr в ansible/vars.yml.
+  clusterServiceCidr: "10.43.0.0/16"
 
 # -----------------------------------------------------------------------
 # TLS

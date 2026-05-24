@@ -61,6 +61,24 @@
               proxy-body-size: "50m"
       tags: [addons, ingress]
 
+    - name: Добавить Helm-репо metrics-server
+      kubernetes.core.helm_repository:
+        name: metrics-server
+        repo_url: https://kubernetes-sigs.github.io/metrics-server/
+      tags: [addons, metrics-server]
+
+    - name: Установить metrics-server
+      kubernetes.core.helm:
+        name: metrics-server
+        chart_ref: metrics-server/metrics-server
+        release_namespace: kube-system
+        create_namespace: false
+        kubeconfig: "{{ kubeconfig }}"
+        values:
+          args:
+            - --kubelet-insecure-tls
+      tags: [addons, metrics-server]
+
     - name: Добавить Helm-репо jetstack (cert-manager)
       kubernetes.core.helm_repository:
         name: jetstack

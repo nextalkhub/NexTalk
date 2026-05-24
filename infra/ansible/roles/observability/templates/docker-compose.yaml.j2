@@ -26,6 +26,7 @@ services:
       - "--storage.tsdb.path=/prometheus"
       - "--storage.tsdb.retention.time={{ prometheus_retention }}"
       - "--web.enable-lifecycle"
+      - "--web.enable-remote-write-receiver"
     volumes:
       - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
       - prometheus-data:/prometheus

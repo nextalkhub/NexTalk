@@ -68,8 +68,8 @@ loki.process "serilog" {
 
   stage.json {
     expressions = {
-      _level     = "\"@l\"",
-      _timestamp = "\"@t\"",
+      _level     = "@l",
+      _timestamp = "@t",
       _trace_id  = "TraceId",
       _span_id   = "SpanId",
     }
