@@ -23,7 +23,7 @@ public class MessagingDbContext : DbContext
             e.Property(m => m.ChannelId).HasColumnName("channel_id").IsRequired();
             e.Property(m => m.GuildId).HasColumnName("guild_id").IsRequired();
             e.Property(m => m.AuthorId).HasColumnName("author_id").IsRequired().HasMaxLength(36);
-            e.Property(m => m.AuthorName).HasColumnName("author_name").IsRequired().HasMaxLength(32);
+            e.Property(m => m.AuthorName).HasColumnName("author_name").IsRequired().HasMaxLength(255);
             e.Property(m => m.Content).HasColumnName("content").IsRequired().HasMaxLength(4000);
             e.Property(m => m.CreatedAt).HasColumnName("created_at").HasDefaultValueSql("now()");
 

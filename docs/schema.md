@@ -61,8 +61,8 @@ DBML-версия для [dbdiagram.io](https://dbdiagram.io/d): [schema.dbml](s
 | :------------- | :------------ | :--: | :------- | :------------------------------------------ |
 | `guild_id`     | `uuid`        |  no  | -        | **PK, FK** -> `guilds.Id` ON DELETE CASCADE |
 | `user_id`      | `varchar(36)` |  no  | -        | **PK**, Zitadel sub                         |
-| `display_name` | `varchar(32)` |  no  | -        | snapshot из JWT                             |
-| `username`     | `varchar(32)` |  no  | -        | snapshot из JWT                             |
+| `display_name` | `varchar(255)` |  no  | -        | snapshot из JWT claim `name`                |
+| `username`     | `varchar(254)` |  no  | -        | snapshot из JWT claim `preferred_username`  |
 | `role`         | `text`        |  no  | `member` | enum: `member`, `admin`, `owner`            |
 | `joined_at`    | `timestamptz` |  no  | `now`    | Момент вступления                           |
 
@@ -123,8 +123,8 @@ erDiagram
   members {
     uuid       guild_id     PK,FK
     varchar_36 user_id      PK
-    varchar_32 display_name
-    varchar_32 username
+    varchar_255 display_name
+    varchar_254 username
     member_role role
     timestamptz joined_at
   }
@@ -162,7 +162,7 @@ erDiagram
 | `channel_id`  | `uuid`          |  no  | -          | Soft-FK -> `guild.channels.Id` |
 | `guild_id`    | `uuid`          |  no  | -          | Soft-FK -> `guild.guilds.Id`   |
 | `author_id`   | `varchar(36)`   |  no  | -          | Zitadel sub                    |
-| `author_name` | `varchar(32)`   |  no  | -          | snapshot имени                 |
+| `author_name` | `varchar(255)`  |  no  | -          | snapshot из JWT claim `name`   |
 | `content`     | `varchar(4000)` |  no  | -          | Мин. 1 символ после trim       |
 | `created_at`  | `timestamptz`   |  no  | `now()`    | Момент отправки                |
 
@@ -203,7 +203,7 @@ erDiagram
         uuid        channel_id   "soft-FK guild.channels"
         uuid        guild_id     "soft-FK guild.guilds"
         varchar_36  author_id    "Zitadel sub"
-        varchar_32  author_name  "snapshot"
+        varchar_255 author_name  "snapshot"
         varchar_4000 content
         timestamptz created_at
     }
