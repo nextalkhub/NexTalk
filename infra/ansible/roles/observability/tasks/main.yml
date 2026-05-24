@@ -11,6 +11,18 @@
     mode: '0755'
   tags: [observability]
 
+# Docker создаёт директорию если при монтировании файл не существует.
+# Если rsync потом найдёт директорию вместо файла — скопирует внутрь неё, не заменит.
+# Удаляем известные пути где это может произойти.
+- name: Удалить docker-созданные директории на месте конфиг-файлов
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: absent
+  loop:
+    - "{{ observability_target_dir }}/loki/loki-config.yaml"
+    - "{{ observability_target_dir }}/tempo/tempo.yaml"
+  tags: [observability]
+
 - name: Скопировать содержимое infra/observability/ на observability-vps
   ansible.posix.synchronize:
     src: "{{ playbook_dir }}/../../observability/"
