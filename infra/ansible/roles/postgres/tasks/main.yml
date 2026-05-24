@@ -61,7 +61,7 @@
 
 - name: Включить и запустить postgresql
   ansible.builtin.systemd:
-    name: postgresql
+    name: "postgresql@{{ postgresql_version }}-main"
     enabled: true
     state: started
   tags: [postgres]

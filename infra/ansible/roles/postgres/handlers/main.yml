@@ -1,10 +1,10 @@
 ---
 - name: restart postgres
   ansible.builtin.systemd:
-    name: postgresql
+    name: "postgresql@{{ postgresql_version }}-main"
     state: restarted
 
 - name: reload postgres
   ansible.builtin.systemd:
-    name: postgresql
+    name: "postgresql@{{ postgresql_version }}-main"
     state: reloaded
