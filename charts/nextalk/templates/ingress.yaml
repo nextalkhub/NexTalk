@@ -210,7 +210,7 @@ spec:
 
           # ---- Zitadel REST/Connect API (Console v4 + management/admin/system) ----
           # /v2beta — обязателен, иначе Console циклит на /ui/v2/login.
-          - path: /auth
+          - path: /auth/v1
             pathType: Prefix
             backend:
               service:
