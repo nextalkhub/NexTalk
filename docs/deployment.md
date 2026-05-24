@@ -72,7 +72,7 @@ graph TB
     subgraph "Private Network 10.19.0.0/16"
         direction TB
 
-        LB["haproxy-vps 10.19.0.50<br/>HAProxy TCP :6443"]
+        LB["haproxy-vps 10.19.0.51<br/>HAProxy TCP :6443"]
 
         subgraph "Control Plane"
             M1["control-plane-1<br/>10.19.0.11"]
@@ -125,7 +125,7 @@ HAProxy проксирует k3s apiserver (TCP :6443) с health-check на ка
 
 | Роль              | IP           | Public IP | Что внутри                                                                                              |
 |:------------------|:-------------|:----------|:--------------------------------------------------------------------------------------------------------|
-| haproxy-vps       | `10.19.0.50` | нет       | HAProxy TCP балансировщик для k3s apiserver (:6443), stats (:9000)                                      |
+| haproxy-vps       | `10.19.0.51` | нет       | HAProxy TCP балансировщик для k3s apiserver (:6443), stats (:9000)                                      |
 | k3s control-plane-1 | `10.19.0.11` | нет     | k3s server, embedded etcd (cluster-init)                                                                |
 | k3s control-plane-2 | `10.19.0.12` | нет     | k3s server, embedded etcd                                                                               |
 | k3s control-plane-3 | `10.19.0.13` | нет     | k3s server, embedded etcd                                                                               |
@@ -156,7 +156,7 @@ k3s HA использует [embedded etcd](https://docs.k3s.io/datastore/ha-emb
 
 ### 5.2 HAProxy — балансировщик для apiserver
 
-Все ноды и `kubectl` обращаются к `https://10.19.0.50:6443` (haproxy-vps). HAProxy делает TCP health-check на все три control-plane ноды (`check inter 5s rise 2 fall 3`) и автоматически исключает упавший узел из ротации.
+Все ноды и `kubectl` обращаются к `https://10.19.0.51:6443` (haproxy-vps). HAProxy делает TCP health-check на все три control-plane ноды (`check inter 5s rise 2 fall 3`) и автоматически исключает упавший узел из ротации.
 
 kube-vip ARP mode не применяется: Beget hypervisor фильтрует gratuitous ARP для IP-адресов, не назначенных VM при создании. Подробнее — [decisions.md](decisions.md).
 
@@ -188,7 +188,7 @@ kube-vip ARP mode не применяется: Beget hypervisor фильтруе
 
 | Хост               | Private IP    | Public IP    |
 |:-------------------|:--------------|:-------------|
-| haproxy-vps        | `10.19.0.50`  | —            |
+| haproxy-vps        | `10.19.0.51`  | —            |
 | control-plane-1    | `10.19.0.11`  | —            |
 | control-plane-2    | `10.19.0.12`  | —            |
 | control-plane-3    | `10.19.0.13`  | —            |
@@ -355,7 +355,7 @@ db-vps ansible_host=10.19.0.31
 observability-vps ansible_host=10.19.0.41
 
 [haproxy]
-haproxy-vps ansible_host=10.19.0.50
+haproxy-vps ansible_host=10.19.0.51
 
 [k3s_cluster:children]
 control_plane
@@ -410,7 +410,7 @@ Beget не даёт floating public IP. Внешний HA через 3 A-records
 
 ### 11.11 Достижимость k3s API с CI-runner
 
-Kubeconfig указывает на `10.19.0.50` (приватная Beget-сеть) — runner из интернета не достучится. Варианты: SSH-tunnel через bastion, self-hosted runner внутри Beget, делегировать helm-task через ProxyJump.
+Kubeconfig указывает на `10.19.0.51` (приватная Beget-сеть) — runner из интернета не достучится. Варианты: SSH-tunnel через bastion, self-hosted runner внутри Beget, делегировать helm-task через ProxyJump.
 
 ---
 
@@ -440,7 +440,7 @@ Kubeconfig указывает на `10.19.0.50` (приватная Beget-сет
 4.1. `ansible-playbook k3s.yml`
 4.2. cp-1 устанавливается с `cluster-init`, cp-2/cp-3 джойнятся через HAProxy
 4.3. `kubectl get nodes` — 3 ноды `control-plane,etcd`
-4.4. kubeconfig сохраняется в `infra/kubeconfig` с server=`https://10.19.0.50:6443`
+4.4. kubeconfig сохраняется в `infra/kubeconfig` с server=`https://10.19.0.51:6443`
 4.5. **Демо failover**: выключить cp-1, повторить `kubectl get nodes` — должно работать через cp-2/cp-3
 
 ### Блок 5 — k3s workers
