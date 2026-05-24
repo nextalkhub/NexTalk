@@ -22,11 +22,9 @@ postgres_users:
   - name: nextalk_app
     password: "{{ vault_postgres_password | default('REPLACE_ME') }}"
 
-# Whitelist в pg_hba.conf — только worker-ноды k3s.
+# Whitelist в pg_hba.conf — вся приватная сеть (control-plane + worker ноды k3s).
 postgres_allowed_hosts:
-  - "10.19.0.21/32"
-  - "10.19.0.22/32"
-  - "10.19.0.23/32"
+  - "10.19.0.0/16"
 
 # Файрвол: 5432 и 6379 — только из приватной сети.
 ufw_extra_rules:

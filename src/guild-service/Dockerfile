@@ -17,6 +17,11 @@ RUN dotnet build "./NexTalk.Guild.Service.csproj" -c $BUILD_CONFIGURATION -o /ap
 FROM build AS publish
 ARG BUILD_CONFIGURATION=Release
 RUN dotnet publish "./NexTalk.Guild.Service.csproj" -c $BUILD_CONFIGURATION -o /app/publish /p:UseAppHost=false
+RUN dotnet tool install --global dotnet-ef --version 10.0.8 && \
+    /root/.dotnet/tools/dotnet-ef migrations bundle \
+      --project "./NexTalk.Guild.Service.csproj" \
+      --self-contained -r linux-x64 \
+      --output /app/publish/efbundle
 
 FROM base AS final
 WORKDIR /app

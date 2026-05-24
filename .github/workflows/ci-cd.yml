@@ -140,10 +140,14 @@ jobs:
       - name: ESLint
         run: npm run lint
 
-  # Docker build & push (only on push to main, after all checks pass or are skipped)
+  # Docker build & push: main и deploy-k3s-ha. Нужные джобы могут быть skipped — !failure() это учитывает.
   docker-build-push:
-    needs: [build-backend-services, test-backend-services, frontend-ci]
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: [changes, build-backend-services, test-backend-services, frontend-ci]
+    if: >-
+      !failure() && !cancelled() &&
+      github.event_name == 'push' &&
+      (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/deploy-k3s-ha') &&
+      (needs.changes.outputs.backend == 'true' || needs.changes.outputs.frontend == 'true')
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -191,6 +195,8 @@ jobs:
           tags: |
             type=sha,prefix=
             type=ref,event=branch
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
             type=raw,value=latest,enable=${{ github.ref == 'refs/heads/main' }}
 
       - name: Build and push
@@ -209,7 +215,10 @@ jobs:
   # Trivy DB ездит через OCI registry, кэшируется в GHA автоматически.
   trivy-scan:
     needs: [docker-build-push]
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    if: >-
+      !failure() && !cancelled() &&
+      github.event_name == 'push' &&
+      (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/deploy-k3s-ha')
     runs-on: ubuntu-latest
     permissions:
       contents: read

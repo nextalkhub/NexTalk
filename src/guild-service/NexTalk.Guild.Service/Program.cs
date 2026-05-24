@@ -311,6 +311,8 @@ builder.Services.AddHealthChecks()
 
 var app = builder.Build();
 
+MigrateDatabase(app);
+
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
@@ -323,8 +325,6 @@ if (app.Environment.IsDevelopment())
         c.RoutePrefix = "swagger";
         c.DocumentTitle = "Guild Service API";
     });
-
-    MigrateDatabase(app);
 }
 
 app.UseForwardedHeaders();
