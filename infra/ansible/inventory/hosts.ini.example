@@ -1,7 +1,7 @@
 # NexTalk — Ansible inventory
 #
 # 1. Скопируй этот файл в hosts.ini.
-# 2. Подставь реальные private IP всех 8 VPS.
+# 2. Подставь реальные private IP всех 9 VPS.
 # 3. Подставь public IP трёх worker'ов (для bastion и доступа извне).
 # 4. ansible_user — пользователь с правом sudo (по умолчанию root после bootstrap).
 #
@@ -23,6 +23,9 @@ db-vps ansible_host=10.19.0.31
 
 [observability]
 observability-vps ansible_host=10.19.0.41
+
+[haproxy]
+haproxy-vps ansible_host=10.19.0.51
 
 # Группа для совместных play'ев k3s (server + agent).
 [k3s_cluster:children]
