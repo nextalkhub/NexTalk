@@ -90,13 +90,8 @@
     creates: "/var/lib/postgresql/{{ postgresql_version }}/main/PG_VERSION"
   tags: [postgres]
 
-- name: Включить и запустить postgresql
-  ansible.builtin.systemd:
-    name: "postgresql@{{ postgresql_version }}-main"
-    enabled: true
-    state: started
-  tags: [postgres]
-
+# Конфиг деплоится ДО старта сервиса: pg_common читает data_directory из postgresql.conf
+# при запуске — без него сервис падает с "Invalid data directory".
 - name: Положить postgresql.conf
   ansible.builtin.template:
     src: postgresql.conf.j2
@@ -117,7 +112,14 @@
   notify: reload postgres
   tags: [postgres, config]
 
-# Конфиг применяется ДО создания пользователей/БД — listen_address и hba уже правильные.
+- name: Включить и запустить postgresql
+  ansible.builtin.systemd:
+    name: "postgresql@{{ postgresql_version }}-main"
+    enabled: true
+    state: started
+  tags: [postgres]
+
+# Применяем накопившиеся handlers (restart/reload если конфиг изменился на уже запущенном инстансе).
 - name: Прогнать handlers сейчас
   ansible.builtin.meta: flush_handlers
   tags: [postgres]
