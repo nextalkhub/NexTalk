@@ -1,9 +1,10 @@
 ---
 # Установка PostgreSQL из официального PGDG-репозитория Debian/Ubuntu.
-# Документация: https://www.postgresql.org/download/linux/debian/
+# Документация: https://www.postgresql.org/download/linux/ubuntu/
 #
-# acl нужен Ansible для become_user: postgres (передача temp-файлов модулей).
-# locales нужен для создания БД с lc_collate/lc_ctype = en_US.UTF-8.
+# acl      — Ansible требует для become_user: postgres (передача temp-файлов).
+# locales  — нужен для создания БД с lc_collate/lc_ctype = en_US.UTF-8.
+# libpq-dev — требование community.postgresql Ansible-модулей (docs.ansible.com).
 
 - name: Установить prerequisites
   ansible.builtin.apt:
@@ -14,6 +15,7 @@
       - lsb-release
       - acl
       - locales
+      - libpq-dev
     state: present
     update_cache: true
   tags: [postgres]
@@ -42,7 +44,7 @@
   ansible.builtin.apt_repository:
     repo: >-
       deb [signed-by=/etc/apt/keyrings/postgresql.asc]
-      http://apt.postgresql.org/pub/repos/apt
+      https://apt.postgresql.org/pub/repos/apt
       {{ ansible_distribution_release }}-pgdg main
     state: present
     filename: pgdg
@@ -57,6 +59,29 @@
       - "postgresql-contrib-{{ postgresql_version }}"
       - python3-psycopg2
     state: present
+  tags: [postgres]
+
+# На Ubuntu PGDG пакет создаёт кластер автоматически, но при сбое initdb
+# (например, нет нужной локали) кластер остаётся в невалидном состоянии.
+# Явно пересоздаём если PG_VERSION нет.
+- name: Проверить наличие кластера PostgreSQL
+  ansible.builtin.stat:
+    path: "/var/lib/postgresql/{{ postgresql_version }}/main/PG_VERSION"
+  register: pg_cluster_stat
+  tags: [postgres]
+
+- name: Удалить невалидный кластер если существует
+  ansible.builtin.command: "pg_dropcluster {{ postgresql_version }} main"
+  when:
+    - not pg_cluster_stat.stat.exists
+    - pg_cluster_stat.stat is defined
+  failed_when: false
+  tags: [postgres]
+
+- name: Создать кластер PostgreSQL с локалью en_US.UTF-8
+  ansible.builtin.command: "pg_createcluster --locale en_US.UTF-8 {{ postgresql_version }} main"
+  args:
+    creates: "/var/lib/postgresql/{{ postgresql_version }}/main/PG_VERSION"
   tags: [postgres]
 
 - name: Включить и запустить postgresql
@@ -86,8 +111,7 @@
   notify: reload postgres
   tags: [postgres, config]
 
-# Применяем конфиг ДО создания пользователей/БД, чтобы listen_address
-# и hba уже были правильные.
+# Конфиг применяется ДО создания пользователей/БД — listen_address и hba уже правильные.
 - name: Прогнать handlers сейчас
   ansible.builtin.meta: flush_handlers
   tags: [postgres]
