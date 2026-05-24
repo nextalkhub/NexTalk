@@ -62,10 +62,10 @@ var swaggerClientId = builder.Configuration["Zitadel:SwaggerClientId"];
 var guildUrl = builder.Configuration["Services:GuildService"] ?? throw new InvalidOperationException("Services:GuildService не задан.");
 var wsGatewayUrl = builder.Configuration["Services:WebSocketGateway"] ?? throw new InvalidOperationException("Services:WebSocketGateway не задан.");
 
-var redisConnectionString = builder.Configuration.GetConnectionString("Redis")
-    ?? throw new InvalidOperationException("ConnectionStrings:Redis не задан.");
 builder.Services.AddSingleton<IConnectionMultiplexer>(_ =>
-    ConnectionMultiplexer.Connect(redisConnectionString));
+    ConnectionMultiplexer.Connect(
+        builder.Configuration.GetConnectionString("Redis")
+        ?? throw new InvalidOperationException("ConnectionStrings:Redis не задан.")));
 builder.Services.AddSingleton<ISessionStore, RedisSessionStore>();
 builder.Services.AddSingleton<LiveKitTokenGenerator>();
 builder.Services.AddSingleton<LiveKitRoomClient>();
