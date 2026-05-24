@@ -64,6 +64,13 @@ spec:
                 secretKeyRef:
                   name: nextalk-secrets
                   key: livekit-secret-key
+            - name: REDIS_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: nextalk-secrets
+                  key: redis-password
+            - name: ConnectionStrings__Redis
+              value: {{ printf "%s:%s,password=$(REDIS_PASSWORD),defaultDatabase=3" (required "db.redisHost обязателен" .Values.db.redisHost) .Values.db.redisPort | quote }}
             - name: Services__GuildService
               value: http://guild-service:5001
             - name: Services__WebSocketGateway

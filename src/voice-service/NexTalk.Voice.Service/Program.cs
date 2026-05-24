@@ -21,6 +21,7 @@ using Polly;
 using Prometheus;
 using Serilog;
 using Serilog.Enrichers.Span;
+using StackExchange.Redis;
 using IPNetwork = System.Net.IPNetwork;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -61,8 +62,11 @@ var swaggerClientId = builder.Configuration["Zitadel:SwaggerClientId"];
 var guildUrl = builder.Configuration["Services:GuildService"] ?? throw new InvalidOperationException("Services:GuildService не задан.");
 var wsGatewayUrl = builder.Configuration["Services:WebSocketGateway"] ?? throw new InvalidOperationException("Services:WebSocketGateway не задан.");
 
-// In-memory сессионное хранилище и LiveKit-инфраструктура.
-builder.Services.AddSingleton<SessionStore>();
+var redisConnectionString = builder.Configuration.GetConnectionString("Redis")
+    ?? throw new InvalidOperationException("ConnectionStrings:Redis не задан.");
+builder.Services.AddSingleton<IConnectionMultiplexer>(_ =>
+    ConnectionMultiplexer.Connect(redisConnectionString));
+builder.Services.AddSingleton<ISessionStore, RedisSessionStore>();
 builder.Services.AddSingleton<LiveKitTokenGenerator>();
 builder.Services.AddSingleton<LiveKitRoomClient>();
 

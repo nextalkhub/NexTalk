@@ -25,6 +25,7 @@
 
 | Тема | Решение | Почему |
 |:--|:--|:--|
+| voice-service SessionStore | `RedisSessionStore` (Hash `voice:session:{userId}`, Set `voice:channel:{channelId}`, DB=3, TTL=8h) вместо `ConcurrentDictionary` | In-memory Singleton привязывал сессию к поду: `/leave` на другом поде возвращал 404. Redis — уже в инфре, данные эфемерные. `ClearChannel` — Lua-скрипт (атомарный SMEMBERS+DEL), исключает двойной broadcast `voice.left` при параллельных вызовах. Ограничение: `Join` не атомарен (4 отдельных команды); гонка возможна только при одновременном join одного пользователя с двух устройств — на практике не происходит |
 | `:port` в Zitadel URL'ах | Убран из BASEURI и `CUSTOM_REQUEST_HEADERS` | Был артефактом docker-compose (`:8080`). В проде с 443/80 порт опускается, иначе ломается issuer |
 | Login UI Zitadel | Sidecar в том же поде, что и API | Чтобы login Next.js видел PAT файл через общий PVC. Так же в docker-compose |
 | Образы | Все теги пин-нуты, `latest` запрещён конвенцией | `latest` ломает воспроизводимость деплоя. Сейчас не enforce'нуто `fail`-валидацией, но в values только конкретные версии |

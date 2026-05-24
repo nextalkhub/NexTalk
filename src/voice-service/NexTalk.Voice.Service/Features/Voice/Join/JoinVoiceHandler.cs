@@ -8,7 +8,7 @@ public sealed class JoinVoiceHandler
     private readonly GuildServiceClient _guildClient;
     private readonly LiveKitRoomClient _roomClient;
     private readonly LiveKitTokenGenerator _tokenGenerator;
-    private readonly SessionStore _sessionStore;
+    private readonly ISessionStore _sessionStore;
     private readonly WsGatewayClient _wsGateway;
     private readonly IConfiguration _config;
     private readonly ILogger<JoinVoiceHandler> _logger;
@@ -17,7 +17,7 @@ public sealed class JoinVoiceHandler
         GuildServiceClient guildClient,
         LiveKitRoomClient roomClient,
         LiveKitTokenGenerator tokenGenerator,
-        SessionStore sessionStore,
+        ISessionStore sessionStore,
         WsGatewayClient wsGateway,
         IConfiguration config,
         ILogger<JoinVoiceHandler> logger)

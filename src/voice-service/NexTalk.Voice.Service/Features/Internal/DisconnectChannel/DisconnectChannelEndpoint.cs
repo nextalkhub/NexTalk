@@ -11,7 +11,7 @@ public static class DisconnectChannelEndpoint
     public static void Map(IEndpointRouteBuilder app) =>
         app.MapDelete("/internal/voice/channel/{channelId:guid}/disconnect-all", async (
             Guid channelId,
-            SessionStore sessionStore,
+            ISessionStore sessionStore,
             LiveKitRoomClient roomClient,
             WsGatewayClient wsGateway,
             ILoggerFactory loggerFactory,

@@ -6,13 +6,13 @@ namespace NexTalk.Voice.Service.Features.Voice.Leave;
 public sealed class LeaveVoiceHandler
 {
     private readonly LiveKitRoomClient _roomClient;
-    private readonly SessionStore _sessionStore;
+    private readonly ISessionStore _sessionStore;
     private readonly WsGatewayClient _wsGateway;
     private readonly ILogger<LeaveVoiceHandler> _logger;
 
     public LeaveVoiceHandler(
         LiveKitRoomClient roomClient,
-        SessionStore sessionStore,
+        ISessionStore sessionStore,
         WsGatewayClient wsGateway,
         ILogger<LeaveVoiceHandler> logger)
     {
