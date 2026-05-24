@@ -14,3 +14,6 @@ kubeconfig
 
 # Отрендеренный helm-deploy секретный values (см. playbooks/helm-deploy.yml)
 .helm-secrets.values.yaml
+
+# TLS-сертификаты (Cloudflare Origin и прочие)
+inventory/group_vars/all/certs/

@@ -19,6 +19,16 @@
     mode: '0600'
   tags: [k3s, k3s_agent]
 
+- name: Положить /etc/rancher/k3s/registries.yaml
+  ansible.builtin.template:
+    src: registries.yaml.j2
+    dest: "{{ k3s_config_dir }}/registries.yaml"
+    owner: root
+    group: root
+    mode: '0644'
+  notify: restart k3s-agent
+  tags: [k3s, k3s_agent]
+
 - name: Подождать apiserver через HAProxy
   ansible.builtin.wait_for:
     host: "{{ k3s_api_endpoint }}"

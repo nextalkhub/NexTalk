@@ -45,6 +45,16 @@
     mode: '0600'
   tags: [k3s, k3s_server]
 
+- name: Положить /etc/rancher/k3s/registries.yaml
+  ansible.builtin.template:
+    src: registries.yaml.j2
+    dest: "{{ k3s_config_dir }}/registries.yaml"
+    owner: root
+    group: root
+    mode: '0644'
+  notify: restart k3s
+  tags: [k3s, k3s_server]
+
 - name: Проверить наличие установленного k3s
   ansible.builtin.stat:
     path: /usr/local/bin/k3s
