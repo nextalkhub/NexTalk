@@ -6,6 +6,11 @@ metadata:
   namespace: {{ .Values.namespace }}
 spec:
   replicas: {{ .Values.websocketGateway.replicas }}
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
   selector:
     matchLabels:
       app: websocket-gateway
@@ -14,6 +19,8 @@ spec:
       labels:
         app: websocket-gateway
     spec:
+      # Даём SignalR-клиентам время заметить разрыв и переподключиться к другому поду.
+      terminationGracePeriodSeconds: 60
       securityContext:
         {{- toYaml .Values.podSecurityContext | nindent 8 }}
       containers:
