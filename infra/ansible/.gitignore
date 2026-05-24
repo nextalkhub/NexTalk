@@ -1,8 +1,8 @@
 # Локальный inventory (содержит реальные IP)
 inventory/hosts.ini
 
-# Vault с настоящими секретами
-inventory/group_vars/vault.yml
+# Vault с настоящими секретами (лежит в group_vars/all/ чтобы применяться ко всем группам)
+inventory/group_vars/all/vault.yml
 
 # Локально установленные collections и роли
 collections/
