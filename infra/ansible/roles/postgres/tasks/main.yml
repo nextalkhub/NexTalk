@@ -1,14 +1,26 @@
 ---
-# Установка PostgreSQL 18 из официального PGDG-репозитория Debian/Ubuntu.
+# Установка PostgreSQL из официального PGDG-репозитория Debian/Ubuntu.
 # Документация: https://www.postgresql.org/download/linux/debian/
+#
+# acl нужен Ansible для become_user: postgres (передача temp-файлов модулей).
+# locales нужен для создания БД с lc_collate/lc_ctype = en_US.UTF-8.
 
-- name: Установить prerequisites для PGDG-репозитория
+- name: Установить prerequisites
   ansible.builtin.apt:
     name:
       - curl
       - ca-certificates
       - gnupg
       - lsb-release
+      - acl
+      - locales
+    state: present
+    update_cache: true
+  tags: [postgres]
+
+- name: Сгенерировать локаль en_US.UTF-8
+  community.general.locale_gen:
+    name: en_US.UTF-8
     state: present
   tags: [postgres]
 
@@ -86,6 +98,7 @@
     password: "{{ item.password }}"
     role_attr_flags: LOGIN
     state: present
+    login_unix_socket: /var/run/postgresql
   loop: "{{ postgres_users }}"
   no_log: true
   become: true
@@ -101,6 +114,7 @@
     lc_ctype: en_US.UTF-8
     template: template0
     state: present
+    login_unix_socket: /var/run/postgresql
   loop: "{{ postgres_databases }}"
   become: true
   become_user: postgres

@@ -21,6 +21,7 @@ node-ip: "{{ ansible_host }}"
 # kubectl и ноды подключаются через HAProxy, поэтому его IP обязан быть в SAN.
 tls-san:
   - "{{ k3s_api_endpoint }}"
+  - "127.0.0.1"
 {% for h in groups['control_plane'] %}
   - "{{ hostvars[h]['ansible_host'] }}"
 {% endfor %}

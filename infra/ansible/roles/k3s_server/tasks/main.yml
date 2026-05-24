@@ -110,9 +110,9 @@
   when: inventory_hostname == groups['control_plane'][0]
   tags: [k3s, k3s_server, kubeconfig]
 
-- name: Сохранить kubeconfig локально (заменив 127.0.0.1 на HAProxy IP)
+- name: Сохранить kubeconfig локально
   ansible.builtin.copy:
-    content: "{{ k3s_kubeconfig.content | b64decode | replace('127.0.0.1', k3s_api_endpoint) }}"
+    content: "{{ k3s_kubeconfig.content | b64decode }}"
     dest: "{{ playbook_dir }}/../kubeconfig"
     mode: '0600'
   when: inventory_hostname == groups['control_plane'][0]

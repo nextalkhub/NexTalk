@@ -1,11 +1,48 @@
 ---
-# Установка Redis из стандартных репозиториев Debian/Ubuntu.
+# Установка Redis из официального репозитория packages.redis.io.
+# Ubuntu-репо даёт устаревший Redis 6, официальный — актуальный Redis 7.
+# Документация: https://redis.io/docs/latest/operate/oss_and_stack/install/install-redis/install-redis-on-linux/
+
+- name: Установить prerequisites для Redis-репозитория
+  ansible.builtin.apt:
+    name:
+      - curl
+      - ca-certificates
+      - gnupg
+      - lsb-release
+    state: present
+    update_cache: true
+  tags: [redis]
+
+- name: Создать директорию для apt keyrings
+  ansible.builtin.file:
+    path: /etc/apt/keyrings
+    state: directory
+    mode: '0755'
+  tags: [redis]
+
+- name: Импортировать GPG-ключ Redis
+  ansible.builtin.get_url:
+    url: https://packages.redis.io/gpg
+    dest: /etc/apt/keyrings/redis.asc
+    mode: '0644'
+  tags: [redis]
+
+- name: Добавить APT-репозиторий Redis
+  ansible.builtin.apt_repository:
+    repo: >-
+      deb [signed-by=/etc/apt/keyrings/redis.asc]
+      https://packages.redis.io/deb
+      {{ ansible_distribution_release }} main
+    state: present
+    filename: redis
+    update_cache: true
+  tags: [redis]
 
 - name: Установить redis-server
   ansible.builtin.apt:
     name: redis-server
     state: present
-    update_cache: true
   tags: [redis]
 
 - name: Положить redis.conf
