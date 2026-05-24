@@ -117,7 +117,50 @@ spec:
                   number: 8080
 
 ---
-# ---------- 3) Основной маршрут: hubs / Zitadel REST/OIDC / login UI / livekit / SPA ----------
+# ---------- 3) LiveKit signaling WebSocket (/livekit/* → /* на порту 7880) ----------
+# rewrite-target снимает префикс: /livekit/rtc/validate → /rtc/validate.
+# WebSocket-таймауты нужны, иначе nginx закрывает сигнальный канал через 60с.
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: nextalk-livekit
+  namespace: {{ .Values.namespace }}
+  annotations:
+    {{- if .Values.tls.enabled }}
+    {{- if eq .Values.tls.provider "letsencrypt" }}
+    cert-manager.io/cluster-issuer: {{ .Values.tls.issuer | quote }}
+    {{- end }}
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
+    {{- else }}
+    nginx.ingress.kubernetes.io/ssl-redirect: "false"
+    {{- end }}
+    nginx.ingress.kubernetes.io/use-regex: "true"
+    nginx.ingress.kubernetes.io/rewrite-target: /$1
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "3600"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "3600"
+spec:
+  ingressClassName: nginx
+  {{- if .Values.tls.enabled }}
+  tls:
+    - hosts:
+        - {{ .Values.domain }}
+      secretName: {{ .Values.tls.secretName }}
+  {{- end }}
+  rules:
+    - host: {{ .Values.domain }}
+      http:
+        paths:
+          - path: /livekit/(.*)
+            pathType: ImplementationSpecific
+            backend:
+              service:
+                name: livekit
+                port:
+                  number: 7880
+
+---
+# ---------- 4) Основной маршрут: hubs / Zitadel REST/OIDC / login UI / SPA ----------
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
@@ -263,15 +306,6 @@ spec:
                 name: zitadel
                 port:
                   number: 8080
-
-          # ---- LiveKit signaling (WebSocket :7880). UDP media идёт мимо ingress. ----
-          - path: /livekit
-            pathType: Prefix
-            backend:
-              service:
-                name: livekit
-                port:
-                  number: 7880
 
           # ---- React SPA: catch-all (должен быть последним) ----
           - path: /
