@@ -75,7 +75,7 @@ spec:
             readOnlyRootFilesystem: true
             capabilities:
               drop: ["ALL"]
-          args: ["run", "--storage.path=/var/lib/alloy/data", "/etc/alloy/config.alloy"]
+          args: ["run", "--storage.path=/var/lib/alloy/data", "--server.http.listen-addr=0.0.0.0:12345", "/etc/alloy/config.alloy"]
           env:
             # HOSTNAME = имя k8s-ноды, используется в relabel для фильтрации
             # подов текущей ноды и предотвращения дублирования логов.
