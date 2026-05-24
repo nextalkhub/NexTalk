@@ -1,36 +1,4 @@
 ---
-# Конфиг LiveKit подтягивает Redis address и keys из env через ${...}.
-# Это значит ключи остаются только в Secret nextalk-secrets, не утекают в ConfigMap.
-# Документация: https://docs.livekit.io/home/self-hosting/deployment/
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: livekit-config
-  namespace: {{ .Values.namespace }}
-data:
-  livekit.yaml: |
-    port: 7880
-    log_level: info
-
-    rtc:
-      tcp_port: 7881
-      port_range_start: {{ .Values.livekit.rtcPortStart }}
-      port_range_end: {{ .Values.livekit.rtcPortEnd }}
-      use_external_ip: true
-
-    redis:
-      address: {{ printf "%s:%s" (required "db.redisHost обязателен" .Values.db.redisHost) .Values.db.redisPort | quote }}
-      password: ${REDIS_PASSWORD}
-      db: {{ .Values.livekit.redisDb }}
-
-    keys:
-      ${LIVEKIT_KEYS}
-
-    room:
-      auto_create: true
-      empty_timeout: 300
-
----
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -57,26 +25,6 @@ spec:
           args: ["--config", "/etc/livekit.yaml"]
           securityContext:
             {{- toYaml .Values.containerSecurityContext | nindent 12 }}
-          env:
-            - name: REDIS_PASSWORD
-              valueFrom:
-                secretKeyRef:
-                  name: nextalk-secrets
-                  key: redis-password
-            - name: LIVEKIT_API_KEY
-              valueFrom:
-                secretKeyRef:
-                  name: nextalk-secrets
-                  key: livekit-api-key
-            - name: LIVEKIT_SECRET_KEY
-              valueFrom:
-                secretKeyRef:
-                  name: nextalk-secrets
-                  key: livekit-secret-key
-            # LIVEKIT_API_KEY и LIVEKIT_SECRET_KEY должны быть выше —
-            # k8s подставляет $(VAR) только из переменных выше по списку.
-            - name: LIVEKIT_KEYS
-              value: "$(LIVEKIT_API_KEY): $(LIVEKIT_SECRET_KEY)"
           ports:
             - containerPort: 7880
               name: http
@@ -94,7 +42,7 @@ spec:
           volumeMounts:
             - name: config
               mountPath: /etc/livekit.yaml
-              subPath: livekit.yaml
+              subPath: livekit-config.yaml
           readinessProbe:
             httpGet:
               path: /
@@ -116,8 +64,8 @@ spec:
               memory: 1Gi
       volumes:
         - name: config
-          configMap:
-            name: livekit-config
+          secret:
+            secretName: nextalk-secrets
 
 ---
 apiVersion: v1

@@ -15,6 +15,7 @@ spec:
       labels:
         app: zitadel
     spec:
+      enableServiceLinks: false
       securityContext:
         # Zitadel-образ собран под UID 1000, поэтому fsGroup тоже 1000 —
         # чтобы /zitadel/bootstrap (PVC) принадлежал нужной группе.
