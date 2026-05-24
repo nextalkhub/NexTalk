@@ -47,18 +47,15 @@ public sealed class PresenceMonitor : BackgroundService
                 if (!_tracker.Remove(userId))
                     continue;
 
-                var entry = _connections.Get(userId);
-                if (entry is not null)
+                var guildIds = _connections.GetGuildIds(userId);
+                foreach (var guildId in guildIds)
                 {
-                    foreach (var guildId in entry.GuildIds)
-                    {
-                        await _hubContext.Clients
-                            .Group(ChatHub.GuildGroup(guildId))
-                            .SendAsync(
-                                "GatewayEvent",
-                                new { Type = "presence.offline", Payload = new { UserId = userId } },
-                                stoppingToken);
-                    }
+                    await _hubContext.Clients
+                        .Group(ChatHub.GuildGroup(guildId))
+                        .SendAsync(
+                            "GatewayEvent",
+                            new { Type = "presence.offline", Payload = new { UserId = userId } },
+                            stoppingToken);
                 }
 
                 _logger.LogDebug("User {UserId} went offline: heartbeat timeout", userId);

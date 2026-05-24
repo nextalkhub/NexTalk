@@ -12,33 +12,38 @@ public sealed class RedisConnectionManager : IConnectionManager
 
     public void Register(string userId, string connectionId, IReadOnlyList<Guid> guildIds)
     {
-        var json = JsonSerializer.Serialize(new ConnectionData(connectionId, guildIds));
-        _db.StringSet(Key(userId), json, Ttl);
+        _db.SetAdd(ConnsKey(userId), connectionId);
+        _db.KeyExpire(ConnsKey(userId), Ttl);
+        _db.StringSet(GuildsKey(userId), JsonSerializer.Serialize(guildIds), Ttl);
     }
 
-    public bool TryUnregister(string userId, out IConnectionManager.Entry? entry)
+    public IReadOnlyList<Guid>? Unregister(string userId, string connectionId)
     {
-        var json = _db.StringGetDelete(Key(userId));
-        if (json.IsNullOrEmpty) { entry = null; return false; }
-        entry = Deserialize(json!);
-        return entry is not null;
+        _db.SetRemove(ConnsKey(userId), connectionId);
+        var remaining = _db.SetLength(ConnsKey(userId));
+        if (remaining > 0) return null;
+
+        var guildsJson = _db.StringGetDelete(GuildsKey(userId));
+        _db.KeyDelete(ConnsKey(userId));
+        return guildsJson.IsNullOrEmpty
+            ? []
+            : JsonSerializer.Deserialize<List<Guid>>((string)guildsJson!) ?? [];
     }
 
-    public IConnectionManager.Entry? Get(string userId)
+    public IReadOnlyList<string> GetConnectionIds(string userId)
     {
-        var json = _db.StringGet(Key(userId));
-        return json.IsNullOrEmpty ? null : Deserialize(json!);
+        var members = _db.SetMembers(ConnsKey(userId));
+        return members.Select(m => (string)m!).ToList();
     }
 
-    public bool IsConnected(string userId) => _db.KeyExists(Key(userId));
-
-    private static string Key(string userId) => $"ws:conn:{userId}";
-
-    private static IConnectionManager.Entry? Deserialize(string json)
+    public IReadOnlyList<Guid> GetGuildIds(string userId)
     {
-        var data = JsonSerializer.Deserialize<ConnectionData>(json);
-        return data is null ? null : new IConnectionManager.Entry(data.ConnectionId, data.GuildIds);
+        var json = _db.StringGet(GuildsKey(userId));
+        return json.IsNullOrEmpty ? [] : JsonSerializer.Deserialize<List<Guid>>((string)json!) ?? [];
     }
 
-    private record ConnectionData(string ConnectionId, IReadOnlyList<Guid> GuildIds);
+    public bool IsConnected(string userId) => _db.SetLength(ConnsKey(userId)) > 0;
+
+    private static string ConnsKey(string userId) => $"ws:conns:{userId}";
+    private static string GuildsKey(string userId) => $"ws:guilds:{userId}";
 }

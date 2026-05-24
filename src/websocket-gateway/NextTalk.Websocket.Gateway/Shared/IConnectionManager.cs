@@ -3,9 +3,11 @@ namespace NextTalk.Websocket.Gateway.Shared;
 public interface IConnectionManager
 {
     void Register(string userId, string connectionId, IReadOnlyList<Guid> guildIds);
-    bool TryUnregister(string userId, out Entry? entry);
-    Entry? Get(string userId);
-    bool IsConnected(string userId);
 
-    public record Entry(string ConnectionId, IReadOnlyList<Guid> GuildIds);
+    // Возвращает guildIds если это было последнее подключение пользователя, иначе null
+    IReadOnlyList<Guid>? Unregister(string userId, string connectionId);
+
+    IReadOnlyList<string> GetConnectionIds(string userId);
+    IReadOnlyList<Guid> GetGuildIds(string userId);
+    bool IsConnected(string userId);
 }

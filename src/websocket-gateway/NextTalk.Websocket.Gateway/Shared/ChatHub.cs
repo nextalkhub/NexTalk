@@ -69,13 +69,13 @@ public sealed class ChatHub : Hub
     public override async Task OnDisconnectedAsync(Exception? exception)
     {
         var userId = GetUserId();
-        _presence.Remove(userId);
 
-        if (_connections.TryUnregister(userId, out var entry) && entry is not null)
+        var guildIds = _connections.Unregister(userId, Context.ConnectionId);
+        if (guildIds is not null)
         {
-            foreach (var guildId in entry.GuildIds)
+            _presence.Remove(userId);
+            foreach (var guildId in guildIds)
             {
-                await Groups.RemoveFromGroupAsync(Context.ConnectionId, GuildGroup(guildId));
                 await Clients.Group(GuildGroup(guildId))
                     .SendAsync("GatewayEvent", new { Type = "presence.offline", Payload = new { UserId = userId } });
             }

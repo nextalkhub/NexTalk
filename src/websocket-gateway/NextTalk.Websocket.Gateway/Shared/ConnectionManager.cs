@@ -1,19 +1,56 @@
-using System.Collections.Concurrent;
-
 namespace NextTalk.Websocket.Gateway.Shared;
 
 public sealed class ConnectionManager : IConnectionManager
 {
-    private readonly ConcurrentDictionary<string, IConnectionManager.Entry> _entries = new();
+    private readonly Dictionary<string, HashSet<string>> _conns = new();
+    private readonly Dictionary<string, IReadOnlyList<Guid>> _guilds = new();
+    private readonly object _lock = new();
 
     public void Register(string userId, string connectionId, IReadOnlyList<Guid> guildIds)
-        => _entries[userId] = new IConnectionManager.Entry(connectionId, guildIds);
+    {
+        lock (_lock)
+        {
+            if (!_conns.TryGetValue(userId, out var set))
+                _conns[userId] = set = [];
+            set.Add(connectionId);
+            _guilds[userId] = guildIds;
+        }
+    }
 
-    public bool TryUnregister(string userId, out IConnectionManager.Entry? entry)
-        => _entries.TryRemove(userId, out entry);
+    public IReadOnlyList<Guid>? Unregister(string userId, string connectionId)
+    {
+        lock (_lock)
+        {
+            if (!_conns.TryGetValue(userId, out var set)) return [];
+            set.Remove(connectionId);
+            if (set.Count > 0) return null;
+            _conns.Remove(userId);
+            _guilds.Remove(userId, out var guildIds);
+            return guildIds ?? [];
+        }
+    }
 
-    public IConnectionManager.Entry? Get(string userId)
-        => _entries.TryGetValue(userId, out var e) ? e : null;
+    public IReadOnlyList<string> GetConnectionIds(string userId)
+    {
+        lock (_lock)
+        {
+            return _conns.TryGetValue(userId, out var set) ? [.. set] : [];
+        }
+    }
 
-    public bool IsConnected(string userId) => _entries.ContainsKey(userId);
+    public IReadOnlyList<Guid> GetGuildIds(string userId)
+    {
+        lock (_lock)
+        {
+            return _guilds.TryGetValue(userId, out var guilds) ? guilds : [];
+        }
+    }
+
+    public bool IsConnected(string userId)
+    {
+        lock (_lock)
+        {
+            return _conns.TryGetValue(userId, out var set) && set.Count > 0;
+        }
+    }
 }
