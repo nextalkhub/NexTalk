@@ -5,6 +5,11 @@
 # Шаблон расчёта: https://pgtune.leopard.in.ua/
 #
 
+# --- Storage -----------------------------------------------------------------
+# Обязательно на Ubuntu: pg_common читает data_directory из postgresql.conf
+# при старте/стопе сервиса через pg_ctlcluster/systemd.
+data_directory = '/var/lib/postgresql/{{ postgresql_version }}/main'
+
 # --- Network -----------------------------------------------------------------
 listen_addresses = '{{ postgres_listen_address }}'
 port             = {{ postgres_port }}
