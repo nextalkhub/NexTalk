@@ -19,6 +19,13 @@
   vars:
     kubeconfig: "{{ playbook_dir }}/../kubeconfig"
   tasks:
+    - name: Пометить worker-ноды меткой node-role.kubernetes.io/worker
+      ansible.builtin.command: >-
+        kubectl --kubeconfig={{ kubeconfig }}
+        label nodes -l '!node-role.kubernetes.io/control-plane'
+        node-role.kubernetes.io/worker= --overwrite
+      tags: [addons, ingress]
+
     - name: Добавить Helm-репо ingress-nginx
       kubernetes.core.helm_repository:
         name: ingress-nginx
