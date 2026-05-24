@@ -48,6 +48,7 @@ spec:
       labels:
         app: livekit
     spec:
+      enableServiceLinks: false
       securityContext:
         {{- toYaml .Values.podSecurityContext | nindent 8 }}
       containers:
