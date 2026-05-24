@@ -208,6 +208,13 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+          build-args: |
+            VITE_OIDC_CLIENT_ID=${{ secrets.VITE_OIDC_CLIENT_ID }}
+            VITE_OIDC_AUTHORITY=https://nextalk.fun
+            VITE_OIDC_REDIRECT_URI=https://nextalk.fun/callback
+            VITE_WS_URL=wss://nextalk.fun/hubs
+            VITE_LIVEKIT_URL=wss://nextalk.fun/livekit
+            VITE_API_URL=https://nextalk.fun/api
 
   # Скан образов на известные CVE (OS пакеты + NuGet/npm deps).
   # Запускается только после push в main, не блокирует билд на старте
