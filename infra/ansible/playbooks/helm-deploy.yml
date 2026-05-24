@@ -15,6 +15,7 @@
   hosts: localhost
   connection: local
   gather_facts: false
+  become: false
   vars_files:
     # localhost не в группах из inventory — group_vars/vault.yml авто не подхватится.
     - "{{ playbook_dir }}/../inventory/group_vars/vault.yml"

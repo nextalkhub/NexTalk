@@ -15,6 +15,7 @@
   hosts: localhost
   connection: local
   gather_facts: false
+  become: false
   vars:
     kubeconfig: "{{ playbook_dir }}/../kubeconfig"
   tasks:
