@@ -33,3 +33,10 @@ private_iface: "eth1"
 # Service / Pod CIDR k3s (defaults). Используется в TLS-SAN и сетевых проверках.
 k3s_cluster_cidr: "10.42.0.0/16"
 k3s_service_cidr: "10.43.0.0/16"
+
+# TLS-провайдер для NexTalk: cloudflare | letsencrypt
+# cloudflare  — Origin Certificate из Cloudflare Dashboard, хранится в
+#               infra/ansible/inventory/group_vars/all/certs/origin.crt + origin.key
+# letsencrypt — cert-manager выписывает сертификат автоматически
+tls_provider: "cloudflare"
+tls_certs_dir: "{{ playbook_dir }}/../inventory/group_vars/all/certs"

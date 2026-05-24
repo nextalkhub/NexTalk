@@ -50,19 +50,21 @@
               meta.helm.sh/release-namespace: {{ helm_namespace }}
       tags: [helm]
 
-    - name: Создать TLS secret cloudflare-origin-cert
+    - name: Создать TLS secret cloudflare-origin-cert (только для provider=cloudflare)
       ansible.builtin.command: >-
         kubectl --kubeconfig={{ kubeconfig }} create secret tls cloudflare-origin-cert
-        --cert={{ playbook_dir }}/../inventory/group_vars/all/certs/origin.crt
-        --key={{ playbook_dir }}/../inventory/group_vars/all/certs/origin.key
+        --cert={{ tls_certs_dir }}/origin.crt
+        --key={{ tls_certs_dir }}/origin.key
         -n {{ helm_namespace }} --dry-run=client -o yaml
       register: tls_secret_yaml
+      when: tls_provider == "cloudflare"
       tags: [helm]
 
-    - name: Применить TLS secret
+    - name: Применить TLS secret (только для provider=cloudflare)
       ansible.builtin.command: kubectl --kubeconfig={{ kubeconfig }} apply -f -
       args:
         stdin: "{{ tls_secret_yaml.stdout }}"
+      when: tls_provider == "cloudflare"
       tags: [helm]
 
     - name: Рендер секретного values-файла из vault + inventory
