@@ -23,7 +23,7 @@ metadata:
     {{- end }}
     # /api/guilds/abc → /guilds/abc на upstream.
     nginx.ingress.kubernetes.io/use-regex: "true"
-    nginx.ingress.kubernetes.io/rewrite-target: /$2
+    nginx.ingress.kubernetes.io/rewrite-target: /$1
 spec:
   ingressClassName: nginx
   {{- if .Values.tls.enabled }}
@@ -36,35 +36,35 @@ spec:
     - host: {{ .Values.domain }}
       http:
         paths:
-          - path: /api/guilds(/|$)(.*)
+          - path: /api/(guilds.*)
             pathType: ImplementationSpecific
             backend:
               service:
                 name: guild-service
                 port:
                   number: 5001
-          - path: /api/invites(/|$)(.*)
+          - path: /api/(invites.*)
             pathType: ImplementationSpecific
             backend:
               service:
                 name: guild-service
                 port:
                   number: 5001
-          - path: /api/channels(/|$)(.*)
+          - path: /api/(channels.*)
             pathType: ImplementationSpecific
             backend:
               service:
                 name: messaging-service
                 port:
                   number: 5002
-          - path: /api/messages(/|$)(.*)
+          - path: /api/(messages.*)
             pathType: ImplementationSpecific
             backend:
               service:
                 name: messaging-service
                 port:
                   number: 5002
-          - path: /api/voice(/|$)(.*)
+          - path: /api/(voice.*)
             pathType: ImplementationSpecific
             backend:
               service:

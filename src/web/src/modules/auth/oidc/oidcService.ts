@@ -126,7 +126,6 @@ class OidcService {
         }
 
         this.tokens = await response.json()
-        this.saveTokensToStorage()
 
         // Очищаем временные данные
         sessionStorage.removeItem('oauth_state')
@@ -134,6 +133,9 @@ class OidcService {
 
         // Загружаем информацию о пользователе
         await this.loadUserInfo()
+
+        // Сохраняем после loadUserInfo — иначе userInfo не попадёт в localStorage
+        this.saveTokensToStorage()
 
         // Настраиваем автообновление токена
         this.scheduleTokenRefresh()
@@ -200,6 +202,8 @@ class OidcService {
             this.tokenExpirationTimer = null
         }
 
+        const idToken = this.tokens?.id_token
+
         // Очищаем локальные данные
         this.tokens = null
         this.userInfo = null
@@ -209,8 +213,11 @@ class OidcService {
         // Редирект на Zitadel logout
         const params = new URLSearchParams({
             client_id: this.config.clientId,
-            logout_uri: this.config.postLogoutRedirectUri,
+            post_logout_redirect_uri: this.config.postLogoutRedirectUri,
         })
+        if (idToken) {
+            params.set('id_token_hint', idToken)
+        }
 
         window.location.href = `${this.config.authority}/oidc/v1/end_session?${params.toString()}`
     }
