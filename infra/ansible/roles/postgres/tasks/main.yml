@@ -64,24 +64,37 @@
 # На Ubuntu PGDG пакет создаёт кластер автоматически, но при сбое initdb
 # (например, нет нужной локали) кластер остаётся в невалидном состоянии.
 # Явно пересоздаём если PG_VERSION нет.
-- name: Проверить наличие кластера PostgreSQL
+- name: Проверить наличие data-директории кластера
   ansible.builtin.stat:
     path: "/var/lib/postgresql/{{ postgresql_version }}/main/PG_VERSION"
-  register: pg_cluster_stat
+  register: pg_data_stat
   tags: [postgres]
 
-- name: Остановить и удалить кластер (--stop чтобы сервис не мешал)
+- name: Проверить наличие config-директории кластера
+  ansible.builtin.stat:
+    path: "/etc/postgresql/{{ postgresql_version }}/main"
+  register: pg_conf_stat
+  tags: [postgres]
+
+# Кластер валиден только если есть оба: data (PG_VERSION) и config (/etc/postgresql/N/main).
+- name: Остановить и удалить кластер если data или config отсутствуют
   ansible.builtin.command: "pg_dropcluster --stop {{ postgresql_version }} main"
-  when: not pg_cluster_stat.stat.exists
+  when: not pg_data_stat.stat.exists or not pg_conf_stat.stat.exists
   failed_when: false
   tags: [postgres]
 
-# pg_dropcluster может оставить /etc/postgresql/N/main — удаляем явно
-- name: Удалить оставшуюся конфигурацию кластера
+- name: Удалить data-директорию кластера если она невалидна
+  ansible.builtin.file:
+    path: "/var/lib/postgresql/{{ postgresql_version }}/main"
+    state: absent
+  when: not pg_data_stat.stat.exists or not pg_conf_stat.stat.exists
+  tags: [postgres]
+
+- name: Удалить config-директорию кластера если она невалидна
   ansible.builtin.file:
     path: "/etc/postgresql/{{ postgresql_version }}/main"
     state: absent
-  when: not pg_cluster_stat.stat.exists
+  when: not pg_data_stat.stat.exists or not pg_conf_stat.stat.exists
   tags: [postgres]
 
 - name: Создать кластер PostgreSQL с локалью en_US.UTF-8
