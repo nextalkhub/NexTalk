@@ -1,7 +1,7 @@
 ---
-# Установка Redis из официального репозитория packages.redis.io.
-# Ubuntu-репо даёт устаревший Redis 6, официальный — актуальный Redis 7.
-# Документация: https://redis.io/docs/latest/operate/oss_and_stack/install/install-redis/install-redis-on-linux/
+# Установка Redis из официального репозитория packages.redis.io (Redis 8.x).
+# Ubuntu-репо даёт устаревший Redis 6; официальный — Redis 8.6.x.
+# Документация: https://redis.io/docs/latest/operate/oss_and_stack/install/install-stack/apt/
 
 - name: Установить prerequisites для Redis-репозитория
   ansible.builtin.apt:
@@ -21,17 +21,31 @@
     mode: '0755'
   tags: [redis]
 
-- name: Импортировать GPG-ключ Redis
+- name: Скачать GPG-ключ Redis (ASCII-armored)
   ansible.builtin.get_url:
     url: https://packages.redis.io/gpg
-    dest: /etc/apt/keyrings/redis.asc
+    dest: /tmp/redis_key.asc
+    mode: '0644'
+    force: true
+  tags: [redis]
+
+# apt требует бинарный (dearmored) ключ в /etc/apt/keyrings/
+- name: Dearmor GPG-ключ Redis
+  ansible.builtin.shell: gpg --dearmor < /tmp/redis_key.asc > /etc/apt/keyrings/redis.gpg
+  args:
+    creates: /etc/apt/keyrings/redis.gpg
+  tags: [redis]
+
+- name: Выставить права на ключ
+  ansible.builtin.file:
+    path: /etc/apt/keyrings/redis.gpg
     mode: '0644'
   tags: [redis]
 
 - name: Добавить APT-репозиторий Redis
   ansible.builtin.apt_repository:
     repo: >-
-      deb [signed-by=/etc/apt/keyrings/redis.asc]
+      deb [signed-by=/etc/apt/keyrings/redis.gpg]
       https://packages.redis.io/deb
       {{ ansible_distribution_release }} main
     state: present
@@ -39,9 +53,9 @@
     update_cache: true
   tags: [redis]
 
-- name: Установить redis-server
+- name: Установить Redis
   ansible.builtin.apt:
-    name: redis-server
+    name: redis
     state: present
   tags: [redis]
 
