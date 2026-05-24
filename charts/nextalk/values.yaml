@@ -165,7 +165,7 @@ messagingService:
     pullPolicy: IfNotPresent
 
 voiceService:
-  replicas: 2
+  replicas: 1  # SessionStore in-memory — масштабировать после переноса на Redis
   image:
     repository: "ghcr.io/nextalkhub/nextalk/voice-service"
     tag: "0.1.0"

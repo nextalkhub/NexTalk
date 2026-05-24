@@ -48,8 +48,12 @@ spec:
               value: {{ .Values.observability.otelEndpoint }}
             - name: OTEL_EXPORTER_OTLP_PROTOCOL
               value: grpc
-            - name: LiveKit__Host
+            # LiveKit:Url — внутренний HTTP для admin API (RoomServiceClient, health check).
+            - name: LiveKit__Url
               value: http://livekit:7880
+            # LiveKit:PublicUrl — возвращается клиенту для WebSocket-подключения к SFU.
+            - name: LiveKit__PublicUrl
+              value: wss://{{ .Values.domain }}/livekit
             - name: LiveKit__ApiKey
               valueFrom:
                 secretKeyRef:
@@ -62,6 +66,8 @@ spec:
                   key: livekit-secret-key
             - name: Services__GuildService
               value: http://guild-service:5001
+            - name: Services__WebSocketGateway
+              value: http://websocket-gateway:5004
           startupProbe:
             httpGet:
               path: /healthz
