@@ -220,6 +220,9 @@ class OidcService {
         }
 
         window.location.href = `${this.config.authority}/oidc/v1/end_session?${params.toString()}`
+
+        // Зависаем — страница уйдёт сама, fulfilled не должен срабатывать до навигации.
+        await new Promise<never>(() => {})
     }
 
     // Настройка автообновления токена

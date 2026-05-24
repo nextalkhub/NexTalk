@@ -22,7 +22,7 @@ const initialState: AuthState = {
     user: null,
     tokens: null,
     isAuthenticated: false,
-    isLoading: false,
+    isLoading: true, // держим true до завершения initializeAuth
     error: null,
 }
 
@@ -294,10 +294,15 @@ const authSlice = createSlice({
             state.isAuthenticated = false
         })
 
+        builder.addCase(logout.pending, (state) => {
+            // блокируем ProtectedRoute пока страница не уйдёт на Zitadel logout
+            state.isLoading = true
+        })
         builder.addCase(logout.fulfilled, (state) => {
             state.user = null
             state.tokens = null
             state.isAuthenticated = false
+            state.isLoading = false
             state.error = null
         })
     },
