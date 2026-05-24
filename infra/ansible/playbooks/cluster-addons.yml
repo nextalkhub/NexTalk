@@ -61,22 +61,27 @@
               proxy-body-size: "50m"
       tags: [addons, ingress]
 
-    - name: Добавить Helm-репо metrics-server
-      kubernetes.core.helm_repository:
-        name: metrics-server
-        repo_url: https://kubernetes-sigs.github.io/metrics-server/
+    # Helm не используем: если metrics-server уже установлен через kubectl apply,
+    # Helm не может усыновить ресурсы без лейблов и падает.
+    - name: Применить metrics-server
+      ansible.builtin.command: >-
+        kubectl --kubeconfig={{ kubeconfig }} apply -f
+        https://github.com/kubernetes-sigs/metrics-server/releases/latest/download/components.yaml
       tags: [addons, metrics-server]
 
-    - name: Установить metrics-server
-      kubernetes.core.helm:
-        name: metrics-server
-        chart_ref: metrics-server/metrics-server
-        release_namespace: kube-system
-        create_namespace: false
-        kubeconfig: "{{ kubeconfig }}"
-        values:
-          args:
-            - --kubelet-insecure-tls
+    - name: Добавить --kubelet-insecure-tls (k3s использует self-signed kubelet certs)
+      ansible.builtin.shell: |
+        ARGS=$(kubectl --kubeconfig={{ kubeconfig }} get deployment metrics-server \
+          -n kube-system -o jsonpath='{.spec.template.spec.containers[0].args}')
+        if echo "$ARGS" | grep -q "kubelet-insecure-tls"; then
+          echo "already set"
+        else
+          kubectl --kubeconfig={{ kubeconfig }} patch deployment metrics-server \
+            -n kube-system --type=json \
+            -p='[{"op":"add","path":"/spec/template/spec/containers/0/args/-","value":"--kubelet-insecure-tls"}]'
+        fi
+      register: patch_result
+      changed_when: '"already set" not in patch_result.stdout'
       tags: [addons, metrics-server]
 
     - name: Добавить Helm-репо jetstack (cert-manager)
