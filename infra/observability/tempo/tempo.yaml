@@ -29,6 +29,8 @@ metrics_generator:
       source: tempo
   storage:
     path: /var/tempo/generator/wal
-  processors:
-    - service-graphs
-    - span-metrics
+  processor:
+    service_graphs:
+      enabled: true
+    span_metrics:
+      enabled: true
