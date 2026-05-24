@@ -143,14 +143,15 @@ jobs:
       - name: ESLint
         run: npm run lint
 
-  # Docker build & push: main и deploy-k3s-ha. Нужные джобы могут быть skipped — !failure() это учитывает.
+  # Docker build & push: всегда при пуше в main/deploy-k3s-ha, независимо от того что изменилось.
+  # GHA-кэш делает пересборку неизменившегося сервиса за ~30 сек — цена незначительна,
+  # зато все образы получают одинаковый SHA-тег → helm-deploy -e image_tag=<sha> всегда консистентен.
   docker-build-push:
-    needs: [changes, build-backend-services, test-backend-services, frontend-ci]
+    needs: [build-backend-services, test-backend-services, frontend-ci]
     if: >-
       !failure() && !cancelled() &&
       github.event_name == 'push' &&
-      (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/deploy-k3s-ha') &&
-      (needs.changes.outputs.backend == 'true' || needs.changes.outputs.frontend == 'true')
+      (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/deploy-k3s-ha')
     runs-on: ubuntu-latest
     permissions:
       contents: read
