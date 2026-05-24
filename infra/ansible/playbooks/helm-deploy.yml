@@ -34,19 +34,20 @@
     image_tag: ""
   tasks:
     - name: Создать namespace nextalk с Helm-метками (идемпотентно)
-      kubernetes.core.k8s:
-        kubeconfig: "{{ kubeconfig }}"
-        state: present
-        definition:
+      ansible.builtin.command: >-
+        kubectl --kubeconfig={{ kubeconfig }}
+        apply -f -
+      args:
+        stdin: |
           apiVersion: v1
           kind: Namespace
           metadata:
-            name: "{{ helm_namespace }}"
+            name: {{ helm_namespace }}
             labels:
               app.kubernetes.io/managed-by: Helm
             annotations:
-              meta.helm.sh/release-name: "{{ helm_release_name }}"
-              meta.helm.sh/release-namespace: "{{ helm_namespace }}"
+              meta.helm.sh/release-name: {{ helm_release_name }}
+              meta.helm.sh/release-namespace: {{ helm_namespace }}
       tags: [helm]
 
     - name: Рендер секретного values-файла из vault + inventory
