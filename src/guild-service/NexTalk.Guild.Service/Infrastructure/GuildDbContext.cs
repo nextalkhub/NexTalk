@@ -53,8 +53,8 @@ public class GuildDbContext : DbContext
             e.ToTable("members");
             e.HasKey(m => new { m.GuildId, m.UserId });
             e.Property(m => m.UserId).IsRequired().HasMaxLength(36);
-            e.Property(m => m.DisplayName).IsRequired().HasMaxLength(100);
-            e.Property(m => m.Username).IsRequired().HasMaxLength(100);
+            e.Property(m => m.DisplayName).IsRequired().HasMaxLength(255);
+            e.Property(m => m.Username).IsRequired().HasMaxLength(254);
             e.Property(m => m.Role).HasConversion<string>();
             e.Property(m => m.JoinedAt).HasDefaultValueSql("now()");
         });
