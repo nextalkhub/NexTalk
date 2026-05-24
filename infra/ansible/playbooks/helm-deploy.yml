@@ -33,10 +33,9 @@
     # Если пусто — берутся теги из values.yaml.
     image_tag: ""
   tasks:
-    - name: Создать namespace nextalk с Helm-метками (идемпотентно)
+    - name: Создать namespace nextalk с Helm-метками и PSA privileged (идемпотентно)
       ansible.builtin.command: >-
-        kubectl --kubeconfig={{ kubeconfig }}
-        apply -f -
+        kubectl --kubeconfig={{ kubeconfig }} apply -f -
       args:
         stdin: |
           apiVersion: v1
@@ -45,9 +44,25 @@
             name: {{ helm_namespace }}
             labels:
               app.kubernetes.io/managed-by: Helm
+              pod-security.kubernetes.io/enforce: privileged
             annotations:
               meta.helm.sh/release-name: {{ helm_release_name }}
               meta.helm.sh/release-namespace: {{ helm_namespace }}
+      tags: [helm]
+
+    - name: Создать TLS secret cloudflare-origin-cert
+      ansible.builtin.command: >-
+        kubectl --kubeconfig={{ kubeconfig }} create secret tls cloudflare-origin-cert
+        --cert={{ playbook_dir }}/../inventory/group_vars/all/certs/origin.crt
+        --key={{ playbook_dir }}/../inventory/group_vars/all/certs/origin.key
+        -n {{ helm_namespace }} --dry-run=client -o yaml
+      register: tls_secret_yaml
+      tags: [helm]
+
+    - name: Применить TLS secret
+      ansible.builtin.command: kubectl --kubeconfig={{ kubeconfig }} apply -f -
+      args:
+        stdin: "{{ tls_secret_yaml.stdout }}"
       tags: [helm]
 
     - name: Рендер секретного values-файла из vault + inventory
