@@ -19,9 +19,14 @@ jobs:
       frontend: ${{ steps.filter.outputs.frontend }}
     steps:
       - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
       - uses: dorny/paths-filter@v4
         id: filter
         with:
+          # push: сравниваем только файлы этого пуша (before→after), не весь бранч vs main.
+          # pull_request: base пустой → dorny использует target-бранч автоматически.
+          base: ${{ github.event_name == 'push' && github.event.before || '' }}
           filters: |
             backend:
               - 'src/guild-service/**'
