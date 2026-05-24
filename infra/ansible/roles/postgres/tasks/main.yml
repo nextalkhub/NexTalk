@@ -70,12 +70,18 @@
   register: pg_cluster_stat
   tags: [postgres]
 
-- name: Удалить невалидный кластер если существует
-  ansible.builtin.command: "pg_dropcluster {{ postgresql_version }} main"
-  when:
-    - not pg_cluster_stat.stat.exists
-    - pg_cluster_stat.stat is defined
+- name: Остановить и удалить кластер (--stop чтобы сервис не мешал)
+  ansible.builtin.command: "pg_dropcluster --stop {{ postgresql_version }} main"
+  when: not pg_cluster_stat.stat.exists
   failed_when: false
+  tags: [postgres]
+
+# pg_dropcluster может оставить /etc/postgresql/N/main — удаляем явно
+- name: Удалить оставшуюся конфигурацию кластера
+  ansible.builtin.file:
+    path: "/etc/postgresql/{{ postgresql_version }}/main"
+    state: absent
+  when: not pg_cluster_stat.stat.exists
   tags: [postgres]
 
 - name: Создать кластер PostgreSQL с локалью en_US.UTF-8
