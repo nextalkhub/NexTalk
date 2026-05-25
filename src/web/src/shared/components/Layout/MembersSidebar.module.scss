@@ -1,75 +1,115 @@
 @import '../../styles/variables';
-
-.sidebar {
-  width: 260px;
-  background: $bg-tertiary;
-  display: flex;
-  flex-direction: column;
-  padding: 20px 16px;
-  border-left: 1px solid $border-color;
-}
-
-.title {
-  font-size: 14px;
-  font-weight: 600;
-  padding-bottom: 12px;
-  margin-bottom: 16px;
-  border-bottom: 1px solid $border-color;
-}
+@import '../../styles/mixins';
 
 .list {
-  flex: 1;
+  padding: 8px 4px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
   overflow-y: auto;
+  flex: 1;
+  @include scrollbar;
 }
 
-.member {
+.groupHeader {
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 8px 0;
-  cursor: pointer;
-  border-radius: 8px;
-  transition: background 0.2s;
+  justify-content: space-between;
+  padding: 14px 14px 6px;
+  font-family: $font-mono;
+  font-size: 10.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: $fg-3;
+}
 
-  &:hover {
-    background: $bg-secondary;
-    padding-left: 8px;
+.memberRow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 12px;
+  border-radius: 6px;
+  transition: background .12s;
+  cursor: pointer;
+
+  &:hover { background: rgba(255, 255, 255, .04); }
+
+  &.offline { opacity: 0.5; }
+
+  &.online .avatarWrap::after { background: $ok; }
+  &.idle   .avatarWrap::after { background: $warn; }
+  &.dnd    .avatarWrap::after { background: $live; }
+  &.offline .avatarWrap::after { background: $fg-4; }
+}
+
+.avatarWrap {
+  position: relative;
+  flex-shrink: 0;
+
+  &::after {
+    content: "";
+    position: absolute;
+    bottom: -1px;
+    right: -1px;
+    width: 10px;
+    height: 10px;
+    border-radius: $r-pill;
+    border: 2px solid $bg-2;
+    background: $fg-4;
   }
 }
 
 .avatar {
-  width: 32px;
-  height: 32px;
-  background: #363580;
-  border-radius: 50%;
-  display: flex;
+  width: 28px;
+  height: 28px;
+  border-radius: $r-pill;
+  display: inline-flex;
   align-items: center;
   justify-content: center;
-  font-size: 12px;
+  font-family: $font-mono;
   font-weight: 600;
+  font-size: 11px;
+  color: white;
+}
+
+.info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
 }
 
 .name {
-  flex: 1;
-  font-size: 14px;
+  font-size: 13px;
+  color: $fg-0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  display: flex;
+  align-items: center;
+  gap: 4px;
 }
 
-.status {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
+.roleTag {
+  font-family: $font-mono;
+  font-size: 9px;
+  padding: 1px 5px;
+  border-radius: 4px;
+  letter-spacing: 0.04em;
+  flex-shrink: 0;
+  color: $brand-2;
+  background: rgba(144, 97, 255, .10);
+  border: 1px solid rgba(144, 97, 255, .25);
 }
 
-.online {
-  background: $accent-green;
+.ownerTag {
+  color: $warn;
+  background: rgba(245, 196, 81, .10);
+  border-color: rgba(245, 196, 81, .25);
 }
 
-.offline {
-  background: $text-muted;
-}
-
-.role {
-  font-size: 10px;
-  color: $accent-pink;
-  margin-left: 4px;
+.adminTag {
+  color: $brand-2;
+  background: rgba(144, 97, 255, .14);
+  border-color: rgba(144, 97, 255, .3);
 }

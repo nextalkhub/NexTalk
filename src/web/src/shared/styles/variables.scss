@@ -1,3 +1,4 @@
+// ---- Существующие токены (сохранены) ----
 // Colors
 $bg-primary: #0F0F12;
 $bg-secondary: #1A1A1F;
@@ -19,7 +20,6 @@ $accent-green: $accent-success;
 $error-color: $accent-error;
 
 $border-color: #27272A;
-
 
 // Gradients
 $gradient-btn: linear-gradient(135deg, $accent-primary 0%, $accent-secondary 100%);
@@ -45,3 +45,59 @@ $radius-full: 9999px;
 $breakpoint-mobile: 768px;
 $breakpoint-tablet: 1024px;
 $breakpoint-desktop: 1280px;
+
+// ---- Новые токены дизайн-системы (из chat.css :root) ----
+
+// Поверхности
+$bg-0: #06070D;
+$bg-1: #0B0D17;
+$bg-2: #10121E;
+$bg-3: #161927;
+$bg-4: #1D2134;
+$bg-5: #262B41;
+$bg-overlay: rgba(7, 8, 15, 0.72);
+
+// Границы
+$bd-1: rgba(255, 255, 255, 0.05);
+$bd-2: rgba(255, 255, 255, 0.09);
+$bd-3: rgba(255, 255, 255, 0.15);
+
+// Текст
+$fg-0: #F5F6FB;
+$fg-1: #C7CADB;
+$fg-2: #898EA7;
+$fg-3: #5A5F77;
+$fg-4: #3D4258;
+
+// Бренд
+$brand-1: #4F7CFF;
+$brand-2: #9061FF;
+$brand-3: #C254FF;
+$grad-brand: linear-gradient(135deg, #4F7CFF 0%, #9061FF 60%, #C254FF 100%);
+$grad-brand-soft: linear-gradient(135deg, rgba(79, 124, 255, .16), rgba(192, 84, 255, .10));
+
+// Статусы
+$ok: #34D399;
+$warn: #F5C451;
+$live: #FF5A6E;
+$info: #6CD6FF;
+$mention: #FFB547;
+
+// Радиусы (новые)
+$r-sm: 8px;
+$r-md: 10px;
+$r-lg: 14px;
+$r-xl: 18px;
+$r-2xl: 24px;
+$r-pill: 999px;
+
+// Размеры layout
+$rail-w: 72px;
+$side-w: 268px;
+$right-w: 280px;
+$topbar-h: 56px;
+
+// Шрифты
+$font-display: "Space Grotesk", system-ui, sans-serif;
+$font-body: "Manrope", system-ui, sans-serif;
+$font-mono: "JetBrains Mono", ui-monospace, monospace;

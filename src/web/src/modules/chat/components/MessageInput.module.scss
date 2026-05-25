@@ -1,25 +1,136 @@
 @import '../../../shared/styles/variables';
+@import '../../../shared/styles/mixins';
 
-.container {
-  background: $bg-secondary;
-  border-radius: 40px;
+.wrap {
+  flex-shrink: 0;
+  padding: 0 16px 10px;
+}
+
+.composer {
+  background: $bg-5;
+  border: 1px solid $bd-2;
+  border-radius: $r-lg;
+  overflow: hidden;
+  transition: border-color .15s;
+
+  &:focus-within { border-color: rgba(79, 124, 255, .45); }
+}
+
+.replyBar {
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 4px 4px 4px 20px;
-  width: 100%;
+  padding: 8px 12px;
+  background: rgba(0, 0, 0, .25);
+  border-bottom: 1px solid $bd-1;
+  font-size: 13px;
+  color: $fg-2;
+
+  b { color: $fg-0; }
 }
 
-.input {
+.replyText {
   flex: 1;
-  background: transparent;
-  border: none;
-  color: $text-primary;
-  font-size: 14px;
-  padding: 12px 0;
-  outline: none;
+  color: $fg-3;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 40ch;
+}
 
-  &::placeholder {
-    color: $text-secondary;
+.replyClose {
+  @include icon-btn;
+  color: $fg-3;
+  flex-shrink: 0;
+
+  &:hover { color: $fg-0; }
+}
+
+.editor {
+  display: flex;
+  align-items: flex-end;
+  gap: 4px;
+  padding: 8px 10px;
+}
+
+.attachBtn {
+  @include icon-btn;
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
+  color: $fg-2;
+  flex-shrink: 0;
+  align-self: flex-end;
+  margin-bottom: 2px;
+
+  &:not(:disabled):hover { color: $fg-0; background: rgba(255, 255, 255, .06); }
+  &:disabled { opacity: 0.4; cursor: not-allowed; }
+}
+
+.textarea {
+  flex: 1;
+  background: none;
+  border: none;
+  outline: none;
+  resize: none;
+  font-size: 14.5px;
+  color: $fg-0;
+  font-family: $font-body;
+  line-height: 1.5;
+  max-height: 200px;
+  overflow-y: auto;
+  @include scrollbar;
+
+  &::placeholder { color: $fg-3; }
+}
+
+.fmtBtns {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  flex-shrink: 0;
+  align-self: flex-end;
+  margin-bottom: 2px;
+}
+
+.fmtBtn {
+  @include icon-btn;
+  width: 28px;
+  height: 28px;
+  border-radius: 7px;
+  color: $fg-3;
+
+  &:not(:disabled):hover { color: $fg-0; background: rgba(255, 255, 255, .06); }
+  &:disabled { opacity: 0.35; cursor: not-allowed; }
+}
+
+.sendBtn {
+  @include icon-btn;
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
+  color: white;
+  background: $brand-1;
+  transition: background .15s, opacity .15s;
+
+  &:not(:disabled):hover { background: $brand-2; }
+  &:disabled { opacity: 0.35; cursor: not-allowed; background: $fg-4; }
+}
+
+.foot {
+  display: flex;
+  justify-content: space-between;
+  padding: 5px 2px 0;
+  font-size: 11px;
+  color: $fg-3;
+
+  kbd {
+    display: inline-block;
+    font-family: $font-mono;
+    font-size: 10px;
+    background: rgba(255, 255, 255, .06);
+    border: 1px solid $bd-2;
+    border-radius: 4px;
+    padding: 1px 4px;
   }
 }

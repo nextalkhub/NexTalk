@@ -1,26 +1,32 @@
-import React, { useEffect } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
+import React, { useEffect, useState } from 'react'
+import { useParams } from 'react-router-dom'
 import { MessageList } from '../../chat/components/MessageList'
 import { MessageInput } from '../../chat/components/MessageInput'
 import { ServerSidebar } from '../../../shared/components/Layout/ServerSidebar'
 import { ChannelSidebar } from '../components/ChannelSidebar'
-import { MembersSidebar } from '../../../shared/components/Layout/MembersSidebar'
-import { Button } from '../../../shared/components/Button/Button'
+import { TopBar } from '../components/TopBar'
+import { RightRail } from '../components/RightRail'
 import { Icon } from '../../../shared/components/Icon/Icon'
 import styles from './ChannelChatPage.module.scss'
-import {useAppDispatch, useAppSelector} from "../../../store.ts";
-import {selectUser} from "../../../shared/slices/authSlice.ts";
-import {fetchChannels} from "../../../shared/slices/channelSlice.ts";
-import {fetchMessages} from "../../../shared/slices/chatSlice.ts";
-import {useSignalR} from "../../../shared/hooks/useSignalR.ts";
+import { useAppDispatch, useAppSelector } from '../../../store'
+import { selectUser } from '../../../shared/slices/authSlice'
+import { fetchChannels } from '../../../shared/slices/channelSlice'
+import { fetchMessages, MessageInterface } from '../../../shared/slices/chatSlice'
+import { useSignalR } from '../../../shared/hooks/useSignalR'
+
+type RightView = 'members' | 'thread' | 'pinned' | 'search' | 'inbox'
 
 export const ChannelChatPage: React.FC = () => {
     const { serverId, channelId } = useParams()
-    const navigate = useNavigate()
-    const user = useAppSelector(selectUser)
     const dispatch = useAppDispatch()
+    const user = useAppSelector(selectUser)
     const channels = useAppSelector(state => state.channels.channels)
     const messages = useAppSelector(state => state.chat.messages)
+    const { connection } = useSignalR()
+
+    const [rightView, setRightView] = useState<RightView>('members')
+    const [showRight, setShowRight] = useState(true)
+    const [replyTo, setReplyTo] = useState<MessageInterface | null>(null)
 
     useEffect(() => {
         if (serverId) dispatch(fetchChannels(serverId))
@@ -28,104 +34,78 @@ export const ChannelChatPage: React.FC = () => {
 
     useEffect(() => {
         if (channelId && user) {
-            const userId = user.id
-            dispatch(fetchMessages({ channelId, userId }))
+            dispatch(fetchMessages({ channelId, userId: user.id }))
         }
     }, [channelId, dispatch, user])
 
-    const currentMessages =
-        messages[channelId || '']?.items || []
-    const currentChannel = channels.find(c => c.id === channelId)
-
-    const { connection } = useSignalR()
+    const currentMessages = messages[channelId ?? '']?.items ?? []
+    const currentChannel = channels.find(c => c.id === channelId) ?? null
 
     const handleSend = async (text: string) => {
         if (!connection || !channelId || !user) return
-
-        console.log(
-            'current route channel:',
-            channelId
-        )
-
-        await connection.invoke(
-            'SendMessage',
-            channelId,
-            text,
-            crypto.randomUUID(),
-        )
+        await connection.invoke('SendMessage', channelId, text, crypto.randomUUID())
     }
 
-    const handleInvite = () => {
-        if (serverId) {
-            navigate(`/servers/${serverId}/invite`)
+    const handleRightView = (view: RightView) => {
+        if (showRight && rightView === view) {
+            setShowRight(false)
+        } else {
+            setRightView(view)
+            setShowRight(true)
         }
     }
 
-    if (!serverId) {
-        return (
-            <div className={styles.layout}>
+    return (
+        <div className={`${styles.layout} ${showRight ? '' : styles.noRight}`}>
+            <div className={styles.rail}>
                 <ServerSidebar />
-                <div className={styles.chatArea}>
-                    <div className={styles.loading}>Загрузка...</div>
-                </div>
             </div>
-        )
-    }
 
-    if (!currentChannel || channels.length === 0) {
-        return (
-            <div className={styles.layout}>
-                <ServerSidebar />
+            <div className={styles.side}>
                 <ChannelSidebar />
-                <div className={styles.chatArea}>
-                    <div className={styles.notFound}>
+            </div>
+
+            <div className={styles.top}>
+                <TopBar
+                    channel={currentChannel}
+                    rightView={showRight ? rightView : null}
+                    onRightView={handleRightView}
+                />
+            </div>
+
+            <div className={styles.main}>
+                {!currentChannel ? (
+                    <div className={styles.empty}>
                         <Icon name="message" size={48} />
                         <p>Выберите канал</p>
-                        <Button variant="secondary" onClick={() => navigate('./../..')}>
-                            Вернуться назад
-                        </Button>
                     </div>
-                </div>
-                <MembersSidebar />
+                ) : (
+                    <>
+                        <MessageList
+                            messages={currentMessages}
+                            currentUserId={user?.id}
+                            onReply={setReplyTo}
+                        />
+                        <MessageInput
+                            onSend={handleSend}
+                            placeholder={`Сообщение в #${currentChannel.name}`}
+                            replyTo={replyTo}
+                            onCancelReply={() => setReplyTo(null)}
+                        />
+                    </>
+                )}
             </div>
-        )
-    }
 
-    return (
-        <div className={styles.layout}>
-            <ServerSidebar />
-            <ChannelSidebar />
-
-            <div className={styles.chatArea}>
-                <div className={styles.header}>
-                    <div className={styles.title}>
-                        <Icon name="hash" size={20} />
-                        <span>{currentChannel.name}</span>
-                    </div>
-                    <Button
-                        variant="secondary"
-                        size="small"
-                        onClick={handleInvite}
-                    >
-                        <Icon name="plus" size={14} />
-                        Пригласить
-                    </Button>
-                </div>
-
-                <MessageList
-                    messages={currentMessages}
-                    currentUserId={user?.id}
-                />
-
-                <div className={styles.inputArea}>
-                    <MessageInput
-                        onSend={handleSend}
-                        placeholder={`Сообщение в #${currentChannel.name}`}
+            {showRight && (
+                <div className={styles.right}>
+                    <RightRail
+                        view={rightView}
+                        onView={setRightView}
+                        channelId={channelId ?? ''}
+                        messages={currentMessages}
                     />
                 </div>
-            </div>
-
-            <MembersSidebar />
+            )}
         </div>
     )
 }

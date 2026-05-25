@@ -19,17 +19,21 @@
 
 @mixin scrollbar {
   &::-webkit-scrollbar {
-    width: 6px;
-  }
-
-  &::-webkit-scrollbar-track {
-    background: $bg-secondary;
-    border-radius: 10px;
+    width: 8px;
+    height: 8px;
   }
 
   &::-webkit-scrollbar-thumb {
-    background: $accent-pink;
-    border-radius: 10px;
+    background: rgba(255, 255, 255, .06);
+    border-radius: $r-pill;
+
+    &:hover {
+      background: rgba(255, 255, 255, .14);
+    }
+  }
+
+  &::-webkit-scrollbar-track {
+    background: transparent;
   }
 }
 
@@ -43,4 +47,69 @@
   border-radius: 50%;
   filter: blur(100px);
   pointer-events: none;
+}
+
+// Чип — небольшой инлайн-бейдж с иконкой и текстом
+@mixin chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 24px;
+  padding: 0 8px;
+  border-radius: $r-pill;
+  background: rgba(255, 255, 255, .04);
+  border: 1px solid $bd-1;
+  font-size: 11px;
+  color: $fg-1;
+}
+
+// Статусная точка (online / idle / dnd / offline)
+@mixin dot($color: $fg-3) {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: $r-pill;
+  background: $color;
+  flex-shrink: 0;
+}
+
+// Аватар — круглый блок с инициалом
+@mixin avatar($size: 32px, $font-size: 13px) {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: $size;
+  height: $size;
+  border-radius: $r-pill;
+  font-family: $font-mono;
+  font-weight: 600;
+  font-size: $font-size;
+  color: white;
+  flex-shrink: 0;
+  user-select: none;
+}
+
+// Кнопка-иконка (28×28, полупрозрачная при ховере)
+@mixin icon-btn {
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  background: transparent;
+  color: $fg-2;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  border: none;
+  transition: background .15s, color .15s;
+
+  &:hover {
+    background: rgba(255, 255, 255, .06);
+    color: $fg-0;
+  }
+
+  &.is-active {
+    background: rgba(79, 124, 255, .15);
+    color: $brand-1;
+  }
 }
