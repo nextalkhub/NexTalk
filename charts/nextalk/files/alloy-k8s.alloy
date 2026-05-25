@@ -66,10 +66,14 @@ loki.source.kubernetes "pods" {
 loki.process "serilog" {
   forward_to = [loki.write.obs.receiver]
 
+  // "@l" и "@t" — JMESPath quoted identifiers: @ — спец-символ ("текущий узел"),
+  // поэтому имена полей с @ экранируем как \"@l\" внутри River-строки.
+  // Без кавычек stage.json молча возвращает null → level всегда Information,
+  // timestamp падает к receipt-time, фильтрация в Grafana ломается.
   stage.json {
     expressions = {
-      _level     = "@l",
-      _timestamp = "@t",
+      _level     = "\"@l\"",
+      _timestamp = "\"@t\"",
       _trace_id  = "TraceId",
       _span_id   = "SpanId",
     }
