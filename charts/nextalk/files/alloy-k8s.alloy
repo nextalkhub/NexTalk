@@ -13,7 +13,9 @@
 // ── 1. Обнаружение подов в namespace nextalk на текущей ноде ─────────────
 // Фильтр по spec.nodeName уходит на kube-apiserver через field selector —
 // API возвращает только нужные поды, не нагружая клиент списком со всего кластера.
-// env("HOSTNAME") = имя ноды в k8s (задаётся в DaemonSet через fieldRef spec.nodeName).
+// K8S_NODE_NAME задаётся в DaemonSet через fieldRef spec.nodeName.
+// Используем K8S_NODE_NAME, а не HOSTNAME: container runtime выставляет
+// HOSTNAME=<pod-name>, что ломает field selector.
 discovery.kubernetes "pods" {
   role = "pod"
   namespaces {
@@ -21,7 +23,7 @@ discovery.kubernetes "pods" {
   }
   selectors {
     role  = "pod"
-    field = "spec.nodeName=" + env("HOSTNAME")
+    field = "spec.nodeName=" + env("K8S_NODE_NAME")
   }
 }
 

@@ -77,9 +77,12 @@ spec:
               drop: ["ALL"]
           args: ["run", "--storage.path=/var/lib/alloy/data", "--server.http.listen-addr=0.0.0.0:12345", "/etc/alloy/config.alloy"]
           env:
-            # HOSTNAME = имя k8s-ноды, используется в relabel для фильтрации
-            # подов текущей ноды и предотвращения дублирования логов.
-            - name: HOSTNAME
+            # K8S_NODE_NAME = имя ноды, на которой запущен pod Alloy.
+            # Используется в discovery.kubernetes field selector для фильтрации
+            # подов только текущей ноды. Намеренно не HOSTNAME: Kubernetes
+            # выставляет HOSTNAME=<pod-name> на уровне container runtime,
+            # и env injection через fieldRef не всегда его перекрывает.
+            - name: K8S_NODE_NAME
               valueFrom:
                 fieldRef:
                   fieldPath: spec.nodeName
