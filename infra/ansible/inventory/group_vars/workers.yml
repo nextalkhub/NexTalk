@@ -8,6 +8,14 @@ ufw_extra_rules:
   - { rule: allow, port: '80',    proto: tcp, comment: 'http (ingress-nginx)' }
   - { rule: allow, port: '443',   proto: tcp, comment: 'https (ingress-nginx)' }
 
+  # LiveKit WebRTC media. Pod монтирует hostPort на UDP-диапазон + TCP 7881,
+  # поэтому браузерные ICE-кандидаты идут НАПРЯМУЮ на публичный IP ноды,
+  # минуя ingress-nginx. Без этих правил signal проходит (через 443),
+  # а pc connection падает с "could not establish pc connection".
+  # Диапазон совпадает с charts/nextalk/values.yaml livekit.rtcPortStart/End.
+  - { rule: allow, port: '50000:50200', proto: udp, comment: 'livekit rtc udp range' }
+  - { rule: allow, port: '7881',  proto: tcp, comment: 'livekit rtc tcp fallback' }
+
   # Внутренние порты k3s — только из приватной сети.
   - { rule: allow, port: '10250', proto: tcp, src: "{{ private_network_cidr }}", comment: 'kubelet' }
   - { rule: allow, port: '8472',  proto: udp, src: "{{ private_network_cidr }}", comment: 'flannel vxlan' }
