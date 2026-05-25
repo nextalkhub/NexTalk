@@ -33,6 +33,38 @@
     # Если пусто — берутся теги из values.yaml.
     image_tag: ""
   tasks:
+    - name: Дождаться завершения удаления namespace (если завис в Terminating)
+      ansible.builtin.command: >-
+        kubectl --kubeconfig={{ kubeconfig }} get namespace {{ helm_namespace }}
+      register: ns_check
+      failed_when: false
+      changed_when: false
+      tags: [helm]
+
+    - name: Снять финализаторы с namespace если он в Terminating
+      ansible.builtin.shell: |
+        kubectl --kubeconfig={{ kubeconfig }} get namespace {{ helm_namespace }} -o json \
+          | python3 -c "import sys,json; d=json.load(sys.stdin); d['spec']['finalizers']=[]; print(json.dumps(d))" \
+          | kubectl --kubeconfig={{ kubeconfig }} replace --raw /api/v1/namespaces/{{ helm_namespace }}/finalize -f -
+      when:
+        - ns_check.rc == 0
+        - "'Terminating' in ns_check.stdout"
+      tags: [helm]
+
+    - name: Подождать пока namespace полностью исчезнет
+      ansible.builtin.command: >-
+        kubectl --kubeconfig={{ kubeconfig }} get namespace {{ helm_namespace }}
+      register: ns_gone
+      until: ns_gone.rc != 0
+      retries: 30
+      delay: 5
+      failed_when: false
+      changed_when: false
+      when:
+        - ns_check.rc == 0
+        - "'Terminating' in ns_check.stdout"
+      tags: [helm]
+
     - name: Создать namespace nextalk с Helm-метками и PSA privileged (идемпотентно)
       ansible.builtin.command: >-
         kubectl --kubeconfig={{ kubeconfig }} apply -f -
