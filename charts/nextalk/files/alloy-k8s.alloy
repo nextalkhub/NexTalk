@@ -1,42 +1,35 @@
-// Grafana Alloy — сборщик логов k3s подов NexTalk
-// Читает stdout/stderr подов через Kubernetes API,
-// парсит Serilog CompactJson, пишет structured_metadata (trace_id/span_id),
-// отправляет в Loki на Obs VPS.
-//
-// Поток данных:
-//   discovery.kubernetes ──► discovery.relabel ──► loki.source.kubernetes
-//                                                         │
-//                                                   loki.process
-//                                                         │
-//                                                   loki.write ──► Loki (Obs VPS)
+// ─────────────────────────────────────────────────────────────
+// Kubernetes Pod Log Discovery (k3s / DaemonSet Alloy)
+// ─────────────────────────────────────────────────────────────
 
-// ── 1. Обнаружение всех подов в namespace nextalk ────────────────────────
-// Без field selector: фильтрация по ноде через relabel надёжнее —
-// field selector + namespace в некоторых версиях k3s/Alloy возвращает [].
+// 1. Discover pods in namespace nextalk
 discovery.kubernetes "pods" {
   role = "pod"
+
   namespaces {
     names = ["nextalk"]
   }
 }
 
-// ── 2. Relabeling: фильтр по ноде + оставляем поды с label app= ──────────
+// 2. Filter + enrich targets (node-aware + labels)
 discovery.relabel "pods" {
   targets = discovery.kubernetes.pods.targets
 
-  // Оставляем только поды на текущей ноде Alloy.
+  // keep only pods on current node
   rule {
     source_labels = ["__meta_kubernetes_pod_node_name"]
     regex         = sys.env("K8S_NODE_NAME")
     action        = "keep"
   }
 
+  // keep only pods with app label
   rule {
     source_labels = ["__meta_kubernetes_pod_label_app"]
     regex         = ".+"
     action        = "keep"
   }
 
+  // attach k8s metadata as labels
   rule {
     source_labels = ["__meta_kubernetes_namespace"]
     target_label  = "namespace"
@@ -58,20 +51,16 @@ discovery.relabel "pods" {
   }
 }
 
-// ── 3. Чтение логов через Kubernetes API ─────────────────────────────────
+// 3. Read logs from pods
 loki.source.kubernetes "pods" {
   targets    = discovery.relabel.pods.output
   forward_to = [loki.process.serilog.receiver]
 }
 
-// ── 4. Pipeline: парсинг Serilog CompactJson ──────────────────────────────
+// 4. Parse Serilog Compact JSON logs
 loki.process "serilog" {
   forward_to = [loki.write.obs.receiver]
 
-  // "@l" и "@t" — JMESPath quoted identifiers: @ — спец-символ ("текущий узел"),
-  // поэтому имена полей с @ экранируем как \"@l\" внутри River-строки.
-  // Без кавычек stage.json молча возвращает null → level всегда Information,
-  // timestamp падает к receipt-time, фильтрация в Grafana ломается.
   stage.json {
     expressions = {
       _level     = "\"@l\"",
@@ -81,10 +70,9 @@ loki.process "serilog" {
     }
   }
 
-  // Serilog опускает "@l" для Information — подставляем дефолт.
   stage.template {
     source   = "_level"
-    template = "{{ "{{" }} if .Value {{ "}}" }}{{ "{{" }} .Value {{ "}}" }}{{ "{{" }} else {{ "}}" }}Information{{ "{{" }} end {{ "}}" }}"
+    template = "{{ if .Value }}{{ .Value }}{{ else }}Information{{ end }}"
   }
 
   stage.labels {
@@ -103,13 +91,16 @@ loki.process "serilog" {
   stage.timestamp {
     source           = "_timestamp"
     format           = "RFC3339Nano"
-    fallback_formats = ["2006-01-02T15:04:05.9999999Z07:00", "RFC3339"]
+    fallback_formats = [
+      "2006-01-02T15:04:05.9999999Z07:00",
+      "RFC3339"
+    ]
   }
 }
 
-// ── 5. Отправка в Loki на Obs VPS ─────────────────────────────────────────
+// 5. Write to Loki
 loki.write "obs" {
   endpoint {
-    url = "{{ .Values.observability.lokiUrl }}/loki/api/v1/push"
+    url = sys.env("LOKI_URL") + "/loki/api/v1/push"
   }
 }

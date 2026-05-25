@@ -42,7 +42,7 @@ metadata:
   namespace: {{ .Values.namespace }}
 data:
   config.alloy: |
-{{ tpl (.Files.Get "files/alloy-k8s.alloy") . | indent 4 }}
+{{ .Files.Get "files/alloy-k8s.alloy" | indent 4 }}
 
 ---
 apiVersion: apps/v1
@@ -83,6 +83,8 @@ spec:
               valueFrom:
                 fieldRef:
                   fieldPath: spec.nodeName
+            - name: LOKI_URL
+              value: "{{ .Values.observability.lokiUrl }}"
           volumeMounts:
             - name: config
               mountPath: /etc/alloy/config.alloy
