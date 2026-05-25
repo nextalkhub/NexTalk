@@ -123,3 +123,16 @@ spec:
           port: 443
         - protocol: TCP
           port: 80
+    # STUN (UDP 19302) — LiveKit с use_external_ip: true опрашивает
+    # stun.l.google.com:19302 для обнаружения публичного IP под ICE-кандидаты.
+    # Без этого правила livekit падает с "could not resolve external IP".
+    - to:
+        - ipBlock:
+            cidr: 0.0.0.0/0
+            except:
+              - {{ .Values.network.privateCidr }}
+              - 172.16.0.0/12
+              - 192.168.0.0/16
+      ports:
+        - protocol: UDP
+          port: 19302
