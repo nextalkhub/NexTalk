@@ -62,9 +62,10 @@ loki.process "serilog" {
   forward_to = [loki.write.obs.receiver]
 
   stage.json {
+    drop_malformed = true
     expressions = {
-      _level     = "\"@l\"",
-      _timestamp = "\"@t\"",
+      _level     = `"@l"`,
+      _timestamp = `"@t"`,
       _trace_id  = "TraceId",
       _span_id   = "SpanId",
     }
