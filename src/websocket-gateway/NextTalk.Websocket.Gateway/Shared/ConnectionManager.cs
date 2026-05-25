@@ -3,7 +3,7 @@ namespace NextTalk.Websocket.Gateway.Shared;
 public sealed class ConnectionManager : IConnectionManager
 {
     private readonly Dictionary<string, HashSet<string>> _conns = new();
-    private readonly Dictionary<string, IReadOnlyList<Guid>> _guilds = new();
+    private readonly Dictionary<string, HashSet<Guid>> _guilds = new();
     private readonly object _lock = new();
 
     public void Register(string userId, string connectionId, IReadOnlyList<Guid> guildIds)
@@ -13,7 +13,7 @@ public sealed class ConnectionManager : IConnectionManager
             if (!_conns.TryGetValue(userId, out var set))
                 _conns[userId] = set = [];
             set.Add(connectionId);
-            _guilds[userId] = guildIds;
+            _guilds[userId] = [.. guildIds];
         }
     }
 
@@ -26,7 +26,26 @@ public sealed class ConnectionManager : IConnectionManager
             if (set.Count > 0) return null;
             _conns.Remove(userId);
             _guilds.Remove(userId, out var guildIds);
-            return guildIds ?? [];
+            return guildIds is null ? [] : [.. guildIds];
+        }
+    }
+
+    public void AddGuild(string userId, Guid guildId)
+    {
+        lock (_lock)
+        {
+            if (!_guilds.TryGetValue(userId, out var set))
+                _guilds[userId] = set = [];
+            set.Add(guildId);
+        }
+    }
+
+    public void RemoveGuild(string userId, Guid guildId)
+    {
+        lock (_lock)
+        {
+            if (_guilds.TryGetValue(userId, out var set))
+                set.Remove(guildId);
         }
     }
 
@@ -42,7 +61,7 @@ public sealed class ConnectionManager : IConnectionManager
     {
         lock (_lock)
         {
-            return _guilds.TryGetValue(userId, out var guilds) ? guilds : [];
+            return _guilds.TryGetValue(userId, out var guilds) ? [.. guilds] : [];
         }
     }
 

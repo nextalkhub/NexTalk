@@ -146,7 +146,7 @@ const MemberGroup: React.FC<GroupProps> = ({
 
         {members.map(member => (
             <MemberItem
-                key={member.id}
+                key={member.userId}
                 member={member}
                 onKick={onKick}
                 onBan={onBan}

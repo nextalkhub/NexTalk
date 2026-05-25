@@ -23,6 +23,10 @@ public static class DisconnectEndpoints
                     await hub.Groups.RemoveFromGroupAsync(connId, ChatHub.GuildGroup(guildId));
                 }
 
+                // Гильдия больше не в наборе пользователя — иначе PresenceMonitor пришлёт
+                // в неё presence.offline после disconnect, а юзер уже не участник.
+                connections.RemoveGuild(userId, guildId);
+
                 // Уведомляем участников гильдии
                 await hub.Clients
                     .Group(ChatHub.GuildGroup(guildId))

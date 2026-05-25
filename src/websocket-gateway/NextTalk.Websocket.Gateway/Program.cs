@@ -171,16 +171,18 @@ builder.Services.AddSwaggerGen(c =>
     });
 });
 
-// Redis — lazy: IConnectionMultiplexer создаётся при первом resolve, не при регистрации.
-// Это позволяет тестам подменить регистрацию до того, как соединение будет установлено.
-var redisConnectionString = builder.Configuration.GetConnectionString("Redis")
-    ?? throw new InvalidOperationException("ConnectionStrings:Redis is not configured");
+// Redis — ленивая фабрика: ConnectionMultiplexer создаётся при первом resolve.
+// Это позволяет тестам подменить IConnectionMultiplexer / IConnectionManager до того,
+// как соединение с Redis будет реально установлено.
 builder.Services.AddSingleton<IConnectionMultiplexer>(_ =>
-    ConnectionMultiplexer.Connect(redisConnectionString));
+    ConnectionMultiplexer.Connect(
+        builder.Configuration.GetConnectionString("Redis")
+        ?? throw new InvalidOperationException("ConnectionStrings:Redis is not configured")));
 
-// SignalR - userId маппинг из JWT sub claim через SubClaimUserIdProvider
+// SignalR - userId маппинг из JWT sub claim через SubClaimUserIdProvider.
+// Redis backplane подключается так же лениво — строка читается только при resolve.
 builder.Services.AddSignalR()
-    .AddStackExchangeRedis(redisConnectionString);
+    .AddStackExchangeRedis(builder.Configuration.GetConnectionString("Redis") ?? "localhost:6379");
 builder.Services.AddSingleton<IUserIdProvider, SubClaimUserIdProvider>();
 
 // Presence state (Redis-backed, shared across replicas)

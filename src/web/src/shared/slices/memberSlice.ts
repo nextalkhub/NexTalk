@@ -97,7 +97,29 @@ const membersSlice = createSlice({
                     state.members[serverId]?.filter(
                         m => m.userId !== userId
                     ) || []
-            }
+            },
+
+            memberLeft: (
+                state,
+                action: PayloadAction<{
+                    serverId: string
+                    userId: string
+                }>
+            ) => {
+                const { serverId, userId } = action.payload
+
+                state.members[serverId] =
+                    state.members[serverId]?.filter(
+                        m => m.userId !== userId
+                    ) || []
+            },
+
+            clearMembers: (
+                state,
+                action: PayloadAction<string>
+            ) => {
+                delete state.members[action.payload]
+            },
         },
         extraReducers: builder => {
             builder
@@ -130,7 +152,9 @@ const membersSlice = createSlice({
 export const {
     memberJoined,
     memberKicked,
-    memberBanned
+    memberBanned,
+    memberLeft,
+    clearMembers,
 } = membersSlice.actions
 
 export default membersSlice.reducer

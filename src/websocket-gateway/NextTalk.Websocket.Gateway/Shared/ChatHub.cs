@@ -131,6 +131,38 @@ public sealed class ChatHub : Hub
         return Task.CompletedTask;
     }
 
+    /// <summary>
+    /// Подписать соединение на realtime-события указанной гильдии. Фронт вызывает
+    /// после принятия инвайта / создания гильдии, иначе member.joined / channel.created
+    /// прилетят остальным, а новому участнику — нет.
+    /// Membership проверяется через guild-service: иначе можно подписаться на чужую гильдию.
+    /// </summary>
+    public async Task<bool> JoinGuildGroup(Guid guildId)
+    {
+        var userId = GetUserId();
+        if (string.IsNullOrEmpty(userId)) return false;
+
+        var correlationId = Guid.NewGuid().ToString();
+        var guilds = await _guildClient.GetUserGuildsAsync(userId, correlationId);
+        if (guilds.All(g => g.Id != guildId))
+            return false;
+
+        await Groups.AddToGroupAsync(Context.ConnectionId, GuildGroup(guildId));
+        _connections.AddGuild(userId, guildId);
+        return true;
+    }
+
+    /// <summary>
+    /// Отписать соединение от гильдии (например, после guild.force.disconnect / leave guild).
+    /// </summary>
+    public async Task LeaveGuildGroup(Guid guildId)
+    {
+        var userId = GetUserId();
+        await Groups.RemoveFromGroupAsync(Context.ConnectionId, GuildGroup(guildId));
+        if (!string.IsNullOrEmpty(userId))
+            _connections.RemoveGuild(userId, guildId);
+    }
+
     private string GetUserId() => Context.User.GetUserId();
 
     private string GetDisplayName() => Context.User.GetDisplayName();

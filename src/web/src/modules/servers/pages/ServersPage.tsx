@@ -8,10 +8,12 @@ import styles from './ServersPage.module.scss'
 import {useAppDispatch, useAppSelector} from "../../../store.ts";
 import {acceptInviteThunk} from "../../../shared/slices/inviteSlice.ts";
 import {InviteJoinCard} from "../../invite/components/InviteJoinCard.tsx";
+import {useSignalR} from "../../../shared/hooks/useSignalR.ts";
 
 export const ServersPage: React.FC = () => {
     const navigate = useNavigate()
     const dispatch = useAppDispatch()
+    const { connection } = useSignalR()
 
     const user = useAppSelector(selectUser)
     const servers = useAppSelector(selectServers)
@@ -49,9 +51,15 @@ export const ServersPage: React.FC = () => {
 
     const handleJoinServer = async (code: string) => {
         try {
-            await dispatch(
+            const { guildId } = await dispatch(
                 acceptInviteThunk(code)
             ).unwrap()
+
+            // Подписываемся на realtime-канал гильдии до fetchServers — иначе
+            // member.joined и channel.created могут проскочить мимо.
+            if (connection && guildId) {
+                await connection.invoke('JoinGuildGroup', guildId).catch(() => {})
+            }
 
             dispatch(fetchServers())
         } catch (e) {

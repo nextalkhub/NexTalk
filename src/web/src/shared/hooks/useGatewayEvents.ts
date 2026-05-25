@@ -1,45 +1,53 @@
 import { useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useAppDispatch } from '../../store'
-import {messageReceived} from "../slices/chatSlice.ts";
-import {useSignalR} from "./useSignalR.ts";
+import { messageReceived } from '../slices/chatSlice.ts'
+import { useSignalR } from './useSignalR.ts'
 import { voiceParticipantJoined, voiceParticipantLeft } from '../slices/voiceSlice'
-import {addChannel, setCurrentChannel} from "../slices/channelSlice.ts";
-import {memberBanned, memberJoined, memberKicked} from "../slices/memberSlice.ts";
-import {useNavigate} from "react-router-dom";
+import { addChannel, removeChannel, removeChannelsByServer, setCurrentChannel } from '../slices/channelSlice.ts'
+import { clearMembers, memberBanned, memberJoined, memberKicked, memberLeft } from '../slices/memberSlice.ts'
+import { removeServer } from '../slices/serverSlice.ts'
+import { userOffline, userOnline } from '../slices/presenceSlice.ts'
+
+// SignalR JsonHubProtocol сериализует анонимные C#-объекты в camelCase, поэтому
+// payload-ы здесь зеркалят свойства камеля. PascalCase оставляли по ошибке.
 
 interface MessageCreatedEvent {
     type: 'message.created'
     payload: {
-        AuthorName: string;
-        Id: string
-        ChannelId: string
-        AuthorId: string
-        Content: string
-        CreatedAt: string
+        id: string
+        channelId: string
+        authorId: string
+        authorName: string
+        content: string
+        createdAt: string
     }
 }
 
 interface VoiceJoinedEvent {
     type: 'voice.joined'
     payload: {
-        ChannelId: string
-        UserId: string
+        channelId: string
+        userId: string
     }
 }
 
 interface VoiceLeftEvent {
     type: 'voice.left'
     payload: {
-        ChannelId: string
-        UserId: string
+        channelId: string
+        userId: string
     }
 }
 
 interface PresenceOnlineEvent {
     type: 'presence.online'
-    payload: {
-        userId: string
-    }
+    payload: { userId: string }
+}
+
+interface PresenceOfflineEvent {
+    type: 'presence.offline'
+    payload: { userId: string }
 }
 
 interface ChannelCreatedEvent {
@@ -52,10 +60,17 @@ interface ChannelCreatedEvent {
     }
 }
 
+interface ChannelDeletedEvent {
+    type: 'channel.deleted'
+    payload: {
+        channelId: string
+        guildId: string
+    }
+}
+
 interface MemberJoinedEvent {
     type: 'member.joined'
     payload: {
-        id: string
         userId: string
         guildId: string
         displayName: string
@@ -79,11 +94,22 @@ interface MemberBannedEvent {
     }
 }
 
-interface ForcedDisconnectEvent {
-    type: 'guild.force.disconnect'
+interface MemberLeftEvent {
+    type: 'member.left'
     payload: {
+        userId: string
         guildId: string
     }
+}
+
+interface GuildDeletedEvent {
+    type: 'guild.deleted'
+    payload: { guildId: string }
+}
+
+interface ForcedDisconnectEvent {
+    type: 'guild.force.disconnect'
+    payload: { guildId: string }
 }
 
 type GatewayEvent =
@@ -91,47 +117,48 @@ type GatewayEvent =
     | VoiceJoinedEvent
     | VoiceLeftEvent
     | PresenceOnlineEvent
+    | PresenceOfflineEvent
     | ChannelCreatedEvent
+    | ChannelDeletedEvent
     | MemberJoinedEvent
     | MemberKickedEvent
     | MemberBannedEvent
+    | MemberLeftEvent
+    | GuildDeletedEvent
     | ForcedDisconnectEvent
 
 export const useGatewayEvents = () => {
     const { connection } = useSignalR()
     const dispatch = useAppDispatch()
-    const navigate = useNavigate();
+    const navigate = useNavigate()
 
     useEffect(() => {
         if (!connection) return
 
         const handler = (event: GatewayEvent) => {
-            console.log('GatewayEvent:', event)
-
             switch (event.type) {
-
                 case 'message.created':
                     dispatch(messageReceived({
-                        id: event.payload.Id,
-                        channelId: event.payload.ChannelId,
-                        authorId: event.payload.AuthorId,
-                        authorName: event.payload.AuthorName,
-                        content: event.payload.Content,
-                        createdAt: event.payload.CreatedAt,
+                        id: event.payload.id,
+                        channelId: event.payload.channelId,
+                        authorId: event.payload.authorId,
+                        authorName: event.payload.authorName,
+                        content: event.payload.content,
+                        createdAt: event.payload.createdAt,
                     }))
                     break
 
                 case 'voice.joined':
                     dispatch(voiceParticipantJoined({
-                        channelId: event.payload.ChannelId,
-                        userId: event.payload.UserId,
+                        channelId: event.payload.channelId,
+                        userId: event.payload.userId,
                     }))
                     break
 
                 case 'voice.left':
                     dispatch(voiceParticipantLeft({
-                        channelId: event.payload.ChannelId,
-                        userId: event.payload.UserId,
+                        channelId: event.payload.channelId,
+                        userId: event.payload.userId,
                     }))
                     break
 
@@ -140,46 +167,70 @@ export const useGatewayEvents = () => {
                         id: event.payload.id,
                         serverId: event.payload.guildId,
                         name: event.payload.name,
-                        type: event.payload.type === 0
-                            ? 'text'
-                            : 'voice',
+                        type: event.payload.type === 0 ? 'text' : 'voice',
                     }))
+                    break
+
+                case 'channel.deleted':
+                    dispatch(removeChannel(event.payload.channelId))
                     break
 
                 case 'member.joined':
                     dispatch(memberJoined({
                         serverId: event.payload.guildId,
                         member: {
-                            id: event.payload.id,
+                            id: event.payload.userId,
                             userId: event.payload.userId,
                             displayName: event.payload.displayName,
                             username: event.payload.username,
-                            role: 'Member'
-                        }
+                            role: 'Member',
+                        },
                     }))
                     break
 
                 case 'member.kicked':
                     dispatch(memberKicked({
                         serverId: event.payload.guildId,
-                        userId: event.payload.userId
+                        userId: event.payload.userId,
                     }))
                     break
 
                 case 'member.banned':
                     dispatch(memberBanned({
                         serverId: event.payload.guildId,
-                        userId: event.payload.userId
+                        userId: event.payload.userId,
                     }))
                     break
 
+                case 'member.left':
+                    dispatch(memberLeft({
+                        serverId: event.payload.guildId,
+                        userId: event.payload.userId,
+                    }))
+                    break
+
+                case 'guild.deleted':
+                    dispatch(removeServer(event.payload.guildId))
+                    dispatch(removeChannelsByServer(event.payload.guildId))
+                    dispatch(clearMembers(event.payload.guildId))
+                    navigate('/servers')
+                    break
+
                 case 'guild.force.disconnect':
-                    dispatch(setCurrentChannel(null));
-                    navigate('/servers');
+                    dispatch(removeServer(event.payload.guildId))
+                    dispatch(removeChannelsByServer(event.payload.guildId))
+                    dispatch(clearMembers(event.payload.guildId))
+                    dispatch(setCurrentChannel(null))
+                    connection.invoke('LeaveGuildGroup', event.payload.guildId).catch(() => {})
+                    navigate('/servers')
                     break
 
                 case 'presence.online':
-                    console.log('online')
+                    dispatch(userOnline(event.payload.userId))
+                    break
+
+                case 'presence.offline':
+                    dispatch(userOffline(event.payload.userId))
                     break
             }
         }

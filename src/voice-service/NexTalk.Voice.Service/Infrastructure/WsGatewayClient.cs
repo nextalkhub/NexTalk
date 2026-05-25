@@ -1,4 +1,5 @@
 using System.Net.Http.Json;
+using System.Text.Json;
 
 namespace NexTalk.Voice.Service.Infrastructure;
 
@@ -9,6 +10,9 @@ namespace NexTalk.Voice.Service.Infrastructure;
 /// </summary>
 public sealed class WsGatewayClient
 {
+    // camelCase для совместимости с фронтендом (event.payload.userId).
+    private static readonly JsonSerializerOptions JsonOpts = new(JsonSerializerDefaults.Web);
+
     private readonly HttpClient _http;
     private readonly ILogger<WsGatewayClient> _logger;
 
@@ -33,7 +37,7 @@ public sealed class WsGatewayClient
             HttpMethod.Post,
             $"/internal/broadcast/guild/{guildId}")
         {
-            Content = JsonContent.Create(new { Type = eventType, Payload = payload })
+            Content = JsonContent.Create(new { type = eventType, payload }, options: JsonOpts)
         };
         request.Headers.TryAddWithoutValidation("X-Correlation-Id", correlationId);
 

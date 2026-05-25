@@ -14,7 +14,8 @@ export interface Channel {
 
 export interface Member {
     displayName: string
-    id: string
+    // id отсутствует в payload member.joined от gateway — используем userId как стабильный ключ
+    id?: string
     role: 'Owner' | 'Admin' | 'Member'
     userId: string
     username: string

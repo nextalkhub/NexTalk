@@ -38,7 +38,16 @@ const channelSlice = createSlice({
             if (!exists) {
                 state.channels.push(action.payload)
             }
-        }
+        },
+        removeChannel: (state, action: PayloadAction<string>) => {
+            state.channels = state.channels.filter(c => c.id !== action.payload)
+            if (state.currentChannelId === action.payload) {
+                state.currentChannelId = null
+            }
+        },
+        removeChannelsByServer: (state, action: PayloadAction<string>) => {
+            state.channels = state.channels.filter(c => c.serverId !== action.payload)
+        },
     },
     extraReducers: builder => {
         builder
@@ -72,5 +81,5 @@ export const createChannel = createAsyncThunk(
     }
 )
 
-export const { setCurrentChannel, addChannel } = channelSlice.actions
+export const { setCurrentChannel, addChannel, removeChannel, removeChannelsByServer } = channelSlice.actions
 export default channelSlice.reducer

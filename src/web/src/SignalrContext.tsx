@@ -27,13 +27,13 @@ export const SignalRProvider = ({
     useEffect(() => {
         if (!isAuthenticated) return
 
-        const token = oidcService.getAccessToken()
+        if (!oidcService.getAccessToken()) return
 
-        if (!token) return
-
+        // Фабрика вызывается на каждом коннекте/реконнекте — берём свежий токен
+        // из oidcService, иначе после refresh SignalR будет ходить с протухшим.
         const conn = new HubConnectionBuilder()
             .withUrl(import.meta.env.VITE_WS_URL, {
-                accessTokenFactory: () => token,
+                accessTokenFactory: () => oidcService.getAccessToken() ?? '',
                 transport: HttpTransportType.WebSockets,
                 skipNegotiation: true,
             })

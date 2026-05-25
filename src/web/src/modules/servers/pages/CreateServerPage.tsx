@@ -5,9 +5,9 @@ import { Input } from '../../../shared/components/Input/Input'
 import { GradientBackground } from '../../../shared/components/GradientBackground/GradientBackground'
 import { Icon } from '../../../shared/components/Icon/Icon'
 import styles from './CreateServerPage.module.scss'
-import {createGuild} from "../../../processes/guild/createGuild.ts";
 import {createServer} from "../../../shared/slices/serverSlice.ts";
 import {useAppDispatch} from "../../../store.ts";
+import {useSignalR} from "../../../shared/hooks/useSignalR.ts";
 
 export const CreateServerPage: React.FC = () => {
   const navigate = useNavigate()
@@ -15,8 +15,7 @@ export const CreateServerPage: React.FC = () => {
   const [displayName, setDisplayName] = useState('')
   const [loading, setLoading] = useState(false)
   const dispatch = useAppDispatch()
-
-  const USE_MOCK = import.meta.env.VITE_USE_AUTH_MOCK === 'true'
+  const { connection } = useSignalR()
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -24,30 +23,21 @@ export const CreateServerPage: React.FC = () => {
 
     setLoading(true)
 
-    if (USE_MOCK) {
-      await new Promise(res => setTimeout(res, 300))
+    try {
+      const guild = await dispatch(createServer({ name, displayName })).unwrap()
 
-      const newServer = {
-        name,
-        displayName
+      // Создатель уже member на бэке, но ChatHub узнал о гильдии только на старте
+      // соединения. JoinGuildGroup подписывает текущий connection до того, как
+      // прилетит первый channel.created / member.joined.
+      if (connection && guild?.id) {
+        await connection.invoke('JoinGuildGroup', guild.id).catch(() => {})
       }
-
-      dispatch(createServer(newServer))
-
+    } catch (err) {
+      console.error(err)
+    } finally {
       setLoading(false)
       navigate('/servers')
-      return
     }
-
-    const data = {
-      name,
-      displayName
-    }
-
-    await createGuild(data)
-
-    setLoading(false)
-    navigate('/servers')
   }
 
   return (
