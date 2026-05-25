@@ -1,7 +1,4 @@
 // Grafana Alloy — сборщик логов k3s подов NexTalk
-// Читает stdout/stderr подов через Kubernetes API,
-// парсит Serilog CompactJson, пишет structured_metadata (trace_id/span_id),
-// отправляет в Loki на Obs VPS.
 //
 // Поток данных:
 //   discovery.kubernetes ──► discovery.relabel ──► loki.source.kubernetes
@@ -10,33 +7,38 @@
 //                                                         │
 //                                                   loki.write ──► Loki (Obs VPS)
 
-// ── 1. Обнаружение подов в namespace nextalk на текущей ноде ─────────────
-// Фильтр по spec.nodeName уходит на kube-apiserver через field selector —
-// API возвращает только нужные поды, не нагружая клиент списком со всего кластера.
-// K8S_NODE_NAME задаётся в DaemonSet через fieldRef spec.nodeName.
-// Используем K8S_NODE_NAME, а не HOSTNAME: container runtime выставляет
-// HOSTNAME=<pod-name>, что ломает field selector.
+// ── 1. Обнаружение всех подов namespace nextalk ───────────────────────────
+// Без field selector: фильтрация по ноде делается в discovery.relabel через
+// __meta_kubernetes_pod_node_name — это надёжнее, чем field selector
+// (не зависит от того, как container runtime выставляет HOSTNAME).
 discovery.kubernetes "pods" {
   role = "pod"
   namespaces {
     names = ["nextalk"]
   }
-  selectors {
-    role  = "pod"
-    field = "spec.nodeName=" + env("K8S_NODE_NAME")
-  }
 }
 
-// ── 2. Relabeling: оставляем только поды с label app=<имя-сервиса> ────────
+// ── 2. Relabeling: фильтрация + маппинг меток ─────────────────────────────
 discovery.relabel "pods" {
   targets = discovery.kubernetes.pods.targets
 
+  // Оставляем только поды на текущей ноде Alloy.
+  // K8S_NODE_NAME инжектируется из spec.nodeName через downward API.
+  // env() вычисляется при загрузке конфига → подставляется реальное имя ноды.
+  rule {
+    source_labels = ["__meta_kubernetes_pod_node_name"]
+    regex         = env("K8S_NODE_NAME")
+    action        = "keep"
+  }
+
+  // Оставляем только поды с label app= (сервисы NexTalk).
   rule {
     source_labels = ["__meta_kubernetes_pod_label_app"]
     regex         = ".+"
     action        = "keep"
   }
 
+  // namespace, pod, container — видимые метки в Loki.
   rule {
     source_labels = ["__meta_kubernetes_namespace"]
     target_label  = "namespace"
@@ -52,6 +54,7 @@ discovery.relabel "pods" {
     target_label  = "container"
   }
 
+  // service — по label app= (guild-service, messaging-service, …).
   rule {
     source_labels = ["__meta_kubernetes_pod_label_app"]
     target_label  = "service"
