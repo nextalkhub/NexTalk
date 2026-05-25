@@ -118,6 +118,8 @@ spec:
           configMap:
             name: alloy-config
         - name: data
-          emptyDir: {}
+          hostPath:
+            path: /var/lib/alloy/data
+            type: DirectoryOrCreate
         - name: tmp
           emptyDir: {}

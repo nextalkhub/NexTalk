@@ -64,9 +64,6 @@ export interface Message {
 export interface GetMessagesResponse {
     messages: Message[]
     nextCursor: string | null
-    prevCursor: string | null
-    hasMore: boolean
-    total?: number
 }
 
 export interface CreateMessageRequest {
