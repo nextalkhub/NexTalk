@@ -24,14 +24,16 @@ discovery.relabel "pods" {
 
   // Оставляем только поды на текущей ноде Alloy.
   // K8S_NODE_NAME инжектируется из spec.nodeName через downward API.
-  // env() вычисляется при загрузке конфига → подставляется реальное имя ноды.
+  // sys.env() — актуальная функция Alloy (env() deprecated, возвращает "").
   rule {
     source_labels = ["__meta_kubernetes_pod_node_name"]
-    regex         = env("K8S_NODE_NAME")
+    regex         = sys.env("K8S_NODE_NAME")
     action        = "keep"
   }
 
-  // Оставляем только поды с label app= (сервисы NexTalk).
+  // Оставляем только поды с непустым label app= (сервисы NexTalk).
+  // Намеренно не фильтруем по конкретному значению — app.kubernetes.io/name
+  // и другие формы лейбла не потеряются.
   rule {
     source_labels = ["__meta_kubernetes_pod_label_app"]
     regex         = ".+"
