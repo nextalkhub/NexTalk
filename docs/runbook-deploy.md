@@ -370,10 +370,9 @@ ansible-playbook -i inventory/hosts.ini playbooks/k3s.yml
 ```
 **Время:** 8-12 мин.
 **Что делает:**
-1. Кладёт kube-vip DaemonSet manifests на 3 control-plane ноды.
-2. `serial: 1` — ставит k3s на control-plane-1 c `--cluster-init`, ждёт VIP, потом control-plane-2 → control-plane-3 через VIP `https://10.19.0.10:6443`.
-3. Ставит k3s agent на 3 worker'ах.
-4. **Скачивает kubeconfig с control-plane-1**, заменяет `127.0.0.1` → `10.19.0.10` (VIP), кладёт в `infra/ansible/kubeconfig` (gitignored).
+1. `serial: 1` — ставит k3s на control-plane-1 c `--cluster-init`, ждёт apiserver, потом control-plane-2 → control-plane-3 через HAProxy `https://10.19.0.51:6443`.
+2. Ставит k3s agent на 3 worker'ах.
+3. **Скачивает kubeconfig с control-plane-1**, заменяет `127.0.0.1` → `10.19.0.51` (HAProxy), кладёт в `infra/ansible/kubeconfig` (gitignored).
 
 **Проверка с control-plane (через bastion):**
 ```bash
@@ -381,23 +380,15 @@ ssh -J root@nextalk-bastion root@10.19.0.11 'kubectl get nodes'
 # 6 нод Ready: 3 control-plane с ролями control-plane,etcd,master; 3 worker
 ```
 
-**Проверка с локалки (kubeconfig у тебя есть, но 10.19.0.10 недостижим):**
-SSH-tunnel:
+**Проверка с локалки (10.19.0.51 недостижим из интернета):**
 ```bash
-# В отдельном терминале
-ssh -L 6443:10.19.0.10:6443 -N nextalk-control-plane-1
-
-# В основном терминале
-export KUBECONFIG=$PWD/kubeconfig
-# Подправь server: в kubeconfig на https://127.0.0.1:6443 и добавь insecure-skip-tls-verify
-sed -i 's|server: https://10.19.0.10:6443|server: https://127.0.0.1:6443|' kubeconfig
+ssh -L 6443:10.19.0.51:6443 -N nextalk-control-plane-1  # в отдельном терминале
+sed -i 's|server: https://10.19.0.51:6443|server: https://127.0.0.1:6443|' kubeconfig
 kubectl --insecure-skip-tls-verify get nodes
 ```
-(Это разовая боль — см. [decisions.md → "Достижимость k3s API с CI-runner"](decisions.md).)
 
 **Частые проблемы:**
-- `wait_for: VIP timeout`: kube-vip не поднялся. На control-plane-1: `journalctl -u k3s | grep kube-vip`. Обычно — `private_iface` в [group_vars/all.yml:28](../infra/ansible/inventory/group_vars/all.yml#L28) не совпадает с реальным (см. Шаг 1.5).
-- `control-plane-2 не присоединяется`: `vault_k3s_token` различается между прогонами или control-plane-1 не отдаёт `/var/lib/rancher/k3s/server/token`. Откатить: `ssh control-plane-N '/usr/local/bin/k3s-uninstall.sh'` и заново.
+- `control-plane-2 не присоединяется`: HAProxy не healthy или `vault_k3s_token` разный. Откат: `ssh control-plane-N '/usr/local/bin/k3s-uninstall.sh'` и заново.
 
 ### 5.5 cluster-addons — ingress-nginx + cert-manager
 

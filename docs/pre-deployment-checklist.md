@@ -10,10 +10,11 @@
 
 ## Фаза 0. Внешние пререквизиты (вне репо)
 
-### 0.1 Заказаны 8 VPS Beget
+### 0.1 Заказаны 9 VPS Beget
 
 | Роль | Hostname | Private IP | Public IP |
 |:--|:--|:--|:--|
+| haproxy-vps | haproxy-vps | 10.19.0.51 | — |
 | control-plane-1 | control-plane-1 | 10.19.0.11 | — |
 | control-plane-2 | control-plane-2 | 10.19.0.12 | — |
 | control-plane-3 | control-plane-3 | 10.19.0.13 | — |
@@ -210,24 +211,21 @@ redis-cli -h 10.19.0.31 -a <vault_redis_password> ping  # PONG
 ansible-playbook -i inventory/hosts.ini playbooks/k3s.yml
 ```
 **Что делает:**
-1. Кладёт kube-vip DaemonSet manifests на 3 control-plane ноды ([role kube_vip](../infra/ansible/roles/kube_vip)).
-2. `serial: 1` — ставит k3s server на control-plane-1 с `--cluster-init`, ждёт apiserver, потом control-plane-2/3 через VIP `https://10.19.0.10:6443`.
-3. Ставит k3s agent на 3 worker'ах.
-4. **Главное:** скачивает kubeconfig с control-plane-1, **заменяет `127.0.0.1` → `10.19.0.10` (VIP)**, кладёт в `infra/ansible/kubeconfig`. См. [k3s_server/tasks/main.yml:104-119](../infra/ansible/roles/k3s_server/tasks/main.yml#L104-L119).
+1. `serial: 1` — ставит k3s server на control-plane-1 с `--cluster-init`, ждёт apiserver, потом control-plane-2/3 через HAProxy `https://10.19.0.51:6443`.
+2. Ставит k3s agent на 3 worker'ах.
+3. **Главное:** скачивает kubeconfig с control-plane-1, **заменяет `127.0.0.1` → `10.19.0.51` (HAProxy)**, кладёт в `infra/ansible/kubeconfig`.
 
 **Проверка после:**
 ```bash
 export KUBECONFIG=infra/ansible/kubeconfig
 kubectl get nodes  # 3 control-plane Ready + 3 worker Ready, 6 строк
-kubectl get pods -n kube-system | grep kube-vip  # 3 пода Running
 ```
-**Если `kubectl get nodes` не работает с локалки:** ожидаемо — у тебя нет route до 10.19.0.10. Это [decisions.md → Достижимость k3s API с CI-runner](decisions.md). Для проверки сделать SSH-tunnel:
+**Если `kubectl get nodes` не работает с локалки:** ожидаемо — нет route до `10.19.0.51`. SSH-tunnel:
 ```bash
-ssh -L 6443:10.19.0.10:6443 -J root@<worker-1-public> root@10.19.0.11 -N &
-# Подправить kubeconfig: server: https://127.0.0.1:6443 + insecure-skip-tls-verify
+ssh -L 6443:10.19.0.51:6443 -J root@<worker-1-public> root@10.19.0.11 -N &
+# kubeconfig: server: https://127.0.0.1:6443 + insecure-skip-tls-verify
 ```
-Либо `kubectl` запускать прямо на control-plane: `ssh root@control-plane-1 'kubectl get nodes'`.
-**Если control-plane-2/3 не присоединяются:** VIP не поднялся. На control-plane-1: `ip addr show | grep 10.19.0.10` — должен быть. Иначе смотри `journalctl -u k3s` и логи kube-vip пода.
+**Если control-plane-2/3 не присоединяются:** HAProxy не видит control-plane-1. Проверь `haproxy.yml` и `journalctl -u k3s` на ноде.
 
 ### 4.4 cluster-addons — ingress-nginx + cert-manager
 
