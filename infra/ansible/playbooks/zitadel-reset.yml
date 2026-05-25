@@ -1,0 +1,21 @@
+---
+# Сброс схемы Zitadel в PostgreSQL.
+#
+# Нужен когда namespace nextalk пересоздавался (PVC bootstrap удалён),
+# но БД zitadel осталась — start-from-init не пишет PAT повторно.
+# После прогона: перезапустить под zitadel-0 (helm-deploy или kubectl delete pod).
+#
+# Запуск:
+#   ansible-playbook -i inventory/hosts.ini playbooks/zitadel-reset.yml
+
+- name: Сброс схемы Zitadel в PostgreSQL
+  hosts: db
+  gather_facts: false
+  tasks:
+    - name: Дропнуть и пересоздать схему zitadel
+      community.postgresql.postgresql_query:
+        db: zitadel
+        query: "DROP SCHEMA IF EXISTS zitadel CASCADE; CREATE SCHEMA zitadel;"
+        login_unix_socket: /var/run/postgresql
+      become: true
+      become_user: postgres
