@@ -77,9 +77,9 @@ spec:
               drop: ["ALL"]
           args: ["run", "--storage.path=/var/lib/alloy/data", "--server.http.listen-addr=0.0.0.0:12345", "/etc/alloy/config.alloy"]
           env:
-            # HOSTNAME = имя k8s-ноды, используется в relabel для фильтрации
-            # подов текущей ноды и предотвращения дублирования логов.
-            - name: HOSTNAME
+            # K8S_NODE_NAME = имя ноды. Не HOSTNAME — container runtime
+            # перезаписывает HOSTNAME именем пода до того как сработает fieldRef.
+            - name: K8S_NODE_NAME
               valueFrom:
                 fieldRef:
                   fieldPath: spec.nodeName

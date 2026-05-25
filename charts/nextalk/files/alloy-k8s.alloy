@@ -21,7 +21,7 @@ discovery.kubernetes "pods" {
   }
   selectors {
     role  = "pod"
-    field = "spec.nodeName=" + sys.env("HOSTNAME")
+    field = "spec.nodeName=" + sys.env("K8S_NODE_NAME")
   }
 }
 
