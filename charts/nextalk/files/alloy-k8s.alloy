@@ -10,24 +10,26 @@
 //                                                         │
 //                                                   loki.write ──► Loki (Obs VPS)
 
-// ── 1. Обнаружение подов в namespace nextalk на текущей ноде ─────────────
-// Фильтр по spec.nodeName уходит на kube-apiserver через field selector —
-// API возвращает только нужные поды, не нагружая клиент списком со всего кластера.
-// env("HOSTNAME") = имя ноды в k8s (задаётся в DaemonSet через fieldRef spec.nodeName).
+// ── 1. Обнаружение всех подов в namespace nextalk ────────────────────────
+// Без field selector: фильтрация по ноде через relabel надёжнее —
+// field selector + namespace в некоторых версиях k3s/Alloy возвращает [].
 discovery.kubernetes "pods" {
   role = "pod"
   namespaces {
     names = ["nextalk"]
   }
-  selectors {
-    role  = "pod"
-    field = "spec.nodeName=" + sys.env("K8S_NODE_NAME")
-  }
 }
 
-// ── 2. Relabeling: оставляем только поды с label app=<имя-сервиса> ────────
+// ── 2. Relabeling: фильтр по ноде + оставляем поды с label app= ──────────
 discovery.relabel "pods" {
   targets = discovery.kubernetes.pods.targets
+
+  // Оставляем только поды на текущей ноде Alloy.
+  rule {
+    source_labels = ["__meta_kubernetes_pod_node_name"]
+    regex         = sys.env("K8S_NODE_NAME")
+    action        = "keep"
+  }
 
   rule {
     source_labels = ["__meta_kubernetes_pod_label_app"]
