@@ -43,8 +43,8 @@ limits_config:
   # Логи старше 7 дней отклонять (защита от случайного форварда старых данных).
   reject_old_samples:         true
   reject_old_samples_max_age: 168h
-  # Retention задаётся через env LOKI_RETENTION_PERIOD (из Ansible).
-  retention_period: ${LOKI_RETENTION_PERIOD}
+  # Retention 30 дней.
+  retention_period: 720h
   # allow_structured_metadata нужен для OTel-нативных логов (Фаза 2).
   allow_structured_metadata: true
 

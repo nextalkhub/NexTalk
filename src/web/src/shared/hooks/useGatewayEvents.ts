@@ -237,19 +237,8 @@ export const useGatewayEvents = () => {
 
         connection.on('GatewayEvent', handler)
 
-        // MessageAck: подтверждение от ChatHub после SendMessage (best-effort, сообщение
-        // придёт повторно через message.created от Outbox — дубликаты не нужны).
-        connection.on('MessageAck', () => {})
-
-        // Error: ChatHub шлёт при 401 или нарушении прав.
-        connection.on('Error', (err: { message: string }) => {
-            console.warn('[SignalR] Error from hub:', err?.message)
-        })
-
         return () => {
             connection.off('GatewayEvent', handler)
-            connection.off('MessageAck')
-            connection.off('Error')
         }
     }, [connection, dispatch, navigate])
 }

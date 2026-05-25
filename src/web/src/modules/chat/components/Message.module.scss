@@ -1,125 +1,66 @@
 @import '../../../shared/styles/variables';
-@import '../../../shared/styles/mixins';
 
-.msg {
-  display: grid;
-  grid-template-columns: 56px 1fr auto;
-  padding: 2px 16px 2px 0;
-  position: relative;
-  border-radius: 6px;
-  transition: background .12s;
-
-  &:hover {
-    background: rgba(0, 0, 0, .18);
-
-    .timeHover { opacity: 1; }
-    .actions { opacity: 1; pointer-events: auto; }
-  }
-
-  &.isFirst { margin-top: 14px; }
-  &.isFirst:first-child { margin-top: 0; }
-}
-
-.gutter {
+.message {
   display: flex;
-  justify-content: center;
-  padding-top: 2px;
+  gap: 12px;
+  padding: 6px 16px;
 }
-
-.isFirst .gutter { padding-top: 1px; }
 
 .avatar {
   width: 40px;
   height: 40px;
-  border-radius: $r-pill;
-  display: inline-flex;
+  border-radius: 50%;
+  background: $gradient-btn;
+  display: flex;
   align-items: center;
   justify-content: center;
-  font-family: $font-mono;
-  font-weight: 600;
-  font-size: 14px;
-  color: white;
   flex-shrink: 0;
-  cursor: pointer;
-  user-select: none;
 }
 
-.timeHover {
-  font-family: $font-mono;
-  font-size: 10px;
-  color: $fg-3;
-  opacity: 0;
-  padding-top: 6px;
-  transition: opacity .15s;
-  white-space: nowrap;
-}
-
-.body {
-  min-width: 0;
-  padding-right: 8px;
-}
-
-.head {
+.content {
   display: flex;
-  align-items: baseline;
+  flex-direction: column;
+  max-width: 70%;
+}
+
+.header {
+  display: flex;
   gap: 8px;
-  margin-bottom: 2px;
+  margin-bottom: 4px;
 }
 
 .author {
   font-weight: 600;
-  font-size: 15px;
-  color: $fg-0;
-  cursor: pointer;
-
-  &:hover { text-decoration: underline; }
 }
 
-.authorOwn { color: $brand-1; }
-
-.stamp {
-  font-family: $font-mono;
+.time {
   font-size: 11px;
-  color: $fg-3;
+  color: $text-secondary;
 }
 
-.text {
-  color: $fg-1;
-  font-size: 14.5px;
-  line-height: 1.55;
-  word-wrap: break-word;
-  overflow-wrap: anywhere;
+.bubble {
+  padding: 10px 14px;
+  border-radius: 16px;
+  background: $bg-secondary;
+  color: $text-primary;
+  word-break: break-word;
 }
 
-.actions {
-  display: flex;
-  align-items: center;
-  gap: 2px;
-  opacity: 0;
-  pointer-events: none;
-  transition: opacity .12s;
-  position: absolute;
-  top: -18px;
-  right: 16px;
-  background: $bg-4;
-  border: 1px solid $bd-2;
-  border-radius: $r-md;
-  padding: 3px 4px;
-  z-index: 10;
+.own {
+  justify-content: flex-end;
+
+  .content {
+    align-items: flex-end;
+  }
+
+  .bubble {
+    background: $accent-purple;
+    border-bottom-right-radius: 4px;
+  }
 }
 
-.actionBtn {
-  @include icon-btn;
-  width: 26px;
-  height: 26px;
-  border-radius: 6px;
-  color: $fg-2;
-
-  &:hover { color: $fg-0; background: rgba(255, 255, 255, .06); }
-  &:disabled { opacity: 0.4; cursor: not-allowed; }
-  &:disabled:hover { background: none; color: $fg-2; }
-}
-
-.danger {
-  &:not(:disabled):hover { color: $live; background: rgba(255, 90, 110, .12); }
+.timeOwn {
+  margin-left: 10px;
+  font-size: 11px;
+  opacity: .7;
 }

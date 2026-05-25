@@ -37,7 +37,7 @@ services:
   loki:
     image: "grafana/loki:{{ observability_loki_version }}"
     restart: unless-stopped
-    command: ["-config.file=/etc/loki/loki-config.yaml", "-config.expand-env=true"]
+    command: ["-config.file=/etc/loki/loki-config.yaml"]
     volumes:
       - ./loki/loki-config.yaml:/etc/loki/loki-config.yaml:ro
       - loki-data:/loki

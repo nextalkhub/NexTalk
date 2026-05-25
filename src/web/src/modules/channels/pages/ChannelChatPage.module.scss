@@ -1,41 +1,71 @@
 @import '../../../shared/styles/variables';
-@import '../../../shared/styles/mixins';
 
 .layout {
-  display: grid;
-  grid-template-columns: var(--rail-w) var(--side-w) 1fr var(--right-w);
-  grid-template-rows: var(--topbar-h) 1fr;
-  grid-template-areas:
-    "rail side top  top"
-    "rail side main right";
+  display: flex;
   height: 100vh;
-  width: 100vw;
+  width: 100%;
   overflow: hidden;
-  background: $bg-0;
-
-  &.noRight {
-    grid-template-columns: var(--rail-w) var(--side-w) 1fr;
-    grid-template-areas:
-      "rail side top"
-      "rail side main";
-  }
 }
 
-.rail  { grid-area: rail;  min-height: 0; overflow: hidden; }
-.side  { grid-area: side;  min-height: 0; overflow: hidden; }
-.top   { grid-area: top; }
-.main  { grid-area: main;  background: $bg-3; display: flex; flex-direction: column; min-height: 0; overflow: hidden; }
-.right { grid-area: right; min-height: 0; overflow: hidden; }
+.chatArea {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  background: $bg-primary;
+  height: 100vh;
+  overflow: hidden;
+}
 
-.empty {
+.header {
+  padding: 16px 24px;
+  border-bottom: 1px solid $border-color;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-shrink: 0;
+  background: $bg-primary;
+}
+
+.title {
+  font-size: 18px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: $text-primary;
+}
+
+.inputArea {
+  padding: 16px 24px;
+  border-top: 1px solid $border-color;
+  flex-shrink: 0;
+  background: $bg-primary;
+}
+
+.loading {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  color: $text-secondary;
+}
+
+.notFound {
   flex: 1;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   gap: 16px;
-  color: $fg-2;
+  color: $text-secondary;
 
-  svg { opacity: 0.4; }
-  p { font-size: 14px; }
+  svg {
+    opacity: 0.5;
+  }
+
+  p {
+    font-size: 14px;
+  }
 }

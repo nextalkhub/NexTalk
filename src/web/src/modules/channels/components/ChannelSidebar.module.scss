@@ -1,368 +1,127 @@
 @import '../../../shared/styles/variables';
-@import '../../../shared/styles/mixins';
 
-.side {
-  width: 100%;
-  height: 100%;
-  background: $bg-2;
-  border-right: 1px solid $bd-1;
+.sidebar {
+  width: 260px;
+  background: $bg-tertiary;
   display: flex;
   flex-direction: column;
-  min-height: 0;
+  border-right: 1px solid $border-color;
 }
 
-.banner {
-  position: relative;
-  height: 100px;
-  background: linear-gradient(135deg, rgba(79, 124, 255, .4), rgba(144, 97, 255, .3), rgba(192, 84, 255, .25));
+.backButton {
   display: flex;
-  align-items: flex-end;
-  padding: 14px 16px;
-  border-bottom: 1px solid $bd-1;
-  flex-shrink: 0;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 16px;
+  margin: 12px 12px 0 12px;
+  background: $bg-secondary;
+  border-radius: $radius-md;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  color: $text-secondary;
+  font-size: 14px;
+  font-weight: 500;
 
-  &::before {
-    content: "";
-    position: absolute;
-    inset: 0;
-    background: radial-gradient(200px 100px at 80% 20%, rgba(255, 255, 255, .18), transparent 70%);
-    pointer-events: none;
+  svg {
+    transition: transform 0.2s ease;
+  }
+
+  &:hover {
+    background: $bg-card;
+    color: $accent-primary;
+
+    svg {
+      transform: translateX(-4px);
+    }
   }
 }
 
-.guildInfo {
+.serverHeader {
+  padding: 20px 16px 16px;
+  border-bottom: 1px solid $border-color;
+  margin-bottom: 16px;
   display: flex;
-  flex-direction: column;
-  gap: 2px;
-  z-index: 1;
-}
-
-.guildName {
-  font-family: $font-display;
-  font-weight: 600;
-  font-size: 16px;
-  color: white;
-  text-shadow: 0 1px 2px rgba(0, 0, 0, .4);
-}
-
-.guildMeta {
-  font-size: 11px;
-  color: rgba(255, 255, 255, .85);
-  display: flex;
+  justify-content: space-between;
   align-items: center;
 }
 
-.onlineDot {
-  display: inline-block;
-  width: 6px;
-  height: 6px;
-  border-radius: $r-pill;
-  background: $ok;
-  margin-right: 4px;
+.serverTitle {
+  font-size: 18px;
+  font-weight: 700;
+  color: $text-primary;
 }
 
-.searchWrap {
-  padding: 12px 14px 8px;
-  flex-shrink: 0;
+.section {
+  padding: 0 16px;
+  margin-bottom: 24px;
 }
 
-.searchInput {
-  width: 100%;
+.sectionTitle {
+  color: $text-muted;
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  margin-bottom: 12px;
+  letter-spacing: 0.5px;
+}
+
+.channel {
   display: flex;
   align-items: center;
   gap: 8px;
   padding: 8px 12px;
-  background: $bg-1;
-  border: 1px solid $bd-1;
-  border-radius: $r-md;
-  color: $fg-2;
-  font-size: 13px;
-  cursor: text;
-
-  kbd {
-    margin-left: auto;
-    background: rgba(255, 255, 255, .06);
-    border: 1px solid $bd-1;
-    border-radius: 4px;
-    padding: 1px 5px;
-    font-family: $font-mono;
-    font-size: 10px;
-    color: $fg-2;
-  }
-}
-
-.list {
-  flex: 1;
-  overflow-y: auto;
-  padding: 4px 8px 8px;
-  min-height: 0;
-  @include scrollbar;
-}
-
-.section {
-  margin-top: 12px;
-}
-
-.sectionHeader {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 4px 8px 4px 10px;
-  font-family: $font-mono;
-  font-size: 10.5px;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  color: $fg-3;
+  border-radius: $radius-md;
   cursor: pointer;
-  user-select: none;
-
-  &:hover { color: $fg-1; }
-
-  > span:first-child {
-    display: flex;
-    align-items: center;
-    gap: 4px;
-  }
-}
-
-.chev {
-  display: inline-flex;
-  align-items: center;
-  transition: transform .18s ease;
-
-  .collapsed & {
-    transform: rotate(-90deg);
-  }
-}
-
-.rows {
-  .collapsed & {
-    display: none;
-  }
-}
-
-.addBtn {
-  width: 18px;
-  height: 18px;
-  border-radius: 4px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  color: $fg-3;
-  cursor: pointer;
-  flex-shrink: 0;
-
-  &:hover {
-    background: rgba(255, 255, 255, .06);
-    color: $fg-0;
-  }
-}
-
-.row {
-  width: 100%;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 7px 10px;
-  border-radius: 8px;
-  color: $fg-1;
+  color: $text-muted;
   font-size: 14px;
-  text-align: left;
-  position: relative;
-  cursor: pointer;
-  background: none;
-  border: none;
+  transition: all 0.2s;
+
+  svg {
+    flex-shrink: 0;
+  }
 
   &:hover {
-    background: rgba(255, 255, 255, .04);
-    color: $fg-0;
-
-    .rowActions { display: inline-flex; }
+    background: $bg-secondary;
+    color: $text-primary;
   }
 
   &.active {
-    background: rgba(79, 124, 255, .16);
-    color: $fg-0;
-
-    &::before {
-      content: "";
-      position: absolute;
-      left: -8px;
-      top: 14px;
-      bottom: 14px;
-      width: 3px;
-      background: $brand-1;
-      border-radius: 0 3px 3px 0;
-    }
-
-    .hash { color: $brand-1; }
+    background: $bg-secondary;
+    color: $accent-primary;
   }
 }
 
-.hash {
-  color: $fg-3;
-  font-weight: 600;
-  font-size: 16px;
-  flex-shrink: 0;
-  line-height: 1;
-}
-
-.voiceIcon {
-  color: $fg-3;
-  display: flex;
-  align-items: center;
-  flex-shrink: 0;
-}
-
-.rowName {
-  flex: 1;
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.rowActions {
-  display: none;
-  gap: 4px;
-
-  button {
-    width: 18px;
-    height: 18px;
-    border-radius: 4px;
-    color: $fg-3;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    cursor: pointer;
-    background: none;
-    border: none;
-
-    &:hover {
-      background: rgba(255, 255, 255, .06);
-      color: $fg-0;
-    }
-  }
-}
-
-.countPill {
-  background: rgba(255, 255, 255, .06);
-  color: $fg-1;
+.participantCount {
+  margin-left: auto;
   font-size: 11px;
-  font-weight: 500;
-  padding: 1px 7px;
-  border-radius: $r-pill;
-  font-family: $font-mono;
-  flex-shrink: 0;
+  color: $text-muted;
+  background: $bg-primary;
+  border-radius: 10px;
+  padding: 1px 6px;
+  min-width: 18px;
+  text-align: center;
 }
 
-.voiceNested {
-  margin-left: 22px;
-  margin-top: 2px;
-  margin-bottom: 6px;
-  padding-left: 12px;
-  border-left: 1px solid $bd-1;
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-
-.voiceUserRow {
+.addChannel {
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 4px 6px;
-  border-radius: 6px;
-  font-size: 13px;
-  color: $fg-1;
-}
+  padding: 8px 12px;
+  border-radius: $radius-md;
+  cursor: pointer;
+  color: $text-muted;
+  font-size: 14px;
+  transition: all 0.2s;
+  background: transparent;
+  border: 1px dashed $border-color;
 
-.voiceAvatar {
-  width: 22px;
-  height: 22px;
-  border-radius: $r-pill;
-  font-size: 9px;
-  font-family: $font-mono;
-  font-weight: 600;
-  color: white;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-}
+  svg {
+    flex-shrink: 0;
+  }
 
-.voiceUserName {
-  flex: 1;
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.selfStatus {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 10px 12px;
-  background: $bg-1;
-  border-top: 1px solid $bd-1;
-  flex-shrink: 0;
-}
-
-.selfAvatar {
-  position: relative;
-  width: 32px;
-  height: 32px;
-  border-radius: $r-pill;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  font-family: $font-mono;
-  font-weight: 600;
-  font-size: 12px;
-  color: white;
-  flex-shrink: 0;
-}
-
-.selfDot {
-  position: absolute;
-  bottom: -1px;
-  right: -1px;
-  width: 11px;
-  height: 11px;
-  border-radius: $r-pill;
-  background: $ok;
-  border: 2px solid $bg-1;
-}
-
-.selfText {
-  flex: 1;
-  min-width: 0;
-}
-
-.selfName {
-  font-size: 13px;
-  font-weight: 600;
-  color: $fg-0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.selfSub {
-  font-size: 11px;
-  color: $fg-2;
-  margin-top: 1px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.selfActions {
-  display: flex;
-  gap: 2px;
-}
-
-.iconBtn {
-  @include icon-btn;
+  &:hover {
+    background: $bg-secondary;
+    color: $accent-primary;
+    border-color: $accent-primary;
+  }
 }

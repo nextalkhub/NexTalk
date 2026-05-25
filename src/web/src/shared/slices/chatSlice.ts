@@ -118,7 +118,7 @@ const chatSlice = createSlice({
             }
 
             channelState.nextCursor = action.payload.nextCursor
-            channelState.hasMore = action.payload.nextCursor != null
+            channelState.hasMore = action.payload.hasMore
             channelState.loading = false
         })
 

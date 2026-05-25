@@ -1,93 +1,41 @@
 @import '../../styles/variables';
-@import '../../styles/mixins';
 
-.rail {
-  width: 100%;
-  height: 100%;
-  background: $bg-1;
-  border-right: 1px solid $bd-1;
-  overflow-y: auto;
-  overflow-x: hidden;
-  @include scrollbar;
-}
-
-.inner {
+.sidebar {
+  width: 80px;
+  background: $bg-secondary;
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: 16px 0;
-  gap: 8px;
+  padding: 24px 0;
+  gap: 16px;
+  border-right: 1px solid $border-color;
 }
 
-.icon {
-  position: relative;
-  width: 48px;
-  height: 48px;
+.serverIcon {
+  width: 52px;
+  height: 52px;
+  background: $gradient-card;
   border-radius: 16px;
-  background: $bg-3;
-  color: $fg-1;
-  font-family: $font-display;
-  font-weight: 600;
-  font-size: 18px;
   display: flex;
   align-items: center;
   justify-content: center;
-  border: 1px solid $bd-1;
+  font-size: 26px;
   cursor: pointer;
-  flex-shrink: 0;
-  transition: border-radius .18s ease, background .18s ease, transform .15s ease;
-
-  &::after {
-    content: "";
-    position: absolute;
-    left: -16px;
-    top: 50%;
-    width: 4px;
-    height: 0;
-    background: $fg-0;
-    border-radius: 0 4px 4px 0;
-    transform: translateY(-50%);
-    transition: height .18s ease;
-  }
+  transition: all 0.2s;
 
   &:hover {
-    border-radius: 12px;
-    background: $bg-4;
-
-    &::after { height: 20px; }
+    border-radius: 26px;
   }
 
   &.active {
-    color: white;
-    border-color: transparent;
-    border-radius: 12px;
-
-    &::after {
-      height: 32px;
-      background: white;
-    }
+    background: $gradient-btn;
+    border-radius: 26px;
   }
-}
 
-.sep {
-  width: 32px;
-  height: 2px;
-  background: $bd-2;
-  border-radius: $r-pill;
-  margin: 4px 0;
-  flex-shrink: 0;
-}
-
-.ghost {
-  background: transparent;
-  border: 2px dashed rgba(52, 211, 153, .35);
-  color: $ok;
-
-  &:hover {
-    border-color: rgba(52, 211, 153, .6);
-    background: rgba(52, 211, 153, .08);
-    border-radius: 16px;
-
-    &::after { height: 0; }
+  &.add {
+    background: transparent;
+    border: 2px dashed #3B82F6;
+    color: #3B82F6;
+    font-size: 24px;
   }
 }

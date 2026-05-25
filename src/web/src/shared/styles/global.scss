@@ -1,54 +1,6 @@
 @import './variables';
 @import './mixins';
 
-:root {
-  --bg-0: #{$bg-0};
-  --bg-1: #{$bg-1};
-  --bg-2: #{$bg-2};
-  --bg-3: #{$bg-3};
-  --bg-4: #{$bg-4};
-  --bg-5: #{$bg-5};
-  --bg-overlay: #{$bg-overlay};
-
-  --bd-1: #{$bd-1};
-  --bd-2: #{$bd-2};
-  --bd-3: #{$bd-3};
-
-  --fg-0: #{$fg-0};
-  --fg-1: #{$fg-1};
-  --fg-2: #{$fg-2};
-  --fg-3: #{$fg-3};
-  --fg-4: #{$fg-4};
-
-  --brand-1: #{$brand-1};
-  --brand-2: #{$brand-2};
-  --brand-3: #{$brand-3};
-  --grad-brand: #{$grad-brand};
-  --grad-brand-soft: #{$grad-brand-soft};
-
-  --ok: #{$ok};
-  --warn: #{$warn};
-  --live: #{$live};
-  --info: #{$info};
-  --mention: #{$mention};
-
-  --font-display: #{$font-display};
-  --font-body: #{$font-body};
-  --font-mono: #{$font-mono};
-
-  --r-sm: #{$r-sm};
-  --r-md: #{$r-md};
-  --r-lg: #{$r-lg};
-  --r-xl: #{$r-xl};
-  --r-2xl: #{$r-2xl};
-  --r-pill: #{$r-pill};
-
-  --rail-w: #{$rail-w};
-  --side-w: #{$side-w};
-  --right-w: #{$right-w};
-  --topbar-h: #{$topbar-h};
-}
-
 * {
   margin: 0;
   padding: 0;
@@ -56,13 +8,10 @@
 }
 
 body {
-  font-family: $font-body;
-  background: $bg-0;
-  color: $fg-0;
+  font-family: 'Roboto', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  background: #0B0C1A;
+  color: $text-primary;
   @include scrollbar;
-  -webkit-font-smoothing: antialiased;
-  text-rendering: optimizeLegibility;
-  overflow: hidden;
 }
 
 a {

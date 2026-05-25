@@ -1,112 +1,141 @@
 @import '../../../shared/styles/variables';
-@import '../../../shared/styles/mixins';
 
-.dock {
+.controls {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 20px;
+  background: $bg-secondary;
+  border-radius: 40px;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.leftSection {
   display: flex;
   align-items: center;
   gap: 16px;
-  background: $bg-4;
-  border: 1px solid $bd-2;
-  border-radius: $r-xl;
-  padding: 14px 20px;
 }
 
-.info {
+.rightSection {
   display: flex;
   align-items: center;
   gap: 12px;
-  flex: 1;
-  min-width: 0;
 }
 
-.connStatus {
+// Статус подключения
+.status {
   display: flex;
   align-items: center;
-  gap: 6px;
-  font-family: $font-mono;
-  font-size: 12px;
-  color: $ok;
-  white-space: nowrap;
+  gap: 8px;
+  font-size: 13px;
+  padding: 4px 12px;
+  border-radius: 20px;
 }
 
-.dot {
+.statusDot {
   width: 8px;
   height: 8px;
-  border-radius: $r-pill;
-  flex-shrink: 0;
+  border-radius: 50%;
 }
 
-.dotOk  { background: $ok;  box-shadow: 0 0 8px rgba(52, 211, 153, .5); }
-.dotOff { background: $fg-4; }
+.connected {
+  background: rgba(54, 231, 162, 0.15);
+  color: $accent-green;
 
-.stats {
+  .statusDot {
+    background: $accent-green;
+    box-shadow: 0 0 8px $accent-green;
+  }
+}
+
+.disconnected {
+  background: rgba(187, 187, 191, 0.15);
+  color: $text-muted;
+
+  .statusDot {
+    background: $text-muted;
+  }
+}
+
+// Визуализатор громкости
+.volumeVisualizer {
+  width: 100px;
+  height: 4px;
+  background: $bg-tertiary;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.volumeBar {
+  height: 100%;
+  background: $gradient-btn;
+  border-radius: 4px;
+  transition: width 0.1s ease;
+}
+
+// Ползунок громкости
+.volumeSlider {
   display: flex;
-  gap: 6px;
-}
-
-.chip {
-  display: inline-flex;
   align-items: center;
-  height: 22px;
+  gap: 8px;
   padding: 0 8px;
-  border-radius: $r-pill;
-  background: rgba(255, 255, 255, .04);
-  border: 1px solid $bd-1;
-  font-size: 11px;
-  font-family: $font-mono;
-  color: $fg-2;
+  color: $text-secondary;
 }
 
-.chipOk {
-  color: $ok;
-  background: rgba(52, 211, 153, .10);
-  border-color: rgba(52, 211, 153, .25);
+.slider {
+  width: 80px;
+  height: 4px;
+  -webkit-appearance: none;
+  background: $bg-tertiary;
+  border-radius: 4px;
+  outline: none;
+
+  &::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 12px;
+    height: 12px;
+    background: $accent-pink;
+    border-radius: 50%;
+    cursor: pointer;
+    transition: all 0.2s;
+
+    &:hover {
+      transform: scale(1.2);
+    }
+  }
 }
 
-.buttons {
+// Кнопки управления
+.controlBtn {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: $bg-tertiary;
   display: flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.vcBtn {
-  width: 44px;
-  height: 44px;
-  border-radius: $r-pill;
-  background: $bg-5;
-  border: 1px solid $bd-2;
-  color: $fg-1;
-  display: inline-flex;
   align-items: center;
   justify-content: center;
-  transition: background .15s, color .15s, border-color .15s;
   cursor: pointer;
+  color: $text-primary;
+  transition: all 0.2s;
 
-  &:hover:not(:disabled) {
-    background: rgba(255, 255, 255, .10);
-    color: $fg-0;
+  &:hover {
+    transform: scale(1.05);
+    background: #363580;
   }
 
-  &:disabled { opacity: 0.4; cursor: not-allowed; }
-
-  &.muted {
-    background: rgba(255, 90, 110, .15);
-    color: $live;
-    border-color: rgba(255, 90, 110, .3);
+  &.active {
+    background: $error-color;
+    color: white;
   }
-}
 
-.leave {
-  width: auto;
-  padding: 0 18px;
-  border-radius: 12px;
-  gap: 6px;
-  font-family: $font-body;
-  font-weight: 600;
-  font-size: 13px;
-  background: $live;
-  color: white;
-  border-color: transparent;
+  &.disconnect {
+    background: rgba(255, 90, 90, 0.2);
+    color: $error-color;
 
-  &:hover:not(:disabled) { background: #FF4F66; color: white; }
+    &:hover {
+      background: $error-color;
+      color: white;
+    }
+  }
 }
