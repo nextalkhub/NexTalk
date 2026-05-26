@@ -74,6 +74,15 @@ const chatSlice = createSlice({
 
             state.messages[msg.channelId].items.push(msg)
         },
+
+        deleteMessage: (state, action: PayloadAction<{ channelId: string; messageId: string }>) => {
+            const { channelId, messageId } = action.payload
+            if (state.messages[channelId]) {
+                state.messages[channelId].items = state.messages[channelId].items.filter(
+                    m => m.id !== messageId
+                )
+            }
+        },
     },
     extraReducers: builder => {
         builder.addCase(fetchMessages.pending, (state, action) => {
@@ -132,5 +141,5 @@ const chatSlice = createSlice({
     }
 })
 
-export const { sendMessage, messageReceived } = chatSlice.actions
+export const { sendMessage, messageReceived, deleteMessage } = chatSlice.actions
 export default chatSlice.reducer

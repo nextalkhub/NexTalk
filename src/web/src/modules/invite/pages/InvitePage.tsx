@@ -1,41 +1,37 @@
-﻿import React, { useState } from 'react'
+import React, { useContext, useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { Button } from '../../../shared/components/Button/Button'
-import { GradientBackground } from '../../../shared/components/GradientBackground/GradientBackground'
-import { Icon } from '../../../shared/components/Icon/Icon'
-import styles from './InvitePage.module.scss'
-import {useAppDispatch, useAppSelector} from "../../../store.ts";
-import {createInviteThunk} from "../../../shared/slices/inviteSlice.ts";
+import { ICopy, ICheck, IChevRight } from '../../../shared/components/Icons/Icons'
+import { LayoutContext } from '../../../shared/components/Layout/AppShell'
+import { useAppDispatch, useAppSelector } from '../../../store'
+import { createInviteThunk } from '../../../shared/slices/inviteSlice'
+import { selectCurrentServer } from '../../../shared/slices/serverSlice'
 
 export const InvitePage: React.FC = () => {
   const navigate = useNavigate()
   const { serverId } = useParams()
   const dispatch = useAppDispatch()
-
+  const { setHideRight } = useContext(LayoutContext)
   const loading = useAppSelector(state => state.invite.loading)
+  const server = useAppSelector(selectCurrentServer)
 
-  const [copied, setCopied] = useState(false)
   const [inviteCode, setInviteCode] = useState('')
+  const [copied, setCopied] = useState(false)
+
+  useEffect(() => {
+    setHideRight(true)
+    return () => setHideRight(false)
+  }, [setHideRight])
 
   const handleCreate = async () => {
     if (!serverId) return
-
     try {
-      const code = await dispatch(
-          createInviteThunk({
-            guildId: serverId,
-            data: {
-              maxUses: 10,
-              expiresIn: '7d',
-              expiresInSeconds: 60 * 60 * 24 * 7,
-            },
-          })
-      ).unwrap()
-
+      const code = await dispatch(createInviteThunk({
+        guildId: serverId,
+        data: { maxUses: 10, expiresIn: '7d', expiresInSeconds: 604800 },
+      })).unwrap()
       setInviteCode(code)
-
-    } catch (e) {
-      console.error('Ошибка создания инвайта', e)
+    } catch {
+      // ignore
     }
   }
 
@@ -47,57 +43,64 @@ export const InvitePage: React.FC = () => {
   }
 
   return (
-      <GradientBackground>
-        <div className={styles.container}>
-          <div className={styles.card}>
-            <div className={styles.serverIcon}>
-              <Icon name="server-default" size={48} />
-            </div>
-
-            <div className={styles.serverName}>Invite</div>
-
-            {!inviteCode ? (
-                <Button onClick={handleCreate} disabled={loading}>
-                  {loading ? 'Создание...' : 'Создать инвайт'}
-                </Button>
-            ) : (
-                <>
-                  <div className={styles.inviteLink}>
-                    <input
-                        type="text"
-                        value={inviteCode}
-                        readOnly
-                        className={styles.linkInput}
-                    />
-                    <Button onClick={handleCopy} size="small">
-                      {copied ? 'Скопировано' : 'Копировать'}
-                    </Button>
-                  </div>
-
-                  <div className={styles.settings}>
-                    <div className={styles.settingItem}>
-                      <span className={styles.settingLabel}>Срок действия</span>
-                      <span className={styles.settingValue}>7 дней</span>
-                    </div>
-                    <div className={styles.settingItem}>
-                      <span className={styles.settingLabel}>Макс. использований</span>
-                      <span className={styles.settingValue}>10</span>
-                    </div>
-                  </div>
-                </>
-            )}
-
-            <div className={styles.buttons}>
-              <Button
-                  variant="primary"
-                  onClick={() => navigate(`/servers/${serverId}/channels`)}
-                  fullWidth
-              >
-                Готово
-              </Button>
+    <>
+      <header className="top" style={{ display: 'flex', alignItems: 'center', padding: '0 22px', gap: 16 }}>
+        <div style={{ flex: 1, fontFamily: 'var(--font-display)', fontWeight: 600, fontSize: 17, color: 'var(--fg-0)' }}>
+          Пригласить участников
+        </div>
+      </header>
+      <main className="main" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <div className="auth-card invite-card" style={{ width: 480 }}>
+          <div className="invite-banner" />
+          <div className="invite-meta">
+            <div className="ic">{server?.name?.charAt(0).toUpperCase() ?? 'N'}</div>
+            <div>
+              <div className="invite-name">{server?.name ?? 'Сервер'}</div>
+              <div className="invite-sub">Создайте ссылку-приглашение</div>
             </div>
           </div>
+
+          {!inviteCode ? (
+            <button className="btn-primary-lg" onClick={handleCreate} disabled={loading}>
+              {loading ? 'Создание...' : 'Создать приглашение'}
+            </button>
+          ) : (
+            <>
+              <div className="invite-detail-grid">
+                <div className="invite-detail">
+                  <div className="lbl">КОД</div>
+                  <div className="val mono">{inviteCode}</div>
+                </div>
+                <div className="invite-detail">
+                  <div className="lbl">ДЕЙСТВУЕТ ДО</div>
+                  <div className="val">7 дней</div>
+                </div>
+                <div className="invite-detail">
+                  <div className="lbl">ИСПОЛЬЗОВАНИЙ</div>
+                  <div className="val mono">0 / 10</div>
+                </div>
+                <div className="invite-detail">
+                  <div className="lbl">РОЛЬ</div>
+                  <div className="val">Member</div>
+                </div>
+              </div>
+              <div className="invite-actions">
+                <button className="btn-secondary" onClick={handleCopy}>
+                  {copied ? <ICheck /> : <ICopy />}
+                  {copied ? 'Скопировано!' : 'Копировать код'}
+                </button>
+                <button className="btn-primary" onClick={() => navigate(`/servers/${serverId}/channels`)}>
+                  Готово <IChevRight />
+                </button>
+              </div>
+            </>
+          )}
+
+          <div className="auth-foot" style={{ marginTop: 20 }}>
+            <span className="chip mono">invite.api.nextalk.io</span>
+          </div>
         </div>
-      </GradientBackground>
+      </main>
+    </>
   )
 }

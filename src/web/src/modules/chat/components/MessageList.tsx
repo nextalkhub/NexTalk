@@ -1,64 +1,67 @@
 import React, { useRef, useEffect } from 'react'
 import { Message } from './Message'
-import { Icon } from '../../../shared/components/Icon/Icon'
-import styles from './MessageList.module.scss'
-import {MessageInterface} from "../../../shared/slices/chatSlice.ts";
+import { useAppDispatch, useAppSelector } from '../../../store'
+import { deleteMessage } from '../../../shared/slices/chatSlice'
+import { selectUser } from '../../../shared/slices/authSlice'
+import type { MessageInterface } from '../../../shared/slices/chatSlice'
 
 interface MessageListProps {
-    messages: MessageInterface[]
-    currentUserId?: string
+  messages: MessageInterface[]
+  channelName: string
+  currentUserId?: string
 }
 
-export const MessageList: React.FC<MessageListProps> = ({
-                                                            messages,
-                                                            currentUserId
-                                                        }) => {
-    const messagesEndRef = useRef<HTMLDivElement>(null)
+export const MessageList: React.FC<MessageListProps> = ({ messages, channelName, currentUserId }) => {
+  const dispatch = useAppDispatch()
+  const user = useAppSelector(selectUser)
+  const scrollRef = useRef<HTMLDivElement>(null)
 
-    useEffect(() => {
-        messagesEndRef.current?.scrollIntoView({
-            behavior: 'smooth'
-        })
-    }, [messages])
+  const sorted = [...messages].sort(
+    (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+  )
 
-    const sortedMessages = [...messages].sort(
-        (a, b) =>
-            new Date(a.createdAt).getTime() -
-            new Date(b.createdAt).getTime()
-    )
-
-    if (!messages.length) {
-        return (
-            <div className={styles.empty}>
-                <div className={styles.emptyIcon}>
-                    <Icon name="message" size={48}/>
-                </div>
-
-                <div className={styles.emptyTitle}>
-                    Нет сообщений
-                </div>
-
-                <div className={styles.emptyText}>
-                    Напишите первое сообщение
-                </div>
-            </div>
-        )
+  useEffect(() => {
+    if (scrollRef.current) {
+      scrollRef.current.scrollTop = scrollRef.current.scrollHeight
     }
+  }, [sorted.length])
 
-    return (
-        <div className={styles.container}>
-            {sortedMessages.map((message) => (
-                        <Message
-                            key={message.id}
-                            message={message}
-                            isOwn={
-                                message.authorId ===
-                                currentUserId
-                            }
-                        />
-                    ))
-            }
-            <div ref={messagesEndRef}/>
+  const handleDelete = (id: string) => {
+    const msg = sorted.find(m => m.id === id)
+    if (msg) dispatch(deleteMessage({ channelId: msg.channelId, messageId: id }))
+  }
+
+  return (
+    <div className="chat-scroll" ref={scrollRef}>
+      <div className="chat-scroll-inner">
+        <div className="chat-welcome">
+          <div className="wlc-icon">#</div>
+          <h2>Добро пожаловать в #{channelName}</h2>
+          <p>Это начало канала. Сообщения хранятся в Messaging Service · cursor-based история, доставка через SignalR.</p>
         </div>
-    )
+
+        <div className="day-divider">
+          <div className="line" />
+          <div className="label">сегодня</div>
+          <div className="line" />
+        </div>
+
+        {sorted.map((msg, i, arr) => {
+          const isFirst = i === 0 || arr[i - 1].authorId !== msg.authorId
+          const canDelete = !!(
+            user && (msg.authorId === user.id || msg.authorId === currentUserId)
+          )
+          return (
+            <Message
+              key={msg.id}
+              msg={msg}
+              isFirst={isFirst}
+              canDelete={canDelete}
+              onDelete={handleDelete}
+            />
+          )
+        })}
+      </div>
+    </div>
+  )
 }

@@ -1,69 +1,79 @@
-import React, {useEffect} from 'react'
-import {login, selectIsLoading, selectAuthError, selectIsAuthenticated, register} from '../../../shared/slices/authSlice.ts'
-import { GradientBackground } from '../../../shared/components/GradientBackground/GradientBackground'
-import { AuthCard } from '../components/AuthCard'
-import styles from './AuthPage.module.scss'
-import {useAppDispatch, useAppSelector} from "../../../store.ts";
-import {useNavigate} from "react-router-dom";
+import React, { useEffect, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
+import { IShield, ICheck } from '../../../shared/components/Icons/Icons'
+import { useAppDispatch, useAppSelector } from '../../../store'
+import { login, selectIsAuthenticated, selectAuthError } from '../../../shared/slices/authSlice'
 
 export const AuthPage: React.FC = () => {
-    const dispatch = useAppDispatch()
-    const isLoading = useAppSelector(selectIsLoading)
-    const error = useAppSelector(selectAuthError)
-    const navigate = useNavigate()
-    const isAuthenticated = useAppSelector(selectIsAuthenticated)
+  const dispatch = useAppDispatch()
+  const navigate = useNavigate()
+  const isAuthenticated = useAppSelector(selectIsAuthenticated)
+  const error = useAppSelector(selectAuthError)
+  const [loading, setLoading] = useState(false)
 
-    useEffect(() => {
-        if (isAuthenticated) {
-            navigate('/servers')
-        }
-    }, [isAuthenticated, navigate])
+  useEffect(() => {
+    if (isAuthenticated) navigate('/servers')
+  }, [isAuthenticated, navigate])
 
-
-    const handleLogin = async () => {
-        try {
-            await dispatch(login()).unwrap()
-
-            if (import.meta.env.VITE_USE_AUTH_MOCK === 'true') {
-                navigate('/servers')
-            }
-        } catch (e) {
-            console.error(e)
-        }
+  const handleLogin = async () => {
+    setLoading(true)
+    try {
+      await dispatch(login()).unwrap()
+      if (import.meta.env.VITE_USE_AUTH_MOCK === 'true') navigate('/servers')
+    } catch {
+      setLoading(false)
     }
+  }
 
-    const handleRegister = async () => {
-        if (import.meta.env.VITE_USE_AUTH_MOCK === 'true') {
-            try {
-                await dispatch(register()).unwrap()
-                navigate('/servers')
-            } catch (e) {
-                console.error(e)
-            }
-            return
-        }
+  return (
+    <div className="auth-page">
+      <div className="auth-card">
+        <div className="auth-mark">N</div>
+        <h1>Войти в NexTalk</h1>
+        <p className="sub">
+          Авторизация через Zitadel · ваш единый identity provider.
+          Учётные данные NexTalk не хранит.
+        </p>
 
-        // OIDC
-        const authUrl = new URL(import.meta.env.VITE_OIDC_AUTHORITY + '/oauth/v2/authorize')
-        authUrl.searchParams.set('client_id', import.meta.env.VITE_OIDC_CLIENT_ID)
-        authUrl.searchParams.set('redirect_uri', import.meta.env.VITE_OIDC_REDIRECT_URI)
-        authUrl.searchParams.set('response_type', 'code')
-        authUrl.searchParams.set('scope', 'openid profile email offline_access')
-        authUrl.searchParams.set('prompt', 'create')
+        <div className="auth-features">
+          <div className="auth-feature">
+            <span className="ic"><ICheck /></span>
+            <span>OpenID Connect · PKCE flow, без секрета на клиенте</span>
+          </div>
+          <div className="auth-feature">
+            <span className="ic"><ICheck /></span>
+            <span>JWT с claims <code className="mono" style={{ fontSize: 11 }}>sub</code>, <code className="mono" style={{ fontSize: 11 }}>email</code>, <code className="mono" style={{ fontSize: 11 }}>preferred_username</code></span>
+          </div>
+          <div className="auth-feature">
+            <span className="ic"><ICheck /></span>
+            <span>2FA, политики паролей и восстановление — в Zitadel</span>
+          </div>
+        </div>
 
-        window.location.href = authUrl.toString()
-    }
+        <button className="btn-primary-lg" onClick={handleLogin} disabled={loading}>
+          {loading ? (
+            <>
+              <span className="callback-spinner" style={{ width: 18, height: 18, margin: 0, borderWidth: 2 }} />
+              Перенаправляем в Zitadel...
+            </>
+          ) : (
+            <>
+              <IShield />
+              Продолжить через Zitadel
+            </>
+          )}
+        </button>
 
-    return (
-        <GradientBackground>
-            <div className={styles.container}>
-                <AuthCard
-                    onLogin={handleLogin}
-                    onRegister={handleRegister}
-                    isLoading={isLoading}
-                    error={error || undefined}
-                />
-            </div>
-        </GradientBackground>
-    )
+        {error && (
+          <div className="auth-error">
+            <strong>Ошибка входа.</strong> {error}
+          </div>
+        )}
+
+        <div className="auth-foot">
+          <span className="chip mono">prod · zitadel.nextalk.io</span>
+        </div>
+      </div>
+    </div>
+  )
 }
