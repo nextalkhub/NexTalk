@@ -12,11 +12,13 @@ scrape_configs:
   - job_name: nextalk-pods
     kubernetes_sd_configs:
       - role: pod
-        selectors:
-          - role: pod
-            field: "spec.nodeName=${NODE_NAME}"
 
     relabel_configs:
+      # Только поды на текущей ноде (DaemonSet читает /var/log/pods локальной ноды)
+      - source_labels: [__meta_kubernetes_pod_node_name]
+        action: keep
+        regex: ${NODE_NAME}
+
       # Только namespace nextalk
       - source_labels: [__meta_kubernetes_namespace]
         action: keep
