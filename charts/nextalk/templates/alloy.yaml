@@ -1,3 +1,4 @@
+{{- if .Values.alloy.enabled }}
 ---
 # ServiceAccount для доступа к Kubernetes API
 apiVersion: v1
@@ -120,3 +121,4 @@ spec:
           emptyDir: {}
         - name: tmp
           emptyDir: {}
+{{- end }}

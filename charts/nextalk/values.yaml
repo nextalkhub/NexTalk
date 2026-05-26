@@ -127,9 +127,19 @@ prometheus:
 # Alloy (logs collector → Loki на Obs VPS)
 # -----------------------------------------------------------------------
 alloy:
+  enabled: false
   image:
     repository: grafana/alloy
     tag: "v1.16.1"
+
+# -----------------------------------------------------------------------
+# Promtail (logs collector → Loki на Obs VPS)
+# -----------------------------------------------------------------------
+promtail:
+  enabled: true
+  image:
+    repository: grafana/promtail
+    tag: "3.6.1"
 
 # -----------------------------------------------------------------------
 # Дефолтный securityContext для всех сервисов NexTalk.
