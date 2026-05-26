@@ -14,11 +14,6 @@ scrape_configs:
       - role: pod
 
     relabel_configs:
-      # Только поды на текущей ноде (DaemonSet читает /var/log/pods локальной ноды)
-      - source_labels: [__meta_kubernetes_pod_node_name]
-        action: keep
-        regex: ${NODE_NAME}
-
       # Только namespace nextalk
       - source_labels: [__meta_kubernetes_namespace]
         action: keep
@@ -30,10 +25,11 @@ scrape_configs:
         regex: .+
 
       # Путь к лог-файлу: /var/log/pods/<ns>_<pod>_<uid>/<container>/<n>.log
+      # $$1 — экранирование для config.expand-env=true (иначе $1 ест os.ExpandEnv)
       - source_labels: [__meta_kubernetes_pod_uid, __meta_kubernetes_pod_container_name]
         separator: /
         target_label: __path__
-        replacement: /var/log/pods/*$1/*.log
+        replacement: /var/log/pods/*$$1/*.log
 
       # Метки потока Loki
       - source_labels: [__meta_kubernetes_namespace]
