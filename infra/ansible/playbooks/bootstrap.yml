@@ -30,6 +30,47 @@
         # ВНИМАНИЕ: переключить в true только после раскатки ключей и проверки!
         ssh_keys_disable_passwords: false
 
+# Приватные ноды (CP, db, obs, haproxy) не имеют публичного IP.
+# Интернет-трафик идёт через worker-1 (NAT gateway 10.19.0.21).
+# Добавляем default route и закрепляем через systemd-unit (persistent after reboot).
+- name: Настройка default route через NAT gateway (приватные ноды)
+  hosts: control_plane:db:observability:haproxy
+  become: true
+  gather_facts: false
+  tasks:
+    - name: Установить default route через NAT gateway (текущая сессия)
+      ansible.builtin.command: ip route replace default via {{ nat_gateway_ip }} dev {{ private_iface }}
+      changed_when: true
+      tags: [nat_route]
+
+    - name: Создать systemd unit для default route (persistent after reboot)
+      ansible.builtin.copy:
+        dest: /etc/systemd/system/nat-default-route.service
+        content: |
+          [Unit]
+          Description=Default route via NAT gateway (worker-1)
+          After=network-online.target
+          Wants=network-online.target
+
+          [Service]
+          Type=oneshot
+          ExecStart=/sbin/ip route replace default via {{ nat_gateway_ip }} dev {{ private_iface }}
+          RemainAfterExit=yes
+
+          [Install]
+          WantedBy=multi-user.target
+        mode: '0644'
+      notify: enable nat-default-route
+      tags: [nat_route]
+
+  handlers:
+    - name: enable nat-default-route
+      ansible.builtin.systemd:
+        name: nat-default-route
+        daemon_reload: true
+        enabled: true
+        state: started
+
 # worker-1 = bastion = единственный публичный вход в кластер.
 # Пробрасываем порт 6443 (kubectl/helm) → HAProxy, т.к. HAProxy находится
 # только в приватной сети Beget и не имеет публичного IP.
