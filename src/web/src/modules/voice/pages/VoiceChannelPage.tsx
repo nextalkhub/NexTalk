@@ -35,11 +35,15 @@ export const VoiceChannelPage: React.FC = () => {
   useEffect(() => {
     if (!channelId || !user) return
     const connect = async () => {
-      if (prevChannelRef.current && prevChannelRef.current !== channelId) {
-        await leaveVoice(prevChannelRef.current)
+      try {
+        if (prevChannelRef.current && prevChannelRef.current !== channelId) {
+          await leaveVoice(prevChannelRef.current)
+        }
+        prevChannelRef.current = channelId
+        await joinVoice(channelId, { id: user.id, name: user.name })
+      } catch (err) {
+        console.error('Voice connect failed:', err)
       }
-      prevChannelRef.current = channelId
-      await joinVoice(channelId, { id: user.id, name: user.name })
     }
     connect()
   // eslint-disable-next-line react-hooks/exhaustive-deps

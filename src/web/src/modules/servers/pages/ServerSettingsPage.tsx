@@ -64,16 +64,24 @@ export const ServerSettingsPage: React.FC = () => {
 
   const handleSaveName = async () => {
     if (!serverId || !serverName.trim()) return
-    await dispatch(updateGuildThunk({ guildId: serverId, name: serverName.trim() }))
-    setNameSaved(true)
-    setTimeout(() => setNameSaved(false), 2000)
+    try {
+      await dispatch(updateGuildThunk({ guildId: serverId, name: serverName.trim() })).unwrap()
+      setNameSaved(true)
+      setTimeout(() => setNameSaved(false), 2000)
+    } catch {
+      // ошибка уже в redux state
+    }
   }
 
   const handleDeleteServer = async () => {
     if (!serverId || deleteConfirm !== server?.name) return
-    await dispatch(deleteGuildThunk(serverId))
-    dispatch(removeServer(serverId))
-    navigate('/servers')
+    try {
+      await dispatch(deleteGuildThunk(serverId)).unwrap()
+      dispatch(removeServer(serverId))
+      navigate('/servers')
+    } catch {
+      // ошибка уже в redux state
+    }
   }
 
   const handleKick = (userId: string) => {

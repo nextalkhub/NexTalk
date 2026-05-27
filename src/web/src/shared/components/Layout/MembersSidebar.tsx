@@ -3,6 +3,7 @@ import { useParams } from 'react-router-dom'
 import { Avatar } from '../Avatar/Avatar'
 import { useAppDispatch, useAppSelector } from '../../../store'
 import { fetchMembers } from '../../slices/memberSlice'
+import { selectIsUserOnline } from '../../slices/presenceSlice'
 import type { Member } from '../../types'
 
 export const MembersSidebar: React.FC = () => {
@@ -52,18 +53,21 @@ const MemberGroup: React.FC<GroupProps> = ({ label, members }) => {
   )
 }
 
-const MemberRow: React.FC<{ member: Member }> = ({ member }) => (
-  <div className="member-row online">
-    <div className="av-wrap">
-      <Avatar str={member.displayName || member.userId} size={28} />
+const MemberRow: React.FC<{ member: Member }> = ({ member }) => {
+  const isOnline = useAppSelector(selectIsUserOnline(member.userId))
+  return (
+    <div className={`member-row ${isOnline ? 'online' : 'offline'}`}>
+      <div className="av-wrap">
+        <Avatar str={member.displayName || member.userId} size={28} />
+      </div>
+      <div className="info">
+        <span className="nm">
+          {member.displayName}
+          {member.role !== 'Member' && (
+            <span className="role-tag">{member.role.toUpperCase()}</span>
+          )}
+        </span>
+      </div>
     </div>
-    <div className="info">
-      <span className="nm">
-        {member.displayName}
-        {member.role !== 'Member' && (
-          <span className="role-tag">{member.role.toUpperCase()}</span>
-        )}
-      </span>
-    </div>
-  </div>
-)
+  )
+}

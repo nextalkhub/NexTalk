@@ -17,7 +17,7 @@ export const ChannelChatPage: React.FC = () => {
   const user = useAppSelector(selectUser)
   const channels = useAppSelector(state => state.channels.channels)
   const messages = useAppSelector(state => state.chat.messages)
-  const { connection } = useSignalR()
+  const { connection, isConnected } = useSignalR()
   const { setHideRight } = useContext(LayoutContext)
   const [showMembers, setShowMembers] = useState(true)
 
@@ -79,6 +79,7 @@ export const ChannelChatPage: React.FC = () => {
         <MessageInput
           channelName={currentChannel.name}
           onSend={handleSend}
+          isConnected={isConnected}
         />
       </main>
       {showMembers && <MembersSidebar />}

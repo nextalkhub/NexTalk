@@ -11,20 +11,26 @@ interface MessageListProps {
   currentUserId?: string
 }
 
-export const MessageList: React.FC<MessageListProps> = ({ messages, channelName, currentUserId }) => {
+export const MessageList: React.FC<MessageListProps> = ({ messages, channelName, currentUserId: _ }) => {
   const dispatch = useAppDispatch()
   const user = useAppSelector(selectUser)
   const scrollRef = useRef<HTMLDivElement>(null)
+  const lastIdRef = useRef<string | undefined>(undefined)
 
   const sorted = [...messages].sort(
     (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
   )
 
+  // Скроллим вниз только когда появляется новое сообщение снизу,
+  // но не когда старые подгружаются сверху (пагинация).
   useEffect(() => {
+    const last = sorted[sorted.length - 1]
+    if (!last || last.id === lastIdRef.current) return
+    lastIdRef.current = last.id
     if (scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight
     }
-  }, [sorted.length])
+  }, [sorted])
 
   const handleDelete = (id: string) => {
     const msg = sorted.find(m => m.id === id)
@@ -48,9 +54,7 @@ export const MessageList: React.FC<MessageListProps> = ({ messages, channelName,
 
         {sorted.map((msg, i, arr) => {
           const isFirst = i === 0 || arr[i - 1].authorId !== msg.authorId
-          const canDelete = !!(
-            user && (msg.authorId === user.id || msg.authorId === currentUserId)
-          )
+          const canDelete = !!(user && msg.authorId === user.id)
           return (
             <Message
               key={msg.id}

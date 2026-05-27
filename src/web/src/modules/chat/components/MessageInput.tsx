@@ -5,11 +5,14 @@ interface ComposerProps {
   channelName: string
   onSend: (text: string) => void
   disabled?: boolean
+  isConnected?: boolean
 }
 
-export const MessageInput: React.FC<ComposerProps> = ({ channelName, onSend, disabled }) => {
+export const MessageInput: React.FC<ComposerProps> = ({ channelName, onSend, disabled, isConnected = true }) => {
   const [text, setText] = useState('')
   const taRef = useRef<HTMLTextAreaElement>(null)
+
+  const isDisabled = disabled || !isConnected
 
   useEffect(() => {
     const el = taRef.current
@@ -19,7 +22,7 @@ export const MessageInput: React.FC<ComposerProps> = ({ channelName, onSend, dis
   }, [text])
 
   const handleSend = () => {
-    if (!text.trim() || disabled) return
+    if (!text.trim() || isDisabled) return
     onSend(text.trim())
     setText('')
   }
@@ -39,16 +42,16 @@ export const MessageInput: React.FC<ComposerProps> = ({ channelName, onSend, dis
             ref={taRef}
             rows={1}
             className="composer-textarea"
-            placeholder={`Написать в #${channelName}`}
+            placeholder={isConnected ? `Написать в #${channelName}` : 'Нет соединения...'}
             value={text}
             onChange={e => setText(e.target.value)}
             onKeyDown={onKeyDown}
-            disabled={disabled}
+            disabled={isDisabled}
           />
           <div className="composer-actions">
             <button
               className="composer-send"
-              disabled={!text.trim() || !!disabled}
+              disabled={!text.trim() || isDisabled}
               onClick={handleSend}
               title="Отправить (⏎)"
             >
@@ -62,8 +65,9 @@ export const MessageInput: React.FC<ComposerProps> = ({ channelName, onSend, dis
           <kbd>⏎</kbd> отправить · <kbd>⇧⏎</kbd> новая строка
         </span>
         <span>
-          <span className="chip is-ok">
-            <span className="dot online" />подключено
+          <span className={`chip ${isConnected ? 'is-ok' : ''}`}>
+            <span className={`dot ${isConnected ? 'online' : 'offline'}`} />
+            {isConnected ? 'подключено' : 'нет связи'}
           </span>
         </span>
       </div>

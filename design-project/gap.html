@@ -1,0 +1,913 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>NexTalk — gap-документ</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Manrope:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+
+  <link rel="stylesheet" href="gap.css" />
+</head>
+<body>
+
+<div class="top-bar">
+  <div class="top-inner">
+    <a class="top-brand" href="index.html"><span class="mk">N</span>NexTalk · gap-документ</a>
+    <div class="top-links">
+      <a href="index.html">лендинг</a>
+      <a href="chat.html">прототип</a>
+      <a href="#roadmap">дорожная карта</a>
+    </div>
+  </div>
+</div>
+
+<div class="wrap">
+
+  <header class="hero">
+    <span class="eyebrow">discrepancies · MVP ↔ prototype</span>
+    <h1>Что нужно достроить, чтобы прототип стал реальной фичей</h1>
+    <p class="lead">
+      Документ перечисляет различия между прототипом чата
+      (<a href="chat.html">chat.html</a>) и текущим MVP NexTalk (по
+      <code>README.md</code> и <code>docs/schema.md</code>).
+      Для каждой новой возможности — изменения в БД, REST‑эндпоинты,
+      SignalR‑события и влияние на Outbox / Idempotency.
+    </p>
+    <p class="lead" style="margin-top: 12px;">
+      Документ <strong>не описывает</strong> реализацию — это inventory работ,
+      по которому можно разложить эпики в трекере, оценить сроки и принять
+      решение «делаем сейчас / откладываем за рамки MVP».
+    </p>
+  </header>
+
+  <div class="callout">
+    <strong>Базовые принципы.</strong> Все новые публичные эндпоинты — за JWT
+    (Zitadel <code>sub</code>), идемпотентные POST принимают
+    <code>X‑Idempotency‑Key</code>, новые real‑time события публикуются через
+    Outbox и доставляются клиентам через <code>GatewayEvent</code> SignalR‑hub'а.
+    Любое изменение схемы — миграция в <code>guild</code> или <code>messaging</code>.
+  </div>
+
+  <!-- Sub-summary table -->
+  <div class="summary">
+    <table>
+      <thead>
+        <tr>
+          <th>Возможность в прототипе</th>
+          <th>Статус в MVP</th>
+          <th>Эффорт</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td>Реакции на сообщения</td>      <td><span class="badge new">NEW</span></td>      <td><span class="badge size m"><span class="dot"></span>M</span></td></tr>
+        <tr><td>Reply‑to (ответ на сообщение)</td><td><span class="badge new">NEW</span></td>   <td><span class="badge size s"><span class="dot"></span>S</span></td></tr>
+        <tr><td>Треды</td>                     <td><span class="badge new">NEW</span></td>      <td><span class="badge size l"><span class="dot"></span>L</span></td></tr>
+        <tr><td>Редактирование сообщений</td>  <td><span class="badge new">NEW</span></td>      <td><span class="badge size s"><span class="dot"></span>S</span></td></tr>
+        <tr><td>@‑упоминания участников</td>   <td><span class="badge new">NEW</span></td>      <td><span class="badge size m"><span class="dot"></span>M</span></td></tr>
+        <tr><td>Закреп сообщений</td>          <td><span class="badge new">NEW</span></td>      <td><span class="badge size s"><span class="dot"></span>S</span></td></tr>
+        <tr><td>Channel topic</td>             <td><span class="badge expand">EXPAND</span></td><td><span class="badge size s"><span class="dot"></span>S</span></td></tr>
+        <tr><td>Typing indicator</td>          <td><span class="badge new">NEW</span></td>      <td><span class="badge size s"><span class="dot"></span>S</span></td></tr>
+        <tr><td>Unread counts / read state</td><td><span class="badge new">NEW</span></td>      <td><span class="badge size m"><span class="dot"></span>M</span></td></tr>
+        <tr><td>Расширенное presence (idle / dnd / status)</td><td><span class="badge expand">EXPAND</span></td><td><span class="badge size s"><span class="dot"></span>S</span></td></tr>
+        <tr><td>Slash‑команды</td>             <td><span class="badge new">NEW</span></td>      <td><span class="badge size m"><span class="dot"></span>M</span></td></tr>
+        <tr><td>Поиск по сообщениям</td>       <td><span class="badge new">NEW</span></td>      <td><span class="badge size l"><span class="dot"></span>L</span></td></tr>
+        <tr><td>Inbox / уведомления</td>       <td><span class="badge new">NEW</span></td>      <td><span class="badge size l"><span class="dot"></span>L</span></td></tr>
+        <tr><td>Bot / system‑сообщения</td>    <td><span class="badge new">NEW</span></td>      <td><span class="badge size m"><span class="dot"></span>M</span></td></tr>
+        <tr><td>Profile hover card</td>        <td><span class="badge expand">EXPAND</span></td><td><span class="badge size s"><span class="dot"></span>S</span></td></tr>
+        <tr><td>Вложения / превью ссылок</td>  <td><span class="badge block">BLOCKED</span></td><td><span class="badge size l"><span class="dot"></span>L</span></td></tr>
+        <tr><td>VAD / камера / демонстрация экрана</td><td><span class="badge expand">EXPAND</span></td><td><span class="badge size m"><span class="dot"></span>M</span></td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- TOC -->
+  <nav class="toc">
+    <div class="toc-h">оглавление</div>
+    <div class="toc-grid">
+      <a href="#f1"><span class="n">01</span><span class="t">Реакции</span><span class="b new">NEW</span></a>
+      <a href="#f2"><span class="n">02</span><span class="t">Reply‑to</span><span class="b new">NEW</span></a>
+      <a href="#f3"><span class="n">03</span><span class="t">Треды</span><span class="b new">NEW</span></a>
+      <a href="#f4"><span class="n">04</span><span class="t">Редактирование сообщений</span><span class="b new">NEW</span></a>
+      <a href="#f5"><span class="n">05</span><span class="t">@‑упоминания</span><span class="b new">NEW</span></a>
+      <a href="#f6"><span class="n">06</span><span class="t">Закреп сообщений</span><span class="b new">NEW</span></a>
+      <a href="#f7"><span class="n">07</span><span class="t">Channel topic</span><span class="b exp">EXPAND</span></a>
+      <a href="#f8"><span class="n">08</span><span class="t">Typing indicator</span><span class="b new">NEW</span></a>
+      <a href="#f9"><span class="n">09</span><span class="t">Unread / read state</span><span class="b new">NEW</span></a>
+      <a href="#f10"><span class="n">10</span><span class="t">Presence: idle / dnd / status</span><span class="b exp">EXPAND</span></a>
+      <a href="#f11"><span class="n">11</span><span class="t">Slash‑команды</span><span class="b new">NEW</span></a>
+      <a href="#f12"><span class="n">12</span><span class="t">Поиск по сообщениям</span><span class="b new">NEW</span></a>
+      <a href="#f13"><span class="n">13</span><span class="t">Inbox / уведомления</span><span class="b new">NEW</span></a>
+      <a href="#f14"><span class="n">14</span><span class="t">Bot / system‑сообщения</span><span class="b new">NEW</span></a>
+      <a href="#f15"><span class="n">15</span><span class="t">Profile hover card</span><span class="b exp">EXPAND</span></a>
+      <a href="#f16"><span class="n">16</span><span class="t">Вложения / превью ссылок</span><span class="b blk">BLOCKED</span></a>
+      <a href="#f17"><span class="n">17</span><span class="t">VAD / камера / screen share</span><span class="b exp">EXPAND</span></a>
+      <a href="#roadmap"><span class="n">→</span><span class="t">Дорожная карта</span><span class="b">ROADMAP</span></a>
+    </div>
+  </nav>
+
+  <!-- =================== 01 Реакции =================== -->
+  <h2 id="f1"><span class="num">01</span>Реакции</h2>
+  <div class="badges"><span class="badge new">NEW</span><span class="badge size m"><span class="dot"></span>M · ~3–5 дн</span></div>
+  <div class="feat">
+    <p>Кликабельные emoji‑чипы под сообщением. Свои реакции подсвечиваются.
+    Один пользователь — одна реакция на эмодзи на сообщение (toggle).</p>
+
+    <div class="feat-meta">
+      <div class="row">
+        <div class="row-key">DB</div>
+        <div class="row-val">
+          Новая таблица в схеме <code>messaging</code>:
+<pre><code>messaging.message_reactions (
+  message_id  uuid     not null references messaging.messages(id) on delete cascade,
+  user_id     text     not null,   -- Zitadel sub
+  emoji       text     not null,   -- ":fire:" или unicode
+  created_at  timestamptz not null default now(),
+  primary key (message_id, user_id, emoji)
+);
+create index ix_reactions_msg on messaging.message_reactions(message_id);</code></pre>
+          На <code>message_reactions</code> — каскадное удаление при удалении сообщения.
+        </div>
+      </div>
+      <div class="row">
+        <div class="row-key">API</div>
+        <div class="row-val">
+          <span class="endpoint">PUT /api/messages/{id}/reactions/{emoji}</span> — поставить (идемпотентно)<br/>
+          <span class="endpoint">DELETE /api/messages/{id}/reactions/{emoji}</span> — снять<br/>
+          В <code>GET /api/channels/{id}/messages</code> добавить агрегацию
+          <code>reactions: [{emoji, count, mine}]</code>.
+        </div>
+      </div>
+      <div class="row">
+        <div class="row-key">WS</div>
+        <div class="row-val">
+          <span class="event">message.reaction.added</span> · <span class="event">message.reaction.removed</span><br/>
+          payload: <code>{ messageId, emoji, userId, count }</code>
+        </div>
+      </div>
+      <div class="row">
+        <div class="row-key">Outbox</div>
+        <div class="row-val">
+          Reaction insert/delete + <code>outbox_event</code> в одной транзакции
+          — как для <code>message.created</code>. Очерёдность гарантируется
+          таблицей.
+        </div>
+      </div>
+      <div class="row">
+        <div class="row-key">Каскады</div>
+        <div class="row-val">
+          При <code>message.deleted</code> и <code>guild.deleted</code> —
+          фронт чистит локальный кэш реакций (бэк ничего дополнительно слать
+          не должен благодаря FK).
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- =================== 02 Reply-to =================== -->
+  <h2 id="f2"><span class="num">02</span>Reply‑to (ответ на сообщение)</h2>
+  <div class="badges"><span class="badge new">NEW</span><span class="badge size s"><span class="dot"></span>S · 1–2 дн</span></div>
+  <div class="feat">
+    <p>Над текстом сообщения — короткий quote оригинала и L‑образный
+    указатель. Клик прокручивает к оригиналу.</p>
+
+    <div class="feat-meta">
+      <div class="row">
+        <div class="row-key">DB</div>
+        <div class="row-val">
+          Колонка <code>reply_to_message_id uuid null</code> в
+          <code>messaging.messages</code>. FK с
+          <code>on delete set null</code> (если оригинал удалили — quote
+          остаётся как «удалённое сообщение»).
+        </div>
+      </div>
+      <div class="row">
+        <div class="row-key">API</div>
+        <div class="row-val">
+          В существующий контракт <span class="endpoint">POST /internal/messages</span>
+          (его дёргает WS Gateway) добавить опциональное поле <code>replyToMessageId</code>.
+          В ответах <span class="endpoint">GET /api/channels/{id}/messages</span>
+          денормализованно положить <code>replyTo: { id, authorId, authorName, snippet }</code>
+          для UX без отдельного запроса.
+        </div>
+      </div>
+      <div class="row">
+        <div class="row-key">SignalR</div>
+        <div class="row-val">
+          В <code>SendMessage</code> на хабе — третий аргумент или
+          DTO с <code>replyToMessageId</code>.
+          <span class="event">message.created</span> payload расширяется
+          тем же <code>replyTo</code>.
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- =================== 03 Треды =================== -->
+  <h2 id="f3"><span class="num">03</span>Треды</h2>
+  <div class="badges"><span class="badge new">NEW</span><span class="badge size l"><span class="dot"></span>L · 1.5–2 нед</span></div>
+  <div class="feat">
+    <p>Отдельная нить ответов под исходным сообщением. В чате видна «footer»
+    плашка <code>N ответов · последний X</code>, при клике открывается
+    панель‑тред (отдельный канал в правом райле).</p>
+
+    <div class="feat-meta">
+      <div class="row">
+        <div class="row-key">DB</div>
+        <div class="row-val">
+          В <code>messaging.messages</code>:
+<pre><code>thread_root_id  uuid null   -- null = обычное сообщение или корень треда
+thread_count    int  not null default 0   -- денорм. счётчик для root
+thread_last_at  timestamptz null          -- для сортировки
+create index ix_msg_thread_root on messaging.messages(thread_root_id)
+  where thread_root_id is not null;</code></pre>
+          Постит в тред — это insert с <code>thread_root_id = root.id</code>.
+          Счётчик инкрементится триггером или в той же транзакции.
+        </div>
+      </div>
+      <div class="row">
+        <div class="row-key">API</div>
+        <div class="row-val">
+          <span class="endpoint">POST /api/messages/{rootId}/thread</span> — отправить в тред<br/>
+          <span class="endpoint">GET /api/messages/{rootId}/thread?cursor=…</span> — история треда (та же cursor‑пагинация что и канал)<br/>
+          <span class="endpoint">GET /api/channels/{id}/threads</span> — список активных тредов канала
+        </div>
+      </div>
+      <div class="row">
+        <div class="row-key">WS</div>
+        <div class="row-val">
+          <span class="event">thread.replied</span> — <code>{ rootId, channelId, guildId, count, lastAt }</code><br/>
+          Подписка: тот же broadcast на гильдию (фронт сам решает,
+          обновлять ли футер).
+        </div>
+      </div>
+      <div class="row">
+        <div class="row-key">Зависит от</div>
+        <div class="row-val">
+          Reply‑to (если не делать треды поверх reply, отдельная сущность).
+          Outbox‑пайплайн без изменений — это всё те же
+          <code>outbox_event</code>.
+        </div>
+      </div>
+      <div class="row">
+        <div class="row-key">Риски</div>
+        <div class="row-val">
+          Cursor pagination усложняется (внутри треда отдельная
+          лента). Денорм‑счётчик нужно держать консистентным —
+          лучше всего материализовать триггером.
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- =================== 04 Редактирование =================== -->
+  <h2 id="f4"><span class="num">04</span>Редактирование сообщений</h2>
+  <div class="badges"><span class="badge new">NEW</span><span class="badge size s"><span class="dot"></span>S · 1–2 дн</span></div>
+  <div class="feat">
+    <p>Автор может изменить текст сообщения. Появляется метка
+    <em>(изменено)</em>. Admin/Owner — нет (по соображениям доверия;
+    обсуждаемо).</p>
+
+    <div class="feat-meta">
+      <div class="row">
+        <div class="row-key">DB</div>
+        <div class="row-val">
+          В <code>messaging.messages</code>: <code>edited_at timestamptz null</code>,
+          <code>edit_count int not null default 0</code>.
+          История версий — <em>не делаем в MVP</em> (можно завести
+          <code>message_revisions</code> позже).
+        </div>
+      </div>
+      <div class="row">
+        <div class="row-key">API</div>
+        <div class="row-val">
+          <span class="endpoint">PATCH /api/messages/{id}</span> — body
+          <code>{ content }</code>. 403 если не автор и не админ.
+          <strong>Идемпотентность:</strong> по <code>X‑Idempotency‑Key</code>
+          как у POST (PATCH может прийти дважды через retry).
+        </div>
+      </div>
+      <div class="row">
+        <div class="row-key">WS</div>
+        <div class="row-val">
+          <span class="event">message.edited</span> — <code>{ messageId, content, editedAt }</code>
+        </div>
+      </div>
+      <div class="row">
+        <div class="row-key">Полезное</div>
+        <div class="row-val">
+          На уровне FR — добавить запись об edit в audit log
+          (полезно для модерации; пока есть только delete).
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- =================== 05 Mentions =================== -->
+  <h2 id="f5"><span class="num">05</span>@‑упоминания</h2>
+  <div class="badges"><span class="badge new">NEW</span><span class="badge size m"><span class="dot"></span>M · 3–5 дн</span></div>
+  <div class="feat">
+    <p>Inline <code>@username</code> в тексте; адресат получает уведомление
+    с подсветкой соответствующей строки в канале и значок на иконке гильдии.
+    Также <code>@here</code> и <code>@everyone</code>.</p>
+
+    <div class="feat-meta">
+      <div class="row">
+        <div class="row-key">DB</div>
+        <div class="row-val">
+          Новая таблица:
+<pre><code>messaging.message_mentions (
+  message_id  uuid not null references messaging.messages(id) on delete cascade,
+  user_id     text not null,   -- получатель (включая @everyone — null)
+  kind        smallint not null,  -- 0=user, 1=here, 2=everyone, 3=role
+  created_at  timestamptz not null default now(),
+  primary key (message_id, user_id, kind)
+);</code></pre>
+          Парсинг — в Messaging Service при INSERT (один проход по
+          тексту, regex <code>@(\\w+)</code> + резолв в Guild через
+          internal call).
+        </div>
+      </div>
+      <div class="row">
+        <div class="row-key">API</div>
+        <div class="row-val">
+          <span class="endpoint">GET /api/me/mentions?guildId=…</span> —
+          список непрочитанных упоминаний для Inbox (пагинация).<br/>
+          <span class="endpoint">POST /api/messages/{id}/mention-read</span> —
+          пометить как прочитанное.
+        </div>
+      </div>
+      <div class="row">
+        <div class="row-key">WS</div>
+        <div class="row-val">
+          <span class="event">message.mention</span> — <code>{ messageId, guildId, channelId, mentionedUserId, kind }</code>.
+          Доставка — targeted (не всему broadcast'у гильдии, а
+          конкретному <code>user_id</code> через SignalR group
+          <code>"user:{userId}"</code>).
+        </div>
+      </div>
+      <div class="row">
+        <div class="row-key">Зависит от</div>
+        <div class="row-val">
+          В WS Gateway — добавить per‑user группы (присоединять
+          сокет к группе <code>user:{sub}</code> на handshake).
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- =================== 06 Pin =================== -->
+  <h2 id="f6"><span class="num">06</span>Закреп сообщений</h2>
+  <div class="badges"><span class="badge new">NEW</span><span class="badge size s"><span class="dot"></span>S · 1–2 дн</span></div>
+  <div class="feat">
+    <p>Admin/Owner может закрепить сообщение. Закреплённые видны во вкладке
+    «Закреплённое» в правом райле.</p>
+
+    <div class="feat-meta">
+      <div class="row">
+        <div class="row-key">DB</div>
+        <div class="row-val">
+          В <code>messaging.messages</code>:
+          <code>pinned_at timestamptz null</code>,
+          <code>pinned_by text null</code>.
+          Индекс <code>create index ix_msg_pinned on messaging.messages(channel_id) where pinned_at is not null;</code>
+        </div>
+      </div>
+      <div class="row">
+        <div class="row-key">API</div>
+        <div class="row-val">
+          <span class="endpoint">PUT /api/messages/{id}/pin</span><br/>
+          <span class="endpoint">DELETE /api/messages/{id}/pin</span><br/>
+          <span class="endpoint">GET /api/channels/{id}/pinned</span>
+        </div>
+      </div>
+      <div class="row">
+        <div class="row-key">WS</div>
+        <div class="row-val">
+          <span class="event">message.pinned</span> · <span class="event">message.unpinned</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- =================== 07 Channel topic =================== -->
+  <h2 id="f7"><span class="num">07</span>Channel topic</h2>
+  <div class="badges"><span class="badge expand">EXPAND</span><span class="badge size s"><span class="dot"></span>S · 0.5 дн</span></div>
+  <div class="feat">
+    <p>Поле «о чём канал» в шапке. Сегодня в схеме у <code>channels</code>
+    есть <code>name</code> и <code>type</code> — нужен ещё <code>topic</code>.</p>
+
+    <div class="feat-meta">
+      <div class="row">
+        <div class="row-key">DB</div>
+        <div class="row-val">
+          В <code>guild.channels</code>:
+          <code>topic varchar(1024) null</code>
+        </div>
+      </div>
+      <div class="row">
+        <div class="row-key">API</div>
+        <div class="row-val">
+          Расширить <span class="endpoint">POST /api/guilds/{id}/channels</span>
+          и добавить <span class="endpoint">PATCH /api/guilds/{guildId}/channels/{channelId}</span>
+          с body <code>{ name?, topic? }</code>. Права — Owner/Admin
+          (как у создания/удаления каналов).
+        </div>
+      </div>
+      <div class="row">
+        <div class="row-key">WS</div>
+        <div class="row-val">
+          Расширить существующее
+          <span class="event">channel.created</span>
+          и добавить <span class="event">channel.updated</span>.
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- =================== 08 Typing =================== -->
+  <h2 id="f8"><span class="num">08</span>Typing indicator</h2>
+  <div class="badges"><span class="badge new">NEW</span><span class="badge size s"><span class="dot"></span>S · 1 дн</span></div>
+  <div class="feat">
+    <p>«Х печатает...» снизу чата. Эфемерно (не пишется в БД).</p>
+
+    <div class="feat-meta">
+      <div class="row">
+        <div class="row-key">DB</div>
+        <div class="row-val">Нет.</div>
+      </div>
+      <div class="row">
+        <div class="row-key">SignalR</div>
+        <div class="row-val">
+          На хабе — клиентский метод <code>Typing(channelId)</code>.
+          Сервер троттлит до 1/сек, шлёт всему broadcast'у гильдии
+          <span class="event">typing.started</span>
+          <code>{ channelId, userId, expiresAt }</code> (TTL ~6 сек).
+          Без Outbox — at‑most‑once приемлемо.
+        </div>
+      </div>
+      <div class="row">
+        <div class="row-key">Состояние</div>
+        <div class="row-val">
+          In‑memory в WS Gateway, ConcurrentDictionary
+          <code>(userId, channelId) → expiresAt</code>. Чистка
+          background‑таймером.
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- =================== 09 Unread =================== -->
+  <h2 id="f9"><span class="num">09</span>Unread counts / read state</h2>
+  <div class="badges"><span class="badge new">NEW</span><span class="badge size m"><span class="dot"></span>M · 3–4 дн</span></div>
+  <div class="feat">
+    <p>Маркер последнего прочитанного сообщения per (user × channel).
+    Считаются непрочитанные и упоминания.</p>
+
+    <div class="feat-meta">
+      <div class="row">
+        <div class="row-key">DB</div>
+        <div class="row-val">
+<pre><code>messaging.channel_reads (
+  user_id     text not null,
+  channel_id  uuid not null references guild.channels(id) on delete cascade,
+  last_read_message_id uuid null,
+  last_read_at         timestamptz not null,
+  mention_count        int not null default 0,
+  primary key (user_id, channel_id)
+);</code></pre>
+        </div>
+      </div>
+      <div class="row">
+        <div class="row-key">API</div>
+        <div class="row-val">
+          <span class="endpoint">POST /api/channels/{id}/ack</span> —
+          body <code>{ messageId }</code>, сбрасывает unread.<br/>
+          <span class="endpoint">GET /api/me/reads?guildId=…</span> —
+          список (channel, unread, mentions) для иконок и значков.
+        </div>
+      </div>
+      <div class="row">
+        <div class="row-key">Подсчёт</div>
+        <div class="row-val">
+          <code>SELECT count(*) FROM messages
+            WHERE channel_id = $1 AND id &gt; $last_read_message_id</code>
+          с тем же индексом <code>(channel_id, id DESC)</code> что и у
+          истории. p95 &lt; 50 ms на разумных объёмах.
+        </div>
+      </div>
+      <div class="row">
+        <div class="row-key">Связано с</div>
+        <div class="row-val">
+          @‑упоминания (mention_count инкрементится тем же триггером,
+          что вставляет в <code>message_mentions</code>).
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- =================== 10 Presence =================== -->
+  <h2 id="f10"><span class="num">10</span>Presence: idle / DND / custom status</h2>
+  <div class="badges"><span class="badge expand">EXPAND</span><span class="badge size s"><span class="dot"></span>S · 1–2 дн</span></div>
+  <div class="feat">
+    <p>Сейчас presence — бинарный (online/offline через heartbeat).
+    Прототип показывает <code>online · idle · dnd · offline</code> и
+    кастомный статус‑текст («редактирует Helm chart»).</p>
+
+    <div class="feat-meta">
+      <div class="row">
+        <div class="row-key">Хранение</div>
+        <div class="row-val">
+          Расширить in‑memory структуру в WS Gateway:
+<pre><code>record UserPresence(
+  string Status,        // online|idle|dnd
+  string? CustomText,
+  DateTime LastHeartbeat
+);</code></pre>
+          В payload <span class="event">presence.online</span>
+          добавить <code>status</code> и <code>customText</code>.
+          Idle — авто, если heartbeat есть, но нет активности в чате
+          &gt; 5 мин (определяется по последнему <code>SendMessage</code>).
+        </div>
+      </div>
+      <div class="row">
+        <div class="row-key">SignalR</div>
+        <div class="row-val">
+          Клиентский метод <code>SetPresence(status, customText)</code>.
+          Сервер пушит <span class="event">presence.updated</span>
+          в broadcast гильдиям пользователя.
+        </div>
+      </div>
+      <div class="row">
+        <div class="row-key">Без БД</div>
+        <div class="row-val">
+          В MVP кастомный статус — эфемерный (сбрасывается при
+          реконнекте). В follow‑up — таблица
+          <code>guild.user_settings(user_id, custom_status)</code>.
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- =================== 11 Slash =================== -->
+  <h2 id="f11"><span class="num">11</span>Slash‑команды</h2>
+  <div class="badges"><span class="badge new">NEW</span><span class="badge size m"><span class="dot"></span>M · 3–5 дн</span></div>
+  <div class="feat">
+    <p>Меню по символу <code>/</code> в композере. Большая часть —
+    клиентские шорткаты (вставка форматирования, выбор GIF). Несколько
+    серверных:
+    <code>/poll</code>, <code>/remind</code>, <code>/incident</code>,
+    <code>/911</code>.</p>
+
+    <div class="feat-meta">
+      <div class="row">
+        <div class="row-key">Архитектура</div>
+        <div class="row-val">
+          Команды передаются как обычные сообщения через
+          <code>SendMessage</code>, помеченные флагом <code>isCommand</code>
+          в DTO. Messaging Service маршрутизирует на хендлер по
+          <code>cmd[0]</code>. Серверный ответ —
+          system‑сообщение (см. #14).
+        </div>
+      </div>
+      <div class="row">
+        <div class="row-key">DB</div>
+        <div class="row-val">
+          Только для <code>/poll</code> и <code>/remind</code>:
+          <code>messaging.polls(message_id, options[], votes)</code>,
+          <code>messaging.reminders(user_id, channel_id, fire_at, text)</code>.
+        </div>
+      </div>
+      <div class="row">
+        <div class="row-key">Фоновое</div>
+        <div class="row-val">
+          Для <code>/remind</code> — новый BackgroundService‑тикер
+          (как Outbox), полит каждые 10 сек.
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- =================== 12 Поиск =================== -->
+  <h2 id="f12"><span class="num">12</span>Поиск по сообщениям</h2>
+  <div class="badges"><span class="badge new">NEW</span><span class="badge size l"><span class="dot"></span>L · 1.5 нед</span></div>
+  <div class="feat">
+    <p>Глобальный поиск с фильтрами (канал, автор, период). В прототипе —
+    выпадающая панель справа с подсветкой совпадений.</p>
+
+    <div class="feat-meta">
+      <div class="row">
+        <div class="row-key">DB</div>
+        <div class="row-val">
+          PostgreSQL FTS на колонке <code>content</code>:
+<pre><code>alter table messaging.messages
+  add column tsv tsvector
+  generated always as (to_tsvector('russian', content)) stored;
+
+create index ix_msg_tsv on messaging.messages using gin (tsv);</code></pre>
+        </div>
+      </div>
+      <div class="row">
+        <div class="row-key">API</div>
+        <div class="row-val">
+          <span class="endpoint">GET /api/search/messages?q=&channelId=&authorId=&from=&to=&cursor=</span><br/>
+          Ранжирование <code>ts_rank_cd</code>; в payload —
+          выделенные совпадения (<code>ts_headline</code>).
+        </div>
+      </div>
+      <div class="row">
+        <div class="row-key">Авторизация</div>
+        <div class="row-val">
+          <strong>Важно:</strong> поиск ограничен каналами, к которым
+          у user'а есть доступ. Для каждой страницы результата —
+          internal‑call в Guild
+          <code>/internal/channels/{id}/access</code> для фильтрации,
+          либо джойн с
+          <code>guild.members</code>. Без этого можно случайно
+          вернуть сообщения из чужой гильдии.
+        </div>
+      </div>
+      <div class="row">
+        <div class="row-key">Риски</div>
+        <div class="row-val">
+          На больших объёмах <code>russian</code> dictionary —
+          ~30% места на индекс. Подумать про шардирование
+          по <code>guild_id</code> в долгосрочной перспективе.
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- =================== 13 Inbox =================== -->
+  <h2 id="f13"><span class="num">13</span>Inbox / уведомления</h2>
+  <div class="badges"><span class="badge new">NEW</span><span class="badge size l"><span class="dot"></span>L · 1–1.5 нед</span></div>
+  <div class="feat">
+    <p>Сводная лента: упоминания, ответы в ваших тредах, реакции на ваши
+    сообщения. Со статусом «прочитано/нет» и группировкой по каналам.</p>
+
+    <div class="feat-meta">
+      <div class="row">
+        <div class="row-key">DB</div>
+        <div class="row-val">
+<pre><code>messaging.notifications (
+  id          uuid pk default gen_random_uuid(),
+  user_id     text not null,        -- получатель
+  kind        smallint not null,    -- 0=mention, 1=thread_reply, 2=reaction, 3=system
+  source_id   uuid not null,        -- message_id или thread_id
+  guild_id    uuid not null,
+  channel_id  uuid not null,
+  read_at     timestamptz null,
+  created_at  timestamptz not null default now()
+);
+create index ix_notif_user on messaging.notifications(user_id, read_at, created_at desc);</code></pre>
+          Генерируется триггерами при mention/reaction/thread_reply,
+          либо записями в outbox.
+        </div>
+      </div>
+      <div class="row">
+        <div class="row-key">API</div>
+        <div class="row-val">
+          <span class="endpoint">GET /api/me/inbox?status=unread&cursor=</span><br/>
+          <span class="endpoint">POST /api/me/inbox/{id}/ack</span><br/>
+          <span class="endpoint">POST /api/me/inbox/ack-all</span>
+        </div>
+      </div>
+      <div class="row">
+        <div class="row-key">WS</div>
+        <div class="row-val">
+          <span class="event">inbox.added</span> — пуш на per‑user группу.
+          Клиент сам ставит badge на иконку сервера/канала.
+        </div>
+      </div>
+      <div class="row">
+        <div class="row-key">Зависит от</div>
+        <div class="row-val">
+          @‑упоминания (#5), реакции (#1), треды (#3) — Inbox их
+          агрегирует. Имеет смысл делать после них.
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- =================== 14 Bot / system =================== -->
+  <h2 id="f14"><span class="num">14</span>Bot / system‑сообщения</h2>
+  <div class="badges"><span class="badge new">NEW</span><span class="badge size m"><span class="dot"></span>M · 3–4 дн</span></div>
+  <div class="feat">
+    <p>Сообщения, авторами которых являются сервисы, а не люди:
+    deploy‑бот, реакция на <code>/incident</code>, уведомления о бане,
+    результаты опроса.</p>
+
+    <div class="feat-meta">
+      <div class="row">
+        <div class="row-key">DB</div>
+        <div class="row-val">
+          В <code>messaging.messages</code>:
+          <code>author_kind smallint not null default 0</code>
+          (0=user, 1=bot, 2=system). У system — <code>author_id</code>
+          допускается magic‑UUID <code>00000000‑0000‑0000‑0000‑000000000001</code>.
+        </div>
+      </div>
+      <div class="row">
+        <div class="row-key">API</div>
+        <div class="row-val">
+          <span class="endpoint">POST /internal/messages/system</span>
+          (только internal — для outbox‑консьюмеров guild service,
+          напр. при бане). Для внешних ботов — отдельные машинные JWT
+          с ограниченным scope (Zitadel «application user»), которые
+          могут писать в каналы где у них есть Member.
+        </div>
+      </div>
+      <div class="row">
+        <div class="row-key">UI</div>
+        <div class="row-val">
+          В <span class="event">message.created</span> payload —
+          поле <code>authorKind</code>. Фронт рисует
+          <code>BOT / SYSTEM</code> badge и отдельный стиль (см.
+          прототип, release‑bot).
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- =================== 15 Profile hover =================== -->
+  <h2 id="f15"><span class="num">15</span>Profile hover card</h2>
+  <div class="badges"><span class="badge expand">EXPAND</span><span class="badge size s"><span class="dot"></span>S · 1 дн</span></div>
+  <div class="feat">
+    <p>При hover на аватаре в чате/райле — карточка с именем, ролью,
+    статусом, activity, кнопками «упомянуть» / «отправить DM» (DM пока
+    отключено).</p>
+
+    <div class="feat-meta">
+      <div class="row">
+        <div class="row-key">Бэкенд</div>
+        <div class="row-val">
+          Дополнительных эндпоинтов <strong>не требуется</strong> —
+          используется существующий
+          <span class="endpoint">GET /api/guilds/{id}/members</span>
+          (список с ролями), который уже вызывается при открытии
+          гильдии. Активити берётся из presence (см. #10).
+        </div>
+      </div>
+      <div class="row">
+        <div class="row-key">Фронт</div>
+        <div class="row-val">
+          Только React‑компонент + portal, на 200 строк включая стили.
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- =================== 16 Attachments =================== -->
+  <h2 id="f16"><span class="num">16</span>Вложения и превью ссылок</h2>
+  <div class="badges"><span class="badge block">BLOCKED</span><span class="badge size l"><span class="dot"></span>L · 2+ нед</span></div>
+  <div class="feat">
+    <p>Изображения и файлы в сообщениях, превью ссылок (CI bot, дашборды).
+    В README <strong>явно за рамками MVP</strong> — нужен MinIO и пайплайн.</p>
+
+    <div class="feat-meta">
+      <div class="row">
+        <div class="row-key">Инфра</div>
+        <div class="row-val">
+          MinIO (S3‑совместимое) + bucket policy + presigned URLs.
+          В docker‑compose и Helm‑chart — новый сервис.
+          Для link‑unfurl — отдельный worker, опрашивающий outbox
+          новых сообщений и кэширующий OG‑метаданные.
+        </div>
+      </div>
+      <div class="row">
+        <div class="row-key">DB</div>
+        <div class="row-val">
+          <code>messaging.attachments (id, message_id, kind, url, mime, size, width, height)</code> и
+          <code>messaging.link_previews (url pk, og_title, og_image, og_desc, fetched_at)</code>.
+        </div>
+      </div>
+      <div class="row">
+        <div class="row-key">API</div>
+        <div class="row-val">
+          <span class="endpoint">POST /api/uploads/presign</span> — выдать
+          presigned URL, клиент грузит напрямую в S3.<br/>
+          <span class="endpoint">POST /api/messages</span> — в DTO список
+          <code>attachmentIds</code>.
+        </div>
+      </div>
+      <div class="row">
+        <div class="row-key">Решение</div>
+        <div class="row-val">
+          Не включать в Wave 1‑3. Картинки и файлы — отдельный эпик,
+          его удобно делать сразу с аватарками (которые также за рамками MVP).
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- =================== 17 Voice extras =================== -->
+  <h2 id="f17"><span class="num">17</span>Voice: VAD / камера / демонстрация экрана</h2>
+  <div class="badges"><span class="badge expand">EXPAND</span><span class="badge size m"><span class="dot"></span>M · 3–5 дн</span></div>
+  <div class="feat">
+    <p>В прототипе — обводка говорящего, waveform, иконки камеры/screen share.
+    VAD в README отмечен как <em>Should</em> (FR‑24) — это всё клиентская
+    логика <code>livekit‑client</code>, бэк не трогаем.</p>
+
+    <div class="feat-meta">
+      <div class="row">
+        <div class="row-key">Бэкенд</div>
+        <div class="row-val">
+          Voice Service не меняем — он выдаёт JWT для LiveKit с
+          claims, разрешающими публикацию audio. Чтобы разрешить
+          video/screen — добавить grants:
+          <code>canPublish=true, canPublishSources=[camera, screen_share]</code>
+          в LiveKit access token (только если фича включена для канала).
+        </div>
+      </div>
+      <div class="row">
+        <div class="row-key">Фронт</div>
+        <div class="row-val">
+          Подписаться на <code>activeSpeakers</code> event у Room.
+          Добавить кнопки в <code>VoiceControls</code> для
+          <code>localParticipant.setCameraEnabled / setScreenShareEnabled</code>.
+        </div>
+      </div>
+      <div class="row">
+        <div class="row-key">UX</div>
+        <div class="row-val">
+          Опционально: добавить чип к каналу «v‑share активен» —
+          нужно отдельное событие <span class="event">voice.screen_share.started</span>,
+          которое триггерится по participant track published.
+          Можно отложить.
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============= ROADMAP ============= -->
+  <div class="roadmap" id="roadmap">
+    <h2>Дорожная карта</h2>
+    <p style="color: var(--fg-2); margin-bottom: 24px;">
+      Группировка по очередности, исходя из стоимости/ценности и
+      зависимостей. Числа — порядок, в идеале — не строгий.
+    </p>
+
+    <div class="lane">
+      <div class="lane-name">Wave 1<span class="sub">UX polish · только UI или мелкий бэк · ~1 неделя</span></div>
+      <div class="lane-items">
+        <span class="pill">07 · channel topic</span>
+        <span class="pill">15 · profile hover</span>
+        <span class="pill">04 · edit message</span>
+        <span class="pill">08 · typing indicator</span>
+        <span class="pill">10 · idle/dnd/status</span>
+        <span class="pill">17 · VAD + screen share UI</span>
+      </div>
+    </div>
+
+    <div class="lane">
+      <div class="lane-name">Wave 2<span class="sub">основные продуктовые фичи · 2–3 недели</span></div>
+      <div class="lane-items">
+        <span class="pill">02 · reply‑to</span>
+        <span class="pill">01 · reactions</span>
+        <span class="pill">05 · mentions</span>
+        <span class="pill">06 · pin messages</span>
+        <span class="pill">09 · unread / read state</span>
+      </div>
+    </div>
+
+    <div class="lane">
+      <div class="lane-name">Wave 3<span class="sub">большие фичи · 3–4 недели</span></div>
+      <div class="lane-items">
+        <span class="pill">03 · threads</span>
+        <span class="pill">12 · search</span>
+        <span class="pill">13 · inbox</span>
+        <span class="pill">14 · bot / system messages</span>
+        <span class="pill">11 · slash commands</span>
+      </div>
+    </div>
+
+    <div class="lane">
+      <div class="lane-name">Backlog<span class="sub">за рамками текущей фазы</span></div>
+      <div class="lane-items">
+        <span class="pill">16 · вложения + MinIO</span>
+        <span class="pill">— · аватарки</span>
+        <span class="pill">— · DM</span>
+        <span class="pill">— · E2EE (Signal Protocol)</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="callout warn" style="margin-top: 32px;">
+    <strong>Замечание про присваивание ID.</strong> Прототип использует
+    локальные строки. На бэке везде остаётся <code>uuid v4</code> как
+    в текущей схеме. Если будем делать <code>thread_root_id</code>
+    или <code>reply_to_message_id</code> с FK — учесть это при
+    миграциях (нельзя добавлять FK на колонку с уже существующими
+    данными, нужен <code>NOT VALID</code> → <code>VALIDATE</code> в две стадии).
+  </div>
+
+  <footer>
+    <span>NexTalk · gap document · 2026‑05‑25</span>
+    <span>основано на README.md + docs/schema.md</span>
+  </footer>
+
+</div>
+</body>
+</html>

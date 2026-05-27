@@ -1,12 +1,14 @@
-import React, { useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { IHash, ISpeaker, IPlus, IMic, IHeadset, ILogout, IGear } from '../../../shared/components/Icons/Icons'
 import { Avatar, avatarBg } from '../../../shared/components/Avatar/Avatar'
 import { useAppDispatch, useAppSelector } from '../../../store'
 import { fetchChannels, setCurrentChannel } from '../../../shared/slices/channelSlice'
+import { fetchMembers } from '../../../shared/slices/memberSlice'
 import { selectCurrentServer } from '../../../shared/slices/serverSlice'
 import { selectUser, logout } from '../../../shared/slices/authSlice'
 import { CreateChannelModal } from './CreateChannelModal'
+import { useSidebarResize } from '../../../shared/hooks/useSidebarResize'
 import type { Channel } from '../../../shared/types'
 
 export const ChannelSidebar: React.FC = () => {
@@ -17,7 +19,13 @@ export const ChannelSidebar: React.FC = () => {
   const currentServer = useAppSelector(selectCurrentServer)
   const channels = useAppSelector(state => state.channels.channels)
   const voiceParticipants = useAppSelector(state => state.voice.channelParticipants)
+  const members = useAppSelector(state => state.members.members[serverId ?? ''] ?? [])
   const user = useAppSelector(selectUser)
+  const { onMouseDown: onResizeMouseDown } = useSidebarResize()
+
+  useEffect(() => {
+    if (serverId) dispatch(fetchMembers(serverId))
+  }, [serverId, dispatch])
 
   const [createOpen, setCreateOpen] = useState(false)
   const [collapsedText, setCollapsedText] = useState(false)
@@ -49,6 +57,7 @@ export const ChannelSidebar: React.FC = () => {
   if (!currentServer && !serverId) {
     return (
       <aside className="side">
+        <div className="side-resize-handle" onMouseDown={onResizeMouseDown} />
         <div className="side-banner">
           <div className="side-guild">
             <div className="side-guild-name">NexTalk</div>
@@ -63,6 +72,7 @@ export const ChannelSidebar: React.FC = () => {
   return (
     <>
       <aside className="side">
+        <div className="side-resize-handle" onMouseDown={onResizeMouseDown} />
         <div className="side-banner">
           <div className="side-guild">
             <div className="side-guild-name">{currentServer?.name ?? '...'}</div>
@@ -131,12 +141,15 @@ export const ChannelSidebar: React.FC = () => {
                     </div>
                     {participants.length > 0 && (
                       <div className="voice-nested">
-                        {participants.map(userId => (
-                          <div key={userId} className="voice-user-row">
-                            <Avatar str={userId} size={22} />
-                            <span className="nm">{userId}</span>
-                          </div>
-                        ))}
+                        {participants.map(userId => {
+                          const name = members.find(m => m.userId === userId)?.displayName ?? userId
+                          return (
+                            <div key={userId} className="voice-user-row">
+                              <Avatar str={name} size={22} />
+                              <span className="nm">{name}</span>
+                            </div>
+                          )
+                        })}
                       </div>
                     )}
                   </React.Fragment>

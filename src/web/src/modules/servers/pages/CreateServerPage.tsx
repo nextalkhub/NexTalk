@@ -21,11 +21,11 @@ export const CreateServerPage: React.FC = () => {
       if (connection && guild?.id) {
         await connection.invoke('JoinGuildGroup', guild.id).catch(() => {})
       }
+      navigate('/servers')
     } catch (err) {
       console.error(err)
     } finally {
       setLoading(false)
-      navigate('/servers')
     }
   }
 

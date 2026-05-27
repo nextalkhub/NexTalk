@@ -33,22 +33,26 @@ function loadPrefs(): AppPrefs {
 }
 
 function applyPrefs(prefs: AppPrefs) {
-  document.documentElement.style.fontSize = `${prefs.fontScale * 100}%`
+  document.documentElement.style.zoom = prefs.fontScale.toString()
+  document.documentElement.setAttribute('data-density', prefs.density)
   const p = PALETTES[prefs.palette as keyof typeof PALETTES] ?? PALETTES.nextalk
   const root = document.documentElement.style
   root.setProperty('--brand-1', p.brand1)
   root.setProperty('--brand-2', p.brand2)
   root.setProperty('--brand-3', p.brand3)
+  root.setProperty('--brand-1-rgb', p.rgb1)
+  root.setProperty('--brand-2-rgb', p.rgb2)
   root.setProperty('--grad-brand', p.grad)
+  root.setProperty('--grad-brand-soft', p.softGrad)
 }
 
 // ─── Palettes ────────────────────────────────────────────────────────────────
 
 const PALETTES = {
-  nextalk:  { label: 'NexTalk',  desc: 'По умолчанию', brand1: '#4F7CFF', brand2: '#9061FF', brand3: '#C254FF', grad: 'linear-gradient(135deg,#4F7CFF 0%,#9061FF 60%,#C254FF 100%)' },
-  midnight: { label: 'Midnight', desc: 'Холодный синий', brand1: '#2563EB', brand2: '#7C3AED', brand3: '#A855F7', grad: 'linear-gradient(135deg,#1e3a8a 0%,#4c1d95 100%)' },
-  emerald:  { label: 'Emerald',  desc: 'Зелёный',      brand1: '#10B981', brand2: '#059669', brand3: '#34D399', grad: 'linear-gradient(135deg,#065F46 0%,#10B981 100%)' },
-  graphite: { label: 'Graphite', desc: 'Нейтральный',  brand1: '#6B7280', brand2: '#4B5563', brand3: '#9CA3AF', grad: 'linear-gradient(135deg,#374151 0%,#6B7280 100%)' },
+  nextalk:  { label: 'NexTalk',  desc: 'По умолчанию',  brand1: '#4F7CFF', brand2: '#9061FF', brand3: '#C254FF', rgb1: '79,124,255',   rgb2: '144,97,255',  grad: 'linear-gradient(135deg,#4F7CFF 0%,#9061FF 60%,#C254FF 100%)', softGrad: 'linear-gradient(135deg,rgba(79,124,255,.16),rgba(194,84,255,.10))' },
+  midnight: { label: 'Midnight', desc: 'Холодный синий', brand1: '#2563EB', brand2: '#7C3AED', brand3: '#A855F7', rgb1: '37,99,235',    rgb2: '124,58,237',  grad: 'linear-gradient(135deg,#1e3a8a 0%,#4c1d95 100%)',           softGrad: 'linear-gradient(135deg,rgba(37,99,235,.16),rgba(168,85,247,.10))' },
+  emerald:  { label: 'Emerald',  desc: 'Зелёный',       brand1: '#10B981', brand2: '#059669', brand3: '#34D399', rgb1: '16,185,129',   rgb2: '5,150,105',   grad: 'linear-gradient(135deg,#065F46 0%,#10B981 100%)',            softGrad: 'linear-gradient(135deg,rgba(16,185,129,.16),rgba(52,211,153,.10))' },
+  graphite: { label: 'Graphite', desc: 'Нейтральный',   brand1: '#6B7280', brand2: '#4B5563', brand3: '#9CA3AF', rgb1: '107,114,128',  rgb2: '75,85,99',    grad: 'linear-gradient(135deg,#374151 0%,#6B7280 100%)',            softGrad: 'linear-gradient(135deg,rgba(107,114,128,.16),rgba(156,163,175,.10))' },
 }
 
 // ─── JWT helpers ─────────────────────────────────────────────────────────────
@@ -85,12 +89,10 @@ export const AppSettingsPage: React.FC = () => {
   }, [setHideRight])
 
   const setPref = <K extends keyof AppPrefs>(key: K, value: AppPrefs[K]) => {
-    setPrefsState(prev => {
-      const next = { ...prev, [key]: value }
-      localStorage.setItem(PREFS_KEY, JSON.stringify(next))
-      applyPrefs(next)
-      return next
-    })
+    const next = { ...prefs, [key]: value }
+    setPrefsState(next)
+    localStorage.setItem(PREFS_KEY, JSON.stringify(next))
+    applyPrefs(next)
   }
 
   const handleLogout = async () => {
@@ -294,8 +296,12 @@ const AudioTab: React.FC<{ prefs: AppPrefs; setPref: <K extends keyof AppPrefs>(
 
 const NotificationsTab: React.FC<{ prefs: AppPrefs; setPref: <K extends keyof AppPrefs>(k: K, v: AppPrefs[K]) => void }> = ({ prefs, setPref }) => {
   const requestPermission = async () => {
-    if ('Notification' in window && Notification.permission === 'default') {
-      await Notification.requestPermission()
+    if (!prefs.desktopNotifications && 'Notification' in window) {
+      if (Notification.permission === 'denied') return
+      if (Notification.permission === 'default') {
+        const result = await Notification.requestPermission()
+        if (result !== 'granted') return
+      }
     }
     setPref('desktopNotifications', !prefs.desktopNotifications)
   }
