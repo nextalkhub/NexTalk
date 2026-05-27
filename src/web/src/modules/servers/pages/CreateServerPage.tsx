@@ -1,13 +1,8 @@
-﻿import React, { useState } from 'react'
+import React, { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Button } from '../../../shared/components/Button/Button'
-import { Input } from '../../../shared/components/Input/Input'
-import { GradientBackground } from '../../../shared/components/GradientBackground/GradientBackground'
-import { Icon } from '../../../shared/components/Icon/Icon'
-import styles from './CreateServerPage.module.scss'
-import {createServer} from "../../../shared/slices/serverSlice.ts";
-import {useAppDispatch} from "../../../store.ts";
-import {useSignalR} from "../../../shared/hooks/useSignalR.ts";
+import { createServer } from '../../../shared/slices/serverSlice'
+import { useAppDispatch } from '../../../store'
+import { useSignalR } from '../../../shared/hooks/useSignalR'
 
 export const CreateServerPage: React.FC = () => {
   const navigate = useNavigate()
@@ -20,15 +15,9 @@ export const CreateServerPage: React.FC = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!name.trim()) return
-
     setLoading(true)
-
     try {
       const guild = await dispatch(createServer({ name, displayName })).unwrap()
-
-      // Создатель уже member на бэке, но ChatHub узнал о гильдии только на старте
-      // соединения. JoinGuildGroup подписывает текущий connection до того, как
-      // прилетит первый channel.created / member.joined.
       if (connection && guild?.id) {
         await connection.invoke('JoinGuildGroup', guild.id).catch(() => {})
       }
@@ -41,44 +30,47 @@ export const CreateServerPage: React.FC = () => {
   }
 
   return (
-      <GradientBackground>
-        <div className={styles.container}>
-          <div className={styles.card}>
-            <div className={styles.backLink} onClick={() => navigate('/servers')}>
-              <Icon name="arrow-left" size={16} />
-              Назад к серверам
-            </div>
+    <div className="auth-page">
+      <div className="auth-card">
+        <div className="auth-mark">N</div>
+        <h1>Создать сервер</h1>
+        <p className="sub">Новое пространство для голосового и текстового общения с вашей командой.</p>
 
-            <div className={styles.title}>Создать сервер</div>
-
-            <form onSubmit={handleSubmit}>
-              <Input
-                  label="Название сервера"
-                  placeholder="Например: Game Night"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  className={styles.input}
-              />
-
-              <Input
-                  label="Отображаемое название сервера"
-                  placeholder="Например: game1"
-                  value={displayName}
-                  onChange={(e) => setDisplayName(e.target.value)}
-                  className={styles.input}
-              />
-
-              <div className={styles.buttons}>
-                <Button type="button" variant="secondary" onClick={() => navigate('/servers')} fullWidth>
-                  Отмена
-                </Button>
-                <Button type="submit" variant="primary" fullWidth disabled={loading}>
-                  {loading ? 'Создание...' : 'Создать сервер'}
-                </Button>
-              </div>
-            </form>
+        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 16, marginTop: 8 }}>
+          <div className="settings-field" style={{ marginBottom: 0 }}>
+            <label className="settings-label">Название сервера</label>
+            <input
+              className="settings-input"
+              placeholder="Например: Game Night"
+              value={name}
+              onChange={e => setName(e.target.value)}
+              autoFocus
+            />
           </div>
+          <div className="settings-field" style={{ marginBottom: 0 }}>
+            <label className="settings-label">Отображаемое название</label>
+            <input
+              className="settings-input"
+              placeholder="Например: game-night"
+              value={displayName}
+              onChange={e => setDisplayName(e.target.value)}
+            />
+            <div className="settings-help">Короткое имя, используется в URL и метаданных</div>
+          </div>
+          <button type="submit" className="btn-primary-lg" style={{ marginTop: 4 }} disabled={!name.trim() || loading}>
+            {loading ? 'Создание...' : 'Создать сервер'}
+          </button>
+        </form>
+
+        <div className="auth-foot">
+          <button
+            style={{ background: 'none', border: 'none', color: 'var(--fg-2)', cursor: 'pointer', fontSize: 13, fontFamily: 'inherit' }}
+            onClick={() => navigate('/servers')}
+          >
+            ← Отмена
+          </button>
         </div>
-      </GradientBackground>
+      </div>
+    </div>
   )
 }

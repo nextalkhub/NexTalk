@@ -8,6 +8,7 @@ import membersReducer from './shared/slices/memberSlice.ts'
 import inviteReducer from './shared/slices/inviteSlice.ts'
 import voiceReducer from './shared/slices/voiceSlice.ts'
 import presenceReducer from './shared/slices/presenceSlice.ts'
+import settingsReducer from './shared/slices/settingsSlice.ts'
 
 export const store = configureStore({
     reducer: {
@@ -19,6 +20,7 @@ export const store = configureStore({
         invite: inviteReducer,
         voice: voiceReducer,
         presence: presenceReducer,
+        settings: settingsReducer,
     },
     middleware: (getDefaultMiddleware) =>
         getDefaultMiddleware({

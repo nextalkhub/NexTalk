@@ -23,8 +23,10 @@ using NexTalk.Guild.Service.Features.Invites.AcceptInvite;
 using NexTalk.Guild.Service.Features.Invites.CreateInvite;
 using NexTalk.Guild.Service.Features.Members.AssignRole;
 using NexTalk.Guild.Service.Features.Members.BanMember;
+using NexTalk.Guild.Service.Features.Members.GetBans;
 using NexTalk.Guild.Service.Features.Members.GetMembers;
 using NexTalk.Guild.Service.Features.Members.KickMember;
+using NexTalk.Guild.Service.Features.Members.UnbanMember;
 using NexTalk.Guild.Service.Infrastructure;
 using NexTalk.Guild.Service.Shared;
 using NexTalk.Guild.Service.Shared.Exceptions;
@@ -192,6 +194,8 @@ builder.Services.AddScoped<GetMembersHandler>();
 builder.Services.AddScoped<AssignRoleHandler>();
 builder.Services.AddScoped<KickMemberHandler>();
 builder.Services.AddScoped<BanMemberHandler>();
+builder.Services.AddScoped<GetBansHandler>();
+builder.Services.AddScoped<UnbanMemberHandler>();
 
 // Internal handlers
 builder.Services.AddScoped<CheckChannelAccessHandler>();
@@ -381,6 +385,8 @@ GetMembersEndpoint.Map(app);
 AssignRoleEndpoint.Map(app);
 KickMemberEndpoint.Map(app);
 BanMemberEndpoint.Map(app);
+GetBansEndpoint.Map(app);
+UnbanMemberEndpoint.Map(app);
 
 // Internal-эндпоинты
 var internalEndpoints = app.MapGroup("").AllowAnonymous();

@@ -1,6 +1,6 @@
 import React, { useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { IHash, ISpeaker, IPlus, IMic, IHeadset, ILogout } from '../../../shared/components/Icons/Icons'
+import { IHash, ISpeaker, IPlus, IMic, IHeadset, ILogout, IGear } from '../../../shared/components/Icons/Icons'
 import { Avatar, avatarBg } from '../../../shared/components/Avatar/Avatar'
 import { useAppDispatch, useAppSelector } from '../../../store'
 import { fetchChannels, setCurrentChannel } from '../../../shared/slices/channelSlice'
@@ -65,6 +65,13 @@ export const ChannelSidebar: React.FC = () => {
           <div className="side-guild">
             <div className="side-guild-name">{currentServer?.name ?? '...'}</div>
           </div>
+          <button
+            className="icon-btn"
+            title="Настройки сервера"
+            onClick={() => navigate(`/servers/${serverId}/settings`)}
+          >
+            <IGear />
+          </button>
         </div>
 
         <div className="side-list">
