@@ -38,7 +38,7 @@ using Serilog.Enrichers.Span;
 using Swashbuckle.AspNetCore.SwaggerGen;
 using IPNetwork = System.Net.IPNetwork;
 
-DotNetRuntimeStats.StartCollecting();
+DotNetRuntimeStatsBuilder.Customize().StartCollecting();
 
 var builder = WebApplication.CreateBuilder(args);
 

@@ -26,7 +26,7 @@ using Serilog;
 using Serilog.Enrichers.Span;
 using IPNetwork = System.Net.IPNetwork;
 
-DotNetRuntimeStats.StartCollecting();
+DotNetRuntimeStatsBuilder.Customize().StartCollecting();
 
 var builder = WebApplication.CreateBuilder(args);
 
