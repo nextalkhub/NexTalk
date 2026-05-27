@@ -47,3 +47,8 @@ secrets-encryption: true
 # Конфиг лежит рядом, см. /var/lib/rancher/k3s/server/psa.yaml.
 kube-apiserver-arg:
   - "admission-control-config-file=/var/lib/rancher/k3s/server/psa.yaml"
+
+# Запрещаем планировщику размещать пользовательские поды на control-plane нодах.
+# Системные компоненты (coredns, metrics-server) должны иметь toleration.
+node-taint:
+  - "node-role.kubernetes.io/control-plane:NoSchedule"
