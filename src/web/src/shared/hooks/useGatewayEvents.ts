@@ -167,7 +167,7 @@ export const useGatewayEvents = () => {
                         id: event.payload.id,
                         serverId: event.payload.guildId,
                         name: event.payload.name,
-                        type: event.payload.type === 0 ? 'text' : 'voice',
+                        type: event.payload.type === 1 ? 'voice' : 'text',
                     }))
                     break
 
@@ -213,6 +213,7 @@ export const useGatewayEvents = () => {
                     dispatch(removeServer(event.payload.guildId))
                     dispatch(removeChannelsByServer(event.payload.guildId))
                     dispatch(clearMembers(event.payload.guildId))
+                    dispatch(setCurrentChannel(null))
                     navigate('/servers')
                     break
 

@@ -132,19 +132,13 @@ const membersSlice = createSlice({
                 })
                 .addCase(kickMemberThunk.fulfilled, (state, action) => {
                     const { serverId, memberId } = action.payload
-
                     state.members[serverId] =
-                        state.members[serverId].filter(
-                            m => m.userId !== memberId
-                        )
+                        state.members[serverId]?.filter(m => m.userId !== memberId) ?? []
                 })
                 .addCase(banMemberThunk.fulfilled, (state, action) => {
                     const { serverId, memberId } = action.payload
-
                     state.members[serverId] =
-                        state.members[serverId].filter(
-                            m => m.userId !== memberId
-                        )
+                        state.members[serverId]?.filter(m => m.userId !== memberId) ?? []
                 })
     }
 })

@@ -46,20 +46,6 @@ const chatSlice = createSlice({
     name: 'chat',
     initialState,
     reducers: {
-        sendMessage: (state, action: PayloadAction<MessageInterface>) => {
-            const msg = action.payload
-
-            if (!state.messages[msg.channelId]) {
-                state.messages[msg.channelId] = {
-                    items: [],
-                    nextCursor: null,
-                    hasMore: true,
-                    loading: false,
-                }
-            }
-
-            state.messages[msg.channelId].items.push(msg)
-        },
         messageReceived: (state, action: PayloadAction<MessageInterface>) => {
             const msg = action.payload
 
@@ -141,5 +127,5 @@ const chatSlice = createSlice({
     }
 })
 
-export const { sendMessage, messageReceived, deleteMessage } = chatSlice.actions
+export const { messageReceived, deleteMessage } = chatSlice.actions
 export default chatSlice.reducer

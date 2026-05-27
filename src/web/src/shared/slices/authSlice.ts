@@ -60,34 +60,6 @@ export const login = createAsyncThunk(
     }
 )
 
-export const register = createAsyncThunk(
-    'auth/register',
-    async () => {
-        // if (import.meta.env.VITE_USE_AUTH_MOCK === 'true') {
-        //     await new Promise(res => setTimeout(res, 300))
-        //
-        //     const newUser = {
-        //         id: Date.now().toString(),
-        //         name,
-        //         nickname,
-        //         email,
-        //         createdAt: new Date(Date.now())
-        //     }
-        //
-        //     localStorage.setItem('mock_user', JSON.stringify(newUser))
-        //
-        //     return {
-        //         user: newUser,
-        //         tokens: {
-        //             access_token: 'mock-token',
-        //             expires_in: 3600,
-        //         },
-        //     }
-        // }
-        //
-        // throw new Error('Register not implemented')
-    }
-)
 
 export const logout = createAsyncThunk(
     'auth/logout',
@@ -231,21 +203,6 @@ const authSlice = createSlice({
         builder.addCase(login.rejected, (state, action) => {
             state.isLoading = false
             state.error = action.error.message || 'Login failed'
-        })
-
-        builder.addCase(register.pending, (state) => {
-            state.isLoading = true
-            state.error = null
-        })
-        // builder.addCase(register.fulfilled, (state, action) => {
-        //     state.isLoading = false
-        //     state.user = action.payload.user
-        //     state.tokens = action.payload.tokens
-        //     state.isAuthenticated = true
-        // })
-        builder.addCase(register.rejected, (state, action) => {
-            state.isLoading = false
-            state.error = action.error.message || 'Register failed'
         })
 
         builder.addCase(initializeAuth.pending, (state) => {
