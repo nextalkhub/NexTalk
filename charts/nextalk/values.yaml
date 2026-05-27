@@ -97,9 +97,10 @@ livekit:
   image:
     repository: livekit/livekit-server
     tag: "v1.11"
-  # UDP-диапазон для медиа. На воркерах должны быть открыты эти порты в ufw.
-  rtcPortStart: 50000
-  rtcPortEnd: 50200
+  # Единственный UDP-порт для медиа (UDPMux). Один порт = один hostPort DNAT-rule.
+  # Диапазон не работает: k3s создаёт DNAT только для явно перечисленных портов,
+  # а LiveKit выбирает случайный порт из диапазона — остальные недостижимы снаружи.
+  rtcUdpPort: 7882
   # Redis для shared state (room metadata). База 0 — общая для LiveKit.
   redisDb: 0
 

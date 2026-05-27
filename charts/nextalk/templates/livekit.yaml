@@ -31,13 +31,12 @@ spec:
             - containerPort: 7881
               name: rtc-tcp
               protocol: TCP
-            # UDP-диапазон для медиа. hostPort = portmap прямо на ноду
-            # (под должен быть на ноде с публичным IP — pin через nodeSelector).
-            - containerPort: {{ .Values.livekit.rtcPortStart }}
-              hostPort: {{ .Values.livekit.rtcPortStart }}
-              protocol: UDP
-            - containerPort: {{ .Values.livekit.rtcPortEnd }}
-              hostPort: {{ .Values.livekit.rtcPortEnd }}
+              hostPort: 7881
+            # Единственный UDP-порт (UDPMux). LiveKit мультиплексирует все
+            # соединения через один сокет — один hostPort покрывает всё.
+            - containerPort: {{ .Values.livekit.rtcUdpPort }}
+              hostPort: {{ .Values.livekit.rtcUdpPort }}
+              name: rtc-udp
               protocol: UDP
           volumeMounts:
             - name: config
