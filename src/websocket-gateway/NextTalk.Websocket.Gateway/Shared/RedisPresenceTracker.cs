@@ -28,4 +28,12 @@ public sealed class RedisPresenceTracker : IPresenceTracker
             .Select(v => v.ToString())
             .ToList();
     }
+
+    public IReadOnlyList<string> GetAllOnline(TimeSpan timeout)
+    {
+        var cutoff = DateTimeOffset.UtcNow.Subtract(timeout).ToUnixTimeSeconds();
+        return _db.SortedSetRangeByScore(Key, cutoff, double.PositiveInfinity)
+            .Select(v => v.ToString())
+            .ToList();
+    }
 }

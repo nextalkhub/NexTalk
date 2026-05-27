@@ -24,4 +24,12 @@ public sealed class PresenceTracker : IPresenceTracker
             .Select(kv => kv.Key)
             .ToList();
     }
+
+    public IReadOnlyList<string> GetAllOnline(TimeSpan timeout)
+    {
+        return _lastSeen
+            .Where(kv => DateTimeOffset.UtcNow - kv.Value <= timeout)
+            .Select(kv => kv.Key)
+            .ToList();
+    }
 }

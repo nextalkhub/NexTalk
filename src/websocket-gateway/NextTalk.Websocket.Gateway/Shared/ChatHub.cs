@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.SignalR;
+using Microsoft.Extensions.Options;
 using NextTalk.Websocket.Gateway.Features.Chat.SendMessage;
 using NextTalk.Websocket.Gateway.Infrastructure;
 
@@ -10,6 +11,7 @@ public sealed class ChatHub : Hub
     private readonly IPresenceTracker _presence;
     private readonly SendMessageHandler _sendMessageHandler;
     private readonly GuildServiceClient _guildClient;
+    private readonly TimeSpan _offlineTimeout;
     private readonly ILogger<ChatHub> _logger;
 
     public ChatHub(
@@ -17,12 +19,14 @@ public sealed class ChatHub : Hub
         IPresenceTracker presence,
         SendMessageHandler sendMessageHandler,
         GuildServiceClient guildClient,
+        IOptions<PresenceOptions> presenceOptions,
         ILogger<ChatHub> logger)
     {
         _connections = connections;
         _presence = presence;
         _sendMessageHandler = sendMessageHandler;
         _guildClient = guildClient;
+        _offlineTimeout = TimeSpan.FromSeconds(presenceOptions.Value.OfflineTimeout);
         _logger = logger;
     }
 
@@ -129,6 +133,17 @@ public sealed class ChatHub : Hub
             _presence.SetOnline(userId);
 
         return Task.CompletedTask;
+    }
+
+    /// <summary>
+    /// Возвращает список userId всех пользователей, чей heartbeat не устарел.
+    /// Фронт вызывает после connect/reconnect чтобы получить начальный снапшот presence.
+    /// </summary>
+    public IReadOnlyList<string> GetOnlineUsers()
+    {
+        var userId = GetUserId();
+        if (string.IsNullOrEmpty(userId)) return [];
+        return _presence.GetAllOnline(_offlineTimeout);
     }
 
     /// <summary>
