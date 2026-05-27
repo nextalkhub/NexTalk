@@ -21,7 +21,9 @@ spec:
       # Обязательно для LiveKit на Kubernetes — оверлейная сеть (Flannel)
       # добавляет NAT-слои, ломающие WebRTC ICE.
       hostNetwork: true
-      dnsPolicy: ClusterFirstWithHostNet
+      # Default = нода's /etc/resolv.conf. LiveKit не нужен cluster DNS —
+      # Redis подключается по IP, STUN нужен только внешний резолв.
+      dnsPolicy: Default
       securityContext:
         {{- toYaml .Values.podSecurityContext | nindent 8 }}
       containers:
