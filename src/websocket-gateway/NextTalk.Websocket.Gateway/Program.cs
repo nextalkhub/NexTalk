@@ -278,9 +278,7 @@ builder.Services.AddHttpClient<MessagingServiceClient>(c =>
         pipeline.AddTimeout(TimeSpan.FromSeconds(2));
     });
 
-builder.Services.AddHealthChecks()
-    .AddUrlGroup(new Uri($"{guildUrl}/healthz"), name: "guild-service", tags: ["ready"])
-    .AddUrlGroup(new Uri($"{messagingUrl}/healthz"), name: "messaging-service", tags: ["ready"]);
+builder.Services.AddHealthChecks();
 
 var app = builder.Build();
 

@@ -240,9 +240,7 @@ builder.Services.AddSwaggerGen(c =>
 var livekitUrl = builder.Configuration["LiveKit:Url"]
     ?? throw new InvalidOperationException("LiveKit:Url не задан.");
 
-builder.Services.AddHealthChecks()
-    .AddUrlGroup(new Uri(livekitUrl), name: "livekit", tags: ["ready"])
-    .AddUrlGroup(new Uri($"{guildUrl}/healthz"), name: "guild-service", tags: ["ready"]);
+builder.Services.AddHealthChecks();
 
 var app = builder.Build();
 
