@@ -30,7 +30,7 @@ export const ChannelChatPage: React.FC = () => {
   }, [setHideRight])
 
   useEffect(() => {
-    if (serverId) dispatch(fetchChannels(serverId))
+    if (serverId && serverId !== 'undefined') dispatch(fetchChannels(serverId))
   }, [serverId, dispatch])
 
   useEffect(() => {

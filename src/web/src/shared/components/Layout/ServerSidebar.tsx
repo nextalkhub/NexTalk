@@ -16,6 +16,7 @@ export const ServerRail: React.FC = () => {
   const activeId = serverId ?? currentServer?.id
 
   const handleServerClick = (server: Guild) => {
+    if (!server.id || !server.name) return
     dispatch(setCurrentServer(server))
     navigate(`/servers/${server.id}/channels`)
   }
@@ -39,7 +40,7 @@ export const ServerRail: React.FC = () => {
             style={activeId !== server.id ? { background: avatarBg(server.id) } : undefined}
             onClick={() => handleServerClick(server)}
           >
-            {server.name.charAt(0).toUpperCase()}
+            {(server.name ?? '?').charAt(0).toUpperCase()}
           </button>
         ))}
         <button

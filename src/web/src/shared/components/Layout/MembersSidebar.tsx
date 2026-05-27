@@ -14,7 +14,7 @@ export const MembersSidebar: React.FC = () => {
   )
 
   useEffect(() => {
-    if (serverId) dispatch(fetchMembers(serverId))
+    if (serverId && serverId !== 'undefined') dispatch(fetchMembers(serverId))
   }, [serverId, dispatch])
 
   const owners  = members.filter(m => m.role === 'Owner')

@@ -9,6 +9,7 @@ import { selectCurrentServer } from '../../../shared/slices/serverSlice'
 import { selectUser, logout } from '../../../shared/slices/authSlice'
 import { CreateChannelModal } from './CreateChannelModal'
 import { useSidebarResize } from '../../../shared/hooks/useSidebarResize'
+
 import type { Channel } from '../../../shared/types'
 
 export const ChannelSidebar: React.FC = () => {
@@ -20,11 +21,14 @@ export const ChannelSidebar: React.FC = () => {
   const channels = useAppSelector(state => state.channels.channels)
   const voiceParticipants = useAppSelector(state => state.voice.channelParticipants)
   const members = useAppSelector(state => state.members.members[serverId ?? ''] ?? [])
+  const onlineSet = useAppSelector(state => state.presence.online)
   const user = useAppSelector(selectUser)
   const { onMouseDown: onResizeMouseDown } = useSidebarResize()
 
+  const onlineCount = members.filter(m => !!onlineSet[m.userId]).length
+
   useEffect(() => {
-    if (serverId) dispatch(fetchMembers(serverId))
+    if (serverId && serverId !== 'undefined') dispatch(fetchMembers(serverId))
   }, [serverId, dispatch])
 
   const [createOpen, setCreateOpen] = useState(false)
@@ -44,7 +48,7 @@ export const ChannelSidebar: React.FC = () => {
   }
 
   const handleModalSuccess = () => {
-    if (serverId) dispatch(fetchChannels(serverId))
+    if (serverId && serverId !== 'undefined') dispatch(fetchChannels(serverId))
   }
 
   const handleLogout = async () => {
@@ -76,6 +80,12 @@ export const ChannelSidebar: React.FC = () => {
         <div className="side-banner">
           <div className="side-guild">
             <div className="side-guild-name">{currentServer?.name ?? '...'}</div>
+            {members.length > 0 && (
+              <div className="side-guild-meta">
+                <span className="dot online" style={{ width: 6, height: 6, marginRight: 4 }} />
+                {onlineCount} онлайн · {members.length} участников
+              </div>
+            )}
           </div>
           <button
             className="icon-btn"
