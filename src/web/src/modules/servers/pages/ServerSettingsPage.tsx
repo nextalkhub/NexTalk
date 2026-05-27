@@ -1,7 +1,7 @@
 import React, { useContext, useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import {
-  IHash, ISpeaker, IPlus, ITrash, IUsers, ILink, IGear, IX, ICheck,
+  IHash, ISpeaker, IPlus, ITrash, IUsers, ILink, IGear, IX, ICheck, IBoot, IHammer,
 } from '../../../shared/components/Icons/Icons'
 import { Avatar } from '../../../shared/components/Avatar/Avatar'
 import { LayoutContext } from '../../../shared/components/Layout/AppShell'
@@ -297,12 +297,47 @@ interface MembersTabProps {
   onRoleChange: (id: string, role: 'admin' | 'member') => void
 }
 
-const MembersTab: React.FC<MembersTabProps> = ({ members, currentUserId, isOwner, onKick, onBan, onRoleChange }) => (
+const MembersTab: React.FC<MembersTabProps> = ({ members, currentUserId, isOwner, onKick, onBan, onRoleChange }) => {
+  const [search, setSearch] = React.useState('')
+  const [roleFilter, setRoleFilter] = React.useState<string>('all')
+
+  const filtered = members.filter(m => {
+    const matchName = m.displayName.toLowerCase().includes(search.toLowerCase()) ||
+      m.username.toLowerCase().includes(search.toLowerCase())
+    const matchRole = roleFilter === 'all' || m.role.toLowerCase() === roleFilter
+    return matchName && matchRole
+  })
+
+  return (
   <div>
     <div className="settings-section-head">
       <h1>Участники</h1>
       <p>{members.length} участников на сервере.</p>
     </div>
+
+    <div className="list-toolbar" style={{ marginBottom: 16 }}>
+      <div className="left" style={{ display: 'flex', gap: 8 }}>
+        <input
+          className="settings-input"
+          style={{ width: 220, height: 36, padding: '0 12px', fontSize: 13 }}
+          placeholder="Поиск по имени..."
+          value={search}
+          onChange={e => setSearch(e.target.value)}
+        />
+        <select
+          className="settings-input"
+          style={{ width: 130, height: 36, padding: '0 10px', fontSize: 13 }}
+          value={roleFilter}
+          onChange={e => setRoleFilter(e.target.value)}
+        >
+          <option value="all">Все роли</option>
+          <option value="owner">Owner</option>
+          <option value="admin">Admin</option>
+          <option value="member">Member</option>
+        </select>
+      </div>
+    </div>
+
     <div className="data-table">
       <div className="dt-head dt-members">
         <span>Участник</span>
@@ -310,9 +345,10 @@ const MembersTab: React.FC<MembersTabProps> = ({ members, currentUserId, isOwner
         <span>Дата входа</span>
         <span />
       </div>
-      {members.map(m => {
+      {filtered.map(m => {
         const isSelf = m.userId === currentUserId
         const roleLower = m.role.toLowerCase() as 'owner' | 'admin' | 'member'
+        const canManage = isOwner && !isSelf && m.role !== 'Owner'
         return (
           <div key={m.userId} className="dt-row dt-members">
             <div className="nm-cell">
@@ -323,31 +359,31 @@ const MembersTab: React.FC<MembersTabProps> = ({ members, currentUserId, isOwner
               </div>
             </div>
             <div>
-              <span className={`role-pill ${roleLower}`}>
-                <span className="dot-r" />
-                {m.role}
-                {!isSelf && m.role !== 'Owner' && <span className="ch">▾</span>}
-              </span>
+              {canManage ? (
+                <select
+                  className="role-select"
+                  value={m.role.toLowerCase()}
+                  onChange={e => onRoleChange(m.userId, e.target.value as 'admin' | 'member')}
+                >
+                  <option value="member">Member</option>
+                  <option value="admin">Admin</option>
+                </select>
+              ) : (
+                <span className={`role-pill ${roleLower}`}>
+                  <span className="dot-r" />
+                  {m.role}
+                </span>
+              )}
             </div>
             <div className="joined-cell">—</div>
             <div className="row-actions">
               {!isSelf && m.role !== 'Owner' && (
                 <>
-                  {isOwner && m.role === 'Member' && (
-                    <button className="row-action-btn" title="Сделать Admin" onClick={() => onRoleChange(m.userId, 'admin')}>
-                      <IUsers />
-                    </button>
-                  )}
-                  {isOwner && m.role === 'Admin' && (
-                    <button className="row-action-btn" title="Снять до Member" onClick={() => onRoleChange(m.userId, 'member')}>
-                      <IUsers />
-                    </button>
-                  )}
                   <button className="row-action-btn is-danger" title="Исключить" onClick={() => onKick(m.userId)}>
-                    <IX />
+                    <IBoot />
                   </button>
                   <button className="row-action-btn is-danger" title="Забанить" onClick={() => onBan(m.userId)}>
-                    <ITrash />
+                    <IHammer />
                   </button>
                 </>
               )}
@@ -355,14 +391,15 @@ const MembersTab: React.FC<MembersTabProps> = ({ members, currentUserId, isOwner
           </div>
         )
       })}
-      {members.length === 0 && (
+      {filtered.length === 0 && (
         <div className="empty-table-state">
-          <div className="h">Нет участников</div>
+          <div className="h">{search || roleFilter !== 'all' ? 'Никто не найден' : 'Нет участников'}</div>
         </div>
       )}
     </div>
   </div>
-)
+  )
+}
 
 interface ChannelsTabProps {
   channels: { id: string; name: string; type: 'text' | 'voice' }[]
