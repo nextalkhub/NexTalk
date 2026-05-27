@@ -4,6 +4,7 @@
 
 ufw_default_incoming_policy: deny
 ufw_default_outgoing_policy: allow
+ufw_default_forward_policy: drop
 
 # SSH открыт всегда (на bastion — публично, на остальных — только через приватную сеть,
 # но ufw тут не различает интерфейсы — это делает ProxyJump через bastion).

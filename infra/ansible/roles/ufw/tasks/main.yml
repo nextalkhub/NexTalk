@@ -12,8 +12,9 @@
     direction: "{{ item.direction }}"
     policy: "{{ item.policy }}"
   loop:
-    - { direction: incoming, policy: "{{ ufw_default_incoming_policy }}" }
-    - { direction: outgoing, policy: "{{ ufw_default_outgoing_policy }}" }
+    - { direction: incoming,  policy: "{{ ufw_default_incoming_policy }}" }
+    - { direction: outgoing,  policy: "{{ ufw_default_outgoing_policy }}" }
+    - { direction: routed,    policy: "{{ ufw_default_forward_policy }}" }
   tags: [ufw]
 
 - name: Применить базовые правила (SSH)
