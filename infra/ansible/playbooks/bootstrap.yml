@@ -48,6 +48,38 @@
         state: present
       tags: [bastion, iptables]
 
+    - name: MASQUERADE исходящий трафик приватной сети (NAT gateway для CP/db/obs нод)
+      ansible.builtin.iptables:
+        table: nat
+        chain: POSTROUTING
+        source: "{{ private_network_cidr }}"
+        out_interface: eth0
+        jump: MASQUERADE
+        comment: "nat gateway for private nodes"
+      notify: save iptables
+      tags: [bastion, iptables]
+
+    - name: FORWARD разрешить транзитный трафик из приватной сети наружу
+      ansible.builtin.iptables:
+        chain: FORWARD
+        in_interface: eth1
+        out_interface: eth0
+        jump: ACCEPT
+        comment: "forward private → internet"
+      notify: save iptables
+      tags: [bastion, iptables]
+
+    - name: FORWARD разрешить established/related обратный трафик
+      ansible.builtin.iptables:
+        chain: FORWARD
+        in_interface: eth0
+        out_interface: eth1
+        ctstate: ESTABLISHED,RELATED
+        jump: ACCEPT
+        comment: "forward internet → private (established)"
+      notify: save iptables
+      tags: [bastion, iptables]
+
     - name: DNAT входящий TCP:6443 → HAProxy:6443 (PREROUTING)
       ansible.builtin.iptables:
         table: nat
