@@ -1,0 +1,22 @@
+---
+# Миграция UFW-правил LiveKit: диапазон 50000-50200/udp → один порт 7882/udp.
+#
+# Запуск:
+#   ansible-playbook -i inventory/hosts.ini playbooks/ufw-livekit-migrate.yml --ask-vault-pass
+
+- name: Обновить UFW-правила LiveKit на воркерах
+  hosts: workers
+  become: true
+  gather_facts: false
+  tasks:
+    - name: Удалить старое правило UDP-диапазона 50000-50200
+      community.general.ufw:
+        rule: allow
+        port: '50000:50200'
+        proto: udp
+        delete: yes
+
+    - name: Применить актуальные правила (ufw role)
+      ansible.builtin.include_role:
+        name: ufw
+      tags: [ufw]
