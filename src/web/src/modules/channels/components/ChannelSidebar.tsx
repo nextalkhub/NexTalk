@@ -68,7 +68,7 @@ export const ChannelSidebar: React.FC = () => {
           <button
             className="icon-btn"
             title="Настройки сервера"
-            onClick={() => navigate(`/servers/${serverId}/settings`)}
+            onClick={() => { const id = currentServer?.id ?? serverId; if (id) navigate(`/servers/${id}/settings`) }}
           >
             <IGear />
           </button>

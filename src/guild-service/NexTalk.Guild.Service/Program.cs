@@ -19,8 +19,11 @@ using NexTalk.Guild.Service.Features.Guilds.GetUserGuilds;
 using NexTalk.Guild.Service.Features.Internal.CheckChannelAccess;
 using NexTalk.Guild.Service.Features.Internal.GetGuildMembers;
 using NexTalk.Guild.Service.Features.Internal.GetUserGuildsInternal;
+using NexTalk.Guild.Service.Features.Guilds.UpdateGuild;
 using NexTalk.Guild.Service.Features.Invites.AcceptInvite;
 using NexTalk.Guild.Service.Features.Invites.CreateInvite;
+using NexTalk.Guild.Service.Features.Invites.DeleteInvite;
+using NexTalk.Guild.Service.Features.Invites.GetGuildInvites;
 using NexTalk.Guild.Service.Features.Members.AssignRole;
 using NexTalk.Guild.Service.Features.Members.BanMember;
 using NexTalk.Guild.Service.Features.Members.GetBans;
@@ -178,6 +181,7 @@ builder.Services.AddScoped<RbacService>();
 builder.Services.AddScoped<CreateGuildHandler>();
 builder.Services.AddScoped<GetUserGuildsHandler>();
 builder.Services.AddScoped<DeleteGuildHandler>();
+builder.Services.AddScoped<UpdateGuildHandler>();
 
 // Channel handlers
 builder.Services.AddScoped<CreateChannelHandler>();
@@ -188,6 +192,8 @@ builder.Services.AddScoped<GetChannelsHandler>();
 builder.Services.AddScoped<IInviteRepository, InviteRepository>();
 builder.Services.AddScoped<CreateInviteHandler>();
 builder.Services.AddScoped<AcceptInviteHandler>();
+builder.Services.AddScoped<GetGuildInvitesHandler>();
+builder.Services.AddScoped<DeleteInviteHandler>();
 
 // Member handlers
 builder.Services.AddScoped<GetMembersHandler>();
@@ -370,6 +376,7 @@ app.UseSerilogRequestLogging(opts =>
 CreateGuildEndpoint.Map(app);
 GetUserGuildsEndpoint.Map(app);
 DeleteGuildEndpoint.Map(app);
+UpdateGuildEndpoint.Map(app);
 
 // Channel endpoints
 CreateChannelEndpoint.Map(app);
@@ -379,6 +386,8 @@ GetChannelsEndpoint.Map(app);
 // Invite endpoints
 CreateInviteEndpoint.Map(app);
 AcceptInviteEndpoint.Map(app);
+GetGuildInvitesEndpoint.Map(app);
+DeleteInviteEndpoint.Map(app);
 
 // Member endpoints
 GetMembersEndpoint.Map(app);

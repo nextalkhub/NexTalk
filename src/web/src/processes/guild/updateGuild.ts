@@ -6,7 +6,7 @@ export async function updateGuild(
     data: Partial<CreateGuildRequest>
 ): Promise<Guild> {
     try {
-        const response = await axiosInstance.put(`/api/guilds/${guildId}`, data)
+        const response = await axiosInstance.patch(`/api/guilds/${guildId}`, data)
         return response.data
     } catch (error) {
         console.error('Ошибка обновления сервера:', error)
