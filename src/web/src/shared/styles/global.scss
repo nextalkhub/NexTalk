@@ -26,8 +26,9 @@
   --brand-3: #C254FF;
   --brand-1-rgb: 79,124,255;
   --brand-2-rgb: 144,97,255;
+  --brand-3-rgb: 194,84,255;
   --grad-brand: linear-gradient(135deg,#4F7CFF 0%,#9061FF 60%,#C254FF 100%);
-  --grad-brand-soft: linear-gradient(135deg,rgba(var(--brand-1-rgb),.16),rgba(194,84,255,.10));
+  --grad-brand-soft: linear-gradient(135deg,rgba(var(--brand-1-rgb),.16),rgba(var(--brand-3-rgb),.10));
 
   --ok:      #34D399;
   --warn:    #F5C451;
@@ -139,7 +140,7 @@ a { color: inherit; text-decoration: none; }
 /* === Channel sidebar === */
 .side-banner {
   position: relative; height: 100px;
-  background: linear-gradient(135deg,rgba(var(--brand-1-rgb),.4),rgba(var(--brand-2-rgb),.3),rgba(192,84,255,.25));
+  background: linear-gradient(135deg,rgba(var(--brand-1-rgb),.4),rgba(var(--brand-2-rgb),.3),rgba(var(--brand-3-rgb),.25));
   display: flex; align-items: flex-end; padding: 14px 16px;
   border-bottom: 1px solid var(--bd-1); flex-shrink: 0;
 }
@@ -500,6 +501,8 @@ a { color: inherit; text-decoration: none; }
 .role-pill.owner .dot-r { background: var(--warn); }
 .role-pill.admin { color: var(--brand-2); background: rgba(var(--brand-2-rgb),.10); border-color: rgba(var(--brand-2-rgb),.25); }
 .role-pill.admin .dot-r { background: var(--brand-2); }
+.role-select { height: 28px; padding: 0 8px; border-radius: 6px; background: var(--bg-4); border: 1px solid var(--bd-2); color: var(--fg-1); font-size: 12px; font-family: inherit; cursor: pointer; }
+.role-select:focus { outline: none; border-color: rgba(var(--brand-1-rgb),.5); }
 
 .row-actions { display: inline-flex; gap: 4px; justify-self: end; }
 .row-action-btn { width: 28px; height: 28px; border-radius: 6px; color: var(--fg-2); display: inline-flex; align-items: center; justify-content: center; cursor: pointer; font-family: inherit; }

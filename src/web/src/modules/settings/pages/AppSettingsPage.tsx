@@ -1,4 +1,4 @@
-import React, { useContext, useEffect, useState } from 'react'
+import React, { useContext, useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   IGear, IX, IShield, ILogout, IMic, IUsers, ICopy, IArrowOut,
@@ -18,6 +18,8 @@ interface AppPrefs {
   ptt: boolean
   desktopNotifications: boolean
   messageSound: boolean
+  micDeviceId: string
+  outputDeviceId: string
 }
 
 const PREFS_KEY = 'nextalk_prefs'
@@ -25,6 +27,7 @@ const DEFAULT_PREFS: AppPrefs = {
   palette: 'nextalk', density: 'comfortable', fontScale: 1.0,
   echoCancellation: true, noiseSuppression: true, ptt: false,
   desktopNotifications: true, messageSound: false,
+  micDeviceId: 'default', outputDeviceId: 'default',
 }
 
 function loadPrefs(): AppPrefs {
@@ -33,7 +36,7 @@ function loadPrefs(): AppPrefs {
 }
 
 function applyPrefs(prefs: AppPrefs) {
-  document.documentElement.style.setProperty('zoom', prefs.fontScale.toString())
+  document.body.style.setProperty('zoom', prefs.fontScale.toString())
   document.documentElement.setAttribute('data-density', prefs.density)
   const p = PALETTES[prefs.palette as keyof typeof PALETTES] ?? PALETTES.nextalk
   const root = document.documentElement.style
@@ -42,6 +45,7 @@ function applyPrefs(prefs: AppPrefs) {
   root.setProperty('--brand-3', p.brand3)
   root.setProperty('--brand-1-rgb', p.rgb1)
   root.setProperty('--brand-2-rgb', p.rgb2)
+  root.setProperty('--brand-3-rgb', p.rgb3)
   root.setProperty('--grad-brand', p.grad)
   root.setProperty('--grad-brand-soft', p.softGrad)
 }
@@ -49,10 +53,10 @@ function applyPrefs(prefs: AppPrefs) {
 // ─── Palettes ────────────────────────────────────────────────────────────────
 
 const PALETTES = {
-  nextalk:  { label: 'NexTalk',  desc: 'По умолчанию',  brand1: '#4F7CFF', brand2: '#9061FF', brand3: '#C254FF', rgb1: '79,124,255',   rgb2: '144,97,255',  grad: 'linear-gradient(135deg,#4F7CFF 0%,#9061FF 60%,#C254FF 100%)', softGrad: 'linear-gradient(135deg,rgba(79,124,255,.16),rgba(194,84,255,.10))' },
-  midnight: { label: 'Midnight', desc: 'Холодный синий', brand1: '#2563EB', brand2: '#7C3AED', brand3: '#A855F7', rgb1: '37,99,235',    rgb2: '124,58,237',  grad: 'linear-gradient(135deg,#1e3a8a 0%,#4c1d95 100%)',           softGrad: 'linear-gradient(135deg,rgba(37,99,235,.16),rgba(168,85,247,.10))' },
-  emerald:  { label: 'Emerald',  desc: 'Зелёный',       brand1: '#10B981', brand2: '#059669', brand3: '#34D399', rgb1: '16,185,129',   rgb2: '5,150,105',   grad: 'linear-gradient(135deg,#065F46 0%,#10B981 100%)',            softGrad: 'linear-gradient(135deg,rgba(16,185,129,.16),rgba(52,211,153,.10))' },
-  graphite: { label: 'Graphite', desc: 'Нейтральный',   brand1: '#6B7280', brand2: '#4B5563', brand3: '#9CA3AF', rgb1: '107,114,128',  rgb2: '75,85,99',    grad: 'linear-gradient(135deg,#374151 0%,#6B7280 100%)',            softGrad: 'linear-gradient(135deg,rgba(107,114,128,.16),rgba(156,163,175,.10))' },
+  nextalk:  { label: 'NexTalk',  desc: 'По умолчанию',  brand1: '#4F7CFF', brand2: '#9061FF', brand3: '#C254FF', rgb1: '79,124,255',   rgb2: '144,97,255',  rgb3: '194,84,255',  grad: 'linear-gradient(135deg,#4F7CFF 0%,#9061FF 60%,#C254FF 100%)', softGrad: 'linear-gradient(135deg,rgba(79,124,255,.16),rgba(194,84,255,.10))' },
+  midnight: { label: 'Midnight', desc: 'Холодный синий', brand1: '#2563EB', brand2: '#7C3AED', brand3: '#A855F7', rgb1: '37,99,235',    rgb2: '124,58,237',  rgb3: '168,85,247',  grad: 'linear-gradient(135deg,#1e3a8a 0%,#4c1d95 100%)',           softGrad: 'linear-gradient(135deg,rgba(37,99,235,.16),rgba(168,85,247,.10))' },
+  emerald:  { label: 'Emerald',  desc: 'Зелёный',       brand1: '#10B981', brand2: '#059669', brand3: '#34D399', rgb1: '16,185,129',   rgb2: '5,150,105',   rgb3: '52,211,153',  grad: 'linear-gradient(135deg,#065F46 0%,#10B981 100%)',            softGrad: 'linear-gradient(135deg,rgba(16,185,129,.16),rgba(52,211,153,.10))' },
+  graphite: { label: 'Graphite', desc: 'Нейтральный',   brand1: '#6B7280', brand2: '#4B5563', brand3: '#9CA3AF', rgb1: '107,114,128',  rgb2: '75,85,99',    rgb3: '156,163,175', grad: 'linear-gradient(135deg,#374151 0%,#6B7280 100%)',            softGrad: 'linear-gradient(135deg,rgba(107,114,128,.16),rgba(156,163,175,.10))' },
 }
 
 // ─── JWT helpers ─────────────────────────────────────────────────────────────
@@ -226,7 +230,27 @@ const AppearanceTab: React.FC<{ prefs: AppPrefs; setPref: <K extends keyof AppPr
 
 // ─── Audio ───────────────────────────────────────────────────────────────────
 
-const AudioTab: React.FC<{ prefs: AppPrefs; setPref: <K extends keyof AppPrefs>(k: K, v: AppPrefs[K]) => void }> = ({ prefs, setPref }) => (
+const AudioTab: React.FC<{ prefs: AppPrefs; setPref: <K extends keyof AppPrefs>(k: K, v: AppPrefs[K]) => void }> = ({ prefs, setPref }) => {
+  const [mics, setMics] = useState<MediaDeviceInfo[]>([])
+  const [outputs, setOutputs] = useState<MediaDeviceInfo[]>([])
+  const loadedRef = useRef(false)
+
+  useEffect(() => {
+    if (loadedRef.current) return
+    loadedRef.current = true
+    navigator.mediaDevices?.getUserMedia({ audio: true })
+      .then(() => navigator.mediaDevices.enumerateDevices())
+      .then(devices => {
+        setMics(devices.filter(d => d.kind === 'audioinput'))
+        setOutputs(devices.filter(d => d.kind === 'audiooutput'))
+      })
+      .catch(() => {
+        setMics([])
+        setOutputs([])
+      })
+  }, [])
+
+  return (
   <>
     <div className="settings-section-head">
       <h1>Звук</h1>
@@ -235,16 +259,30 @@ const AudioTab: React.FC<{ prefs: AppPrefs; setPref: <K extends keyof AppPrefs>(
 
     <div className="settings-field">
       <label className="settings-label">Микрофон</label>
-      <select className="settings-select" defaultValue="default">
+      <select
+        className="settings-select"
+        value={prefs.micDeviceId}
+        onChange={e => setPref('micDeviceId', e.target.value)}
+      >
         <option value="default">Системный (по умолчанию)</option>
+        {mics.map(d => (
+          <option key={d.deviceId} value={d.deviceId}>{d.label || `Микрофон ${d.deviceId.slice(0, 8)}`}</option>
+        ))}
       </select>
       <div className="settings-help">Используется LiveKit-клиентом при подключении к голосовому каналу.</div>
     </div>
 
     <div className="settings-field">
       <label className="settings-label">Наушники / выход</label>
-      <select className="settings-select" defaultValue="default">
+      <select
+        className="settings-select"
+        value={prefs.outputDeviceId}
+        onChange={e => setPref('outputDeviceId', e.target.value)}
+      >
         <option value="default">Системный (по умолчанию)</option>
+        {outputs.map(d => (
+          <option key={d.deviceId} value={d.deviceId}>{d.label || `Выход ${d.deviceId.slice(0, 8)}`}</option>
+        ))}
       </select>
     </div>
 
@@ -290,7 +328,8 @@ const AudioTab: React.FC<{ prefs: AppPrefs; setPref: <K extends keyof AppPrefs>(
       />
     </div>
   </>
-)
+  )
+}
 
 // ─── Notifications ───────────────────────────────────────────────────────────
 
