@@ -137,7 +137,7 @@ alloy:
 # Promtail (logs collector → Loki на Obs VPS)
 # -----------------------------------------------------------------------
 promtail:
-  enabled: true
+  enabled: false
   image:
     repository: grafana/promtail
     tag: "3.6.1"
