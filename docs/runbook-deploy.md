@@ -380,24 +380,46 @@ ssh -J root@nextalk-bastion root@10.19.0.11 'kubectl get nodes'
 # 6 нод Ready: 3 control-plane с ролями control-plane,etcd,master; 3 worker
 ```
 
-**Проверка с локалки (10.19.0.51 недостижим из интернета):**
+**Проверка с локалки — нужен SSH-туннель** (HAProxy на `10.19.0.51` приватный, снаружи недоступен):
 ```bash
-ssh -L 6443:10.19.0.51:6443 -N nextalk-control-plane-1  # в отдельном терминале
-sed -i 's|server: https://10.19.0.51:6443|server: https://127.0.0.1:6443|' kubeconfig
-kubectl --insecure-skip-tls-verify get nodes
+# Открыть туннель: localhost:6443 → 10.19.0.51:6443 через bastion
+ssh -i ~/.ssh/nextalk_deploy -L 6443:10.19.0.51:6443 -N -f root@<worker-1-public-ip>
+
+# Kubeconfig уже указывает на 127.0.0.1:6443 — больше ничего менять не нужно
+kubectl --kubeconfig=infra/ansible/kubeconfig get nodes
 ```
+
+> Туннель живёт до закрытия терминала. При следующей сессии открывай заново. Для cluster-addons и helm-deploy он тоже нужен.
 
 **Частые проблемы:**
 - `control-plane-2 не присоединяется`: HAProxy не healthy или `vault_k3s_token` разный. Откат: `ssh control-plane-N '/usr/local/bin/k3s-uninstall.sh'` и заново.
 
+### 5.4.1 Taint control-plane нод
+
+k3s по умолчанию не запрещает размещать пользовательские поды на CP-нодах. CP-ноды не имеют публичного IP и не могут тянуть образы из `ghcr.io` — поды уйдут в `ImagePullBackOff`.
+
+Taint уже прописан в `roles/k3s_server/templates/config.yaml.j2` и применится автоматически при пересоздании кластера. Для уже работающего кластера примени вручную:
+
+```bash
+kubectl taint nodes \
+  <cp-node-1> <cp-node-2> <cp-node-3> \
+  node-role.kubernetes.io/control-plane:NoSchedule \
+  --kubeconfig=infra/ansible/kubeconfig
+```
+
+Имена нод смотри в `kubectl get nodes`. После этого поды с CP-нод **не эвиктируются автоматически** (`NoSchedule` только блокирует новые). Удали застрявшие вручную:
+
+```bash
+# Найти поды на CP-нодах
+kubectl get pods -n nextalk -o wide --kubeconfig=infra/ansible/kubeconfig | grep -E '<cp-node-1>|<cp-node-2>|<cp-node-3>'
+
+# Удалить — k3s пересоздаст их на workers
+kubectl delete pod <pod-name> -n nextalk --kubeconfig=infra/ansible/kubeconfig
+```
+
 ### 5.5 cluster-addons — ingress-nginx + cert-manager
 
-Запускается с локалки (`hosts: localhost`), требует kubeconfig из 5.4. Если у тебя SSH-tunnel из 5.4 — оставь его открытым; иначе временно подними:
-```bash
-ssh -L 6443:10.19.0.10:6443 -N nextalk-control-plane-1 &
-TUNNEL_PID=$!
-# Подправь kubeconfig как в 5.4
-```
+Запускается с локалки (`hosts: localhost`), требует kubeconfig из 5.4 и **открытый SSH-туннель** (см. 5.4).
 
 ```bash
 ansible-playbook -i inventory/hosts.ini playbooks/cluster-addons.yml
@@ -456,7 +478,7 @@ kubectl get ingress -n nextalk
 ```
 
 **Частые проблемы:**
-- `ImagePullBackOff`: образ не публичный или не существует — Шаг 3.4 / 3.5.
+- `ImagePullBackOff`: образ не публичный или не существует — Шаг 3.4 / 3.5. Если под на CP-ноде — Шаг 5.4.1 (taint).
 - `CrashLoopBackOff zitadel`: `kubectl logs -n nextalk deploy/zitadel` → `masterkey must be 32 bytes` → vault.yml в 4.2.
 - `CrashLoopBackOff messagingService`: connection refused 10.19.0.31:5432 → Шаг 5.2 (db.yml не прогнан или pg_hba whitelist неверный).
 - `Certificate not Ready 5+ мин`: `kubectl describe certificate nextalk-tls -n nextalk` → ищи `dnsName != hostname` или `HTTP-01 timeout`. DNS не пропагирован (Шаг 2) или ingress-nginx недоступен извне (`curl http://<worker-ip>/.well-known/acme-challenge/test`).
