@@ -1,6 +1,7 @@
 import { useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { useAppDispatch } from '../../store'
+import { useAppDispatch, useAppSelector } from '../../store'
+import { selectUser } from '../slices/authSlice'
 import { messageReceived } from '../slices/chatSlice.ts'
 import { useSignalR } from './useSignalR.ts'
 import { voiceParticipantJoined, voiceParticipantLeft } from '../slices/voiceSlice'
@@ -131,6 +132,7 @@ export const useGatewayEvents = () => {
     const { connection } = useSignalR()
     const dispatch = useAppDispatch()
     const navigate = useNavigate()
+    const currentUser = useAppSelector(selectUser)
 
     useEffect(() => {
         if (!connection) return
@@ -193,6 +195,13 @@ export const useGatewayEvents = () => {
                         serverId: event.payload.guildId,
                         userId: event.payload.userId,
                     }))
+                    if (currentUser && event.payload.userId === currentUser.id) {
+                        dispatch(removeServer(event.payload.guildId))
+                        dispatch(removeChannelsByServer(event.payload.guildId))
+                        dispatch(clearMembers(event.payload.guildId))
+                        dispatch(setCurrentChannel(null))
+                        navigate('/servers')
+                    }
                     break
 
                 case 'member.banned':
@@ -200,6 +209,13 @@ export const useGatewayEvents = () => {
                         serverId: event.payload.guildId,
                         userId: event.payload.userId,
                     }))
+                    if (currentUser && event.payload.userId === currentUser.id) {
+                        dispatch(removeServer(event.payload.guildId))
+                        dispatch(removeChannelsByServer(event.payload.guildId))
+                        dispatch(clearMembers(event.payload.guildId))
+                        dispatch(setCurrentChannel(null))
+                        navigate('/servers')
+                    }
                     break
 
                 case 'member.left':
@@ -241,5 +257,5 @@ export const useGatewayEvents = () => {
         return () => {
             connection.off('GatewayEvent', handler)
         }
-    }, [connection, dispatch, navigate])
+    }, [connection, dispatch, navigate, currentUser])
 }

@@ -41,6 +41,8 @@ export const ServerSettingsPage: React.FC = () => {
   const [newChType, setNewChType] = useState<'text' | 'voice'>('text')
 
   const isOwner = server?.ownerId === user?.id
+  const currentUserRole = members.find(m => m.userId === user?.id)?.role ?? ''
+  const isAdmin = currentUserRole === 'Admin'
 
   useEffect(() => {
     setHideRight(true)
@@ -193,6 +195,7 @@ export const ServerSettingsPage: React.FC = () => {
                 members={members}
                 currentUserId={user?.id ?? ''}
                 isOwner={isOwner}
+                isAdmin={isAdmin}
                 onKick={handleKick}
                 onBan={handleBan}
                 onRoleChange={handleRoleChange}
@@ -292,12 +295,13 @@ interface MembersTabProps {
   members: { userId: string; displayName: string; role: string; username: string }[]
   currentUserId: string
   isOwner: boolean
+  isAdmin: boolean
   onKick: (id: string) => void
   onBan: (id: string) => void
   onRoleChange: (id: string, role: 'admin' | 'member') => void
 }
 
-const MembersTab: React.FC<MembersTabProps> = ({ members, currentUserId, isOwner, onKick, onBan, onRoleChange }) => {
+const MembersTab: React.FC<MembersTabProps> = ({ members, currentUserId, isOwner, isAdmin, onKick, onBan, onRoleChange }) => {
   const [search, setSearch] = React.useState('')
   const [roleFilter, setRoleFilter] = React.useState<string>('all')
 
@@ -348,7 +352,10 @@ const MembersTab: React.FC<MembersTabProps> = ({ members, currentUserId, isOwner
       {filtered.map(m => {
         const isSelf = m.userId === currentUserId
         const roleLower = m.role.toLowerCase() as 'owner' | 'admin' | 'member'
-        const canManage = isOwner && !isSelf && m.role !== 'Owner'
+        const canManage = !isSelf && (
+          (isOwner && m.role !== 'Owner') ||
+          (isAdmin && m.role === 'Member')
+        )
         return (
           <div key={m.userId} className="dt-row dt-members">
             <div className="nm-cell">
@@ -377,7 +384,7 @@ const MembersTab: React.FC<MembersTabProps> = ({ members, currentUserId, isOwner
             </div>
             <div className="joined-cell">—</div>
             <div className="row-actions">
-              {!isSelf && m.role !== 'Owner' && (
+              {canManage && (
                 <>
                   <button className="row-action-btn is-danger" title="Исключить" onClick={() => onKick(m.userId)}>
                     <IBoot />

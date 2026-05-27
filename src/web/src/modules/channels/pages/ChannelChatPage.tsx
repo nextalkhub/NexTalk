@@ -8,7 +8,7 @@ import { LayoutContext } from '../../../shared/components/Layout/AppShell'
 import { useAppDispatch, useAppSelector } from '../../../store'
 import { selectUser } from '../../../shared/slices/authSlice'
 import { fetchChannels } from '../../../shared/slices/channelSlice'
-import { fetchMessages } from '../../../shared/slices/chatSlice'
+import { fetchMessages, addOptimisticMessage } from '../../../shared/slices/chatSlice'
 import { useSignalR } from '../../../shared/hooks/useSignalR'
 
 export const ChannelChatPage: React.FC = () => {
@@ -40,10 +40,20 @@ export const ChannelChatPage: React.FC = () => {
   }, [channelId, dispatch, user])
 
   const currentChannel = channels.find(c => c.id === channelId)
-  const currentMessages = messages[channelId ?? '']?.items ?? []
+  const channelState = messages[channelId ?? '']
+  const currentMessages = channelState?.items ?? []
+  const isLoadingMessages = channelState?.loading ?? false
 
   const handleSend = async (text: string) => {
     if (!connection || !channelId || !user) return
+    dispatch(addOptimisticMessage({
+      id: `opt_${crypto.randomUUID()}`,
+      channelId,
+      authorId: user.id,
+      authorName: user.name,
+      content: text,
+      createdAt: new Date().toISOString(),
+    }))
     await connection.invoke('SendMessage', channelId, text, crypto.randomUUID())
   }
 
@@ -71,11 +81,17 @@ export const ChannelChatPage: React.FC = () => {
     <>
       <TopBar showMembers={showMembers} onToggleMembers={() => setShowMembers(v => !v)} />
       <main className="main">
-        <MessageList
-          messages={currentMessages}
-          channelName={currentChannel.name}
-          currentUserId={user?.id}
-        />
+        {isLoadingMessages && currentMessages.length === 0 ? (
+          <div className="empty-state">
+            <div style={{ color: 'var(--fg-3)', fontSize: 14 }}>Загрузка сообщений…</div>
+          </div>
+        ) : (
+          <MessageList
+            messages={currentMessages}
+            channelName={currentChannel.name}
+            currentUserId={user?.id}
+          />
+        )}
         <MessageInput
           channelName={currentChannel.name}
           onSend={handleSend}

@@ -19,7 +19,7 @@ export const CreateChannelModal: React.FC<CreateChannelModalProps> = ({ isOpen, 
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!name.trim() || !serverId) return
+    if (!name.trim() || !serverId || serverId === 'undefined') return
     setLoading(true)
     const formattedName = name.toLowerCase().replace(/\s/g, '-')
     await dispatch(createChannel({ serverId, name: formattedName, type }))

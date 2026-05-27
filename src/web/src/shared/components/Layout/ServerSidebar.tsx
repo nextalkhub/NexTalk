@@ -32,7 +32,7 @@ export const ServerRail: React.FC = () => {
           <IHome />
         </button>
         <div className="rail-sep" />
-        {servers.map(server => (
+        {servers.filter(s => s.id && s.name).map(server => (
           <button
             key={server.id}
             className={`rail-icon${activeId === server.id ? ' is-active' : ''}`}
