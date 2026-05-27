@@ -26,7 +26,7 @@ using Serilog;
 using Serilog.Enrichers.Span;
 using IPNetwork = System.Net.IPNetwork;
 
-DotNetRuntimeStatsBuilder.Customize().StartCollecting();
+try { DotNetRuntimeStatsBuilder.Customize().StartCollecting(); } catch (InvalidOperationException) { }
 
 var builder = WebApplication.CreateBuilder(args);
 

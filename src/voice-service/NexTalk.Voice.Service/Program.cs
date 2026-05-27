@@ -25,7 +25,7 @@ using Serilog.Enrichers.Span;
 using StackExchange.Redis;
 using IPNetwork = System.Net.IPNetwork;
 
-DotNetRuntimeStatsBuilder.Customize().StartCollecting();
+try { DotNetRuntimeStatsBuilder.Customize().StartCollecting(); } catch (InvalidOperationException) { }
 
 var builder = WebApplication.CreateBuilder(args);
 
