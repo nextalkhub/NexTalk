@@ -17,6 +17,11 @@ spec:
         app: livekit
     spec:
       enableServiceLinks: false
+      # hostNetwork=true: pod биндится напрямую на сетевой стек ноды.
+      # Обязательно для LiveKit на Kubernetes — оверлейная сеть (Flannel)
+      # добавляет NAT-слои, ломающие WebRTC ICE.
+      hostNetwork: true
+      dnsPolicy: ClusterFirstWithHostNet
       securityContext:
         {{- toYaml .Values.podSecurityContext | nindent 8 }}
       containers:
@@ -27,17 +32,14 @@ spec:
             {{- toYaml .Values.containerSecurityContext | nindent 12 }}
           ports:
             - containerPort: 7880
+              protocol: TCP
               name: http
             - containerPort: 7881
-              name: rtc-tcp
               protocol: TCP
-              hostPort: 7881
-            # Единственный UDP-порт (UDPMux). LiveKit мультиплексирует все
-            # соединения через один сокет — один hostPort покрывает всё.
+              name: rtc-tcp
             - containerPort: {{ .Values.livekit.rtcUdpPort }}
-              hostPort: {{ .Values.livekit.rtcUdpPort }}
-              name: rtc-udp
               protocol: UDP
+              name: rtc-udp
           volumeMounts:
             - name: config
               mountPath: /etc/livekit.yaml
