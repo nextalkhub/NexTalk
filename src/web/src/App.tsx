@@ -15,6 +15,7 @@ import { ProfilePage } from './modules/profile/pages/ProfilePage'
 import { CreateServerPage } from './modules/servers/pages/CreateServerPage'
 import { CreateChannelPage } from './modules/channels/pages/CreateChannelPage'
 import { ServerSettingsPage } from './modules/servers/pages/ServerSettingsPage'
+import { AppSettingsPage } from './modules/settings/pages/AppSettingsPage'
 import { HomePage } from './pages/home/HomePage'
 import { NotFoundPage } from './pages/errors/NotFoundPage'
 import { ServerErrorPage } from './pages/errors/ServerErrorPage'
@@ -55,6 +56,7 @@ function AppRoutes() {
               <Route path="/servers/:serverId/voice/:channelId" element={<VoiceChannelPage />} />
               <Route path="/servers/:serverId/invite" element={<InvitePage />} />
               <Route path="/servers/:serverId/settings" element={<ServerSettingsPage />} />
+              <Route path="/settings" element={<AppSettingsPage />} />
               <Route path="/profile" element={<ProfilePage />} />
             </Route>
           </Route>

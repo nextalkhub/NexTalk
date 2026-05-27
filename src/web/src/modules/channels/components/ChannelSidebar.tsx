@@ -44,6 +44,8 @@ export const ChannelSidebar: React.FC = () => {
     navigate('/auth')
   }
 
+  const handleOpenSettings = () => navigate('/settings')
+
   if (!currentServer && !serverId) {
     return (
       <aside className="side">
@@ -53,7 +55,7 @@ export const ChannelSidebar: React.FC = () => {
           </div>
         </div>
         <div className="side-list" />
-        {user && <SelfStatus user={user} onLogout={handleLogout} />}
+        {user && <SelfStatus user={user} onLogout={handleLogout} onOpenSettings={handleOpenSettings} />}
       </aside>
     )
   }
@@ -144,7 +146,7 @@ export const ChannelSidebar: React.FC = () => {
           </div>
         </div>
 
-        {user && <SelfStatus user={user} onLogout={handleLogout} />}
+        {user && <SelfStatus user={user} onLogout={handleLogout} onOpenSettings={handleOpenSettings} />}
       </aside>
 
       <CreateChannelModal
@@ -159,9 +161,10 @@ export const ChannelSidebar: React.FC = () => {
 interface SelfStatusProps {
   user: { name: string; nickname?: string; id: string }
   onLogout: () => void
+  onOpenSettings: () => void
 }
 
-const SelfStatus: React.FC<SelfStatusProps> = ({ user, onLogout }) => (
+const SelfStatus: React.FC<SelfStatusProps> = ({ user, onLogout, onOpenSettings }) => (
   <div className="side-self">
     <span
       className="av side-self-av"
@@ -176,6 +179,7 @@ const SelfStatus: React.FC<SelfStatusProps> = ({ user, onLogout }) => (
     <div className="side-self-actions">
       <button className="icon-btn" title="Микрофон"><IMic /></button>
       <button className="icon-btn" title="Наушники"><IHeadset /></button>
+      <button className="icon-btn" title="Настройки" onClick={onOpenSettings}><IGear /></button>
       <button className="icon-btn" title="Выйти" onClick={onLogout}><ILogout /></button>
     </div>
   </div>
