@@ -22,6 +22,7 @@ export const useVoice = () => {
     const [participants, setParticipants] = useState<VoiceParticipant[]>([])
     const [isConnected, setIsConnected] = useState(false)
     const [isMuted, setIsMuted] = useState(false)
+    const [isDeafened, setIsDeafened] = useState(false)
     const [isLocalSpeaking, setIsLocalSpeaking] = useState(false)
     const [hasMicrophonePermission, setHasMicrophonePermission] = useState<boolean | null>(null)
 
@@ -186,9 +187,20 @@ export const useVoice = () => {
             setIsConnected(false)
             setIsLocalSpeaking(false)
             setIsMuted(false)
+            setIsDeafened(false)
         },
         [cleanupAudio]
     )
+
+    const toggleDeafen = useCallback(() => {
+        setIsDeafened(prev => {
+            const next = !prev
+            document.querySelectorAll<HTMLAudioElement>('body > audio').forEach(el => {
+                el.muted = next
+            })
+            return next
+        })
+    }, [])
 
     const toggleMic = useCallback(async () => {
         const room = roomRef.current
@@ -226,10 +238,12 @@ export const useVoice = () => {
         participants,
         isConnected,
         isMuted,
+        isDeafened,
         isLocalSpeaking,
         hasMicrophonePermission,
         joinVoice,
         leaveVoice,
         toggleMic,
+        toggleDeafen,
     }
 }

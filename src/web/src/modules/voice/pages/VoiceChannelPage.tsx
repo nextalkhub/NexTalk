@@ -7,6 +7,7 @@ import { LayoutContext } from '../../../shared/components/Layout/AppShell'
 import { useAppSelector } from '../../../store'
 import { selectUser } from '../../../shared/slices/authSlice'
 import { useVoice } from '../../../shared/hooks/useVoice'
+import type { Member } from '../../../shared/types'
 
 export const VoiceChannelPage: React.FC = () => {
   const navigate = useNavigate()
@@ -19,9 +20,11 @@ export const VoiceChannelPage: React.FC = () => {
     leaveVoice,
     participants,
     isMuted,
+    isDeafened,
     isConnected,
     isLocalSpeaking,
     toggleMic,
+    toggleDeafen,
     hasMicrophonePermission,
   } = useVoice()
 
@@ -63,6 +66,10 @@ export const VoiceChannelPage: React.FC = () => {
 
   const channels = useAppSelector(state => state.channels.channels)
   const channel = channels.find(c => c.id === channelId)
+  const members: Member[] = useAppSelector(state => state.members.members[serverId ?? ''] ?? [])
+
+  const getMemberName = (userId: string) =>
+    members.find(m => m.userId === userId)?.displayName ?? userId
 
   const selfTile = user
     ? { id: user.id, name: user.name, isSelf: true, isSpeaking: isLocalSpeaking, isMuted: isMuted || hasMicrophonePermission === false }
@@ -70,7 +77,7 @@ export const VoiceChannelPage: React.FC = () => {
 
   const remoteTiles = participants.map(p => ({
     id: p.userId,
-    name: p.username,
+    name: getMemberName(p.userId),
     isSelf: false,
     isSpeaking: p.isSpeaking,
     isMuted: p.isMuted,
@@ -116,7 +123,11 @@ export const VoiceChannelPage: React.FC = () => {
               >
                 {isMuted ? <IMicOff /> : <IMic />}
               </button>
-              <button className="vc-btn" title="Наушники">
+              <button
+                className={`vc-btn${isDeafened ? ' is-muted' : ''}`}
+                title={isDeafened ? 'Включить наушники' : 'Выключить наушники'}
+                onClick={toggleDeafen}
+              >
                 <IHeadset />
               </button>
               <button className="vc-btn is-leave" onClick={handleDisconnect}>
