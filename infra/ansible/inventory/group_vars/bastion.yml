@@ -4,6 +4,3 @@ ansible_host: "{{ public_ip }}"
 ansible_ssh_common_args: >-
   -o StrictHostKeyChecking=no
   -o UserKnownHostsFile=/dev/null
-
-# worker-1 = NAT gateway — должен форвардить пакеты приватных нод наружу.
-ufw_default_forward_policy: accept

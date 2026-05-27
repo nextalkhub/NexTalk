@@ -21,9 +21,5 @@ ufw_extra_rules:
   - { rule: allow, port: '8472',  proto: udp, src: "{{ private_network_cidr }}", comment: 'flannel vxlan' }
   - { rule: allow, port: '51820', proto: udp, src: "{{ private_network_cidr }}", comment: 'flannel wg (опц.)' }
 
-  # k8s API — worker-1 (bastion) форвардит 6443 на HAProxy.
-  # Открываем на всех воркерах чтобы ufw не дропал forwardedпакеты.
-  - { rule: allow, port: '6443', proto: tcp, comment: 'k8s api proxy (bastion → haproxy)' }
-
   # NodePort range — пригодится если будем что-то выставлять напрямую.
   # Пока не открываем, ingress-nginx через hostNetwork покрывает все нужды.
