@@ -36,7 +36,7 @@ function loadPrefs(): AppPrefs {
 }
 
 function applyPrefs(prefs: AppPrefs) {
-  document.body.style.setProperty('zoom', prefs.fontScale.toString())
+  document.documentElement.style.setProperty('zoom', prefs.fontScale.toString())
   document.documentElement.setAttribute('data-density', prefs.density)
   const p = PALETTES[prefs.palette as keyof typeof PALETTES] ?? PALETTES.nextalk
   const root = document.documentElement.style
