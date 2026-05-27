@@ -29,3 +29,49 @@
         ssh_keys_install_fail2ban: true
         # ВНИМАНИЕ: переключить в true только после раскатки ключей и проверки!
         ssh_keys_disable_passwords: false
+
+# worker-1 = bastion = единственный публичный вход в кластер.
+# Пробрасываем порт 6443 (kubectl/helm) → HAProxy, т.к. HAProxy находится
+# только в приватной сети Beget и не имеет публичного IP.
+- name: Настройка iptables port-forward 6443 → HAProxy на bastion
+  hosts: bastion
+  become: true
+  gather_facts: true
+  vars:
+    haproxy_private_ip: "{{ hostvars[groups['haproxy'][0]]['ansible_host'] }}"
+  tasks:
+    - name: Установить iptables-persistent
+      ansible.builtin.apt:
+        name:
+          - iptables-persistent
+          - netfilter-persistent
+        state: present
+      tags: [bastion, iptables]
+
+    - name: DNAT входящий TCP:6443 → HAProxy:6443 (PREROUTING)
+      ansible.builtin.iptables:
+        table: nat
+        chain: PREROUTING
+        protocol: tcp
+        destination_port: "6443"
+        jump: DNAT
+        to_destination: "{{ haproxy_private_ip }}:6443"
+        comment: "k8s api forward to haproxy"
+      notify: save iptables
+      tags: [bastion, iptables]
+
+    - name: FORWARD разрешить проброшенный трафик к HAProxy:6443
+      ansible.builtin.iptables:
+        chain: FORWARD
+        protocol: tcp
+        destination: "{{ haproxy_private_ip }}"
+        destination_port: "6443"
+        jump: ACCEPT
+        comment: "k8s api forward to haproxy"
+      notify: save iptables
+      tags: [bastion, iptables]
+
+  handlers:
+    - name: save iptables
+      ansible.builtin.command: netfilter-persistent save
+      changed_when: true

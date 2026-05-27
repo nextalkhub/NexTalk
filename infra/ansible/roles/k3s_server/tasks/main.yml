@@ -129,3 +129,16 @@
   delegate_to: localhost
   become: false
   tags: [k3s, k3s_server, kubeconfig]
+
+# k3s пишет в kubeconfig server: https://127.0.0.1:6443 — корректно для CP-ноды,
+# но недоступно снаружи. worker-1 (bastion) форвардит 6443 → HAProxy, поэтому
+# заменяем адрес на публичный IP bastion'а.
+- name: Пропатчить server address в kubeconfig (127.0.0.1 → worker-1 public IP)
+  ansible.builtin.replace:
+    path: "{{ playbook_dir }}/../kubeconfig"
+    regexp: 'https://127\.0\.0\.1:6443'
+    replace: "https://{{ hostvars['worker-1'].public_ip }}:6443"
+  when: inventory_hostname == groups['control_plane'][0]
+  delegate_to: localhost
+  become: false
+  tags: [k3s, k3s_server, kubeconfig]
