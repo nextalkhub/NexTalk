@@ -36,27 +36,54 @@ function loadPrefs(): AppPrefs {
 }
 
 function applyPrefs(prefs: AppPrefs) {
-  document.documentElement.style.setProperty('zoom', prefs.fontScale.toString())
+  document.documentElement.style.setProperty('font-size', `${14 * prefs.fontScale}px`)
   document.documentElement.setAttribute('data-density', prefs.density)
   const p = PALETTES[prefs.palette as keyof typeof PALETTES] ?? PALETTES.nextalk
   const root = document.documentElement.style
-  root.setProperty('--brand-1', p.brand1)
-  root.setProperty('--brand-2', p.brand2)
-  root.setProperty('--brand-3', p.brand3)
-  root.setProperty('--brand-1-rgb', p.rgb1)
-  root.setProperty('--brand-2-rgb', p.rgb2)
-  root.setProperty('--brand-3-rgb', p.rgb3)
-  root.setProperty('--grad-brand', p.grad)
-  root.setProperty('--grad-brand-soft', p.softGrad)
+  Object.entries(p).forEach(([k, v]) => {
+    if (k.startsWith('--')) root.setProperty(k, v as string)
+  })
 }
 
 // ─── Palettes ────────────────────────────────────────────────────────────────
 
 const PALETTES = {
-  nextalk:  { label: 'NexTalk',  desc: 'По умолчанию',  brand1: '#4F7CFF', brand2: '#9061FF', brand3: '#C254FF', rgb1: '79,124,255',   rgb2: '144,97,255',  rgb3: '194,84,255',  grad: 'linear-gradient(135deg,#4F7CFF 0%,#9061FF 60%,#C254FF 100%)', softGrad: 'linear-gradient(135deg,rgba(79,124,255,.16),rgba(194,84,255,.10))' },
-  midnight: { label: 'Midnight', desc: 'Холодный синий', brand1: '#2563EB', brand2: '#7C3AED', brand3: '#A855F7', rgb1: '37,99,235',    rgb2: '124,58,237',  rgb3: '168,85,247',  grad: 'linear-gradient(135deg,#1e3a8a 0%,#4c1d95 100%)',           softGrad: 'linear-gradient(135deg,rgba(37,99,235,.16),rgba(168,85,247,.10))' },
-  emerald:  { label: 'Emerald',  desc: 'Зелёный',       brand1: '#10B981', brand2: '#059669', brand3: '#34D399', rgb1: '16,185,129',   rgb2: '5,150,105',   rgb3: '52,211,153',  grad: 'linear-gradient(135deg,#065F46 0%,#10B981 100%)',            softGrad: 'linear-gradient(135deg,rgba(16,185,129,.16),rgba(52,211,153,.10))' },
-  graphite: { label: 'Graphite', desc: 'Нейтральный',   brand1: '#6B7280', brand2: '#4B5563', brand3: '#9CA3AF', rgb1: '107,114,128',  rgb2: '75,85,99',    rgb3: '156,163,175', grad: 'linear-gradient(135deg,#374151 0%,#6B7280 100%)',            softGrad: 'linear-gradient(135deg,rgba(107,114,128,.16),rgba(156,163,175,.10))' },
+  nextalk: {
+    label: 'NexTalk', desc: 'По умолчанию',
+    '--brand-1': '#4F7CFF', '--brand-2': '#9061FF', '--brand-3': '#C254FF',
+    '--brand-1-rgb': '79,124,255', '--brand-2-rgb': '144,97,255', '--brand-3-rgb': '194,84,255',
+    '--grad-brand': 'linear-gradient(135deg,#4F7CFF 0%,#9061FF 60%,#C254FF 100%)',
+    '--grad-brand-soft': 'linear-gradient(135deg,rgba(79,124,255,.16),rgba(194,84,255,.10))',
+    '--bg-0': '#06070D', '--bg-1': '#0B0D17', '--bg-2': '#10121E',
+    '--bg-3': '#161927', '--bg-4': '#1D2134', '--bg-5': '#262B41',
+  },
+  midnight: {
+    label: 'Midnight', desc: 'Холодный синий',
+    '--brand-1': '#7C9AFF', '--brand-2': '#A78BFA', '--brand-3': '#E879F9',
+    '--brand-1-rgb': '124,154,255', '--brand-2-rgb': '167,139,250', '--brand-3-rgb': '232,121,249',
+    '--grad-brand': 'linear-gradient(135deg,#7C9AFF 0%,#A78BFA 60%,#E879F9 100%)',
+    '--grad-brand-soft': 'linear-gradient(135deg,rgba(124,154,255,.16),rgba(232,121,249,.10))',
+    '--bg-0': '#020308', '--bg-1': '#070912', '--bg-2': '#0C0E1C',
+    '--bg-3': '#121526', '--bg-4': '#1A1E33', '--bg-5': '#252A48',
+  },
+  emerald: {
+    label: 'Emerald', desc: 'Зелёный',
+    '--brand-1': '#10B981', '--brand-2': '#22D3EE', '--brand-3': '#06B6D4',
+    '--brand-1-rgb': '16,185,129', '--brand-2-rgb': '34,211,238', '--brand-3-rgb': '6,182,212',
+    '--grad-brand': 'linear-gradient(135deg,#10B981 0%,#22D3EE 100%)',
+    '--grad-brand-soft': 'linear-gradient(135deg,rgba(16,185,129,.16),rgba(6,182,212,.10))',
+    '--bg-0': '#04100C', '--bg-1': '#081812', '--bg-2': '#0C211B',
+    '--bg-3': '#102B23', '--bg-4': '#16382E', '--bg-5': '#1F4A3D',
+  },
+  graphite: {
+    label: 'Graphite', desc: 'Монохромная',
+    '--brand-1': '#E5E7EB', '--brand-2': '#9CA3AF', '--brand-3': '#6B7280',
+    '--brand-1-rgb': '229,231,235', '--brand-2-rgb': '156,163,175', '--brand-3-rgb': '107,114,128',
+    '--grad-brand': 'linear-gradient(135deg,#F4F5F7 0%,#9CA3AF 100%)',
+    '--grad-brand-soft': 'linear-gradient(135deg,rgba(229,231,235,.16),rgba(107,114,128,.10))',
+    '--bg-0': '#06070A', '--bg-1': '#0B0C0F', '--bg-2': '#101115',
+    '--bg-3': '#16171C', '--bg-4': '#1D1F24', '--bg-5': '#272A30',
+  },
 }
 
 // ─── JWT helpers ─────────────────────────────────────────────────────────────
@@ -185,7 +212,7 @@ const AppearanceTab: React.FC<{ prefs: AppPrefs; setPref: <K extends keyof AppPr
             tabIndex={0}
             onClick={() => setPref('palette', key)}
           >
-            <div className="ic" style={{ background: p.grad, width: 32, height: 32, borderRadius: 8 }} />
+            <div className="ic" style={{ background: p['--grad-brand'], width: 32, height: 32, borderRadius: 8 }} />
             <div className="name">{p.label}</div>
             <div className="desc">{p.desc}</div>
           </div>
