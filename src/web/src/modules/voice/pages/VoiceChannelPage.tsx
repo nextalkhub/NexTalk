@@ -42,12 +42,14 @@ export const VoiceChannelPage: React.FC = () => {
       await joinVoice(channelId, { id: user.id, name: user.name })
     }
     connect()
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [channelId, user?.id])
 
   useEffect(() => {
     return () => {
       if (prevChannelRef.current) leaveVoice(prevChannelRef.current)
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   const handleDisconnect = async () => {

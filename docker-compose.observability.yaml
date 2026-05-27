@@ -153,8 +153,30 @@ services:
       start_period: 15s
 
   # ───────────────────────────────────────────────────────────────────────────
+  # Tempo — distributed tracing backend
+  # Принимает OTLP от микросервисов (4317 gRPC / 4318 HTTP).
+  # metrics_generator генерирует RED-метрики из трейсов → Prometheus remote_write.
+  # UI — через Grafana datasource (http://tempo:3200).
+  # ───────────────────────────────────────────────────────────────────────────
+  tempo:
+    image: grafana/tempo:2.7.2
+    container_name: tempo
+    restart: unless-stopped
+    command: ["-config.file=/etc/tempo/tempo.yaml"]
+    volumes:
+      - ./infra/observability/tempo/tempo.yaml:/etc/tempo/tempo.yaml:ro
+      - tempo-data:/var/tempo
+    ports:
+      - "3200:3200"   # Tempo HTTP API (Grafana datasource)
+    networks:
+      - nextalk
+    depends_on:
+      prometheus:
+        condition: service_healthy
+
+  # ───────────────────────────────────────────────────────────────────────────
   # Grafana
-  # Единый интерфейс для метрик (Prometheus), логов (Loki) и трейсов (Jaeger).
+  # Единый интерфейс для метрик (Prometheus), логов (Loki) и трейсов (Tempo).
   # Datasources и dashboards провизионируются автоматически из /provisioning.
   # Доступ: http://localhost:3000  →  admin / ${GRAFANA_ADMIN_PASSWORD:-admin}
   # ───────────────────────────────────────────────────────────────────────────
@@ -180,8 +202,8 @@ services:
         condition: service_healthy
       loki:
         condition: service_healthy
-      jaeger:
-        condition: service_healthy
+      tempo:
+        condition: service_started
     networks:
       - nextalk
     healthcheck:
@@ -198,4 +220,5 @@ networks:
 volumes:
   prometheus-data:
   loki-data:
+  tempo-data:
   grafana-data:

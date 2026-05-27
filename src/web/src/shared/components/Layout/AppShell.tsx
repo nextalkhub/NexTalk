@@ -10,7 +10,9 @@ interface LayoutCtx {
   setHideRight: (v: boolean) => void
 }
 
+// eslint-disable-next-line react-refresh/only-export-components
 export const LayoutContext = createContext<LayoutCtx>({ hideRight: false, setHideRight: () => {} })
+// eslint-disable-next-line react-refresh/only-export-components
 export const useLayout = () => useContext(LayoutContext)
 
 export const AppShell: React.FC = () => {

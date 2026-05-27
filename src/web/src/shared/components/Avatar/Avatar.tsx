@@ -6,6 +6,7 @@ function strToHue(str: string): number {
   return h % 360
 }
 
+// eslint-disable-next-line react-refresh/only-export-components
 export function avatarBg(strOrHue: string | number): string {
   const hue = typeof strOrHue === 'number' ? strOrHue : strToHue(strOrHue)
   return `linear-gradient(135deg, oklch(0.62 0.16 ${hue}), oklch(0.48 0.18 ${(hue + 40) % 360}))`

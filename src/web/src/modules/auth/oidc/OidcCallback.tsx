@@ -47,6 +47,7 @@ export const OidcCallback: React.FC = () => {
       }
     }
     run()
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   if (error) {

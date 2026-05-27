@@ -32,10 +32,13 @@ using OpenTelemetry.Resources;
 using OpenTelemetry.Trace;
 using Polly;
 using Prometheus;
+using Prometheus.DotNetRuntime;
 using Serilog;
 using Serilog.Enrichers.Span;
 using Swashbuckle.AspNetCore.SwaggerGen;
 using IPNetwork = System.Net.IPNetwork;
+
+DotNetRuntimeStats.StartCollecting();
 
 var builder = WebApplication.CreateBuilder(args);
 

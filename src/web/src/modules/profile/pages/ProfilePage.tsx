@@ -59,7 +59,7 @@ export const ProfilePage: React.FC = () => {
             <div className="profile-body">
               <div className="profile-field">
                 <span className="lbl">EMAIL</span>
-                <span className="val">{(user as any).email || '—'}</span>
+                <span className="val">{user.email || '—'}</span>
               </div>
               <div className="profile-field">
                 <span className="lbl">USER ID</span>

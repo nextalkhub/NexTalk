@@ -49,9 +49,9 @@ processors:
         action: upsert
 
 exporters:
-  # Отправка трейсов в Jaeger v2 по OTLP (Jaeger v2 принимает OTLP нативно).
-  otlp/jaeger:
-    endpoint: jaeger:4317
+  # Отправка трейсов в Tempo по OTLP gRPC.
+  otlp/tempo:
+    endpoint: tempo:4317
     tls:
       insecure: true
 
@@ -66,7 +66,7 @@ service:
     traces:
       receivers: [otlp]
       processors: [memory_limiter, batch, resource]
-      exporters: [otlp/jaeger]
+      exporters: [otlp/tempo]
 
     # Логи через OTLP (Фаза 2: сервисы с OTel SDK).
     # Пока просто дебаг-вывод; в Фазе 2 добавим exporter в Loki.
