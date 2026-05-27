@@ -121,6 +121,20 @@
       notify: save iptables
       tags: [bastion, iptables]
 
+    # Без SNAT ответ от HAProxy уходит напрямую клиенту (асимм. маршрутизация).
+    # MASQUERADE подменяет src на 10.19.0.21, и ответ возвращается через worker-1.
+    - name: SNAT трафик к HAProxy:6443 (симметричный NAT)
+      ansible.builtin.iptables:
+        table: nat
+        chain: POSTROUTING
+        protocol: tcp
+        destination: "{{ haproxy_private_ip }}"
+        destination_port: "6443"
+        jump: MASQUERADE
+        comment: "snat for haproxy 6443 (symmetric nat)"
+      notify: save iptables
+      tags: [bastion, iptables]
+
     - name: DNAT входящий TCP:6443 → HAProxy:6443 (PREROUTING)
       ansible.builtin.iptables:
         table: nat
