@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.DependencyInjection;
 using NexTalk.Guild.Service.Domain;
 using NexTalk.Guild.Service.Features.Invites.AcceptInvite;
+using NexTalk.Guild.Service.Shared.Responses;
 using NexTalk.Guild.Service.Infrastructure;
 using NexTalk.Guild.Service.Tests.Infrastructure;
 using Xunit;
@@ -158,9 +159,9 @@ public class AcceptInviteEndpointTests(GuildServiceFactory factory) : IClassFixt
         var response = await client.PostAsync($"/invites/{code}/accept", null);
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-        var body = await response.Content.ReadFromJsonAsync<GuildResponse>();
+        var body = await response.Content.ReadFromJsonAsync<AcceptInviteResponse>();
         Assert.NotNull(body);
-        Assert.Equal("Invite Test Guild", body.Name);
+        Assert.False(string.IsNullOrEmpty(body.GuildId));
     }
 
     [Fact]
