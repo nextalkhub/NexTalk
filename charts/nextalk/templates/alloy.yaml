@@ -73,6 +73,16 @@ spec:
         fsGroup: 0
         seccompProfile:
           type: RuntimeDefault
+      initContainers:
+        - name: fix-permissions
+          image: busybox
+          command: ["sh", "-c", "chown -R 0:0 /var/lib/alloy/data"]
+          securityContext:
+            runAsUser: 0
+            runAsGroup: 0
+          volumeMounts:
+            - name: data
+              mountPath: /var/lib/alloy/data
       containers:
         - name: alloy
           image: "{{ .Values.alloy.image.repository }}:{{ .Values.alloy.image.tag }}"
