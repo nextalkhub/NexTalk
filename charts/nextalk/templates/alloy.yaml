@@ -61,6 +61,8 @@ spec:
         app: alloy
     spec:
       serviceAccountName: alloy
+      hostNetwork: true
+      dnsPolicy: ClusterFirstWithHostNet
       securityContext:
         # root нужен для чтения /var/log/pods (containerd пишет файлы как root 600).
         runAsNonRoot: false

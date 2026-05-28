@@ -1,89 +1,79 @@
 // ─────────────────────────────────────────────────────────────
 // Kubernetes Pod Log Collection via /var/log/pods (hostPath)
-// Работает для ВСЕХ подов включая hostNetwork: true.
-// loki.source.kubernetes не используется — он не видит hostNetwork-поды
-// (pod IP = IP ноды, внутренняя адресация ломается).
+//
+// discovery.kubernetes не используется — не требует доступа
+// к Kubernetes API (10.43.0.1:443), недоступному с control-plane
+// нод при hostNetwork: true.
+//
+// Метаданные (namespace, pod, container) извлекаются из пути:
+//   /var/log/pods/<ns>_<pod>_<uid>/<container>/<n>.log
+//
+// hostNetwork: true оставлен — нужен для доступа к Loki
+// (10.19.0.41:3100) из host network namespace.
 // ─────────────────────────────────────────────────────────────
 
-// 1. Discover pods in namespace nextalk
-discovery.kubernetes "pods" {
-  role = "pod"
-
-  namespaces {
-    names = ["nextalk"]
-  }
+// 1. Найти файлы логов namespace nextalk на текущей ноде
+local.file_match "pods" {
+  path_targets = [{
+    __path__ = "/var/log/pods/nextalk_*/*/*.log",
+    job      = "nextalk",
+  }]
+  sync_period = "10s"
 }
 
-// 2. Filter + build hostPath file targets
+// 2. Извлечь метки из пути файла
 discovery.relabel "pods" {
-  targets = discovery.kubernetes.pods.targets
+  targets = local.file_match.pods.targets
 
-  // keep only pods on current node
+  // namespace (группа 1)
   rule {
-    source_labels = ["__meta_kubernetes_pod_node_name"]
-    regex         = sys.env("K8S_NODE_NAME")
-    action        = "keep"
-  }
-
-  // keep only pods with app label
-  rule {
-    source_labels = ["__meta_kubernetes_pod_label_app"]
-    regex         = ".+"
-    action        = "keep"
-  }
-
-  // build log file path: /var/log/pods/<ns>_<pod>_<uid>/<container>/*.log
-  rule {
-    source_labels = [
-      "__meta_kubernetes_namespace",
-      "__meta_kubernetes_pod_name",
-      "__meta_kubernetes_pod_uid",
-      "__meta_kubernetes_pod_container_name",
-    ]
-    separator    = "/"
-    regex        = "(.+)/(.+)/(.+)/(.+)"
-    replacement  = "/var/log/pods/$1_$2_$3/$4/*.log"
-    target_label = "__path__"
-  }
-
-  // k8s metadata labels
-  rule {
-    source_labels = ["__meta_kubernetes_namespace"]
+    source_labels = ["__path__"]
+    regex         = `/var/log/pods/([^_/]+)_([^_/]+)_[^/]+/([^/]+)/[0-9]+\.log`
+    replacement   = "$1"
     target_label  = "namespace"
   }
 
+  // pod name (группа 2)
   rule {
-    source_labels = ["__meta_kubernetes_pod_name"]
+    source_labels = ["__path__"]
+    regex         = `/var/log/pods/([^_/]+)_([^_/]+)_[^/]+/([^/]+)/[0-9]+\.log`
+    replacement   = "$2"
     target_label  = "pod"
   }
 
+  // container name (группа 3)
   rule {
-    source_labels = ["__meta_kubernetes_pod_container_name"]
+    source_labels = ["__path__"]
+    regex         = `/var/log/pods/([^_/]+)_([^_/]+)_[^/]+/([^/]+)/[0-9]+\.log`
+    replacement   = "$3"
     target_label  = "container"
   }
 
+  // service = container name (совпадает с app-лейблом для сервисов NexTalk)
   rule {
-    source_labels = ["__meta_kubernetes_pod_label_app"]
+    source_labels = ["__path__"]
+    regex         = `/var/log/pods/([^_/]+)_([^_/]+)_[^/]+/([^/]+)/[0-9]+\.log`
+    replacement   = "$3"
     target_label  = "service"
   }
 }
 
-// 3. Read log files from node filesystem
+// 3. Читать файлы
 loki.source.file "pods" {
   targets    = discovery.relabel.pods.output
   forward_to = [loki.process.cri.receiver]
 }
 
-// 4. Strip CRI prefix (containerd format: <ts> stdout F <message>)
+// 4. Снять CRI-префикс containerd: <ts> stdout F <message>
 loki.process "cri" {
   forward_to = [loki.process.serilog.receiver]
 
   stage.cri {}
 }
 
-// 5. Parse Serilog Compact JSON logs.
+// 5. Парсинг Serilog Compact JSON.
 // drop_malformed = false: не-JSON строки (LiveKit, Prometheus, Zitadel)
-// проходят насквозь с дефолтным level=Information, timestamp=now.
+// проходят с дефолтным level=Information, timestamp=now.
 loki.process "serilog" {
   forward_to = [loki.write.obs.receiver]
 
@@ -122,7 +112,7 @@ loki.process "serilog" {
   }
 }
 
-// 6. Write to Loki
+// 6. Push в Loki
 loki.write "obs" {
   endpoint {
     url = sys.env("LOKI_URL") + "/loki/api/v1/push"
