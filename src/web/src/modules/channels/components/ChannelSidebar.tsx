@@ -36,6 +36,7 @@ export const ChannelSidebar: React.FC = () => {
     isConnected: voiceConnected,
     isMuted: voiceMuted,
     isDeafened: voiceDeafened,
+    participants: liveKitParticipants,
     toggleMic,
     toggleDeafen,
     leaveVoice,
@@ -213,10 +214,21 @@ export const ChannelSidebar: React.FC = () => {
                       <div className="voice-nested">
                         {participants.map(userId => {
                           const name = members.find(m => m.userId === userId)?.displayName ?? userId
+                          const lkp = ch.id === voiceChannelId
+                            ? liveKitParticipants.find(p => p.userId === userId)
+                            : undefined
+                          const isMuted = lkp?.isMuted ?? (userId === user?.id && voiceMuted)
+                          const isDeafened = lkp?.isDeafened ?? (userId === user?.id && voiceDeafened)
                           return (
                             <div key={userId} className="voice-user-row">
                               <Avatar str={name} size={22} />
                               <span className="nm">{name}</span>
+                              {isDeafened && (
+                                <span className="voice-user-status deafened" title="Наушники выключены"><IHeadset /></span>
+                              )}
+                              {isMuted && !isDeafened && (
+                                <span className="voice-user-status muted" title="Микрофон выключен"><IMicOff /></span>
+                              )}
                             </div>
                           )
                         })}

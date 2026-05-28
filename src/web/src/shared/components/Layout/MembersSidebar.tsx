@@ -155,7 +155,7 @@ const MemberRow: React.FC<{ member: Member; forceOffline?: boolean; voiceInfo?: 
         <span className="nm">
           {member.displayName}
           {member.role !== 'Member' && (
-            <span className="role-tag">{member.role.toUpperCase()}</span>
+            <span className={`role-tag ${member.role.toLowerCase()}`}>{member.role.toUpperCase()}</span>
           )}
           {isSelf && <span className="you-tag">ВЫ</span>}
         </span>

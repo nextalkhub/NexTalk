@@ -377,13 +377,17 @@ const MembersTab: React.FC<{
   const [search, setSearch] = React.useState('')
   const [roleFilter, setRoleFilter] = React.useState<string>('all')
 
-  const filtered = members.filter(m => {
-    const matchName =
-      m.displayName.toLowerCase().includes(search.toLowerCase()) ||
-      m.username.toLowerCase().includes(search.toLowerCase())
-    const matchRole = roleFilter === 'all' || m.role.toLowerCase() === roleFilter
-    return matchName && matchRole
-  })
+  const ROLE_ORDER: Record<string, number> = { Owner: 0, Admin: 1, Member: 2 }
+
+  const filtered = members
+    .filter(m => {
+      const matchName =
+        m.displayName.toLowerCase().includes(search.toLowerCase()) ||
+        m.username.toLowerCase().includes(search.toLowerCase())
+      const matchRole = roleFilter === 'all' || m.role.toLowerCase() === roleFilter
+      return matchName && matchRole
+    })
+    .sort((a, b) => (ROLE_ORDER[a.role] ?? 3) - (ROLE_ORDER[b.role] ?? 3))
 
   return (
     <div>
