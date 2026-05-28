@@ -1,7 +1,6 @@
 import React from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { IHome, IPlus } from '../Icons/Icons'
-import { avatarBg } from '../Avatar/Avatar'
 import { useAppDispatch, useAppSelector } from '../../../store'
 import { selectServers, selectCurrentServer, setCurrentServer } from '../../slices/serverSlice'
 import { useGlobalModal } from './ModalProvider'
@@ -39,7 +38,6 @@ export const ServerRail: React.FC = () => {
             key={server.id}
             className={`rail-icon${activeId === server.id ? ' is-active' : ''}`}
             title={server.name}
-            style={activeId !== server.id ? { background: avatarBg(server.id) } : undefined}
             onClick={() => handleServerClick(server)}
           >
             {(server.name ?? '?').charAt(0).toUpperCase()}
