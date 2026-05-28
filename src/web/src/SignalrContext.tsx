@@ -79,7 +79,7 @@ export const SignalRProvider = ({
     }, [isAuthenticated, dispatch])
 
     useEffect(() => {
-        if (!connection) return
+        if (!connection || !isConnected) return
 
         const interval = setInterval(() => {
             connection.invoke('Heartbeat')
@@ -87,7 +87,7 @@ export const SignalRProvider = ({
         }, 20000)
 
         return () => clearInterval(interval)
-    }, [connection])
+    }, [connection, isConnected])
 
     return (
         <SignalRContext.Provider

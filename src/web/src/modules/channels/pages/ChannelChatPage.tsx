@@ -83,7 +83,7 @@ export const ChannelChatPage: React.FC = () => {
   }
 
   const handleSend = async (text: string) => {
-    if (!connection || !channelId || !user) return
+    if (!connection || !isConnected || !channelId || !user) return
     dispatch(addOptimisticMessage({
       id: `opt_${crypto.randomUUID()}`,
       channelId,
