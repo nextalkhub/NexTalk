@@ -75,7 +75,7 @@ spec:
           type: RuntimeDefault
       initContainers:
         - name: fix-permissions
-          image: busybox
+          image: "{{ .Values.alloy.image.repository }}:{{ .Values.alloy.image.tag }}"
           command: ["sh", "-c", "chown -R 0:0 /var/lib/alloy/data"]
           securityContext:
             runAsUser: 0
