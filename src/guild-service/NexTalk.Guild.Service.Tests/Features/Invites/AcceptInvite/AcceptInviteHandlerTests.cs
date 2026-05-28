@@ -53,15 +53,14 @@ public class AcceptInviteHandlerTests
     }
 
     [Fact]
-    public async Task Handle_WithValidInvite_ReturnsGuild()
+    public async Task Handle_WithValidInvite_ReturnsGuildId()
     {
         var (db, guildId, _) = await SeedAsync();
         var cmd = new AcceptInviteCommand("INVITE01", Guid.NewGuid().ToString(), "Alice", "alice");
 
         var result = await CreateHandler(db).HandleAsync(cmd);
 
-        Assert.Equal(guildId, result.Id);
-        Assert.Equal("Test Guild", result.Name);
+        Assert.Equal(guildId.ToString(), result.GuildId);
     }
 
     [Fact]

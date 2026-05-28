@@ -1,4 +1,4 @@
-import React, { useContext, useEffect, useRef } from 'react'
+import React, { useContext, useEffect, useMemo, useRef } from 'react'
 import { useParams } from 'react-router-dom'
 import { TopBar } from '../../../shared/components/Layout/TopBar'
 import { MembersSidebar } from '../../../shared/components/Layout/MembersSidebar'
@@ -45,7 +45,7 @@ export const ChannelChatPage: React.FC = () => {
 
   const currentChannel = channels.find(c => c.id === channelId)
   const channelState = messages[channelId ?? '']
-  const currentMessages = channelState?.items ?? []
+  const currentMessages = useMemo(() => channelState?.items ?? [], [channelState])
   const isLoadingMessages = channelState?.loading ?? false
   const hasMore = channelState?.hasMore ?? false
 

@@ -145,7 +145,7 @@ public class DeleteGuildHandlerTests
 
         await handler.HandleAsync(cmd);
 
-        Assert.True(voiceService.DisconnectChannelIds.Contains(voiceChannelId));
+        Assert.Contains(voiceChannelId, voiceService.DisconnectChannelIds);
     }
 
     [Fact]
