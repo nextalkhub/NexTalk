@@ -18,11 +18,12 @@ import type { Channel } from '../../../shared/types'
 export const ChannelSidebar: React.FC = () => {
   const navigate = useNavigate()
   const dispatch = useAppDispatch()
-  const { serverId, channelId } = useParams()
+  const { serverId: routeServerId, channelId } = useParams()
   const { pathname } = useLocation()
 
   const allServers = useAppSelector(selectServers)
   const currentServer = useAppSelector(selectCurrentServer)
+  const serverId = routeServerId ?? currentServer?.id
   const channels = useAppSelector(state => state.channels.channels)
   const voiceParticipants = useAppSelector(state => state.voice.channelParticipants)
   const members = useAppSelector(state => state.members.members[serverId ?? ''] ?? [])

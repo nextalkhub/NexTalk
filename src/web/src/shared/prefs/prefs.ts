@@ -9,6 +9,7 @@ export type Density = 'cozy' | 'comfortable' | 'airy'
 export interface Prefs {
   theme: ThemeId
   density: Density
+  // font size in px (12–20); legacy ratio values auto-migrated in loadPrefs
   fontScale: number
   echoCancellation: boolean
   noiseSuppression: boolean
@@ -20,7 +21,7 @@ export interface Prefs {
 export const DEFAULTS: Prefs = {
   theme: 'nextalk',
   density: 'comfortable',
-  fontScale: 1,
+  fontScale: 14,
   echoCancellation: true,
   noiseSuppression: true,
   pushToTalk: false,
@@ -34,7 +35,12 @@ export function loadPrefs(): Prefs {
   try {
     const raw = localStorage.getItem(PREFS_KEY)
     if (!raw) return DEFAULTS
-    return { ...DEFAULTS, ...JSON.parse(raw) }
+    const parsed = JSON.parse(raw)
+    // migrate: old fontScale was a ratio (0.9–1.15), new is px (12–20)
+    if (parsed.fontScale !== undefined && parsed.fontScale < 5) {
+      parsed.fontScale = Math.round(parsed.fontScale * 14)
+    }
+    return { ...DEFAULTS, ...parsed }
   } catch {
     return DEFAULTS
   }
@@ -78,8 +84,8 @@ const THEME_VARS: Record<ThemeId, Record<string, string>> = {
 export function applyPrefs(p: Prefs): void {
   const root = document.documentElement
   root.dataset.theme = p.theme
-  root.dataset.density = p.density
-  root.style.setProperty('font-size', `${Math.round(14 * p.fontScale)}px`)
+  root.dataset.density = 'comfortable'
+  root.style.setProperty('font-size', `${p.fontScale}px`)
   const vars = THEME_VARS[p.theme]
   Object.entries(vars).forEach(([k, v]) => root.style.setProperty(k, v))
 }
@@ -90,3 +96,5 @@ export const PALETTES: { id: ThemeId; label: string; desc: string; gradient: str
   { id: 'emerald',  label: 'Emerald',  desc: 'Зелёная',                   gradient: 'linear-gradient(135deg, #10B981 0%, #22D3EE 100%)' },
   { id: 'graphite', label: 'Graphite', desc: 'Монохромная',               gradient: 'linear-gradient(135deg, #F4F5F7 0%, #9CA3AF 100%)' },
 ]
+
+export const FONT_SIZE_STEPS = [12, 13, 14, 15, 16, 17, 18, 20] as const

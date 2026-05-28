@@ -579,6 +579,11 @@ select.settings-input, select.settings-select {
 .modal-danger .modal-head { background: linear-gradient(180deg,rgba(255,90,110,.12),transparent); border-bottom-color: rgba(255,90,110,.2); }
 .modal-danger .modal-head h2 { color: var(--live); }
 
+.font-preview { padding: 16px 20px; background: var(--bg-0); border: 1px solid var(--bd-2); border-radius: 10px; color: var(--fg-1); line-height: 1.6; margin-bottom: 16px; }
+.font-slider-wrap { padding: 0 2px; }
+.font-slider { width: 100%; accent-color: var(--brand-1); }
+.font-slider-labels { display: flex; justify-content: space-between; margin-top: 8px; font-size: 11px; color: var(--fg-3); font-family: var(--font-mono); }
+.font-slider-labels .active { color: var(--brand-1); font-weight: 600; }
 .radio-cards { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 .radio-card { padding: 16px 14px; background: var(--bg-1); border: 1px solid var(--bd-2); border-radius: 12px; cursor: pointer; transition: border-color .15s, background .15s; text-align: left; display: flex; flex-direction: column; gap: 6px; }
 .radio-card:hover { border-color: var(--bd-3); }

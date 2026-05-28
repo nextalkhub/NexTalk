@@ -5,7 +5,7 @@ import { useGlobalModal } from '../../../shared/components/Layout/ModalProvider'
 import { IGear, IMic, IShield, ILogout, IX } from '../../../shared/components/Icons/Icons'
 import { useAppSelector } from '../../../store'
 import { selectUser } from '../../../shared/slices/authSlice'
-import { loadPrefs, savePrefs, applyPrefs, PALETTES, type Prefs } from '../../../shared/prefs/prefs'
+import { loadPrefs, savePrefs, applyPrefs, PALETTES, FONT_SIZE_STEPS, type Prefs } from '../../../shared/prefs/prefs'
 
 type Tab = 'appearance' | 'audio' | 'notifications' | 'session'
 
@@ -126,38 +126,29 @@ const AppearanceTab: React.FC<{
       </div>
     </div>
 
-    <div className="settings-row">
-      <div className="info">
-        <div className="info-h">Плотность интерфейса</div>
-        <div className="info-s">Расстояние между элементами в списках и каналах.</div>
+    <div className="settings-field">
+      <label className="settings-label">Размер шрифта</label>
+      <div className="font-preview">
+        <span style={{ fontSize: prefs.fontScale }}>
+          Быстрая коричневая лиса перепрыгнула ленивую собаку — the quick brown fox 0123
+        </span>
       </div>
-      <div style={{ display: 'flex', gap: 6 }}>
-        {(['cozy', 'comfortable', 'airy'] as const).map(d => (
-          <button
-            key={d}
-            type="button"
-            onClick={() => update('density', d)}
-            className={`chip${prefs.density === d ? ' is-brand' : ''}`}
-            style={{ cursor: 'pointer', padding: '4px 12px', height: 28 }}
-          >
-            {d === 'cozy' ? 'Cozy' : d === 'comfortable' ? 'Обычная' : 'Воздушная'}
-          </button>
-        ))}
+      <div className="font-slider-wrap">
+        <input
+          type="range"
+          min={FONT_SIZE_STEPS[0]}
+          max={FONT_SIZE_STEPS[FONT_SIZE_STEPS.length - 1]}
+          step={1}
+          value={prefs.fontScale}
+          onChange={e => update('fontScale', parseInt(e.target.value))}
+          className="font-slider"
+        />
+        <div className="font-slider-labels">
+          {FONT_SIZE_STEPS.map(px => (
+            <span key={px} className={prefs.fontScale === px ? 'active' : ''}>{px}px</span>
+          ))}
+        </div>
       </div>
-    </div>
-
-    <div className="settings-row">
-      <div className="info">
-        <div className="info-h">Размер шрифта</div>
-        <div className="info-s">Текущее значение: {Math.round(prefs.fontScale * 100)}%.</div>
-      </div>
-      <input
-        type="range"
-        min="0.9" max="1.15" step="0.01"
-        value={prefs.fontScale}
-        onChange={e => update('fontScale', parseFloat(e.target.value))}
-        style={{ width: 160 }}
-      />
     </div>
   </>
 )
