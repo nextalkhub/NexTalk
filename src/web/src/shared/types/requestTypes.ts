@@ -19,6 +19,7 @@ export interface Member {
     role: 'Owner' | 'Admin' | 'Member'
     userId: string
     username: string
+    joinedAt?: string
 }
 
 export interface Invite {

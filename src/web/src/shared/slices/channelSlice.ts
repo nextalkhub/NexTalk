@@ -62,7 +62,9 @@ const channelSlice = createSlice({
                 state.loading = false
             })
             .addCase(createChannel.fulfilled, (state, action) => {
-                state.channels.push(action.payload)
+                if (!state.channels.some(c => c.id === action.payload.id)) {
+                    state.channels.push(action.payload)
+                }
             })
     }
 })

@@ -6,7 +6,7 @@ import { IMic, IMicOff, IHeadset, IPhoneOff } from '../../../shared/components/I
 import { LayoutContext } from '../../../shared/components/Layout/AppShell'
 import { useAppSelector } from '../../../store'
 import { selectUser } from '../../../shared/slices/authSlice'
-import { useVoice } from '../../../shared/hooks/useVoice'
+import { useVoiceContext } from '../../../shared/contexts/VoiceContext'
 import type { Member } from '../../../shared/types'
 
 export const VoiceChannelPage: React.FC = () => {
@@ -26,7 +26,7 @@ export const VoiceChannelPage: React.FC = () => {
     toggleMic,
     toggleDeafen,
     hasMicrophonePermission,
-  } = useVoice()
+  } = useVoiceContext()
 
   const prevChannelRef = useRef<string | null>(null)
 

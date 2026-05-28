@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { IHash, ISpeaker, IPlus, IMic, IHeadset, ILogout, IGear } from '../../../shared/components/Icons/Icons'
+import { IHash, ISpeaker, IPlus, IMic, IMicOff, IHeadset, ILogout, IGear } from '../../../shared/components/Icons/Icons'
 import { Avatar, avatarBg } from '../../../shared/components/Avatar/Avatar'
 import { useAppDispatch, useAppSelector } from '../../../store'
 import { fetchChannels, setCurrentChannel } from '../../../shared/slices/channelSlice'
@@ -9,6 +9,7 @@ import { selectCurrentServer } from '../../../shared/slices/serverSlice'
 import { selectUser, logout } from '../../../shared/slices/authSlice'
 import { CreateChannelModal } from './CreateChannelModal'
 import { useSidebarResize } from '../../../shared/hooks/useSidebarResize'
+import { useVoiceContext } from '../../../shared/contexts/VoiceContext'
 
 import type { Channel } from '../../../shared/types'
 
@@ -187,24 +188,39 @@ interface SelfStatusProps {
   onOpenSettings: () => void
 }
 
-const SelfStatus: React.FC<SelfStatusProps> = ({ user, onLogout, onOpenSettings }) => (
-  <div className="side-self">
-    <span
-      className="av side-self-av"
-      style={{ width: 32, height: 32, minWidth: 32, background: avatarBg(user.id), fontSize: 12 }}
-    >
-      {user.name.charAt(0).toUpperCase()}
-    </span>
-    <div className="side-self-text">
-      <div className="side-self-name">{user.name}</div>
-      <div className="side-self-status">{user.nickname ? `@${user.nickname}` : 'в сети'}</div>
+const SelfStatus: React.FC<SelfStatusProps> = ({ user, onLogout, onOpenSettings }) => {
+  const { isMuted, isDeafened, toggleMic, toggleDeafen } = useVoiceContext()
+  return (
+    <div className="side-self">
+      <span
+        className="av side-self-av"
+        style={{ width: 32, height: 32, minWidth: 32, background: avatarBg(user.id), fontSize: 12 }}
+      >
+        {user.name.charAt(0).toUpperCase()}
+      </span>
+      <div className="side-self-text">
+        <div className="side-self-name">{user.name}</div>
+        <div className="side-self-status">{user.nickname ? `@${user.nickname}` : 'в сети'}</div>
+      </div>
+      <div className="side-self-actions">
+        <button
+          className={`icon-btn${isMuted ? ' is-danger' : ''}`}
+          title={isMuted ? 'Включить микрофон' : 'Выключить микрофон'}
+          onClick={toggleMic}
+        >
+          {isMuted ? <IMicOff /> : <IMic />}
+        </button>
+        <button
+          className={`icon-btn${isDeafened ? ' is-danger' : ''}`}
+          title={isDeafened ? 'Включить наушники' : 'Выключить наушники'}
+          onClick={toggleDeafen}
+        >
+          <IHeadset />
+        </button>
+        <button className="icon-btn" title="Настройки" onClick={onOpenSettings}><IGear /></button>
+        <button className="icon-btn" title="Выйти" onClick={onLogout}><ILogout /></button>
+      </div>
     </div>
-    <div className="side-self-actions">
-      <button className="icon-btn" title="Микрофон"><IMic /></button>
-      <button className="icon-btn" title="Наушники"><IHeadset /></button>
-      <button className="icon-btn" title="Настройки" onClick={onOpenSettings}><IGear /></button>
-      <button className="icon-btn" title="Выйти" onClick={onLogout}><ILogout /></button>
-    </div>
-  </div>
-)
+  )
+}
 

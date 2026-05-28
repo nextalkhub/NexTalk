@@ -292,7 +292,7 @@ const OverviewTab: React.FC<OverviewTabProps> = ({ name, setName, onSave, saved,
 )
 
 interface MembersTabProps {
-  members: { userId: string; displayName: string; role: string; username: string }[]
+  members: { userId: string; displayName: string; role: string; username: string; joinedAt?: string }[]
   currentUserId: string
   isOwner: boolean
   isAdmin: boolean
@@ -366,26 +366,25 @@ const MembersTab: React.FC<MembersTabProps> = ({ members, currentUserId, isOwner
               </div>
             </div>
             <div>
-              {canManage ? (
-                <select
-                  className="role-select"
-                  value={m.role.toLowerCase()}
-                  onChange={e => onRoleChange(m.userId, e.target.value as 'admin' | 'member')}
-                >
-                  <option value="member">Member</option>
-                  <option value="admin">Admin</option>
-                </select>
-              ) : (
-                <span className={`role-pill ${roleLower}`}>
-                  <span className="dot-r" />
-                  {m.role}
-                </span>
-              )}
+              <span className={`role-pill ${roleLower}`}>
+                <span className="dot-r" />
+                {m.role}
+              </span>
             </div>
-            <div className="joined-cell">—</div>
+            <div className="joined-cell">
+              {m.joinedAt ? new Date(m.joinedAt).toLocaleDateString('ru-RU') : '—'}
+            </div>
             <div className="row-actions">
               {canManage && (
                 <>
+                  <select
+                    className="role-select"
+                    value={m.role.toLowerCase()}
+                    onChange={e => onRoleChange(m.userId, e.target.value as 'admin' | 'member')}
+                  >
+                    <option value="member">Member</option>
+                    <option value="admin">Admin</option>
+                  </select>
                   <button className="row-action-btn is-danger" title="Исключить" onClick={() => onKick(m.userId)}>
                     <IBoot />
                   </button>

@@ -4,6 +4,8 @@ import { ServerRail } from './ServerSidebar'
 import { ChannelSidebar } from '../../../modules/channels/components/ChannelSidebar'
 import { useAppDispatch } from '../../../store'
 import { fetchServers } from '../../slices/serverSlice'
+import { useVoice } from '../../hooks/useVoice'
+import { VoiceContext } from '../../contexts/VoiceContext'
 
 interface LayoutCtx {
   hideRight: boolean
@@ -18,6 +20,7 @@ export const useLayout = () => useContext(LayoutContext)
 export const AppShell: React.FC = () => {
   const dispatch = useAppDispatch()
   const [hideRight, setHideRight] = useState(false)
+  const voice = useVoice()
 
   useEffect(() => {
     dispatch(fetchServers())
@@ -25,11 +28,13 @@ export const AppShell: React.FC = () => {
 
   return (
     <LayoutContext.Provider value={{ hideRight, setHideRight }}>
-      <div className={`app${hideRight ? ' no-right' : ''}`}>
-        <ServerRail />
-        <ChannelSidebar />
-        <Outlet />
-      </div>
+      <VoiceContext.Provider value={voice}>
+        <div className={`app${hideRight ? ' no-right' : ''}`}>
+          <ServerRail />
+          <ChannelSidebar />
+          <Outlet />
+        </div>
+      </VoiceContext.Provider>
     </LayoutContext.Provider>
   )
 }
