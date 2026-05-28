@@ -1,6 +1,6 @@
 import React, { useContext, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Avatar, avatarBg } from '../../../shared/components/Avatar/Avatar'
+import { avatarBg } from '../../../shared/components/Avatar/Avatar'
 import { LayoutContext } from '../../../shared/components/Layout/AppShell'
 import { IArrowOut, ICopy, IX } from '../../../shared/components/Icons/Icons'
 import { useAppSelector } from '../../../store'
