@@ -11,9 +11,8 @@ import { OidcCallback } from './modules/auth/oidc/OidcCallback'
 import { ChannelChatPage } from './modules/channels/pages/ChannelChatPage'
 import { VoiceChannelPage } from './modules/voice/pages/VoiceChannelPage'
 import { InvitePage } from './modules/invite/pages/InvitePage'
+import { AcceptInvitePage } from './modules/invite/pages/AcceptInvitePage'
 import { ProfilePage } from './modules/profile/pages/ProfilePage'
-import { CreateServerPage } from './modules/servers/pages/CreateServerPage'
-import { CreateChannelPage } from './modules/channels/pages/CreateChannelPage'
 import { ServerSettingsPage } from './modules/servers/pages/ServerSettingsPage'
 import { AppSettingsPage } from './modules/settings/pages/AppSettingsPage'
 import { HomePage } from './pages/home/HomePage'
@@ -46,9 +45,11 @@ function AppRoutes() {
           <Route path="/callback" element={<OidcCallback />} />
           <Route path="/" element={<Navigate to="/servers" replace />} />
 
+          {/* Public invite acceptance — handles its own auth check internally
+              so the OIDC redirect remembers the return URL. */}
+          <Route path="/invite/:code" element={<AcceptInvitePage />} />
+
           <Route element={<ProtectedRoute />}>
-            <Route path="/create-server" element={<CreateServerPage />} />
-            <Route path="/servers/:serverId/create-channel" element={<CreateChannelPage />} />
             <Route element={<AppShell />}>
               <Route path="/servers" element={<HomePage />} />
               <Route path="/servers/:serverId/channels" element={<ChannelChatPage />} />

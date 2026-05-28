@@ -6,8 +6,12 @@ import { IMic, IMicOff, IHeadset, IPhoneOff } from '../../../shared/components/I
 import { LayoutContext } from '../../../shared/components/Layout/AppShell'
 import { useAppSelector } from '../../../store'
 import { selectUser } from '../../../shared/slices/authSlice'
-import { useVoiceContext } from '../../../shared/contexts/VoiceContext'
+import { useVoice } from '../../../shared/hooks/useVoice'
+import { pluralize } from '../../../shared/utils/format'
+import { getInitials } from '../../../shared/utils/initials'
 import type { Member } from '../../../shared/types'
+
+const pluralPeople = (n: number) => pluralize(n, 'участник', 'участника', 'участников')
 
 export const VoiceChannelPage: React.FC = () => {
   const navigate = useNavigate()
@@ -26,7 +30,7 @@ export const VoiceChannelPage: React.FC = () => {
     toggleMic,
     toggleDeafen,
     hasMicrophonePermission,
-  } = useVoiceContext()
+  } = useVoice()
 
   const prevChannelRef = useRef<string | null>(null)
 
@@ -72,7 +76,13 @@ export const VoiceChannelPage: React.FC = () => {
     members.find(m => m.userId === userId)?.displayName ?? userId
 
   const selfTile = user
-    ? { id: user.id, name: user.name, isSelf: true, isSpeaking: isLocalSpeaking, isMuted: isMuted || hasMicrophonePermission === false }
+    ? {
+        id: user.id,
+        name: user.name,
+        isSelf: true,
+        isSpeaking: isLocalSpeaking,
+        isMuted: isMuted || hasMicrophonePermission === false,
+      }
     : null
 
   const remoteTiles = participants.map(p => ({
@@ -92,26 +102,40 @@ export const VoiceChannelPage: React.FC = () => {
         <div className="voice-stage">
           <div className="voice-stage-meta">
             <div className="voice-stage-meta-left">
-              <h2>{channel?.name ?? 'Voice Channel'}</h2>
+              <h2>{channel?.name ?? 'Голосовой канал'}</h2>
               <div className="voice-stage-meta-stats">
-                <span className="chip is-ok">
-                  <span className="dot online" />{isConnected ? 'подключено' : 'подключение...'}
+                <span className={`chip ${isConnected ? 'is-ok' : 'is-warn'}`}>
+                  <span className={`dot ${isConnected ? 'online' : 'idle'}`} />
+                  {isConnected ? 'подключено' : 'подключение...'}
                 </span>
-                <span className="chip">{allTiles.length} участников</span>
+                <span className="chip">{pluralPeople(allTiles.length)}</span>
+                {hasMicrophonePermission === false && (
+                  <span className="chip is-warn" title="Браузер не дал доступ к микрофону">
+                    нет доступа к микрофону
+                  </span>
+                )}
               </div>
             </div>
           </div>
 
-          <div className="voice-grid">
-            {allTiles.map(tile => (
-              <VoiceTile key={tile.id} {...tile} />
-            ))}
-          </div>
+          {allTiles.length === 0 ? (
+            <div className="empty-state" style={{ flex: 1 }}>
+              <div className="icon-blob"><IMic /></div>
+              <h2>Подключаемся к каналу...</h2>
+              <p>Если ничего не происходит, проверьте разрешение на микрофон в браузере.</p>
+            </div>
+          ) : (
+            <div className="voice-grid">
+              {allTiles.map(tile => (
+                <VoiceTile key={tile.id} {...tile} />
+              ))}
+            </div>
+          )}
 
           <div className="voice-controls">
             <div className="vc-info">
               <div className="vc-status">
-                <span className="dot online" />
+                <span className={`dot ${isConnected ? 'online' : 'idle'}`} />
                 {isConnected ? 'Голосовой чат' : 'Подключение...'}
               </div>
             </div>
@@ -154,17 +178,17 @@ const VoiceTile: React.FC<TileProps> = ({ id, name, isSelf, isSpeaking, isMuted 
   <div className={`voice-tile${isSelf ? ' is-self' : ''}${isSpeaking ? ' is-speaking' : ''}`}>
     {isMuted && (
       <div className="voice-tile-indicator">
-        <span className="ind muted"><IMicOff /></span>
+        <span className="ind muted" title="Микрофон выключен"><IMicOff /></span>
       </div>
     )}
     <span
       className="av"
       style={{ width: 84, height: 84, fontSize: 28, fontWeight: 700, background: avatarBg(id) }}
     >
-      {name.charAt(0).toUpperCase()}
+      {getInitials(name)}
     </span>
     <div className="voice-tile-name">{isSelf ? `${name} (вы)` : name}</div>
-    <div className="tile-wave">
+    <div className="tile-wave" aria-hidden="true">
       {[...Array(10)].map((_, i) => <i key={i} />)}
     </div>
   </div>

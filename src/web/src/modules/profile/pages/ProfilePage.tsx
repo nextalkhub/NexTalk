@@ -1,89 +1,139 @@
 import React, { useContext, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { IArrowOut } from '../../../shared/components/Icons/Icons'
-import { avatarBg } from '../../../shared/components/Avatar/Avatar'
+import { Avatar, avatarBg } from '../../../shared/components/Avatar/Avatar'
 import { LayoutContext } from '../../../shared/components/Layout/AppShell'
-import { useAppDispatch, useAppSelector } from '../../../store'
-import { selectUser, logout } from '../../../shared/slices/authSlice'
-import { fetchServers, selectServers } from '../../../shared/slices/serverSlice'
+import { IArrowOut, ICopy, IX } from '../../../shared/components/Icons/Icons'
+import { useAppSelector } from '../../../store'
+import { selectUser } from '../../../shared/slices/authSlice'
+import { getInitials } from '../../../shared/utils/initials'
+
+const ZITADEL_PROFILE_URL =
+  (import.meta as ImportMeta & { env?: Record<string, string> }).env?.VITE_ZITADEL_URL
+    ? `${(import.meta as ImportMeta & { env: Record<string, string> }).env.VITE_ZITADEL_URL}/ui/console/users/me`
+    : '#'
 
 export const ProfilePage: React.FC = () => {
   const navigate = useNavigate()
-  const dispatch = useAppDispatch()
-  const { setHideRight } = useContext(LayoutContext)
   const user = useAppSelector(selectUser)
-  const servers = useAppSelector(selectServers)
+  const { setHideRight } = useContext(LayoutContext)
 
   useEffect(() => {
     setHideRight(true)
-    dispatch(fetchServers())
     return () => setHideRight(false)
-  }, [dispatch, setHideRight])
+  }, [setHideRight])
 
-  const handleLogout = async () => {
-    await dispatch(logout())
-    navigate('/auth')
+  const handleCopy = async (value: string) => {
+    try {
+      await navigator.clipboard.writeText(value)
+    } catch {
+      // ignore — clipboard may be blocked
+    }
   }
 
-  if (!user) return null
+  if (!user) {
+    return (
+      <main className="main">
+        <div className="empty-state">
+          <div className="h">Профиль недоступен</div>
+          <p>Войдите снова, чтобы увидеть данные аккаунта.</p>
+        </div>
+      </main>
+    )
+  }
 
   return (
     <>
-      <header className="top" style={{ display: 'flex', alignItems: 'center', padding: '0 22px', gap: 16 }}>
-        <div style={{ flex: 1, fontFamily: 'var(--font-display)', fontWeight: 600, fontSize: 17, color: 'var(--fg-0)' }}>
-          Профиль
+      <header className="top">
+        <div className="top-left">
+          <div className="top-breadcrumb">
+            <span className="crumb-channel">Профиль</span>
+          </div>
         </div>
-        <button
-          style={{ padding: '6px 14px', background: 'rgba(255,90,110,.12)', border: '1px solid rgba(255,90,110,.3)', borderRadius: 8, color: 'var(--live)', fontSize: 13, fontWeight: 500, cursor: 'pointer', fontFamily: 'inherit' }}
-          onClick={handleLogout}
-        >
-          Выйти
-        </button>
+        <div className="top-actions">
+          <button
+            className="icon-btn"
+            title="Закрыть"
+            onClick={() => navigate(-1)}
+          >
+            <IX />
+          </button>
+        </div>
       </header>
+
       <main className="main">
         <div className="profile-shell">
           <div className="profile-card-big">
             <div className="profile-banner-big" />
             <div className="profile-head">
               <span
-                className="av profile-av"
-                style={{ background: avatarBg(user.id) }}
+                className="profile-av"
+                style={{ background: avatarBg(user.name) }}
               >
-                {user.name.charAt(0).toUpperCase()}
+                {getInitials(user.name)}
               </span>
               <div className="info">
                 <div className="nm">{user.name}</div>
-                <div className="hn">@{user.nickname || user.id}</div>
+                {user.nickname && <div className="hn">@{user.nickname}</div>}
               </div>
             </div>
+
             <div className="profile-body">
-              <div className="profile-field">
-                <span className="lbl">EMAIL</span>
-                <span className="val">{user.email || '—'}</span>
-              </div>
-              <div className="profile-field">
-                <span className="lbl">USER ID</span>
-                <span className="val">{user.id}</span>
-              </div>
-              <div className="profile-field">
-                <span className="lbl">СЕРВЕРОВ</span>
-                <span className="val">{servers.length}</span>
-              </div>
-              <div className="profile-field">
-                <span className="lbl">ИСТОЧНИК</span>
-                <span className="val">Zitadel OIDC</span>
-              </div>
+              <ProfileField label="Имя">
+                {user.name}
+              </ProfileField>
+
+              {user.email && (
+                <ProfileField
+                  label="Email"
+                  actions={
+                    <button
+                      className="copy-ic"
+                      title="Скопировать"
+                      onClick={() => handleCopy(user.email)}
+                    >
+                      <ICopy />
+                    </button>
+                  }
+                >
+                  {user.email}
+                </ProfileField>
+              )}
+
+              <ProfileField
+                label="User ID"
+                actions={
+                  <button
+                    className="copy-ic"
+                    title="Скопировать"
+                    onClick={() => handleCopy(user.id)}
+                  >
+                    <ICopy />
+                  </button>
+                }
+              >
+                <span style={{ fontFamily: 'var(--font-mono)', fontSize: 11.5 }}>{user.id}</span>
+              </ProfileField>
+
+              <ProfileField label="Источник">
+                <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <span className="chip is-brand">Zitadel · OIDC</span>
+                  управляется в IdP
+                </span>
+              </ProfileField>
             </div>
+
             <div className="profile-action-bar">
-              <span className="lead-text">Редактировать профиль · управлять аккаунтом в Zitadel</span>
+              <span className="lead-text">
+                Имя, email и пароль изменяются в Zitadel — NexTalk эти данные не хранит.
+              </span>
               <a
-                className="profile-zitadel-btn"
-                href={import.meta.env.VITE_OIDC_AUTHORITY || '#'}
+                href={ZITADEL_PROFILE_URL}
                 target="_blank"
                 rel="noopener noreferrer"
+                className="profile-zitadel-btn"
               >
                 <IArrowOut />
-                Открыть Zitadel
+                Открыть в Zitadel
               </a>
             </div>
           </div>
@@ -92,3 +142,21 @@ export const ProfilePage: React.FC = () => {
     </>
   )
 }
+
+interface ProfileFieldProps {
+  label: string
+  children: React.ReactNode
+  actions?: React.ReactNode
+}
+
+const ProfileField: React.FC<ProfileFieldProps> = ({ label, children, actions }) => (
+  <div className="profile-field">
+    <span className="lbl">{label}</span>
+    <span className="val" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+      <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+        {children}
+      </span>
+      {actions}
+    </span>
+  </div>
+)

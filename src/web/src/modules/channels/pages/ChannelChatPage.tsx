@@ -1,4 +1,4 @@
-import React, { useContext, useEffect, useState } from 'react'
+import React, { useContext, useEffect, useRef } from 'react'
 import { useParams } from 'react-router-dom'
 import { TopBar } from '../../../shared/components/Layout/TopBar'
 import { MembersSidebar } from '../../../shared/components/Layout/MembersSidebar'
@@ -19,7 +19,11 @@ export const ChannelChatPage: React.FC = () => {
   const messages = useAppSelector(state => state.chat.messages)
   const { connection, isConnected } = useSignalR()
   const { setHideRight } = useContext(LayoutContext)
-  const [showMembers, setShowMembers] = useState(true)
+  const [showMembers, setShowMembers] = React.useState(true)
+
+  const scrollRef = useRef<HTMLDivElement>(null)
+  const prevScrollHeight = useRef<number | null>(null)
+  const lastSentId = useRef<string | null>(null)
 
   useEffect(() => {
     setHideRight(!showMembers)
@@ -43,6 +47,40 @@ export const ChannelChatPage: React.FC = () => {
   const channelState = messages[channelId ?? '']
   const currentMessages = channelState?.items ?? []
   const isLoadingMessages = channelState?.loading ?? false
+  const hasMore = channelState?.hasMore ?? false
+
+  // Restore scroll position after older messages are prepended.
+  useEffect(() => {
+    if (!scrollRef.current || prevScrollHeight.current == null) return
+    const el = scrollRef.current
+    const delta = el.scrollHeight - prevScrollHeight.current
+    if (delta > 0) {
+      el.scrollTop = delta
+    }
+    prevScrollHeight.current = null
+  }, [currentMessages.length])
+
+  // Auto-scroll to bottom only when a brand-new last message arrives.
+  useEffect(() => {
+    const last = currentMessages[currentMessages.length - 1]
+    if (!last) return
+    if (lastSentId.current === last.id) return
+    lastSentId.current = last.id
+    if (scrollRef.current) {
+      scrollRef.current.scrollTop = scrollRef.current.scrollHeight
+    }
+  }, [currentMessages])
+
+  const handleLoadMore = () => {
+    if (!channelId || !user) return
+    if (!channelState?.nextCursor || isLoadingMessages) return
+    prevScrollHeight.current = scrollRef.current?.scrollHeight ?? null
+    dispatch(fetchMessages({
+      channelId,
+      userId: user.id,
+      cursor: channelState.nextCursor,
+    }))
+  }
 
   const handleSend = async (text: string) => {
     if (!connection || !channelId || !user) return
@@ -69,7 +107,7 @@ export const ChannelChatPage: React.FC = () => {
               </svg>
             </div>
             <h2>Выберите канал</h2>
-            <p>Нажмите на текстовый канал в боковой панели, чтобы начать общение.</p>
+            <p>Кликните по текстовому каналу в боковой панели, чтобы начать общение.</p>
           </div>
         </main>
         {showMembers && <MembersSidebar />}
@@ -89,7 +127,10 @@ export const ChannelChatPage: React.FC = () => {
           <MessageList
             messages={currentMessages}
             channelName={currentChannel.name}
-            currentUserId={user?.id}
+            isLoading={isLoadingMessages}
+            hasMore={hasMore}
+            onLoadMore={handleLoadMore}
+            scrollRef={scrollRef}
           />
         )}
         <MessageInput

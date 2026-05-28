@@ -4,6 +4,7 @@ import { IHome, IPlus } from '../Icons/Icons'
 import { avatarBg } from '../Avatar/Avatar'
 import { useAppDispatch, useAppSelector } from '../../../store'
 import { selectServers, selectCurrentServer, setCurrentServer } from '../../slices/serverSlice'
+import { useGlobalModal } from './ModalProvider'
 import type { Guild } from '../../types'
 
 export const ServerRail: React.FC = () => {
@@ -12,6 +13,7 @@ export const ServerRail: React.FC = () => {
   const servers = useAppSelector(selectServers)
   const currentServer = useAppSelector(selectCurrentServer)
   const { serverId } = useParams()
+  const { open } = useGlobalModal()
 
   const activeId = serverId ?? currentServer?.id
 
@@ -46,7 +48,7 @@ export const ServerRail: React.FC = () => {
         <button
           className="rail-icon rail-icon-ghost"
           title="Создать сервер"
-          onClick={() => navigate('/create-server')}
+          onClick={() => open('create-server')}
         >
           <IPlus />
         </button>

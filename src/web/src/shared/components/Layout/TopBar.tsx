@@ -1,9 +1,9 @@
-import React from 'react'
+import React, { useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { ISpeaker, IUsers, ILogout } from '../Icons/Icons'
-import { useAppDispatch, useAppSelector } from '../../../store'
+import { useAppSelector } from '../../../store'
 import { selectCurrentServer } from '../../slices/serverSlice'
-import { logout } from '../../slices/authSlice'
+import { useGlobalModal } from './ModalProvider'
 
 interface TopBarProps {
   showMembers: boolean
@@ -12,16 +12,22 @@ interface TopBarProps {
 
 export const TopBar: React.FC<TopBarProps> = ({ showMembers, onToggleMembers }) => {
   const navigate = useNavigate()
-  const dispatch = useAppDispatch()
   const { channelId } = useParams()
   const currentServer = useAppSelector(selectCurrentServer)
   const channels = useAppSelector(state => state.channels.channels)
+  const { open } = useGlobalModal()
+  // Local state for the case when ModalProvider isn't mounted (auth screens, etc).
+  const [logoutFallback, setLogoutFallback] = useState(false)
 
   const channel = channels.find(c => c.id === channelId)
 
-  const handleLogout = async () => {
-    await dispatch(logout())
-    navigate('/auth')
+  const handleLogout = () => {
+    try {
+      open('logout')
+    } catch {
+      // fallback for routes mounted outside AppShell
+      setLogoutFallback(true)
+    }
   }
 
   return (
@@ -54,6 +60,15 @@ export const TopBar: React.FC<TopBarProps> = ({ showMembers, onToggleMembers }) 
           <ILogout />
         </button>
       </div>
+      {logoutFallback && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.6)', zIndex: 1000 }}
+             onClick={() => setLogoutFallback(false)}>
+          <div onClick={e => e.stopPropagation()} style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', background: 'var(--bg-3)', padding: 24, borderRadius: 12, color: 'var(--fg-0)' }}>
+            <p style={{ marginBottom: 16 }}>Перейти на страницу входа?</p>
+            <button className="btn-danger" onClick={() => navigate('/auth')}>Выйти</button>
+          </div>
+        </div>
+      )}
     </header>
   )
 }

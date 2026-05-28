@@ -1,15 +1,8 @@
 import React from 'react'
 import { Avatar } from '../../../shared/components/Avatar/Avatar'
 import { ITrash } from '../../../shared/components/Icons/Icons'
+import { formatTime } from '../../../shared/utils/format'
 import type { MessageInterface } from '../../../shared/slices/chatSlice'
-
-function fmtTime(iso: string): string {
-  try {
-    return new Date(iso).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })
-  } catch {
-    return ''
-  }
-}
 
 interface MessageProps {
   msg: MessageInterface
@@ -21,20 +14,21 @@ interface MessageProps {
 
 export const Message: React.FC<MessageProps> = ({ msg, isFirst, isNew, canDelete, onDelete }) => {
   const lines = msg.content.split('\n')
+  const stableName = msg.authorName || msg.authorId
 
   return (
     <div className={`msg${isFirst ? ' is-first' : ''}${isNew ? ' is-new' : ''}`}>
       <div className="msg-gutter">
         {isFirst
-          ? <Avatar str={msg.authorName || msg.authorId} size={40} className="msg-avatar" />
-          : <span className="msg-time-hover">{fmtTime(msg.createdAt)}</span>
+          ? <Avatar str={stableName} size={40} className="msg-avatar" />
+          : <span className="msg-time-hover">{formatTime(msg.createdAt)}</span>
         }
       </div>
       <div className="msg-body">
         {isFirst && (
           <div className="msg-head">
             <span className="msg-author">{msg.authorName}</span>
-            <span className="msg-stamp">сегодня в {fmtTime(msg.createdAt)}</span>
+            <span className="msg-stamp">{formatTime(msg.createdAt)}</span>
           </div>
         )}
         <div className="msg-text">

@@ -1,29 +1,37 @@
 import React, { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { IShield, ICheck } from '../../../shared/components/Icons/Icons'
 import { useAppDispatch, useAppSelector } from '../../../store'
-import { login, selectIsAuthenticated, selectAuthError } from '../../../shared/slices/authSlice'
+import { login, selectAuthError, selectIsAuthenticated, selectIsLoading } from '../../../shared/slices/authSlice'
+import { ICheck, IShield } from '../../../shared/components/Icons/Icons'
 
 export const AuthPage: React.FC = () => {
-  const dispatch = useAppDispatch()
   const navigate = useNavigate()
-  const isAuthenticated = useAppSelector(selectIsAuthenticated)
-  const error = useAppSelector(selectAuthError)
-  const [loading, setLoading] = useState(false)
+  const dispatch = useAppDispatch()
+
+  const isAuth = useAppSelector(selectIsAuthenticated)
+  const authError = useAppSelector(selectAuthError)
+  const isAuthLoading = useAppSelector(selectIsLoading)
+  const [localLoading, setLocalLoading] = useState(false)
 
   useEffect(() => {
-    if (isAuthenticated) navigate('/servers')
-  }, [isAuthenticated, navigate])
+    if (isAuth) {
+      const returnUrl = sessionStorage.getItem('return_url')
+      const target = returnUrl && returnUrl.startsWith('/') ? returnUrl : '/servers'
+      sessionStorage.removeItem('return_url')
+      navigate(target, { replace: true })
+    }
+  }, [isAuth, navigate])
 
   const handleLogin = async () => {
-    setLoading(true)
+    setLocalLoading(true)
     try {
       await dispatch(login()).unwrap()
-      if (import.meta.env.VITE_USE_AUTH_MOCK === 'true') navigate('/servers')
     } catch {
-      setLoading(false)
+      setLocalLoading(false)
     }
   }
+
+  const busy = localLoading || isAuthLoading
 
   return (
     <div className="auth-page">
@@ -31,29 +39,37 @@ export const AuthPage: React.FC = () => {
         <div className="auth-mark">N</div>
         <h1>Войти в NexTalk</h1>
         <p className="sub">
-          Авторизация через Zitadel · ваш единый identity provider.
-          Учётные данные NexTalk не хранит.
+          Авторизация через Zitadel. NexTalk не хранит ваш пароль —
+          им управляет ваш identity provider.
         </p>
 
         <div className="auth-features">
           <div className="auth-feature">
             <span className="ic"><ICheck /></span>
-            <span>OpenID Connect · PKCE flow, без секрета на клиенте</span>
+            <span>OpenID Connect с PKCE — без секрета на клиенте</span>
           </div>
           <div className="auth-feature">
             <span className="ic"><ICheck /></span>
-            <span>JWT с claims <code className="mono" style={{ fontSize: 11 }}>sub</code>, <code className="mono" style={{ fontSize: 11 }}>email</code>, <code className="mono" style={{ fontSize: 11 }}>preferred_username</code></span>
+            <span>Подпись JWT проверяется на каждом сервисе</span>
           </div>
           <div className="auth-feature">
             <span className="ic"><ICheck /></span>
-            <span>2FA, политики паролей и восстановление — в Zitadel</span>
+            <span>2FA, восстановление пароля — настраиваются в Zitadel</span>
           </div>
         </div>
 
-        <button className="btn-primary-lg" onClick={handleLogin} disabled={loading}>
-          {loading ? (
+        <button
+          type="button"
+          className="btn-primary-lg"
+          onClick={handleLogin}
+          disabled={busy}
+        >
+          {busy ? (
             <>
-              <span className="callback-spinner" style={{ width: 18, height: 18, margin: 0, borderWidth: 2 }} />
+              <span
+                className="callback-spinner"
+                style={{ width: 18, height: 18, margin: 0, borderWidth: 2 }}
+              />
               Перенаправляем в Zitadel...
             </>
           ) : (
@@ -64,14 +80,17 @@ export const AuthPage: React.FC = () => {
           )}
         </button>
 
-        {error && (
+        {authError && (
           <div className="auth-error">
-            <strong>Ошибка входа.</strong> {error}
+            <strong>Ошибка входа.</strong> {authError}
           </div>
         )}
 
         <div className="auth-foot">
-          <span className="chip mono">prod · zitadel.nextalk.io</span>
+          <span className="chip mono">
+            <span className="dot online" />
+            zitadel · OIDC
+          </span>
         </div>
       </div>
     </div>

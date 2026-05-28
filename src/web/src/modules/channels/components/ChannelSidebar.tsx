@@ -1,15 +1,16 @@
 import React, { useEffect, useState } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
-import { IHash, ISpeaker, IPlus, IMic, IMicOff, IHeadset, ILogout, IGear } from '../../../shared/components/Icons/Icons'
-import { Avatar, avatarBg } from '../../../shared/components/Avatar/Avatar'
+import { useNavigate, useParams, useLocation } from 'react-router-dom'
+import { IHash, ISpeaker, IPlus, IGear, ILogout } from '../../../shared/components/Icons/Icons'
+import { Avatar } from '../../../shared/components/Avatar/Avatar'
+import { useGlobalModal } from '../../../shared/components/Layout/ModalProvider'
 import { useAppDispatch, useAppSelector } from '../../../store'
 import { fetchChannels, setCurrentChannel } from '../../../shared/slices/channelSlice'
 import { fetchMembers } from '../../../shared/slices/memberSlice'
 import { selectCurrentServer } from '../../../shared/slices/serverSlice'
-import { selectUser, logout } from '../../../shared/slices/authSlice'
+import { selectUser } from '../../../shared/slices/authSlice'
 import { CreateChannelModal } from './CreateChannelModal'
 import { useSidebarResize } from '../../../shared/hooks/useSidebarResize'
-import { useVoiceContext } from '../../../shared/contexts/VoiceContext'
+import { pluralMembers } from '../../../shared/utils/format'
 
 import type { Channel } from '../../../shared/types'
 
@@ -17,6 +18,7 @@ export const ChannelSidebar: React.FC = () => {
   const navigate = useNavigate()
   const dispatch = useAppDispatch()
   const { serverId, channelId } = useParams()
+  const { pathname } = useLocation()
 
   const currentServer = useAppSelector(selectCurrentServer)
   const channels = useAppSelector(state => state.channels.channels)
@@ -52,13 +54,10 @@ export const ChannelSidebar: React.FC = () => {
     if (serverId && serverId !== 'undefined') dispatch(fetchChannels(serverId))
   }
 
-  const handleLogout = async () => {
-    await dispatch(logout())
-    navigate('/auth')
-  }
-
   const handleOpenSettings = () => navigate('/settings')
 
+  // No server selected (Home / Profile / global Settings) — show a minimal sidebar
+  // with friendly empty state instead of an empty list.
   if (!currentServer && !serverId) {
     return (
       <aside className="side">
@@ -66,10 +65,35 @@ export const ChannelSidebar: React.FC = () => {
         <div className="side-banner">
           <div className="side-guild">
             <div className="side-guild-name">NexTalk</div>
+            <div className="side-guild-meta">личное пространство</div>
           </div>
         </div>
-        <div className="side-list" />
-        {user && <SelfStatus user={user} onLogout={handleLogout} onOpenSettings={handleOpenSettings} />}
+        <div className="side-list">
+          <div className="side-section">
+            <div className="side-section-h"><span>навигация</span></div>
+            <div className="side-rows">
+              <button
+                className={`side-row${pathname === '/servers' ? ' is-active' : ''}`}
+                onClick={() => navigate('/servers')}
+              >
+                <span className="side-row-name">Главная</span>
+              </button>
+              <button
+                className={`side-row${pathname === '/profile' ? ' is-active' : ''}`}
+                onClick={() => navigate('/profile')}
+              >
+                <span className="side-row-name">Профиль</span>
+              </button>
+              <button
+                className={`side-row${pathname === '/settings' ? ' is-active' : ''}`}
+                onClick={() => navigate('/settings')}
+              >
+                <span className="side-row-name">Настройки</span>
+              </button>
+            </div>
+          </div>
+        </div>
+        {user && <SelfStatus user={user} onOpenSettings={handleOpenSettings} />}
       </aside>
     )
   }
@@ -84,7 +108,7 @@ export const ChannelSidebar: React.FC = () => {
             {members.length > 0 && (
               <div className="side-guild-meta">
                 <span className="dot online" style={{ width: 6, height: 6, marginRight: 4 }} />
-                {onlineCount} онлайн · {members.length} участников
+                {onlineCount} онлайн · {pluralMembers(members.length)}
               </div>
             )}
           </div>
@@ -108,7 +132,9 @@ export const ChannelSidebar: React.FC = () => {
               </button>
             </div>
             <div className="side-rows">
-              {textChannels.map(ch => (
+              {textChannels.length === 0 ? (
+                <div className="side-empty-hint">Нет каналов</div>
+              ) : textChannels.map(ch => (
                 <div
                   key={ch.id}
                   role="button"
@@ -133,7 +159,9 @@ export const ChannelSidebar: React.FC = () => {
               </button>
             </div>
             <div className="side-rows">
-              {voiceChannels.map(ch => {
+              {voiceChannels.length === 0 ? (
+                <div className="side-empty-hint">Нет каналов</div>
+              ) : voiceChannels.map(ch => {
                 const participants = voiceParticipants[ch.id] ?? []
                 const isActive = channelId === ch.id
                 return (
@@ -170,7 +198,7 @@ export const ChannelSidebar: React.FC = () => {
           </div>
         </div>
 
-        {user && <SelfStatus user={user} onLogout={handleLogout} onOpenSettings={handleOpenSettings} />}
+        {user && <SelfStatus user={user} onOpenSettings={handleOpenSettings} />}
       </aside>
 
       <CreateChannelModal
@@ -184,43 +212,33 @@ export const ChannelSidebar: React.FC = () => {
 
 interface SelfStatusProps {
   user: { name: string; nickname?: string; id: string }
-  onLogout: () => void
   onOpenSettings: () => void
 }
 
-const SelfStatus: React.FC<SelfStatusProps> = ({ user, onLogout, onOpenSettings }) => {
-  const { isMuted, isDeafened, toggleMic, toggleDeafen } = useVoiceContext()
+const SelfStatus: React.FC<SelfStatusProps> = ({ user, onOpenSettings }) => {
+  const { open } = useGlobalModal()
+
   return (
     <div className="side-self">
-      <span
-        className="av side-self-av"
-        style={{ width: 32, height: 32, minWidth: 32, background: avatarBg(user.id), fontSize: 12 }}
-      >
-        {user.name.charAt(0).toUpperCase()}
-      </span>
+      <Avatar str={user.name} size={32} />
       <div className="side-self-text">
         <div className="side-self-name">{user.name}</div>
-        <div className="side-self-status">{user.nickname ? `@${user.nickname}` : 'в сети'}</div>
+        <div className="side-self-status">
+          {user.nickname ? `@${user.nickname}` : 'в сети'}
+        </div>
       </div>
       <div className="side-self-actions">
-        <button
-          className={`icon-btn${isMuted ? ' is-danger' : ''}`}
-          title={isMuted ? 'Включить микрофон' : 'Выключить микрофон'}
-          onClick={toggleMic}
-        >
-          {isMuted ? <IMicOff /> : <IMic />}
+        <button className="icon-btn" title="Настройки приложения" onClick={onOpenSettings}>
+          <IGear />
         </button>
         <button
-          className={`icon-btn${isDeafened ? ' is-danger' : ''}`}
-          title={isDeafened ? 'Включить наушники' : 'Выключить наушники'}
-          onClick={toggleDeafen}
+          className="icon-btn is-danger"
+          title="Выйти из аккаунта"
+          onClick={() => open('logout')}
         >
-          <IHeadset />
+          <ILogout />
         </button>
-        <button className="icon-btn" title="Настройки" onClick={onOpenSettings}><IGear /></button>
-        <button className="icon-btn" title="Выйти" onClick={onLogout}><ILogout /></button>
       </div>
     </div>
   )
 }
-

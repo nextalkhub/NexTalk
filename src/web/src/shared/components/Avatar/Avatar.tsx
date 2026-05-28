@@ -1,4 +1,5 @@
 import React from 'react'
+import { getInitials } from '../../utils/initials'
 
 function strToHue(str: string): number {
   let h = 0
@@ -13,13 +14,18 @@ export function avatarBg(strOrHue: string | number): string {
 }
 
 interface AvatarProps {
+  /** Source string for both background colour and initials (usually display name). */
   str: string
+  /** Override the initials if you have a better source (e.g. JWT preferred_username). */
+  initialsFrom?: string
   size?: number
   className?: string
 }
 
-export const Avatar: React.FC<AvatarProps> = ({ str, size = 40, className }) => {
-  const letter = str.trim().charAt(0).toUpperCase() || '?'
+export const Avatar: React.FC<AvatarProps> = ({ str, initialsFrom, size = 40, className }) => {
+  const initials = getInitials(initialsFrom ?? str)
+  // Scale font with avatar size, but cap so 2 letters fit in tiny avatars.
+  const baseScale = initials.length > 1 ? 0.36 : 0.42
   return (
     <span
       className={`av${className ? ` ${className}` : ''}`}
@@ -28,10 +34,10 @@ export const Avatar: React.FC<AvatarProps> = ({ str, size = 40, className }) => 
         height: size,
         minWidth: size,
         background: avatarBg(str),
-        fontSize: Math.round(size * 0.375),
+        fontSize: Math.round(size * baseScale),
       }}
     >
-      {letter}
+      {initials}
     </span>
   )
 }

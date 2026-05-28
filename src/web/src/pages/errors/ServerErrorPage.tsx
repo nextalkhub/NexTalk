@@ -1,39 +1,48 @@
 import React from 'react'
-import { Link } from 'react-router-dom'
-import { IRefresh } from '../../shared/components/Icons/Icons'
+import { useNavigate } from 'react-router-dom'
+import { IHome, IArrowOut } from '../../shared/components/Icons/Icons'
 
-interface ServerErrorPageProps {
-  error?: Error
-  resetError?: () => void
+interface Props {
+  code?: string
+  message?: string
 }
 
-export const ServerErrorPage: React.FC<ServerErrorPageProps> = ({ resetError }) => {
-
-  const handleRetry = () => {
-    resetError?.()
-    window.location.reload()
-  }
-
-  // navigate not needed here; window.location.reload() covers refresh
-
+export const ServerErrorPage: React.FC<Props> = ({ code = '503', message }) => {
+  const navigate = useNavigate()
   return (
     <div className="system-page">
       <div className="system-card">
-        <div className="system-code">503</div>
-        <h1>Сервис недоступен</h1>
-        <p>Сервер временно недоступен. Попробуйте обновить страницу через несколько секунд.</p>
+        <div
+          className="system-code"
+          style={{
+            background: 'linear-gradient(135deg, #FF5A6E, #F5C451)',
+            WebkitBackgroundClip: 'text',
+            backgroundClip: 'text',
+            color: 'transparent',
+          }}
+        >
+          {code}
+        </div>
+        <h1>{message || 'Сервис временно недоступен'}</h1>
+        <p>
+          Один из микросервисов не отвечает. Polly Circuit Breaker откроется и автоматически
+          восстановит соединение в ближайшие 15 секунд. Если ничего не меняется — посмотрите
+          статус-страницу.
+        </p>
         <div style={{ display: 'flex', gap: 10, justifyContent: 'center' }}>
-          <button className="home-link" onClick={handleRetry}>
-            <IRefresh />
-            Обновить страницу
-          </button>
-          <Link
-            className="home-link"
-            to="/servers"
-            style={{ background: 'rgba(255,255,255,.06)', border: '1px solid var(--bd-2)', color: 'var(--fg-1)', boxShadow: 'none' }}
-          >
+          <button className="home-link" onClick={() => navigate('/servers')}>
+            <IHome />
             На главную
-          </Link>
+          </button>
+          <a
+            className="home-link"
+            href="#"
+            style={{ background: 'rgba(255,255,255,.06)', color: 'var(--fg-0)' }}
+            onClick={e => e.preventDefault()}
+          >
+            <IArrowOut />
+            status.nextalk.io
+          </a>
         </div>
       </div>
     </div>

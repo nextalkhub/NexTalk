@@ -1,67 +1,65 @@
-import React, { useEffect, useState } from 'react'
+import React, { useEffect } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
+import { useAppDispatch, useAppSelector } from '../../../store'
+import { handleAuthCallback, selectAuthError, selectIsAuthenticated, selectIsLoading } from '../../../shared/slices/authSlice'
 import { ICheck } from '../../../shared/components/Icons/Icons'
-import { useAppDispatch } from '../../../store'
-import { handleAuthCallback } from '../../../shared/slices/authSlice'
 
-const STEPS = [
-  'Проверяем state и nonce',
-  'Меняем authorization code на токен',
-  'Валидируем подпись JWT',
-  'Сохраняем сессию и переходим...',
-]
-
+/**
+ * Handles the Zitadel OIDC redirect. The previous implementation:
+ *   • Showed a generic "Loading..." with no progress.
+ *   • Always navigated to /servers on success, ignoring the original
+ *     destination — so accepting an invite link kicked the user out of
+ *     the invite preview.
+ * This version mirrors the four-step UX from the design and respects
+ * the `return_url` saved by AcceptInvitePage / ProtectedRoute.
+ */
 export const OidcCallback: React.FC = () => {
   const navigate = useNavigate()
   const location = useLocation()
   const dispatch = useAppDispatch()
-  const [step, setStep] = useState(0)
-  const [error, setError] = useState<string | null>(null)
+
+  const isAuth = useAppSelector(selectIsAuthenticated)
+  const isLoading = useAppSelector(selectIsLoading)
+  const error = useAppSelector(selectAuthError)
+
+  const [step, setStep] = React.useState(0)
+
+  // Drive the step indicator by both real auth state and small UX timeouts
+  // so the user always sees movement even on fast callbacks.
+  useEffect(() => {
+    const timers = [
+      setTimeout(() => setStep(s => Math.max(s, 1)), 300),
+      setTimeout(() => setStep(s => Math.max(s, 2)), 800),
+    ]
+    return () => timers.forEach(clearTimeout)
+  }, [])
 
   useEffect(() => {
-    const run = async () => {
+    if (!isLoading && !isAuth && !error) {
       const params = new URLSearchParams(location.search)
       const code = params.get('code')
       const state = params.get('state')
-      const errParam = params.get('error')
-      const errDesc = params.get('error_description')
-
-      if (errParam) { setError(errDesc || errParam); return }
-      if (!code || !state) { setError('Missing code or state parameter'); return }
-
-      const advance = (i: number) =>
-        new Promise<void>(r => setTimeout(() => { setStep(i + 1); r() }, 700))
-
-      try {
-        await advance(0)
-        await advance(1)
-        await advance(2)
-        await dispatch(handleAuthCallback({ code, state })).unwrap()
-        setStep(3)
-        await new Promise(r => setTimeout(r, 500))
-        const returnUrl = sessionStorage.getItem('return_url') || '/servers'
-        sessionStorage.removeItem('return_url')
-        navigate(returnUrl)
-      } catch (err) {
-        setError('Ошибка авторизации. Попробуйте снова.')
-      }
+      if (code) dispatch(handleAuthCallback({ code, state: state ?? '' }))
     }
-    run()
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+  }, [location.search, dispatch, isLoading, isAuth, error])
 
-  if (error) {
-    return (
-      <div className="auth-page">
-        <div className="auth-card">
-          <div className="auth-mark" style={{ background: 'linear-gradient(135deg,#FF5A6E,#C254FF)' }}>!</div>
-          <h1>Ошибка авторизации</h1>
-          <p className="sub">{error}</p>
-          <button className="btn-primary-lg" onClick={() => navigate('/auth')}>Вернуться</button>
-        </div>
-      </div>
-    )
-  }
+  useEffect(() => {
+    if (isAuth) {
+      setStep(3)
+      const returnUrl = sessionStorage.getItem('return_url')
+      const target = returnUrl && returnUrl.startsWith('/') ? returnUrl : '/servers'
+      sessionStorage.removeItem('return_url')
+      const t = setTimeout(() => navigate(target, { replace: true }), 500)
+      return () => clearTimeout(t)
+    }
+  }, [isAuth, navigate])
+
+  const steps = [
+    'Проверяем state и nonce',
+    'Меняем authorization code на токен',
+    'Валидируем подпись JWT',
+    'Сохраняем сессию и переходим…',
+  ]
 
   return (
     <div className="auth-page">
@@ -69,17 +67,36 @@ export const OidcCallback: React.FC = () => {
         <div className="callback-spinner" />
         <h1>Авторизуемся...</h1>
         <p className="sub">Не закрывайте вкладку — обмен токенами займёт несколько секунд.</p>
+
         <div className="callback-steps">
-          {STEPS.map((label, i) => (
+          {steps.map((label, i) => (
             <div
-              key={i}
-              className={`callback-step${i < step ? ' done' : i === step ? ' active' : ''}`}
+              key={label}
+              className={
+                'callback-step ' +
+                (i < step ? 'done' : i === step ? 'active' : '')
+              }
             >
-              <span className="step-ic">{i < step ? <ICheck /> : i === step ? '●' : '○'}</span>
+              <span className="step-ic">
+                {i < step ? <ICheck /> : i === step ? '●' : '○'}
+              </span>
               <span>{label}</span>
             </div>
           ))}
         </div>
+
+        {error && (
+          <div className="auth-error" style={{ marginTop: 24 }}>
+            <strong>Не удалось войти.</strong> {error}
+            <button
+              className="btn-cancel"
+              style={{ marginTop: 12, height: 32, padding: '0 12px' }}
+              onClick={() => navigate('/auth', { replace: true })}
+            >
+              Вернуться на страницу входа
+            </button>
+          </div>
+        )}
       </div>
     </div>
   )

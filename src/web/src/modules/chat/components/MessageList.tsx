@@ -1,68 +1,117 @@
-import React, { useRef, useEffect } from 'react'
+import React, { useMemo } from 'react'
 import { Message } from './Message'
 import { useAppDispatch, useAppSelector } from '../../../store'
 import { deleteMessage } from '../../../shared/slices/chatSlice'
 import { selectUser } from '../../../shared/slices/authSlice'
+import { formatRelativeDay, isSameDay } from '../../../shared/utils/format'
 import type { MessageInterface } from '../../../shared/slices/chatSlice'
 
 interface MessageListProps {
   messages: MessageInterface[]
   channelName: string
-  currentUserId?: string
+  isLoading: boolean
+  hasMore: boolean
+  onLoadMore: () => void
+  scrollRef: React.RefObject<HTMLDivElement>
 }
 
-export const MessageList: React.FC<MessageListProps> = ({ messages, channelName, currentUserId: _ }) => {
+export const MessageList: React.FC<MessageListProps> = ({
+  messages,
+  channelName,
+  isLoading,
+  hasMore,
+  onLoadMore,
+  scrollRef,
+}) => {
   const dispatch = useAppDispatch()
   const user = useAppSelector(selectUser)
-  const scrollRef = useRef<HTMLDivElement>(null)
-  const lastIdRef = useRef<string | undefined>(undefined)
-
-  const sorted = [...messages].sort(
-    (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+  const guildOwnerId = useAppSelector(state => state.servers.currentServer?.ownerId)
+  const currentGuildId = useAppSelector(state => state.servers.currentServer?.id)
+  const members = useAppSelector(
+    state => state.members.members[currentGuildId ?? ''] ?? []
   )
 
-  // Скроллим вниз только когда появляется новое сообщение снизу,
-  // но не когда старые подгружаются сверху (пагинация).
-  useEffect(() => {
-    const last = sorted[sorted.length - 1]
-    if (!last || last.id === lastIdRef.current) return
-    lastIdRef.current = last.id
-    if (scrollRef.current) {
-      scrollRef.current.scrollTop = scrollRef.current.scrollHeight
-    }
-  }, [sorted])
+  const sorted = useMemo(
+    () =>
+      [...messages].sort(
+        (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+      ),
+    [messages]
+  )
+
+  // Detect a user's role within the current guild — used to gate delete/manage buttons.
+  const currentUserRole = useMemo(() => {
+    if (!user) return 'Member'
+    if (user.id === guildOwnerId) return 'Owner'
+    return members.find(m => m.userId === user.id)?.role ?? 'Member'
+  }, [user, guildOwnerId, members])
 
   const handleDelete = (id: string) => {
     const msg = sorted.find(m => m.id === id)
     if (msg) dispatch(deleteMessage({ channelId: msg.channelId, messageId: id }))
   }
 
-  return (
-    <div className="chat-scroll" ref={scrollRef}>
-      <div className="chat-scroll-inner">
-        <div className="chat-welcome">
-          <div className="wlc-icon">#</div>
-          <h2>Добро пожаловать в #{channelName}</h2>
-          <p>Это начало канала. Сообщения хранятся в Messaging Service · cursor-based история, доставка через SignalR.</p>
-        </div>
+  // Load older messages when the user scrolls near the top.
+  const onScroll = (e: React.UIEvent<HTMLDivElement>) => {
+    const el = e.currentTarget
+    if (el.scrollTop < 80 && hasMore && !isLoading) onLoadMore()
+  }
 
-        <div className="day-divider">
-          <div className="line" />
-          <div className="label">сегодня</div>
-          <div className="line" />
-        </div>
+  const isEmpty = sorted.length === 0
+
+  return (
+    <div className="chat-scroll" ref={scrollRef} onScroll={onScroll}>
+      <div className="chat-scroll-inner">
+        {/* Only show the friendly welcome banner at the very top of the
+            channel history. Once there are messages above it (older pages
+            loaded), the empty-channel framing is no longer accurate. */}
+        {!hasMore && (
+          <div className="chat-welcome">
+            <div className="wlc-icon">#</div>
+            <h2>Это начало канала #{channelName}</h2>
+            <p>
+              {isEmpty
+                ? 'Сообщений ещё нет. Напишите первым — Enter отправляет, Shift+Enter переносит строку.'
+                : 'Прокручивайте вниз, чтобы читать историю. Новые сообщения появятся сами.'}
+            </p>
+          </div>
+        )}
+
+        {hasMore && (
+          <div className="load-more-row">
+            {isLoading
+              ? <span className="load-more-spinner" />
+              : <button className="load-more-btn" onClick={onLoadMore}>Загрузить ранее</button>}
+          </div>
+        )}
 
         {sorted.map((msg, i, arr) => {
-          const isFirst = i === 0 || arr[i - 1].authorId !== msg.authorId
-          const canDelete = !!(user && msg.authorId === user.id)
+          const prev = arr[i - 1]
+          const isFirst = !prev || prev.authorId !== msg.authorId ||
+            // Always break grouping on day boundary so the time stamp is fresh
+            (prev && !isSameDay(prev.createdAt, msg.createdAt))
+          const showDayDivider = !prev || !isSameDay(prev.createdAt, msg.createdAt)
+          const canDelete =
+            !!user && (msg.authorId === user.id ||
+                       currentUserRole === 'Owner' ||
+                       currentUserRole === 'Admin')
+
           return (
-            <Message
-              key={msg.id}
-              msg={msg}
-              isFirst={isFirst}
-              canDelete={canDelete}
-              onDelete={handleDelete}
-            />
+            <React.Fragment key={msg.id}>
+              {showDayDivider && (
+                <div className="day-divider">
+                  <div className="line" />
+                  <div className="label">{formatRelativeDay(msg.createdAt)}</div>
+                  <div className="line" />
+                </div>
+              )}
+              <Message
+                msg={msg}
+                isFirst={isFirst}
+                canDelete={canDelete}
+                onDelete={handleDelete}
+              />
+            </React.Fragment>
           )
         })}
       </div>
