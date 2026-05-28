@@ -129,7 +129,7 @@ prometheus:
 # Alloy (logs collector → Loki на Obs VPS)
 # -----------------------------------------------------------------------
 alloy:
-  enabled: false
+  enabled: true
   image:
     repository: grafana/alloy
     tag: "v1.16.1"
