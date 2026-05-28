@@ -4,6 +4,9 @@ import { ISpeaker, IUsers, ILogout } from '../Icons/Icons'
 import { useAppSelector } from '../../../store'
 import { selectCurrentServer } from '../../slices/serverSlice'
 import { useGlobalModal } from './ModalProvider'
+import { useLayout } from './AppShell'
+
+const MOBILE_BP = 768
 
 interface TopBarProps {
   showMembers: boolean
@@ -16,7 +19,7 @@ export const TopBar: React.FC<TopBarProps> = ({ showMembers, onToggleMembers }) 
   const currentServer = useAppSelector(selectCurrentServer)
   const channels = useAppSelector(state => state.channels.channels)
   const { open } = useGlobalModal()
-  // Local state for the case when ModalProvider isn't mounted (auth screens, etc).
+  const { setMobileNavOpen, mobileRightOpen, setMobileRightOpen } = useLayout()
   const [logoutFallback, setLogoutFallback] = useState(false)
 
   const channel = channels.find(c => c.id === channelId)
@@ -25,13 +28,29 @@ export const TopBar: React.FC<TopBarProps> = ({ showMembers, onToggleMembers }) 
     try {
       open('logout')
     } catch {
-      // fallback for routes mounted outside AppShell
       setLogoutFallback(true)
     }
   }
 
+  const handleMembersClick = () => {
+    if (window.innerWidth <= MOBILE_BP) {
+      setMobileRightOpen(v => !v)
+    } else {
+      onToggleMembers()
+    }
+  }
+
+  const membersActive = window.innerWidth <= MOBILE_BP ? mobileRightOpen : showMembers
+
   return (
     <header className="top">
+      <button
+        className="top-menu-btn"
+        title="Меню"
+        onClick={() => setMobileNavOpen(v => !v)}
+      >
+        <IMenu />
+      </button>
       <div className="top-left">
         <div className="top-breadcrumb">
           {currentServer && (
@@ -50,9 +69,9 @@ export const TopBar: React.FC<TopBarProps> = ({ showMembers, onToggleMembers }) 
       </div>
       <div className="top-actions">
         <button
-          className={`icon-btn${showMembers ? ' is-active' : ''}`}
+          className={`icon-btn${membersActive ? ' is-active' : ''}`}
           title="Участники"
-          onClick={onToggleMembers}
+          onClick={handleMembersClick}
         >
           <IUsers />
         </button>
@@ -72,6 +91,14 @@ export const TopBar: React.FC<TopBarProps> = ({ showMembers, onToggleMembers }) 
     </header>
   )
 }
+
+const IMenu: React.FC = () => (
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <line x1="3" y1="6" x2="21" y2="6"/>
+    <line x1="3" y1="12" x2="21" y2="12"/>
+    <line x1="3" y1="18" x2="21" y2="18"/>
+  </svg>
+)
 
 const IChevRightInline: React.FC = () => (
   <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">

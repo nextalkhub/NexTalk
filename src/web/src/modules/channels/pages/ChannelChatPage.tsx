@@ -19,7 +19,7 @@ export const ChannelChatPage: React.FC = () => {
   const messages = useAppSelector(state => state.chat.messages)
   const { connection, isConnected } = useSignalR()
   const { setHideRight } = useContext(LayoutContext)
-  const [showMembers, setShowMembers] = React.useState(true)
+  const [showMembers, setShowMembers] = React.useState(() => window.innerWidth > 768)
 
   const scrollRef = useRef<HTMLDivElement>(null)
   const prevScrollHeight = useRef<number | null>(null)
@@ -110,7 +110,7 @@ export const ChannelChatPage: React.FC = () => {
             <p>Кликните по текстовому каналу в боковой панели, чтобы начать общение.</p>
           </div>
         </main>
-        {showMembers && <MembersSidebar />}
+        <MembersSidebar />
       </>
     )
   }
@@ -139,7 +139,7 @@ export const ChannelChatPage: React.FC = () => {
           isConnected={isConnected}
         />
       </main>
-      {showMembers && <MembersSidebar />}
+      <MembersSidebar />
     </>
   )
 }
