@@ -61,10 +61,6 @@ spec:
         app: alloy
     spec:
       serviceAccountName: alloy
-      # hostNetwork: Alloy в pod-сети Flannel не видит 10.19.0.41 (obs-vps).
-      # С hostNetwork он использует сетевой стек ноды и достигает Loki напрямую.
-      hostNetwork: true
-      dnsPolicy: ClusterFirstWithHostNet
       securityContext:
         # root нужен для чтения /var/log/pods (containerd пишет файлы как root 600).
         runAsNonRoot: false
