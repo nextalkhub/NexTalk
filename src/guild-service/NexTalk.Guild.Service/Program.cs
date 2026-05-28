@@ -13,6 +13,7 @@ using Microsoft.OpenApi.Models;
 using NexTalk.Guild.Service.Features.Channels.CreateChannel;
 using NexTalk.Guild.Service.Features.Channels.DeleteChannel;
 using NexTalk.Guild.Service.Features.Channels.GetChannels;
+using NexTalk.Guild.Service.Features.Channels.RenameChannel;
 using NexTalk.Guild.Service.Features.Guilds.CreateGuild;
 using NexTalk.Guild.Service.Features.Guilds.DeleteGuild;
 using NexTalk.Guild.Service.Features.Guilds.GetUserGuilds;
@@ -188,6 +189,7 @@ builder.Services.AddScoped<UpdateGuildHandler>();
 builder.Services.AddScoped<CreateChannelHandler>();
 builder.Services.AddScoped<DeleteChannelHandler>();
 builder.Services.AddScoped<GetChannelsHandler>();
+builder.Services.AddScoped<RenameChannelHandler>();
 
 // Invite handlers
 builder.Services.AddScoped<IInviteRepository, InviteRepository>();
@@ -385,6 +387,7 @@ UpdateGuildEndpoint.Map(app);
 CreateChannelEndpoint.Map(app);
 DeleteChannelEndpoint.Map(app);
 GetChannelsEndpoint.Map(app);
+RenameChannelEndpoint.Map(app);
 
 // Invite endpoints
 CreateInviteEndpoint.Map(app);

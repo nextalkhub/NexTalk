@@ -2,7 +2,7 @@ import React, { useContext, useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import {
   IHash, ISpeaker, IPlus, ITrash, IUsers, ILink, IGear, IX, ICheck,
-  IBoot, IHammer, ICopy, IShield,
+  IBoot, IHammer, ICopy, IShield, IPencil,
 } from '../../../shared/components/Icons/Icons'
 import { Avatar } from '../../../shared/components/Avatar/Avatar'
 import { LayoutContext } from '../../../shared/components/Layout/AppShell'
@@ -11,7 +11,7 @@ import { useAppDispatch, useAppSelector } from '../../../store'
 import { selectUser } from '../../../shared/slices/authSlice'
 import { selectCurrentServer, selectServers, removeServer } from '../../../shared/slices/serverSlice'
 import { fetchMembers, kickMemberThunk, banMemberThunk } from '../../../shared/slices/memberSlice'
-import { fetchChannels, createChannel, removeChannel } from '../../../shared/slices/channelSlice'
+import { fetchChannels, createChannel, removeChannel, renameChannelThunk } from '../../../shared/slices/channelSlice'
 import {
   fetchBans, unbanThunk, fetchSettingsInvites, deleteInviteThunk,
   deleteGuildThunk, updateGuildThunk,
@@ -126,6 +126,11 @@ export const ServerSettingsPage: React.FC = () => {
     if (!serverId) return
     await deleteChannel(serverId, channelId)
     dispatch(removeChannel(channelId))
+  }
+
+  const handleRenameChannel = async (channelId: string, name: string) => {
+    if (!serverId || !name.trim()) return
+    await dispatch(renameChannelThunk({ serverId, channelId, name: name.trim() }))
   }
 
   const handleCreateChannel = async () => {
@@ -258,6 +263,7 @@ export const ServerSettingsPage: React.FC = () => {
                 setNewType={setNewChType}
                 onCreate={handleCreateChannel}
                 onDelete={handleDeleteChannel}
+                onRename={handleRenameChannel}
               />
             )}
             {tab === 'invites' && (
@@ -397,7 +403,7 @@ const MembersTab: React.FC<{
           />
           <select
             className="settings-input"
-            style={{ width: 140, height: 36, fontSize: 13 }}
+            style={{ width: 140, fontSize: 13 }}
             value={roleFilter}
             onChange={e => setRoleFilter(e.target.value)}
           >
@@ -491,8 +497,21 @@ const ChannelsTab: React.FC<{
   setNewType: (v: 'text' | 'voice') => void
   onCreate: () => void
   onDelete: (id: string) => void
-}> = ({ channels, canCreate, newName, setNewName, newType, setNewType, onCreate, onDelete }) => {
+  onRename: (id: string, name: string) => void
+}> = ({ channels, canCreate, newName, setNewName, newType, setNewType, onCreate, onDelete, onRename }) => {
   const [confirmDelete, setConfirmDelete] = React.useState<{ id: string; name: string } | null>(null)
+  const [editingId, setEditingId] = React.useState<string | null>(null)
+  const [editName, setEditName] = React.useState('')
+
+  const startEdit = (ch: { id: string; name: string }) => {
+    setEditingId(ch.id)
+    setEditName(ch.name)
+  }
+
+  const commitEdit = (id: string) => {
+    if (editName.trim()) onRename(id, editName)
+    setEditingId(null)
+  }
 
   return (
     <div>
@@ -514,7 +533,7 @@ const ChannelsTab: React.FC<{
             />
             <select
               className="settings-input"
-              style={{ width: 130, height: 36, fontSize: 13 }}
+              style={{ width: 130, fontSize: 13 }}
               value={newType}
               onChange={e => setNewType(e.target.value as 'text' | 'voice')}
             >
@@ -543,7 +562,22 @@ const ChannelsTab: React.FC<{
           <div key={ch.id} className="dt-row dt-channels">
             <div className="ch-cell">
               <div className="ch-ic">{ch.type === 'text' ? <IHash /> : <ISpeaker />}</div>
-              <span className="nm">{ch.name}</span>
+              {editingId === ch.id ? (
+                <input
+                  className="settings-input"
+                  style={{ height: 28, padding: '0 8px', fontSize: 13, flex: 1 }}
+                  value={editName}
+                  autoFocus
+                  onChange={e => setEditName(e.target.value)}
+                  onKeyDown={e => {
+                    if (e.key === 'Enter') commitEdit(ch.id)
+                    if (e.key === 'Escape') setEditingId(null)
+                  }}
+                  onBlur={() => commitEdit(ch.id)}
+                />
+              ) : (
+                <span className="nm">{ch.name}</span>
+              )}
             </div>
             <div>
               <span className={`ch-type-pill${ch.type === 'voice' ? ' voice' : ''}`}>
@@ -555,6 +589,11 @@ const ChannelsTab: React.FC<{
               {ch.id}
             </div>
             <div className="row-actions">
+              {canCreate && (
+                <button className="row-action-btn" title="Переименовать" onClick={() => startEdit(ch)}>
+                  <IPencil />
+                </button>
+              )}
               <button
                 className="row-action-btn is-danger"
                 title="Удалить"
@@ -616,7 +655,7 @@ const InvitesTab: React.FC<{
         <div className="left" style={{ display: 'flex', gap: 8 }}>
           <select
             className="settings-input"
-            style={{ width: 150, height: 36, fontSize: 13 }}
+            style={{ width: 140, fontSize: 13 }}
             value={inviteExpiry}
             onChange={e => setInviteExpiry(e.target.value)}
           >
@@ -629,7 +668,7 @@ const InvitesTab: React.FC<{
           </select>
           <select
             className="settings-input"
-            style={{ width: 150, height: 36, fontSize: 13 }}
+            style={{ width: 170, fontSize: 13 }}
             value={inviteMaxUses === null ? 'unlimited' : String(inviteMaxUses)}
             onChange={e => setInviteMaxUses(e.target.value === 'unlimited' ? null : Number(e.target.value))}
           >
