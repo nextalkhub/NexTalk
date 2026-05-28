@@ -21,7 +21,7 @@ export const CreateChannelModal: React.FC<CreateChannelModalProps> = ({ isOpen, 
     e.preventDefault()
     if (!name.trim() || !serverId || serverId === 'undefined') return
     setLoading(true)
-    const formattedName = name.toLowerCase().replace(/\s/g, '-')
+    const formattedName = name.trim().replace(/\s/g, '-')
     await dispatch(createChannel({ serverId, name: formattedName, type }))
     setLoading(false)
     setName('')

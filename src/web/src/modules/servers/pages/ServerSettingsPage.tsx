@@ -135,7 +135,7 @@ export const ServerSettingsPage: React.FC = () => {
 
   const handleCreateChannel = async () => {
     if (!serverId || !newChName.trim()) return
-    const name = newChName.trim().toLowerCase().replace(/\s+/g, '-')
+    const name = newChName.trim().replace(/\s+/g, '-')
     await dispatch(createChannel({ serverId, name, type: newChType }))
     setNewChName('')
   }

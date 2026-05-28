@@ -9,12 +9,19 @@ interface MessageProps {
   isFirst: boolean
   isNew?: boolean
   canDelete: boolean
+  role?: 'Owner' | 'Admin' | 'Member'
   onDelete: (id: string) => void
 }
 
-export const Message: React.FC<MessageProps> = ({ msg, isFirst, isNew, canDelete, onDelete }) => {
+const ROLE_COLOR: Record<string, string> = {
+  Owner: 'var(--warn)',
+  Admin: 'var(--brand-2)',
+}
+
+export const Message: React.FC<MessageProps> = ({ msg, isFirst, isNew, canDelete, role, onDelete }) => {
   const lines = msg.content.split('\n')
   const stableName = msg.authorName || msg.authorId
+  const nameColor = role ? ROLE_COLOR[role] : undefined
 
   return (
     <div className={`msg${isFirst ? ' is-first' : ''}${isNew ? ' is-new' : ''}`}>
@@ -27,7 +34,10 @@ export const Message: React.FC<MessageProps> = ({ msg, isFirst, isNew, canDelete
       <div className="msg-body">
         {isFirst && (
           <div className="msg-head">
-            <span className="msg-author">{msg.authorName}</span>
+            <span className="msg-author" style={nameColor ? { color: nameColor } : undefined}>{msg.authorName}</span>
+            {role && role !== 'Member' && (
+              <span className={`msg-role-badge ${role.toLowerCase()}`}>{role.toUpperCase()}</span>
+            )}
             <span className="msg-stamp">{formatTime(msg.createdAt)}</span>
           </div>
         )}

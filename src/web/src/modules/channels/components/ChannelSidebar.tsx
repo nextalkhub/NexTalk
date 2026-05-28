@@ -144,7 +144,7 @@ export const ChannelSidebar: React.FC = () => {
             )}
           </div>
           <button
-            className="icon-btn"
+            className="guild-settings-btn"
             title="Настройки сервера"
             onClick={() => { const id = currentServer?.id ?? serverId; if (id) navigate(`/servers/${id}/settings`) }}
           >

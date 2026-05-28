@@ -96,6 +96,9 @@ export const MessageList: React.FC<MessageListProps> = ({
                        currentUserRole === 'Owner' ||
                        currentUserRole === 'Admin')
 
+          const authorMember = members.find(m => m.userId === msg.authorId)
+          const authorRole = authorMember?.role as 'Owner' | 'Admin' | 'Member' | undefined
+
           return (
             <React.Fragment key={msg.id}>
               {showDayDivider && (
@@ -109,6 +112,7 @@ export const MessageList: React.FC<MessageListProps> = ({
                 msg={msg}
                 isFirst={isFirst}
                 canDelete={canDelete}
+                role={authorRole}
                 onDelete={handleDelete}
               />
             </React.Fragment>

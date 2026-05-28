@@ -144,6 +144,8 @@ const MemberGroup: React.FC<GroupProps> = ({ label, members, dim, voiceMap }) =>
 const MemberRow: React.FC<{ member: Member; forceOffline?: boolean; voiceInfo?: VoiceInfo }> = ({ member, forceOffline, voiceInfo }) => {
   const isOnlineFromPresence = useAppSelector(selectIsUserOnline(member.userId))
   const isOnline = forceOffline ? false : isOnlineFromPresence
+  const currentUserId = useAppSelector(state => state.auth.user?.id)
+  const isSelf = member.userId === currentUserId
   return (
     <div className={`member-row ${isOnline ? 'online' : 'offline'}`}>
       <div className="av-wrap">
@@ -155,6 +157,7 @@ const MemberRow: React.FC<{ member: Member; forceOffline?: boolean; voiceInfo?: 
           {member.role !== 'Member' && (
             <span className="role-tag">{member.role.toUpperCase()}</span>
           )}
+          {isSelf && <span className="you-tag">ВЫ</span>}
         </span>
       </div>
       {voiceInfo?.inVoice && (
