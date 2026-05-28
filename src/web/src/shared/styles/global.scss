@@ -194,6 +194,17 @@ a { color: inherit; text-decoration: none; }
 .voice-user-row .muted-icon { color: var(--live); }
 
 /* Self status panel */
+.voice-status-bar { padding: 8px 12px; background: rgba(52,211,153,.06); border-top: 1px solid rgba(52,211,153,.18); flex-shrink: 0; }
+.vsb-info { display: flex; align-items: center; gap: 8px; }
+.vsb-text { flex: 1; min-width: 0; }
+.vsb-label { font-size: 11px; font-weight: 600; color: var(--ok); text-transform: uppercase; letter-spacing: .05em; display: flex; align-items: center; gap: 5px; margin-bottom: 2px; }
+.vsb-channel { font-size: 12px; color: var(--fg-1); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.vsb-actions { display: flex; gap: 3px; flex-shrink: 0; }
+.vsb-btn { width: 28px; height: 28px; border-radius: 6px; display: flex; align-items: center; justify-content: center; color: var(--fg-2); font-size: 14px; transition: background .15s, color .15s; }
+.vsb-btn:hover { background: rgba(255,255,255,.07); color: var(--fg-0); }
+.vsb-btn.is-muted { color: #EF4444; }
+.vsb-btn.is-leave { color: #EF4444; }
+.vsb-btn.is-leave:hover { background: rgba(239,68,68,.12); }
 .side-self { display: flex; align-items: center; gap: 10px; padding: 10px 12px; background: var(--bg-1); border-top: 1px solid var(--bd-1); flex-shrink: 0; }
 .side-self .av { width: 32px; height: 32px; border-radius: 999px; display: inline-flex; align-items: center; justify-content: center; font-weight: 600; font-size: 12px; color: white; position: relative; flex-shrink: 0; }
 .side-self .av::after { content: ""; position: absolute; bottom: -1px; right: -1px; width: 11px; height: 11px; border-radius: 999px; background: var(--ok); border: 2px solid var(--bg-1); }

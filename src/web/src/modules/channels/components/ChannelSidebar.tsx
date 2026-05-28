@@ -1,12 +1,13 @@
 import React, { useEffect, useState } from 'react'
 import { useNavigate, useParams, useLocation } from 'react-router-dom'
-import { IHash, ISpeaker, IPlus, IGear, ILogout } from '../../../shared/components/Icons/Icons'
+import { IHash, ISpeaker, IPlus, IGear, ILogout, IMic, IMicOff, IHeadset, IPhoneOff } from '../../../shared/components/Icons/Icons'
 import { Avatar } from '../../../shared/components/Avatar/Avatar'
 import { useGlobalModal } from '../../../shared/components/Layout/ModalProvider'
 import { useAppDispatch, useAppSelector } from '../../../store'
 import { fetchChannels, setCurrentChannel } from '../../../shared/slices/channelSlice'
 import { fetchMembers } from '../../../shared/slices/memberSlice'
 import { selectCurrentServer, selectServers, setCurrentServer } from '../../../shared/slices/serverSlice'
+import { useVoiceContext } from '../../../shared/contexts/VoiceContext'
 import { selectUser } from '../../../shared/slices/authSlice'
 import { CreateChannelModal } from './CreateChannelModal'
 import { useSidebarResize } from '../../../shared/hooks/useSidebarResize'
@@ -28,6 +29,16 @@ export const ChannelSidebar: React.FC = () => {
   const onlineSet = useAppSelector(state => state.presence.online)
   const user = useAppSelector(selectUser)
   const { onMouseDown: onResizeMouseDown } = useSidebarResize()
+
+  const {
+    activeChannelId: voiceChannelId,
+    isConnected: voiceConnected,
+    isMuted: voiceMuted,
+    isDeafened: voiceDeafened,
+    toggleMic,
+    toggleDeafen,
+    leaveVoice,
+  } = useVoiceContext()
 
   const onlineCount = members.filter(m => !!onlineSet[m.userId]).length
 
@@ -102,6 +113,16 @@ export const ChannelSidebar: React.FC = () => {
             </div>
           </div>
         </div>
+        {voiceConnected && voiceChannelId && (
+          <VoiceStatusBar
+            channelId={voiceChannelId}
+            isMuted={voiceMuted}
+            isDeafened={voiceDeafened}
+            onToggleMic={toggleMic}
+            onToggleDeafen={toggleDeafen}
+            onLeave={() => leaveVoice(voiceChannelId)}
+          />
+        )}
         {user && <SelfStatus user={user} onOpenSettings={handleOpenSettings} />}
       </aside>
     )
@@ -207,6 +228,16 @@ export const ChannelSidebar: React.FC = () => {
           </div>
         </div>
 
+        {voiceConnected && voiceChannelId && (
+          <VoiceStatusBar
+            channelId={voiceChannelId}
+            isMuted={voiceMuted}
+            isDeafened={voiceDeafened}
+            onToggleMic={toggleMic}
+            onToggleDeafen={toggleDeafen}
+            onLeave={() => leaveVoice(voiceChannelId)}
+          />
+        )}
         {user && <SelfStatus user={user} onOpenSettings={handleOpenSettings} />}
       </aside>
 
@@ -247,6 +278,55 @@ const SelfStatus: React.FC<SelfStatusProps> = ({ user, onOpenSettings }) => {
         >
           <ILogout />
         </button>
+      </div>
+    </div>
+  )
+}
+
+interface VoiceStatusBarProps {
+  channelId: string
+  isMuted: boolean
+  isDeafened: boolean
+  onToggleMic: () => void
+  onToggleDeafen: () => void
+  onLeave: () => void
+}
+
+const VoiceStatusBar: React.FC<VoiceStatusBarProps> = ({
+  channelId, isMuted, isDeafened, onToggleMic, onToggleDeafen, onLeave,
+}) => {
+  const channels = useAppSelector(state => state.channels.channels)
+  const channelName = channels.find(c => c.id === channelId)?.name ?? 'голосовой канал'
+
+  return (
+    <div className="voice-status-bar">
+      <div className="vsb-info">
+        <div className="vsb-text">
+          <div className="vsb-label">
+            <span className="dot online" style={{ width: 6, height: 6, flexShrink: 0 }} />
+            Голосовой чат
+          </div>
+          <div className="vsb-channel">#{channelName}</div>
+        </div>
+        <div className="vsb-actions">
+          <button
+            className={`vsb-btn${isMuted ? ' is-muted' : ''}`}
+            title={isMuted ? 'Включить микрофон' : 'Выключить микрофон'}
+            onClick={onToggleMic}
+          >
+            {isMuted ? <IMicOff /> : <IMic />}
+          </button>
+          <button
+            className={`vsb-btn${isDeafened ? ' is-muted' : ''}`}
+            title={isDeafened ? 'Включить наушники' : 'Отключить наушники'}
+            onClick={onToggleDeafen}
+          >
+            <IHeadset />
+          </button>
+          <button className="vsb-btn is-leave" title="Покинуть голосовой канал" onClick={onLeave}>
+            <IPhoneOff />
+          </button>
+        </div>
       </div>
     </div>
   )

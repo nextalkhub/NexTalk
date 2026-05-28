@@ -9,6 +9,7 @@ import { ConfirmDialog } from '../Modals/ConfirmDialog'
 import { useAppDispatch } from '../../../store'
 import { fetchServers } from '../../slices/serverSlice'
 import { logout } from '../../slices/authSlice'
+import { VoiceSessionProvider } from '../../contexts/VoiceContext'
 
 interface LayoutCtx {
   hideRight: boolean
@@ -66,6 +67,8 @@ const ShellInner: React.FC = () => {
 
 export const AppShell: React.FC = () => (
   <ModalProvider>
-    <ShellInner />
+    <VoiceSessionProvider>
+      <ShellInner />
+    </VoiceSessionProvider>
   </ModalProvider>
 )
