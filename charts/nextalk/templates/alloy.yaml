@@ -70,19 +70,8 @@ spec:
         runAsNonRoot: false
         runAsUser: 0
         runAsGroup: 0
-        fsGroup: 0
         seccompProfile:
           type: RuntimeDefault
-      initContainers:
-        - name: fix-permissions
-          image: "{{ .Values.alloy.image.repository }}:{{ .Values.alloy.image.tag }}"
-          command: ["sh", "-c", "chown -R 0:0 /var/lib/alloy/data"]
-          securityContext:
-            runAsUser: 0
-            runAsGroup: 0
-          volumeMounts:
-            - name: data
-              mountPath: /var/lib/alloy/data
       containers:
         - name: alloy
           image: "{{ .Values.alloy.image.repository }}:{{ .Values.alloy.image.tag }}"
@@ -91,7 +80,10 @@ spec:
             readOnlyRootFilesystem: true
             capabilities:
               drop: ["ALL"]
-          args: ["run", "--storage.path=/var/lib/alloy/data", "--server.http.listen-addr=0.0.0.0:12345", "/etc/alloy/config.alloy"]
+          # --storage.path в /tmp — единственный гарантированно writable путь
+          # при readOnlyRootFilesystem: true. /var/lib/alloy не существует в rootfs
+          # образа как создаваемая директория, kubelet не может её сделать в RO rootfs.
+          args: ["run", "--storage.path=/tmp/alloy-data", "--server.http.listen-addr=0.0.0.0:12345", "/etc/alloy/config.alloy"]
           env:
             # K8S_NODE_NAME = имя ноды. Не HOSTNAME — container runtime
             # перезаписывает HOSTNAME именем пода до того как сработает fieldRef.
@@ -105,9 +97,6 @@ spec:
             - name: config
               mountPath: /etc/alloy/config.alloy
               subPath: config.alloy
-            # readOnlyRootFilesystem: true — нужны writable пути для WAL и tmp.
-            - name: data
-              mountPath: /var/lib/alloy/data
             - name: tmp
               mountPath: /tmp
             # Логи подов — стандартный путь k3s/containerd.
@@ -136,8 +125,6 @@ spec:
         - name: config
           configMap:
             name: alloy-config
-        - name: data
-          emptyDir: {}
         - name: tmp
           emptyDir: {}
         - name: varlogpods
