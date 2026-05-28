@@ -61,11 +61,16 @@ spec:
         app: alloy
     spec:
       serviceAccountName: alloy
+      # hostNetwork: Alloy в pod-сети Flannel не видит 10.19.0.41 (obs-vps).
+      # С hostNetwork он использует сетевой стек ноды и достигает Loki напрямую.
+      hostNetwork: true
+      dnsPolicy: ClusterFirstWithHostNet
       securityContext:
-        runAsNonRoot: true
-        runAsUser: 473
-        runAsGroup: 473
-        fsGroup: 473
+        # root нужен для чтения /var/log/pods (containerd пишет файлы как root 600).
+        runAsNonRoot: false
+        runAsUser: 0
+        runAsGroup: 0
+        fsGroup: 0
         seccompProfile:
           type: RuntimeDefault
       containers:
@@ -95,6 +100,10 @@ spec:
               mountPath: /var/lib/alloy/data
             - name: tmp
               mountPath: /tmp
+            # Логи подов — стандартный путь k3s/containerd.
+            - name: varlogpods
+              mountPath: /var/log/pods
+              readOnly: true
           resources:
             requests:
               cpu: 50m
@@ -121,4 +130,7 @@ spec:
           emptyDir: {}
         - name: tmp
           emptyDir: {}
+        - name: varlogpods
+          hostPath:
+            path: /var/log/pods
 {{- end }}

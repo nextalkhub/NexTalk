@@ -1,5 +1,8 @@
 // ─────────────────────────────────────────────────────────────
-// Kubernetes Pod Log Discovery (k3s / DaemonSet Alloy)
+// Kubernetes Pod Log Collection via /var/log/pods (hostPath)
+// Работает для ВСЕХ подов включая hostNetwork: true.
+// loki.source.kubernetes не используется — он не видит hostNetwork-поды
+// (pod IP = IP ноды, внутренняя адресация ломается).
 // ─────────────────────────────────────────────────────────────
 
 // 1. Discover pods in namespace nextalk
@@ -11,7 +14,7 @@ discovery.kubernetes "pods" {
   }
 }
 
-// 2. Filter + enrich targets (node-aware + labels)
+// 2. Filter + build hostPath file targets
 discovery.relabel "pods" {
   targets = discovery.kubernetes.pods.targets
 
@@ -29,7 +32,21 @@ discovery.relabel "pods" {
     action        = "keep"
   }
 
-  // attach k8s metadata as labels
+  // build log file path: /var/log/pods/<ns>_<pod>_<uid>/<container>/*.log
+  rule {
+    source_labels = [
+      "__meta_kubernetes_namespace",
+      "__meta_kubernetes_pod_name",
+      "__meta_kubernetes_pod_uid",
+      "__meta_kubernetes_pod_container_name",
+    ]
+    separator    = "/"
+    regex        = "(.+)/(.+)/(.+)/(.+)"
+    replacement  = "/var/log/pods/$1_$2_$3/$4/*.log"
+    target_label = "__path__"
+  }
+
+  // k8s metadata labels
   rule {
     source_labels = ["__meta_kubernetes_namespace"]
     target_label  = "namespace"
@@ -51,18 +68,27 @@ discovery.relabel "pods" {
   }
 }
 
-// 3. Read logs from pods
-loki.source.kubernetes "pods" {
+// 3. Read log files from node filesystem
+loki.source.file "pods" {
   targets    = discovery.relabel.pods.output
-  forward_to = [loki.process.serilog.receiver]
+  forward_to = [loki.process.cri.receiver]
 }
 
-// 4. Parse Serilog Compact JSON logs
+// 4. Strip CRI prefix (containerd format: <ts> stdout F <message>)
+loki.process "cri" {
+  forward_to = [loki.process.serilog.receiver]
+
+  stage.cri {}
+}
+
+// 5. Parse Serilog Compact JSON logs.
+// drop_malformed = false: не-JSON строки (LiveKit, Prometheus, Zitadel)
+// проходят насквозь с дефолтным level=Information, timestamp=now.
 loki.process "serilog" {
   forward_to = [loki.write.obs.receiver]
 
   stage.json {
-    drop_malformed = true
+    drop_malformed = false
     expressions = {
       _level     = `"@l"`,
       _timestamp = `"@t"`,
@@ -96,7 +122,7 @@ loki.process "serilog" {
   }
 }
 
-// 5. Write to Loki
+// 6. Write to Loki
 loki.write "obs" {
   endpoint {
     url = sys.env("LOKI_URL") + "/loki/api/v1/push"
