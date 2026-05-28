@@ -134,6 +134,20 @@
         timeout: 10m
       tags: [helm]
 
+    # HTTP-01 challenge: Let's Encrypt стучится на http://domain/.well-known/acme-challenge/TOKEN.
+    # cert-manager создаёт временный Ingress и pod-solver, Let's Encrypt проверяет его,
+    # после чего выпускает сертификат и кладёт его в Secret nextalk-tls.
+    # Обычно занимает 30–90 секунд. timeout=5m с запасом на медленный DNS propagation.
+    - name: Дождаться выпуска Let's Encrypt сертификата
+      ansible.builtin.command: >-
+        kubectl --kubeconfig={{ kubeconfig }}
+        wait certificate/nextalk-tls
+        -n {{ helm_namespace }}
+        --for=condition=Ready
+        --timeout=300s
+      when: tls_provider == "letsencrypt"
+      tags: [helm]
+
     - name: Удалить отрендеренный secrets-файл
       ansible.builtin.file:
         path: "{{ helm_secrets_rendered }}"

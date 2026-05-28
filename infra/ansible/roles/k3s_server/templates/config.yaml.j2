@@ -38,6 +38,11 @@ flannel-iface: "{{ private_iface }}"
 # kubeconfig читаемый для не-root (нам нужно его утащить с control-plane ноды).
 write-kubeconfig-mode: "0644"
 
+# CoreDNS по умолчанию использует /etc/resolv.conf ноды, который на Beget
+# указывает на внутренний резолвер 198.18.18.18 — недоступный из pod-сети
+# через flannel VXLAN. Указываем отдельный файл с публичным DNS.
+resolv-conf: /etc/k3s-resolv.conf
+
 # Шифрование Secret-ов в etcd at-rest. Без этого Secret лежат в base64
 # и читаются любым, кто получил доступ к диску control-plane ноды.
 # Документация: https://docs.k3s.io/security/secrets-encryption

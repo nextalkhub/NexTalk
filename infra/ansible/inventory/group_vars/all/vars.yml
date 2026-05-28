@@ -38,5 +38,6 @@ k3s_service_cidr: "10.43.0.0/16"
 # cloudflare  — Origin Certificate из Cloudflare Dashboard, хранится в
 #               infra/ansible/inventory/group_vars/all/certs/origin.crt + origin.key
 # letsencrypt — cert-manager выписывает сертификат автоматически
-tls_provider: "cloudflare"
+tls_provider: "letsencrypt"
+tls_email: "korsakovdanil123@yandex.ru"
 tls_certs_dir: "{{ playbook_dir }}/../inventory/group_vars/all/certs"

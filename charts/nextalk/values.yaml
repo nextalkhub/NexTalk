@@ -38,14 +38,15 @@ tls:
   # cloudflare — использует предсозданный Secret с CF Origin Certificate.
   #              ClusterIssuer не создаётся, cert-manager не нужен.
   # letsencrypt — создаёт ClusterIssuer, cert-manager управляет сертификатами.
-  provider: "cloudflare"
-  # Имя TLS Secret (для cloudflare — создать вручную до helm install):
+  provider: "letsencrypt"
+  # cert-manager создаёт этот Secret автоматически при provider: letsencrypt.
+  # При provider: cloudflare — создать вручную:
   #   kubectl create secret tls cloudflare-origin-cert \
   #     --cert=cert.pem --key=key.pem -n nextalk
-  # Сертификат должен покрывать domain и *.domain (wildcard CF Origin Cert).
-  secretName: "cloudflare-origin-cert"
+  secretName: "nextalk-tls"
   # --- Только для provider: letsencrypt ---
   issuer: "letsencrypt-prod"
+  # email подкатывается через helm-secrets.values.yaml.j2 из tls_email (vars.yml)
   email: ""
 
 # -----------------------------------------------------------------------
