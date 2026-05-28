@@ -9,7 +9,7 @@ import { LayoutContext } from '../../../shared/components/Layout/AppShell'
 import { ConfirmDialog } from '../../../shared/components/Modals/ConfirmDialog'
 import { useAppDispatch, useAppSelector } from '../../../store'
 import { selectUser } from '../../../shared/slices/authSlice'
-import { selectCurrentServer, removeServer } from '../../../shared/slices/serverSlice'
+import { selectCurrentServer, selectServers, removeServer } from '../../../shared/slices/serverSlice'
 import { fetchMembers, kickMemberThunk, banMemberThunk } from '../../../shared/slices/memberSlice'
 import { fetchChannels, createChannel, removeChannel } from '../../../shared/slices/channelSlice'
 import {
@@ -31,7 +31,9 @@ export const ServerSettingsPage: React.FC = () => {
   const { setHideRight } = useContext(LayoutContext)
 
   const user = useAppSelector(selectUser)
-  const server = useAppSelector(selectCurrentServer)
+  const allServers = useAppSelector(selectServers)
+  const currentServerStore = useAppSelector(selectCurrentServer)
+  const server = allServers.find(s => s.id === serverId) ?? currentServerStore
   const members = useAppSelector(state => state.members.members[serverId ?? ''] ?? [])
   const channels = useAppSelector(state => state.channels.channels)
   const bans = useAppSelector(state => state.settings.bans[serverId ?? ''] ?? [])
@@ -395,7 +397,7 @@ const MembersTab: React.FC<{
           />
           <select
             className="settings-input"
-            style={{ width: 140, height: 36, padding: '0 10px', fontSize: 13 }}
+            style={{ width: 140, height: 36, fontSize: 13 }}
             value={roleFilter}
             onChange={e => setRoleFilter(e.target.value)}
           >
@@ -512,7 +514,7 @@ const ChannelsTab: React.FC<{
             />
             <select
               className="settings-input"
-              style={{ width: 130, height: 36, padding: '0 10px 0 10px', fontSize: 13 }}
+              style={{ width: 130, height: 36, fontSize: 13 }}
               value={newType}
               onChange={e => setNewType(e.target.value as 'text' | 'voice')}
             >

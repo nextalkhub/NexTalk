@@ -6,7 +6,7 @@ import { useGlobalModal } from '../../../shared/components/Layout/ModalProvider'
 import { useAppDispatch, useAppSelector } from '../../../store'
 import { fetchChannels, setCurrentChannel } from '../../../shared/slices/channelSlice'
 import { fetchMembers } from '../../../shared/slices/memberSlice'
-import { selectCurrentServer } from '../../../shared/slices/serverSlice'
+import { selectCurrentServer, selectServers, setCurrentServer } from '../../../shared/slices/serverSlice'
 import { selectUser } from '../../../shared/slices/authSlice'
 import { CreateChannelModal } from './CreateChannelModal'
 import { useSidebarResize } from '../../../shared/hooks/useSidebarResize'
@@ -20,6 +20,7 @@ export const ChannelSidebar: React.FC = () => {
   const { serverId, channelId } = useParams()
   const { pathname } = useLocation()
 
+  const allServers = useAppSelector(selectServers)
   const currentServer = useAppSelector(selectCurrentServer)
   const channels = useAppSelector(state => state.channels.channels)
   const voiceParticipants = useAppSelector(state => state.voice.channelParticipants)
@@ -29,6 +30,14 @@ export const ChannelSidebar: React.FC = () => {
   const { onMouseDown: onResizeMouseDown } = useSidebarResize()
 
   const onlineCount = members.filter(m => !!onlineSet[m.userId]).length
+
+  useEffect(() => {
+    if (!serverId || serverId === 'undefined') return
+    if ((!currentServer || currentServer.id !== serverId) && allServers.length > 0) {
+      const found = allServers.find(s => s.id === serverId)
+      if (found) dispatch(setCurrentServer(found))
+    }
+  }, [serverId, allServers, currentServer, dispatch])
 
   useEffect(() => {
     if (serverId && serverId !== 'undefined') dispatch(fetchMembers(serverId))
