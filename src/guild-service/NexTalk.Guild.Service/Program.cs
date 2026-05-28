@@ -24,6 +24,7 @@ using NexTalk.Guild.Service.Features.Invites.AcceptInvite;
 using NexTalk.Guild.Service.Features.Invites.CreateInvite;
 using NexTalk.Guild.Service.Features.Invites.DeleteInvite;
 using NexTalk.Guild.Service.Features.Invites.GetGuildInvites;
+using NexTalk.Guild.Service.Features.Invites.GetInviteInfo;
 using NexTalk.Guild.Service.Features.Members.AssignRole;
 using NexTalk.Guild.Service.Features.Members.BanMember;
 using NexTalk.Guild.Service.Features.Members.GetBans;
@@ -193,6 +194,7 @@ builder.Services.AddScoped<IInviteRepository, InviteRepository>();
 builder.Services.AddScoped<CreateInviteHandler>();
 builder.Services.AddScoped<AcceptInviteHandler>();
 builder.Services.AddScoped<GetGuildInvitesHandler>();
+builder.Services.AddScoped<GetInviteInfoHandler>();
 builder.Services.AddScoped<DeleteInviteHandler>();
 
 // Member handlers
@@ -351,6 +353,7 @@ app.UseExceptionHandler(exApp => exApp.Run(async ctx =>
         ex is NotFoundException ? (StatusCodes.Status404NotFound, ex.Message) :
         ex is ForbiddenException ? (StatusCodes.Status403Forbidden, ex.Message) :
         ex is BadRequestException ? (StatusCodes.Status400BadRequest, ex.Message) :
+        ex is GoneException ? (StatusCodes.Status410Gone, ex.Message) :
         (StatusCodes.Status500InternalServerError, "An unexpected error occurred.");
 
     if (status == StatusCodes.Status500InternalServerError)
@@ -387,6 +390,7 @@ GetChannelsEndpoint.Map(app);
 CreateInviteEndpoint.Map(app);
 AcceptInviteEndpoint.Map(app);
 GetGuildInvitesEndpoint.Map(app);
+GetInviteInfoEndpoint.Map(app);
 DeleteInviteEndpoint.Map(app);
 
 // Member endpoints

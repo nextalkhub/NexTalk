@@ -27,7 +27,7 @@ public static class AcceptInviteEndpoint
             "Добавляет текущего пользователя в гильдию по коду из ссылки-приглашения. " +
             "Код — 12-символьная строка base64url из URL вида /invite/{code}. " +
             "Возвращает данные гильдии, в которую вступил пользователь.")
-        .Produces<GuildResponse>(200)
+        .Produces<AcceptInviteResponse>(200)
         .Produces(400)
         .Produces(401)
         .Produces(404)
