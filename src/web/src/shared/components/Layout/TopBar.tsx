@@ -19,7 +19,7 @@ export const TopBar: React.FC<TopBarProps> = ({ showMembers, onToggleMembers }) 
   const currentServer = useAppSelector(selectCurrentServer)
   const channels = useAppSelector(state => state.channels.channels)
   const { open } = useGlobalModal()
-  const { setMobileNavOpen, mobileRightOpen, setMobileRightOpen } = useLayout()
+  const { mobileNavOpen, setMobileNavOpen, mobileRightOpen, setMobileRightOpen } = useLayout()
   const [logoutFallback, setLogoutFallback] = useState(false)
 
   const channel = channels.find(c => c.id === channelId)
@@ -34,7 +34,7 @@ export const TopBar: React.FC<TopBarProps> = ({ showMembers, onToggleMembers }) 
 
   const handleMembersClick = () => {
     if (window.innerWidth <= MOBILE_BP) {
-      setMobileRightOpen(v => !v)
+      setMobileRightOpen(!mobileRightOpen)
     } else {
       onToggleMembers()
     }
@@ -47,7 +47,7 @@ export const TopBar: React.FC<TopBarProps> = ({ showMembers, onToggleMembers }) 
       <button
         className="top-menu-btn"
         title="Меню"
-        onClick={() => setMobileNavOpen(v => !v)}
+        onClick={() => setMobileNavOpen(!mobileNavOpen)}
       >
         <IMenu />
       </button>
