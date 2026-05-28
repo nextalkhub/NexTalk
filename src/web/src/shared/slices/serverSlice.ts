@@ -2,6 +2,7 @@ import {createAsyncThunk, createSlice, PayloadAction} from '@reduxjs/toolkit'
 import {CreateGuildRequest, Guild} from "../types";
 import {getUserGuilds} from "../../processes/guild/getUserGuilds.ts";
 import {createGuild} from "../../processes/guild/createGuild.ts";
+import {updateGuildThunk} from './settingsSlice';
 
 interface ServerState {
     servers: Guild[]
@@ -73,6 +74,13 @@ const serverSlice = createSlice({
             .addCase(createServer.rejected, (state, action) => {
                 state.isLoading = false
                 state.error = action.error.message || 'Failed to create server'
+            })
+            .addCase(updateGuildThunk.fulfilled, (state, action) => {
+                const updated = action.payload as Guild
+                state.servers = state.servers.map(s => s.id === updated.id ? updated : s)
+                if (state.currentServer?.id === updated.id) {
+                    state.currentServer = updated
+                }
             })
     },
 })

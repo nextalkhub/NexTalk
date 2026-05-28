@@ -3,7 +3,8 @@ import { useNavigate, useParams, Navigate } from 'react-router-dom'
 import { ICheck, IChevRight } from '../../../shared/components/Icons/Icons'
 import { useAppDispatch, useAppSelector } from '../../../store'
 import { acceptInviteThunk } from '../../../shared/slices/inviteSlice'
-import { fetchServers, selectServers } from '../../../shared/slices/serverSlice'
+import { fetchServers, selectServers, setCurrentServer } from '../../../shared/slices/serverSlice'
+import type { Guild } from '../../../shared/types'
 import { selectIsAuthenticated, selectIsLoading } from '../../../shared/slices/authSlice'
 import { getInviteInfo } from '../../../processes/invites/getInviteInfo'
 import { useSignalR } from '../../../shared/hooks/useSignalR'
@@ -59,7 +60,7 @@ export const AcceptInvitePage: React.FC = () => {
           setView({ kind: 'expired' })
           return
         }
-        if (info.maxUses != null && info.userCount >= info.maxUses) {
+        if (info.maxUses != null && (info.userCount ?? 0) >= info.maxUses) {
           setView({ kind: 'consumed' })
           return
         }
@@ -105,7 +106,10 @@ export const AcceptInvitePage: React.FC = () => {
       if (connection && guildId) {
         await connection.invoke('JoinGuildGroup', guildId).catch(() => {})
       }
-      await dispatch(fetchServers())
+      const result = await dispatch(fetchServers())
+      const servers = result.payload as Guild[]
+      const joined = servers?.find(s => s.id === guildId)
+      if (joined) dispatch(setCurrentServer(joined))
       navigate(`/servers/${guildId}/channels`)
     } catch {
       setView({ kind: 'invalid' })
@@ -182,10 +186,10 @@ export const AcceptInvitePage: React.FC = () => {
               <div>
                 <div className="invite-name">{view.info.guildName}</div>
                 <div className="invite-sub">Приглашение в сервер</div>
-                {view.info.userCount > 0 && (
+                {(view.info.userCount ?? 0) > 0 && (
                   <div className="invite-presence">
                     <span className="dot online" />
-                    {pluralMembers(view.info.userCount)} принято
+                    {pluralMembers(view.info.userCount ?? 0)} принято
                   </div>
                 )}
               </div>
@@ -207,7 +211,7 @@ export const AcceptInvitePage: React.FC = () => {
               <div className="invite-detail">
                 <div className="lbl">ИСПОЛЬЗОВАНО</div>
                 <div className="val mono">
-                  {view.info.userCount} / {view.info.maxUses || '∞'}
+                  {view.info.userCount ?? 0} / {view.info.maxUses || '∞'}
                 </div>
               </div>
               <div className="invite-detail">

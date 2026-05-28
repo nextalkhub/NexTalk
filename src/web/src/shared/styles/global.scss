@@ -227,6 +227,9 @@ a { color: inherit; text-decoration: none; }
 .right-tab.is-active::after { content: ""; position: absolute; left: 24%; right: 24%; bottom: -1px; height: 2px; border-radius: 2px; background: var(--grad-brand); }
 .right-tab .ct { display: inline-block; margin-left: 6px; font-family: var(--font-mono); font-size: 10px; color: var(--fg-3); background: rgba(255,255,255,.05); padding: 1px 6px; border-radius: 999px; }
 .right-body { flex: 1; overflow-y: auto; min-height: 0; }
+.members-summary { padding: 12px 14px 10px; border-bottom: 1px solid var(--bd-1); flex-shrink: 0; }
+.members-summary-h { font-size: 10.5px; text-transform: uppercase; letter-spacing: .08em; color: var(--fg-3); display: block; margin-bottom: 4px; font-family: var(--font-mono); }
+.members-summary-count { display: flex; align-items: center; gap: 6px; font-size: 12.5px; color: var(--fg-2); }
 
 /* === Avatars & dots === */
 .av { display: inline-flex; align-items: center; justify-content: center; border-radius: 999px; font-family: var(--font-mono); font-weight: 600; color: white; flex-shrink: 0; user-select: none; }
@@ -452,6 +455,7 @@ a { color: inherit; text-decoration: none; }
 .settings-label { display: block; margin-bottom: 8px; font-size: 12px; font-weight: 600; font-family: var(--font-mono); letter-spacing: .06em; text-transform: uppercase; color: var(--fg-2); }
 .settings-input, .settings-textarea, .settings-select { width: 100%; padding: 10px 14px; background: var(--bg-1); border: 1px solid var(--bd-2); border-radius: 10px; color: var(--fg-0); font-size: 14px; outline: none; transition: border-color .15s, background .15s; font-family: inherit; }
 .settings-input:focus, .settings-textarea:focus, .settings-select:focus { border-color: var(--brand-1); background: var(--bg-2); box-shadow: 0 0 0 3px rgba(var(--brand-1-rgb),.12); }
+select.settings-input { padding-right: 32px; }
 .settings-textarea { resize: vertical; min-height: 80px; line-height: 1.5; }
 .settings-select { appearance: none; cursor: pointer; }
 .settings-help { margin-top: 6px; font-size: 12px; color: var(--fg-3); }
@@ -487,7 +491,8 @@ a { color: inherit; text-decoration: none; }
 .dt-row:last-child { border-bottom: none; }
 .dt-row:hover { background: rgba(255,255,255,.025); }
 
-.dt-members { grid-template-columns: 2fr 1fr 1fr 180px; gap: 12px; }
+.dt-members { grid-template-columns: 2fr 1fr 100px; gap: 12px; }
+.dt-members.no-actions { grid-template-columns: 2fr 1fr; }
 .dt-members .nm-cell { display: flex; align-items: center; gap: 10px; min-width: 0; }
 .dt-members .nm-cell .av { width: 32px; height: 32px; font-size: 11px; flex-shrink: 0; }
 .dt-members .nm-cell .stack { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
@@ -501,7 +506,7 @@ a { color: inherit; text-decoration: none; }
 .role-pill.owner .dot-r { background: var(--warn); }
 .role-pill.admin { color: var(--brand-2); background: rgba(var(--brand-2-rgb),.10); border-color: rgba(var(--brand-2-rgb),.25); }
 .role-pill.admin .dot-r { background: var(--brand-2); }
-.role-select { height: 28px; padding: 0 8px; border-radius: 6px; background: var(--bg-4); border: 1px solid var(--bd-2); color: var(--fg-1); font-size: 12px; font-family: inherit; cursor: pointer; }
+.role-select { height: 28px; padding: 0 24px 0 8px; border-radius: 6px; background: var(--bg-4); border: 1px solid var(--bd-2); color: var(--fg-1); font-size: 12px; font-family: inherit; cursor: pointer; }
 .role-select:focus { outline: none; border-color: rgba(var(--brand-1-rgb),.5); }
 
 .row-actions { display: inline-flex; gap: 4px; justify-self: end; }
@@ -509,7 +514,7 @@ a { color: inherit; text-decoration: none; }
 .row-action-btn:hover { background: rgba(255,255,255,.08); color: var(--fg-0); }
 .row-action-btn.is-danger:hover { background: rgba(255,90,110,.15); color: var(--live); }
 
-.dt-invites { grid-template-columns: 1fr 1fr 0.8fr 1fr 100px; gap: 12px; }
+.dt-invites { grid-template-columns: 1fr 0.7fr 0.7fr 0.7fr 0.8fr 90px; gap: 12px; }
 .invite-code-cell { display: flex; align-items: center; gap: 6px; font-family: var(--font-mono); font-size: 12.5px; color: var(--brand-1); }
 .invite-code-copy { width: 22px; height: 22px; border-radius: 4px; color: var(--fg-3); display: inline-flex; align-items: center; justify-content: center; cursor: pointer; font-family: inherit; }
 .invite-code-copy:hover { color: var(--fg-0); background: rgba(255,255,255,.06); }

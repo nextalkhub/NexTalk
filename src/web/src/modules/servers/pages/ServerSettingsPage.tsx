@@ -47,6 +47,8 @@ export const ServerSettingsPage: React.FC = () => {
   const [copiedCode, setCopiedCode] = useState<string | null>(null)
   const [kickTarget, setKickTarget] = useState<Member | null>(null)
   const [banTarget, setBanTarget] = useState<Member | null>(null)
+  const [inviteExpiry, setInviteExpiry] = useState('7d')
+  const [inviteMaxUses, setInviteMaxUses] = useState<number | null>(10)
 
   const isOwner = server?.ownerId === user?.id
   const currentUserRole = members.find(m => m.userId === user?.id)?.role ?? ''
@@ -138,9 +140,16 @@ export const ServerSettingsPage: React.FC = () => {
 
   const handleCreateInvite = () => {
     if (!serverId) return
+    const secondsMap: Record<string, number> = {
+      '30m': 1800, '1h': 3600, '24h': 86400, '7d': 604800, '30d': 2592000,
+    }
     dispatch(createInviteThunk({
       guildId: serverId,
-      data: { maxUses: 10, expiresIn: '7d', expiresInSeconds: 604800 },
+      data: {
+        expiresIn: inviteExpiry === 'never' ? undefined : inviteExpiry,
+        expiresInSeconds: inviteExpiry === 'never' ? undefined : secondsMap[inviteExpiry],
+        maxUses: inviteMaxUses ?? undefined,
+      },
     })).then(() => dispatch(fetchSettingsInvites(serverId)))
   }
 
@@ -222,7 +231,7 @@ export const ServerSettingsPage: React.FC = () => {
                 setName={setServerName}
                 onSave={handleSaveName}
                 saved={nameSaved}
-                readOnly={!isOwner && !isAdmin}
+                readOnly={!isOwner}
               />
             )}
             {tab === 'members' && (
@@ -231,6 +240,7 @@ export const ServerSettingsPage: React.FC = () => {
                 currentUserId={user?.id ?? ''}
                 isOwner={isOwner}
                 isAdmin={isAdmin}
+                canManageAny={isOwner || isAdmin}
                 onKick={(m) => setKickTarget(m)}
                 onBan={(m) => setBanTarget(m)}
                 onRoleChange={handleRoleChange}
@@ -239,6 +249,7 @@ export const ServerSettingsPage: React.FC = () => {
             {tab === 'channels' && (
               <ChannelsTab
                 channels={channels}
+                canCreate={isOwner || isAdmin}
                 newName={newChName}
                 setNewName={setNewChName}
                 newType={newChType}
@@ -252,6 +263,10 @@ export const ServerSettingsPage: React.FC = () => {
                 invites={invites}
                 loading={loading}
                 copiedCode={copiedCode}
+                inviteExpiry={inviteExpiry}
+                setInviteExpiry={setInviteExpiry}
+                inviteMaxUses={inviteMaxUses}
+                setInviteMaxUses={setInviteMaxUses}
                 onCreate={handleCreateInvite}
                 onDelete={handleDeleteInvite}
                 onCopy={handleCopyInvite}
@@ -346,10 +361,11 @@ const MembersTab: React.FC<{
   currentUserId: string
   isOwner: boolean
   isAdmin: boolean
+  canManageAny: boolean
   onKick: (m: Member) => void
   onBan: (m: Member) => void
   onRoleChange: (id: string, role: 'admin' | 'member') => void
-}> = ({ members, currentUserId, isOwner, isAdmin, onKick, onBan, onRoleChange }) => {
+}> = ({ members, currentUserId, isOwner, isAdmin, canManageAny, onKick, onBan, onRoleChange }) => {
   const [search, setSearch] = React.useState('')
   const [roleFilter, setRoleFilter] = React.useState<string>('all')
 
@@ -392,10 +408,10 @@ const MembersTab: React.FC<{
       </div>
 
       <div className="data-table">
-        <div className="dt-head dt-members">
+        <div className={`dt-head dt-members${canManageAny ? '' : ' no-actions'}`}>
           <span>Участник</span>
           <span>Роль</span>
-          <span style={{ justifySelf: 'end' }}>Действия</span>
+          {canManageAny && <span style={{ justifySelf: 'end' }}>Действия</span>}
         </div>
         {filtered.map(m => {
           const isSelf = m.userId === currentUserId
@@ -405,7 +421,7 @@ const MembersTab: React.FC<{
             (isAdmin && m.role === 'Member')
           )
           return (
-            <div key={m.userId} className="dt-row dt-members" style={{ gridTemplateColumns: '2fr 1fr 100px' }}>
+            <div key={m.userId} className={`dt-row dt-members${canManageAny ? '' : ' no-actions'}`}>
               <div className="nm-cell">
                 <Avatar str={m.displayName || m.userId} size={32} />
                 <div className="stack">
@@ -433,18 +449,20 @@ const MembersTab: React.FC<{
                   </span>
                 )}
               </div>
-              <div className="row-actions">
-                {canManage && (
-                  <>
-                    <button className="row-action-btn" title="Исключить" onClick={() => onKick(m)}>
-                      <IBoot />
-                    </button>
-                    <button className="row-action-btn is-danger" title="Забанить" onClick={() => onBan(m)}>
-                      <IHammer />
-                    </button>
-                  </>
-                )}
-              </div>
+              {canManageAny && (
+                <div className="row-actions">
+                  {canManage && (
+                    <>
+                      <button className="row-action-btn" title="Исключить" onClick={() => onKick(m)}>
+                        <IBoot />
+                      </button>
+                      <button className="row-action-btn is-danger" title="Забанить" onClick={() => onBan(m)}>
+                        <IHammer />
+                      </button>
+                    </>
+                  )}
+                </div>
+              )}
             </div>
           )
         })}
@@ -464,13 +482,14 @@ const MembersTab: React.FC<{
 
 const ChannelsTab: React.FC<{
   channels: { id: string; name: string; type: 'text' | 'voice' }[]
+  canCreate: boolean
   newName: string
   setNewName: (v: string) => void
   newType: 'text' | 'voice'
   setNewType: (v: 'text' | 'voice') => void
   onCreate: () => void
   onDelete: (id: string) => void
-}> = ({ channels, newName, setNewName, newType, setNewType, onCreate, onDelete }) => {
+}> = ({ channels, canCreate, newName, setNewName, newType, setNewType, onCreate, onDelete }) => {
   const [confirmDelete, setConfirmDelete] = React.useState<{ id: string; name: string } | null>(null)
 
   return (
@@ -480,30 +499,36 @@ const ChannelsTab: React.FC<{
         <p>{pluralize(channels.length, 'канал', 'канала', 'каналов')} на сервере.</p>
       </div>
 
-      <div className="list-toolbar">
-        <div className="left">
-          <input
-            className="settings-input"
-            style={{ width: 220, height: 36, padding: '0 12px', fontSize: 13 }}
-            placeholder="Название нового канала"
-            value={newName}
-            onChange={e => setNewName(e.target.value)}
-            onKeyDown={e => e.key === 'Enter' && onCreate()}
-          />
-          <select
-            className="settings-input"
-            style={{ width: 130, height: 36, padding: '0 10px', fontSize: 13 }}
-            value={newType}
-            onChange={e => setNewType(e.target.value as 'text' | 'voice')}
-          >
-            <option value="text">Текстовый</option>
-            <option value="voice">Голосовой</option>
-          </select>
+      {canCreate ? (
+        <div className="list-toolbar">
+          <div className="left">
+            <input
+              className="settings-input"
+              style={{ width: 220, height: 36, padding: '0 12px', fontSize: 13 }}
+              placeholder="Название нового канала"
+              value={newName}
+              onChange={e => setNewName(e.target.value)}
+              onKeyDown={e => e.key === 'Enter' && onCreate()}
+            />
+            <select
+              className="settings-input"
+              style={{ width: 130, height: 36, padding: '0 10px 0 10px', fontSize: 13 }}
+              value={newType}
+              onChange={e => setNewType(e.target.value as 'text' | 'voice')}
+            >
+              <option value="text">Текстовый</option>
+              <option value="voice">Голосовой</option>
+            </select>
+          </div>
+          <button className="btn-add" onClick={onCreate} disabled={!newName.trim()}>
+            <IPlus />Создать
+          </button>
         </div>
-        <button className="btn-add" onClick={onCreate} disabled={!newName.trim()}>
-          <IPlus />Создать
-        </button>
-      </div>
+      ) : (
+        <div style={{ padding: '10px 0 16px', fontSize: 13, color: 'var(--fg-3)' }}>
+          У вас нет прав на создание каналов. Обратитесь к владельцу или администратору.
+        </div>
+      )}
 
       <div className="data-table">
         <div className="dt-head dt-channels">
@@ -565,13 +590,17 @@ const ChannelsTab: React.FC<{
 // ─── Invites ─────────────────────────────────────────────────────────────────
 
 const InvitesTab: React.FC<{
-  invites: { id: string; code: string; maxUses: number; userCount: number; expiresAt: string; createdAt: string }[]
+  invites: import('../../../shared/types').Invite[]
   loading: boolean
   copiedCode: string | null
+  inviteExpiry: string
+  setInviteExpiry: (v: string) => void
+  inviteMaxUses: number | null
+  setInviteMaxUses: (v: number | null) => void
   onCreate: () => void
   onDelete: (code: string) => void
   onCopy: (code: string) => void
-}> = ({ invites, loading, copiedCode, onCreate, onDelete, onCopy }) => {
+}> = ({ invites, loading, copiedCode, inviteExpiry, setInviteExpiry, inviteMaxUses, setInviteMaxUses, onCreate, onDelete, onCopy }) => {
   const [confirmDelete, setConfirmDelete] = React.useState<string | null>(null)
 
   return (
@@ -582,7 +611,35 @@ const InvitesTab: React.FC<{
       </div>
 
       <div className="list-toolbar">
-        <div className="left" />
+        <div className="left" style={{ display: 'flex', gap: 8 }}>
+          <select
+            className="settings-input"
+            style={{ width: 150, height: 36, fontSize: 13 }}
+            value={inviteExpiry}
+            onChange={e => setInviteExpiry(e.target.value)}
+          >
+            <option value="30m">30 минут</option>
+            <option value="1h">1 час</option>
+            <option value="24h">24 часа</option>
+            <option value="7d">7 дней</option>
+            <option value="30d">30 дней</option>
+            <option value="never">Бессрочно</option>
+          </select>
+          <select
+            className="settings-input"
+            style={{ width: 150, height: 36, fontSize: 13 }}
+            value={inviteMaxUses === null ? 'unlimited' : String(inviteMaxUses)}
+            onChange={e => setInviteMaxUses(e.target.value === 'unlimited' ? null : Number(e.target.value))}
+          >
+            <option value="1">1 использование</option>
+            <option value="5">5 использований</option>
+            <option value="10">10 использований</option>
+            <option value="25">25 использований</option>
+            <option value="50">50 использований</option>
+            <option value="100">100 использований</option>
+            <option value="unlimited">Без лимита</option>
+          </select>
+        </div>
         <button className="btn-add" onClick={onCreate} disabled={loading}>
           <IPlus />Создать приглашение
         </button>
@@ -591,13 +648,17 @@ const InvitesTab: React.FC<{
       <div className="data-table">
         <div className="dt-head dt-invites">
           <span>Ссылка</span>
+          <span>Кем создано</span>
           <span>Создано</span>
           <span>Использований</span>
           <span>Истекает</span>
           <span style={{ justifySelf: 'end' }}>Действия</span>
         </div>
         {invites.map(inv => {
-          const uses = inv.maxUses ? Math.min(100, (inv.userCount / inv.maxUses) * 100) : 0
+          const uses = inv.maxUses
+            ? Math.min(100, ((inv.usesCount ?? inv.userCount ?? 0) / inv.maxUses) * 100)
+            : 0
+          const usedCount = inv.usesCount ?? inv.userCount ?? 0
           const isCopied = copiedCode === inv.code
           return (
             <div key={inv.id} className="dt-row dt-invites">
@@ -614,12 +675,15 @@ const InvitesTab: React.FC<{
                   {isCopied ? <ICheck /> : <ICopy />}
                 </button>
               </div>
+              <div style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--fg-3)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                {inv.createdBy ?? '—'}
+              </div>
               <div style={{ color: 'var(--fg-2)', fontSize: 12 }}>
                 {inv.createdAt ? timeAgo(inv.createdAt) : '—'}
               </div>
               <div className="uses-cell">
-                {inv.userCount} / {inv.maxUses || '∞'}
-                {inv.maxUses > 0 && (
+                {usedCount} / {inv.maxUses || '∞'}
+                {inv.maxUses != null && inv.maxUses > 0 && (
                   <div className="uses-bar">
                     <div className="uses-fill" style={{ width: `${uses}%` }} />
                   </div>
