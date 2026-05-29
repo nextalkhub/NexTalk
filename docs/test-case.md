@@ -536,3 +536,156 @@
 **Ожидаемый результат:**
 
 - Статус пользователя остается **Online** на протяжении всего теста.
+
+---
+
+# UC-FT: Отказоустойчивость
+
+Тест-кейсы проверяют механизмы fault tolerance: идемпотентность, дедлайны, circuit breaker и retry.
+Автоматические тесты: `FaultTolerance/IdempotencyTests.cs`, `FaultTolerance/DeadlineTests.cs`, `FaultTolerance/DeadlineMiddlewareTests.cs`.
+
+---
+
+## TC-FT.1 Идемпотентность создания сообщения (повторный запрос)
+
+**Компонент:** messaging-service `POST /internal/messages`
+
+**Автотест:** `IdempotencyTests.DuplicateKey_SecondRequest_Returns200`, `DuplicateKey_ReturnsSameMessageId`, `DuplicateKey_CreatesOnlyOneMessageInDb`
+
+**Предусловие:** messaging-service запущен, БД доступна.
+
+**Шаги:**
+
+1. Отправить `POST /internal/messages` с заголовком `X-Idempotency-Key: key-1` и телом `{ ChannelId, GuildId, AuthorId, AuthorName, Content }`.
+2. Зафиксировать `Id` сообщения из ответа 201.
+3. Отправить идентичный запрос с тем же `X-Idempotency-Key: key-1`.
+
+**Ожидаемый результат:**
+
+- Первый запрос → `201 Created`, сообщение сохранено в БД.
+- Второй запрос → `200 OK`, тело ответа идентично первому (тот же `Id`).
+- В таблице `Messages` ровно одна запись для этой пары `ChannelId`/`GuildId`.
+
+---
+
+## TC-FT.2 Идемпотентность — разные ключи создают разные сообщения
+
+**Компонент:** messaging-service `POST /internal/messages`
+
+**Автотест:** `IdempotencyTests.UniqueKeys_CreateSeparateMessages`
+
+**Предусловие:** messaging-service запущен.
+
+**Шаги:**
+
+1. Отправить `POST /internal/messages` с `X-Idempotency-Key: key-A`.
+2. Отправить `POST /internal/messages` с `X-Idempotency-Key: key-B` (то же тело).
+
+**Ожидаемый результат:**
+
+- Оба запроса → `201 Created`.
+- В БД две разные записи с разными `Id`.
+
+---
+
+## TC-FT.3 Дедлайн истек — запрос отклоняется с 504
+
+**Компонент:** DeadlineMiddleware (messaging-service, guild-service)
+
+**Автотест:** `DeadlineTests.ExpiredDeadline_Returns504`, `DeadlineMiddlewareTests.ExpiredDeadline_Returns504`
+
+**Предусловие:** сервис запущен.
+
+**Шаги:**
+
+1. Отправить запрос с заголовком `X-Deadline: <timestamp в прошлом>` (например, `UtcNow - 1s` в формате ISO 8601).
+
+**Ожидаемый результат:**
+
+- Ответ `504 Gateway Timeout`.
+- Тело: `{ "error": "Request timeout", "retryAfter": 5 }`.
+- Обработчик запроса не вызывается.
+
+---
+
+## TC-FT.4 Валидный дедлайн — запрос обрабатывается нормально
+
+**Компонент:** DeadlineMiddleware (messaging-service, guild-service)
+
+**Автотест:** `DeadlineTests.FutureDeadline_ProcessesNormally`, `DeadlineMiddlewareTests.FutureDeadline_ProcessesNormally`
+
+**Предусловие:** сервис запущен.
+
+**Шаги:**
+
+1. Отправить запрос с заголовком `X-Deadline: <UtcNow + 10s>` в ISO 8601.
+
+**Ожидаемый результат:**
+
+- Запрос успешно обработан (200/201 в зависимости от эндпоинта).
+- Дедлайн-токен создан, но не сработал.
+
+---
+
+## TC-FT.5 Невалидный формат X-Deadline — заголовок игнорируется
+
+**Компонент:** DeadlineMiddleware
+
+**Автотест:** `DeadlineTests.InvalidDeadlineFormat_Ignored_ProcessesNormally`, `DeadlineMiddlewareTests.InvalidDeadlineFormat_Ignored_ProcessesNormally`
+
+**Предусловие:** сервис запущен.
+
+**Шаги:**
+
+1. Отправить запрос с заголовком `X-Deadline: not-a-date`.
+
+**Ожидаемый результат:**
+
+- Запрос обработан нормально (без 504).
+- `DateTimeOffset.TryParse` вернул `false` → middleware пропускает дедлайн.
+
+---
+
+## TC-FT.6 Circuit breaker — открытие после серии ошибок
+
+**Компонент:** Polly ResiliencePipeline (guild-service client, messaging-service client в websocket-gateway)
+
+**Автотест:** ручной / интеграционный (circuit breaker требует минимум 5 запросов и 30-секундного окна)
+
+**Предусловие:** зависимый сервис (guild-service или messaging-service) недоступен.
+
+**Шаги:**
+
+1. Остановить зависимый сервис (`kubectl scale deployment/guild-service --replicas=0`).
+2. Отправить 6+ запросов к websocket-gateway, требующих обращения к guild-service.
+3. Подождать открытия circuit breaker (50% ошибок за 30s при минимум 5 запросах).
+4. Запустить guild-service обратно.
+5. Подождать 15 секунд (BreakDuration) и отправить новый запрос.
+
+**Ожидаемый результат:**
+
+- Шаги 2–3: после порога ошибок запросы завершаются мгновенно с ошибкой (circuit open), без ожидания таймаута.
+- В логах: событие `Circuit breaker opened guild-service for 15s`.
+- Шаг 5: circuit закрывается, запросы снова проходят к guild-service.
+- В логах: `Circuit breaker closed guild-service`.
+
+---
+
+## TC-FT.7 Retry — временная ошибка исправляется после повтора
+
+**Компонент:** Polly RetryStrategy (exponential backoff, 3 попытки)
+
+**Автотест:** ручной
+
+**Предусловие:** зависимый сервис возвращает 5xx на первые 2 запроса, затем 200.
+
+**Шаги:**
+
+1. Настроить stub-сервер (или chaos proxy), возвращающий 503 первые 2 раза, затем 200.
+2. Отправить один запрос через websocket-gateway к зависимому сервису.
+
+**Ожидаемый результат:**
+
+- В логах: `Retry 1/3 guild-service: 503`, `Retry 2/3 guild-service: 503`.
+- Третья попытка успешна — запрос завершается с ожидаемым результатом.
+- Общее время: ~200ms + ~400ms (exponential) = ~600ms overhead.
