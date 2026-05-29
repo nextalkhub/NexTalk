@@ -41,3 +41,19 @@ scrape_configs:
         labels:
           service: loki
     metrics_path: /metrics
+
+  # Tempo self-metrics
+  - job_name: tempo
+    static_configs:
+      - targets: ["tempo:3200"]
+        labels:
+          service: tempo
+    metrics_path: /metrics
+
+  # Grafana self-metrics
+  - job_name: grafana
+    static_configs:
+      - targets: ["grafana:3000"]
+        labels:
+          service: grafana
+    metrics_path: /metrics

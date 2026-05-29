@@ -56,6 +56,20 @@ data:
               service: websocket-gateway
         metrics_path: /metrics
 
+      - job_name: zitadel
+        static_configs:
+          - targets: ["zitadel:8080"]
+            labels:
+              service: zitadel
+        metrics_path: /debug/metrics
+
+      - job_name: livekit
+        static_configs:
+          - targets: ["livekit:7880"]
+            labels:
+              service: livekit
+        metrics_path: /metrics
+
       - job_name: prometheus
         static_configs:
           - targets: ["localhost:9090"]
