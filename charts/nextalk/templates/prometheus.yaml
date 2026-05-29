@@ -56,12 +56,8 @@ data:
               service: websocket-gateway
         metrics_path: /metrics
 
-      - job_name: zitadel
-        static_configs:
-          - targets: ["zitadel:8080"]
-            labels:
-              service: zitadel
-        metrics_path: /debug/metrics
+      # Zitadel не экспортирует Prometheus metrics (только OTLP).
+      # Scrape убран — давал постоянный up=0 из-за 404.
 
       - job_name: livekit
         static_configs:
