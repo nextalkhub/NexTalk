@@ -65,7 +65,7 @@ data:
 
       - job_name: livekit
         static_configs:
-          - targets: ["livekit:7880"]
+          - targets: ["livekit:6789"]
             labels:
               service: livekit
         metrics_path: /metrics

@@ -69,6 +69,7 @@ services:
     environment:
       - GF_SERVER_ROOT_URL=https://grafana.nextalk.fun
       - GF_AUTH_ANONYMOUS_ENABLED=false
+      - GF_METRICS_ENABLED=true
     ports:
       - "3000:3000"
     networks: [observability]

@@ -42,6 +42,9 @@ spec:
             - containerPort: {{ .Values.livekit.rtcUdpPort }}
               protocol: UDP
               name: rtc-udp
+            - containerPort: 6789
+              protocol: TCP
+              name: metrics
           volumeMounts:
             - name: config
               mountPath: /etc/livekit.yaml
@@ -87,4 +90,7 @@ spec:
       port: 7881
       targetPort: 7881
       protocol: TCP
+    - name: metrics
+      port: 6789
+      targetPort: 6789
   type: ClusterIP
