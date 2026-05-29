@@ -610,7 +610,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "min(avg_over_time(up{job=~\"guild-service|messaging-service|voice-service|websocket-gateway\"}[24h])) * 100",
+          "expr": "min(max by(job)(avg_over_time(up{job=~\"guild-service|messaging-service|voice-service|websocket-gateway\"}[24h]))) * 100",
           "instant": true,
           "legendFormat": "availability",
           "refId": "A"
