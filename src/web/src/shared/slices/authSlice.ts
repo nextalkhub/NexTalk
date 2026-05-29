@@ -54,7 +54,11 @@ export const login = createAsyncThunk(
             }
         }
 
-        sessionStorage.setItem('return_url', window.location.pathname)
+        // Не перезаписываем return_url если он уже установлен (например, AcceptInvitePage
+        // сохранила /invite/... до редиректа на /auth).
+        if (!sessionStorage.getItem('return_url')) {
+            sessionStorage.setItem('return_url', window.location.pathname)
+        }
         await oidcService.login()
         return null
     }

@@ -344,9 +344,9 @@ a { color: inherit; text-decoration: none; }
 .voice-tile.is-speaking { border-color: rgba(52,211,153,.55); box-shadow: 0 0 0 2px rgba(52,211,153,.18),0 12px 30px -16px rgba(52,211,153,.35); }
 .voice-tile.is-speaking::before { content: ""; position: absolute; inset: 0; background: radial-gradient(circle at 50% 60%,rgba(52,211,153,.12),transparent 60%); pointer-events: none; animation: pulse-glow 2s ease-in-out infinite; }
 @keyframes pulse-glow { 0%,100% { opacity: .7; } 50% { opacity: 1; } }
-.voice-tile .av { width: 84px; height: 84px; border-radius: 999px; font-size: 28px; font-weight: 700; border: 3px solid transparent; z-index: 1; }
-.voice-tile.is-speaking .av { border-color: var(--ok); }
-.voice-tile.is-self.is-speaking .av { border-color: var(--brand-1); }
+.voice-tile .av { width: 84px; height: 84px; border-radius: 999px; font-size: 28px; font-weight: 700; box-shadow: 0 0 0 3px transparent; z-index: 1; }
+.voice-tile.is-speaking .av { box-shadow: 0 0 0 3px var(--ok); }
+.voice-tile.is-self.is-speaking .av { box-shadow: 0 0 0 3px var(--brand-1); }
 .voice-tile-name { font-family: var(--font-display); font-weight: 600; font-size: 15px; z-index: 1; }
 .voice-tile-tags { display: flex; gap: 6px; z-index: 1; }
 .voice-tile-indicator { position: absolute; top: 12px; right: 12px; display: flex; gap: 4px; z-index: 1; }

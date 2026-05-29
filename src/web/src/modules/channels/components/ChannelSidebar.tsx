@@ -44,6 +44,14 @@ export const ChannelSidebar: React.FC = () => {
 
   const onlineCount = members.filter(m => !!onlineSet[m.userId]).length
 
+  const handleVoiceLeave = async () => {
+    if (!voiceChannelId) return
+    await leaveVoice(voiceChannelId)
+    if (/\/voice\//.test(pathname) && serverId) {
+      navigate(`/servers/${serverId}/channels`)
+    }
+  }
+
   useEffect(() => {
     if (!serverId || serverId === 'undefined') return
     if ((!currentServer || currentServer.id !== serverId) && allServers.length > 0) {
@@ -122,7 +130,7 @@ export const ChannelSidebar: React.FC = () => {
             isDeafened={voiceDeafened}
             onToggleMic={toggleMic}
             onToggleDeafen={toggleDeafen}
-            onLeave={() => leaveVoice(voiceChannelId)}
+            onLeave={handleVoiceLeave}
           />
         )}
         {user && <SelfStatus user={user} onOpenSettings={handleOpenSettings} />}
@@ -194,7 +202,11 @@ export const ChannelSidebar: React.FC = () => {
               {voiceChannels.length === 0 ? (
                 <div className="side-empty-hint">Нет каналов</div>
               ) : voiceChannels.map(ch => {
-                const participants = voiceParticipants[ch.id] ?? []
+                // Фильтруем текущего пользователя из каналов, где он не активен,
+                // чтобы избежать появления в двух каналах при переключении.
+                const participants = (voiceParticipants[ch.id] ?? []).filter(
+                  uid => ch.id === voiceChannelId || uid !== user?.id
+                )
                 const isActive = channelId === ch.id
                 return (
                   <React.Fragment key={ch.id}>
@@ -248,7 +260,7 @@ export const ChannelSidebar: React.FC = () => {
             isDeafened={voiceDeafened}
             onToggleMic={toggleMic}
             onToggleDeafen={toggleDeafen}
-            onLeave={() => leaveVoice(voiceChannelId)}
+            onLeave={handleVoiceLeave}
           />
         )}
         {user && <SelfStatus user={user} onOpenSettings={handleOpenSettings} />}
