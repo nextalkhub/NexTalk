@@ -18,6 +18,9 @@ spec:
     metadata:
       labels:
         app: voice-service
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "5003"
     spec:
       securityContext:
         {{- toYaml .Values.podSecurityContext | nindent 8 }}

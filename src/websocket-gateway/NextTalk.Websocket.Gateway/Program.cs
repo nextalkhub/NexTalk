@@ -193,6 +193,10 @@ builder.Services.AddSingleton<IConnectionManager, RedisConnectionManager>();
 builder.Services.AddSingleton<IPresenceTracker, RedisPresenceTracker>();
 builder.Services.AddHostedService<PresenceMonitor>();
 
+// DAU/WAU/MAU: уникальные пользователи через Redis sorted set
+builder.Services.AddSingleton<UserActivityService>();
+builder.Services.AddHostedService(sp => sp.GetRequiredService<UserActivityService>());
+
 // ChatHub is transient (one instance per connection), handler must be stateless
 builder.Services.AddTransient<SendMessageHandler>();
 
@@ -336,6 +340,9 @@ app.MapHub<ChatHub>("/hubs/chat");
 
 // Принудительная инициализация — метрики регистрируются сразу, не дожидаясь первого события.
 _ = NexTalkMetrics.ActiveConnections;
+_ = NexTalkMetrics.DailyActiveUsers;
+_ = NexTalkMetrics.WeeklyActiveUsers;
+_ = NexTalkMetrics.MonthlyActiveUsers;
 
 app.Run();
 

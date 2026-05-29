@@ -1,4 +1,38 @@
 ---
+# RBAC: Prometheus читает метаданные подов из k8s API для kubernetes_sd_configs.
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: prometheus
+  namespace: {{ .Values.namespace }}
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: prometheus-nextalk
+rules:
+  - apiGroups: [""]
+    resources: ["nodes", "pods", "services", "endpoints", "namespaces"]
+    verbs: ["get", "list", "watch"]
+  - nonResourceURLs: ["/metrics", "/metrics/cadvisor"]
+    verbs: ["get"]
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: prometheus-nextalk
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: prometheus-nextalk
+subjects:
+  - kind: ServiceAccount
+    name: prometheus
+    namespace: {{ .Values.namespace }}
+
+---
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -28,34 +62,42 @@ data:
 
     scrape_configs:
 
-      - job_name: guild-service
-        static_configs:
-          - targets: ["guild-service:5001"]
-            labels:
-              service: guild-service
-        metrics_path: /metrics
+      # NexTalk pods — kubernetes_sd_configs скрейпит каждый под отдельно по pod IP.
+      # Это решает проблему multi-replica: при 2+ репликах static_configs через Service
+      # попадает случайно на один под за scrape, kubernetes_sd гарантирует все поды.
+      # Под должен иметь аннотации: prometheus.io/scrape="true", prometheus.io/port.
+      # prometheus.io/path опционален (по умолчанию /metrics).
+      - job_name: nextalk-pods
+        kubernetes_sd_configs:
+          - role: pod
+            namespaces:
+              names: [{{ .Values.namespace }}]
+        relabel_configs:
+          # Скрейпить только помеченные аннотацией поды
+          - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_scrape]
+            action: keep
+            regex: "true"
+          # Адрес = pod IP + порт из аннотации
+          - source_labels: [__meta_kubernetes_pod_ip, __meta_kubernetes_pod_annotation_prometheus_io_port]
+            action: replace
+            regex: (.+);(\d+)
+            replacement: $1:$2
+            target_label: __address__
+          # Путь из аннотации (если задан — overrides /metrics)
+          - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_path]
+            action: replace
+            target_label: __metrics_path__
+            regex: (.+)
+          # job = значение label app (guild-service, messaging-service, …)
+          - source_labels: [__meta_kubernetes_pod_label_app]
+            target_label: job
+          # Добавляем pod и namespace для удобства дебага
+          - source_labels: [__meta_kubernetes_pod_name]
+            target_label: pod
+          - source_labels: [__meta_kubernetes_namespace]
+            target_label: namespace
 
-      - job_name: messaging-service
-        static_configs:
-          - targets: ["messaging-service:5002"]
-            labels:
-              service: messaging-service
-        metrics_path: /metrics
-
-      - job_name: voice-service
-        static_configs:
-          - targets: ["voice-service:5003"]
-            labels:
-              service: voice-service
-        metrics_path: /metrics
-
-      - job_name: websocket-gateway
-        static_configs:
-          - targets: ["websocket-gateway:5004"]
-            labels:
-              service: websocket-gateway
-        metrics_path: /metrics
-
+      # Zitadel — единственная реплика, нестандартный путь /debug/metrics
       - job_name: zitadel
         static_configs:
           - targets: ["zitadel:8080"]
@@ -63,13 +105,14 @@ data:
               service: zitadel
         metrics_path: /debug/metrics
 
+      # LiveKit — hostNetwork=true, pod IP = node IP; static_config через Service ClusterIP
       - job_name: livekit
         static_configs:
           - targets: ["livekit:6789"]
             labels:
               service: livekit
-        metrics_path: /metrics
 
+      # Prometheus self-monitoring
       - job_name: prometheus
         static_configs:
           - targets: ["localhost:9090"]
@@ -104,7 +147,11 @@ spec:
     metadata:
       labels:
         app: prometheus
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "9090"
     spec:
+      serviceAccountName: prometheus
       securityContext:
         runAsNonRoot: true
         runAsUser: 65534

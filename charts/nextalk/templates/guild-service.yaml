@@ -18,6 +18,9 @@ spec:
     metadata:
       labels:
         app: guild-service
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "5001"
     spec:
       securityContext:
         {{- toYaml .Values.podSecurityContext | nindent 8 }}

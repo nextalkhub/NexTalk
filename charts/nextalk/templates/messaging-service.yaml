@@ -18,6 +18,9 @@ spec:
     metadata:
       labels:
         app: messaging-service
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "5002"
     spec:
       securityContext:
         {{- toYaml .Values.podSecurityContext | nindent 8 }}

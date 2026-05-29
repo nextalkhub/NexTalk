@@ -11,6 +11,7 @@ public sealed class ChatHub : Hub
     private readonly IPresenceTracker _presence;
     private readonly SendMessageHandler _sendMessageHandler;
     private readonly GuildServiceClient _guildClient;
+    private readonly UserActivityService _activity;
     private readonly TimeSpan _offlineTimeout;
     private readonly ILogger<ChatHub> _logger;
 
@@ -19,6 +20,7 @@ public sealed class ChatHub : Hub
         IPresenceTracker presence,
         SendMessageHandler sendMessageHandler,
         GuildServiceClient guildClient,
+        UserActivityService activity,
         IOptions<PresenceOptions> presenceOptions,
         ILogger<ChatHub> logger)
     {
@@ -26,6 +28,7 @@ public sealed class ChatHub : Hub
         _presence = presence;
         _sendMessageHandler = sendMessageHandler;
         _guildClient = guildClient;
+        _activity = activity;
         _offlineTimeout = TimeSpan.FromSeconds(presenceOptions.Value.OfflineTimeout);
         _logger = logger;
     }
@@ -65,6 +68,7 @@ public sealed class ChatHub : Hub
         }
 
         NexTalkMetrics.ActiveConnections.Inc();
+        _ = _activity.RecordActivityAsync(userId);
         _logger.LogInformation("User {UserId} connected ({ConnectionId}), guilds: {GuildCount}",
             userId, Context.ConnectionId, guilds.Count);
 
