@@ -52,6 +52,27 @@
   when: gre_nat_mode == 'gateway'
   tags: [gre_nat]
 
+- name: Разрешить FORWARD из туннеля в интернет (gateway)
+  ansible.builtin.iptables:
+    chain: FORWARD
+    in_interface: "{{ gre_iface | default('gre1') }}"
+    out_interface: "{{ gre_public_iface }}"
+    jump: ACCEPT
+    state: present
+  when: gre_nat_mode == 'gateway'
+  tags: [gre_nat]
+
+- name: Разрешить FORWARD ответов из интернета в туннель (gateway)
+  ansible.builtin.iptables:
+    chain: FORWARD
+    in_interface: "{{ gre_public_iface }}"
+    out_interface: "{{ gre_iface | default('gre1') }}"
+    ctstate: RELATED,ESTABLISHED
+    jump: ACCEPT
+    state: present
+  when: gre_nat_mode == 'gateway'
+  tags: [gre_nat]
+
 - name: Заменить шлюз по умолчанию (client)
   block:
     - name: Удалить текущий default route
