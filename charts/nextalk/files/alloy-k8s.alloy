@@ -80,11 +80,17 @@ loki.process "serilog" {
   stage.json {
     drop_malformed = false
     expressions = {
-      _level     = `"@l"`,
-      _timestamp = `"@t"`,
-      _trace_id  = "TraceId",
-      _span_id   = "SpanId",
+      _level        = `"@l"`,
+      _timestamp    = `"@t"`,
+      _trace_id     = "TraceId",
+      _span_id      = "SpanId",
+      _request_path = "RequestPath",
     }
+  }
+
+  stage.drop {
+    source     = "_request_path"
+    expression = "^/(healthz|readyz|metrics)"
   }
 
   stage.template {
