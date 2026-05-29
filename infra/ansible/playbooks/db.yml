@@ -11,3 +11,4 @@
   roles:
     - postgres
     - redis
+    - ufw
