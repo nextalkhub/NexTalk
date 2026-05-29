@@ -129,6 +129,8 @@ spec:
                 configMapKeyRef:
                   name: nextalk-config
                   key: ZITADEL_ACCESS_LOG_STDOUT_ENABLED
+            - name: ZITADEL_INSTRUMENTATION_METRIC_EXPORTER_TYPE
+              value: prometheus
           volumeMounts:
             - name: bootstrap
               mountPath: /zitadel/bootstrap
