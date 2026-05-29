@@ -3124,6 +3124,78 @@
           "refId": "B"
         }
       ]
+    },
+    {
+      "collapsed": false,
+      "gridPos": {"h": 1, "w": 24, "x": 0, "y": 200},
+      "id": 901,
+      "title": "Logs",
+      "type": "row"
+    },
+    {
+      "datasource": {"type": "loki", "uid": "loki"},
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      },
+      "gridPos": {"h": 8, "w": 24, "x": 0, "y": 201},
+      "id": 902,
+      "options": {
+        "legend": {"displayMode": "list", "placement": "bottom"},
+        "tooltip": {"mode": "multi"}
+      },
+      "title": "Объём логов по уровню и сервису",
+      "type": "timeseries",
+      "targets": [
+        {
+          "datasource": {"type": "loki", "uid": "loki"},
+          "expr": "sum by(level, service)(count_over_time({service=~\"guild-service|messaging-service|voice-service|websocket-gateway\"}[1m]))",
+          "legendFormat": "{{service}} / {{level}}",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "datasource": {"type": "loki", "uid": "loki"},
+      "gridPos": {"h": 10, "w": 12, "x": 0, "y": 209},
+      "id": 903,
+      "options": {
+        "dedupStrategy": "none",
+        "enableLogDetails": true,
+        "showTime": true,
+        "sortOrder": "Descending",
+        "wrapLogMessage": true
+      },
+      "title": "Медленные запросы (Elapsed > 500ms)",
+      "type": "logs",
+      "targets": [
+        {
+          "datasource": {"type": "loki", "uid": "loki"},
+          "expr": "{service=~\"guild-service|messaging-service|voice-service|websocket-gateway\"} | json | Elapsed > 500",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "datasource": {"type": "loki", "uid": "loki"},
+      "gridPos": {"h": 10, "w": 12, "x": 12, "y": 209},
+      "id": 904,
+      "options": {
+        "dedupStrategy": "none",
+        "enableLogDetails": true,
+        "showTime": true,
+        "sortOrder": "Descending",
+        "wrapLogMessage": true
+      },
+      "title": "Ошибки (Error / Fatal)",
+      "type": "logs",
+      "targets": [
+        {
+          "datasource": {"type": "loki", "uid": "loki"},
+          "expr": "{level=~\"Error|Fatal\", service=~\"guild-service|messaging-service|voice-service|websocket-gateway\"}",
+          "refId": "A"
+        }
+      ]
     }
   ],
   "preload": false,

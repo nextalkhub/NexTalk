@@ -184,7 +184,8 @@ builder.Services.AddSingleton<IConnectionMultiplexer>(_ =>
 
 // SignalR - userId маппинг из JWT sub claim через SubClaimUserIdProvider.
 // Redis backplane подключается так же лениво — строка читается только при resolve.
-builder.Services.AddSignalR()
+builder.Services.AddSingleton<UserIdHubFilter>();
+builder.Services.AddSignalR(o => o.AddFilter<UserIdHubFilter>())
     .AddStackExchangeRedis(builder.Configuration.GetConnectionString("Redis") ?? "localhost:6379");
 builder.Services.AddSingleton<IUserIdProvider, SubClaimUserIdProvider>();
 
@@ -320,10 +321,13 @@ app.UseHttpMetrics();
 
 app.UseSerilogRequestLogging(opts =>
     opts.EnrichDiagnosticContext = (dc, ctx) =>
+    {
         dc.Set("CorrelationId",
             ctx.Request.Headers["X-Request-Id"].FirstOrDefault()
             ?? ctx.Request.Headers["X-Correlation-Id"].FirstOrDefault()
-            ?? ctx.TraceIdentifier));
+            ?? ctx.TraceIdentifier);
+        dc.Set("UserId", ctx.User?.FindFirst("sub")?.Value ?? "");
+    });
 
 app.MapHealthChecks("/healthz", new HealthCheckOptions { Predicate = _ => false })
     .AllowAnonymous();

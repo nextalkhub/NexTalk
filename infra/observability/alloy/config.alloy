@@ -67,11 +67,18 @@ loki.process "serilog" {
   // поэтому имена полей с @ нужно экранировать как \"@l\" внутри строки River.
   stage.json {
     expressions = {
-      _level     = "\"@l\"",
-      _timestamp = "\"@t\"",
-      _trace_id  = "TraceId",
-      _span_id   = "SpanId",
+      _level        = "\"@l\"",
+      _timestamp    = "\"@t\"",
+      _trace_id     = "TraceId",
+      _span_id      = "SpanId",
+      _request_path = "RequestPath",
     }
+  }
+
+  // Фильтруем probe-запросы (healthz, readyz, metrics) — они генерируют шум и не несут ценности.
+  stage.drop {
+    source     = "_request_path"
+    expression = "^/(healthz|readyz|metrics)"
   }
 
   // Serilog опускает "@l" для уровня Information — подставляем дефолт.

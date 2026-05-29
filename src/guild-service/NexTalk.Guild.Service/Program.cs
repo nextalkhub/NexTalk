@@ -372,10 +372,13 @@ app.UseHttpMetrics();
 
 app.UseSerilogRequestLogging(opts =>
     opts.EnrichDiagnosticContext = (dc, ctx) =>
+    {
         dc.Set("CorrelationId",
             ctx.Request.Headers["X-Request-Id"].FirstOrDefault()
             ?? ctx.Request.Headers["X-Correlation-Id"].FirstOrDefault()
-            ?? ctx.TraceIdentifier));
+            ?? ctx.TraceIdentifier);
+        dc.Set("UserId", ctx.User?.FindFirst("sub")?.Value ?? "");
+    });
 
 // Guild endpoints
 CreateGuildEndpoint.Map(app);
