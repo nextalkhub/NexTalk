@@ -55,6 +55,13 @@ exporters:
     tls:
       insecure: true
 
+  # Отправка логов в Loki через OTLP HTTP.
+  # resource.attributes → loki.resource.labels → отображаются как stream labels.
+  otlphttp/loki:
+    endpoint: http://loki:3100/otlp
+    tls:
+      insecure: true
+
   # Базовая диагностика в stdout коллектора (только имена спанов, без деталей).
   debug:
     verbosity: basic
@@ -68,12 +75,10 @@ service:
       processors: [memory_limiter, batch, resource]
       exporters: [otlp/tempo]
 
-    # Логи через OTLP (Фаза 2: сервисы с OTel SDK).
-    # Пока просто дебаг-вывод; в Фазе 2 добавим exporter в Loki.
     logs:
       receivers: [otlp]
       processors: [memory_limiter, batch]
-      exporters: [debug]
+      exporters: [otlphttp/loki, debug]
 
   telemetry:
     logs:

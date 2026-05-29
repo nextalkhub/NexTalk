@@ -17,7 +17,7 @@
       }
     ]
   },
-  "description": "NexTalk microservices — HTTP metrics, .NET runtime, log stream",
+  "description": "NexTalk microservices — SLO, HTTP metrics, .NET runtime, logs",
   "editable": true,
   "fiscalYearStartMonth": 0,
   "graphTooltip": 1,
@@ -45,10 +45,7 @@
           ],
           "thresholds": {
             "mode": "absolute",
-            "steps": [
-              { "color": "red",   "value": null },
-              { "color": "green", "value": 1    }
-            ]
+            "steps": [ { "color": "red", "value": null }, { "color": "green", "value": 1 } ]
           },
           "unit": "short"
         },
@@ -175,7 +172,151 @@
     {
       "collapsed": false,
       "gridPos": { "h": 1, "w": 24, "x": 0, "y": 5 },
-      "id": 101,
+      "id": 200,
+      "title": "SLO (24h)",
+      "type": "row"
+    },
+
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "decimals": 2,
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "red",    "value": null },
+              { "color": "orange", "value": 95   },
+              { "color": "green",  "value": 99   }
+            ]
+          },
+          "unit": "percent"
+        },
+        "overrides": []
+      },
+      "gridPos": { "h": 4, "w": 6, "x": 0, "y": 6 },
+      "id": 10,
+      "options": { "colorMode": "background", "graphMode": "area", "justifyMode": "center",
+                   "orientation": "auto", "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+                   "textMode": "auto", "wideLayout": true },
+      "title": "Availability (24h)",
+      "type": "stat",
+      "targets": [
+        { "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "expr": "min(avg_over_time(up{job=~\"guild-service|messaging-service|voice-service|websocket-gateway\"}[24h])) * 100",
+          "instant": true,
+          "legendFormat": "availability",
+          "refId": "A" }
+      ]
+    },
+
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "decimals": 2,
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green",  "value": null },
+              { "color": "orange", "value": 1    },
+              { "color": "red",    "value": 5    }
+            ]
+          },
+          "unit": "percent"
+        },
+        "overrides": []
+      },
+      "gridPos": { "h": 4, "w": 6, "x": 6, "y": 6 },
+      "id": 11,
+      "options": { "colorMode": "background", "graphMode": "area", "justifyMode": "center",
+                   "orientation": "auto", "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+                   "textMode": "auto", "wideLayout": true },
+      "title": "Error Rate % (5m)",
+      "type": "stat",
+      "targets": [
+        { "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "expr": "sum(rate(http_requests_received_total{job=~\"guild-service|messaging-service|voice-service|websocket-gateway\",statusCode=~\"5..\"}[5m])) / sum(rate(http_requests_received_total{job=~\"guild-service|messaging-service|voice-service|websocket-gateway\"}[5m])) * 100",
+          "instant": true,
+          "legendFormat": "error rate",
+          "refId": "A" }
+      ]
+    },
+
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "decimals": 3,
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green",  "value": null },
+              { "color": "orange", "value": 0.5  },
+              { "color": "red",    "value": 1.0  }
+            ]
+          },
+          "unit": "s"
+        },
+        "overrides": []
+      },
+      "gridPos": { "h": 4, "w": 6, "x": 12, "y": 6 },
+      "id": 12,
+      "options": { "colorMode": "background", "graphMode": "area", "justifyMode": "center",
+                   "orientation": "auto", "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+                   "textMode": "auto", "wideLayout": true },
+      "title": "P99 Latency (5m)",
+      "type": "stat",
+      "targets": [
+        { "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "expr": "histogram_quantile(0.99, sum(rate(http_request_duration_seconds_bucket{job=~\"guild-service|messaging-service|voice-service|websocket-gateway\"}[5m])) by (le))",
+          "instant": true,
+          "legendFormat": "p99",
+          "refId": "A" }
+      ]
+    },
+
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "decimals": 1,
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [ { "color": "blue", "value": null } ]
+          },
+          "unit": "reqps"
+        },
+        "overrides": []
+      },
+      "gridPos": { "h": 4, "w": 6, "x": 18, "y": 6 },
+      "id": 13,
+      "options": { "colorMode": "value", "graphMode": "area", "justifyMode": "center",
+                   "orientation": "auto", "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+                   "textMode": "auto", "wideLayout": true },
+      "title": "Total RPS (5m)",
+      "type": "stat",
+      "targets": [
+        { "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "expr": "sum(rate(http_requests_received_total{job=~\"guild-service|messaging-service|voice-service|websocket-gateway\"}[5m]))",
+          "instant": true,
+          "legendFormat": "rps",
+          "refId": "A" }
+      ]
+    },
+
+    {
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 10 },
+      "id": 300,
       "title": "HTTP Traffic",
       "type": "row"
     },
@@ -202,8 +343,8 @@
         },
         "overrides": []
       },
-      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 6 },
-      "id": 10,
+      "gridPos": { "h": 8, "w": 8, "x": 0, "y": 11 },
+      "id": 20,
       "options": {
         "legend": { "calcs": ["mean", "max"], "displayMode": "table", "placement": "bottom", "showLegend": true },
         "tooltip": { "mode": "multi", "sort": "desc" }
@@ -234,7 +375,7 @@
           "custom": {
             "axisBorderShow": false, "axisCenteredZero": false, "axisColorMode": "text",
             "axisLabel": "", "axisPlacement": "auto", "barAlignment": 0,
-            "drawStyle": "line", "fillOpacity": 10, "gradientMode": "none",
+            "drawStyle": "line", "fillOpacity": 20, "gradientMode": "none",
             "hideFrom": { "legend": false, "tooltip": false, "viz": false },
             "insertNulls": false, "lineInterpolation": "linear", "lineWidth": 2,
             "pointSize": 5, "scaleDistribution": { "type": "linear" },
@@ -243,41 +384,33 @@
             "thresholdsStyle": { "mode": "off" }
           },
           "mappings": [],
-          "thresholds": { "mode": "absolute", "steps": [ { "color": "green", "value": null } ] },
-          "unit": "short"
+          "thresholds": { "mode": "absolute", "steps": [ { "color": "green", "value": null }, { "color": "red", "value": 1 } ] },
+          "unit": "percent"
         },
         "overrides": []
       },
-      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 6 },
-      "id": 11,
+      "gridPos": { "h": 8, "w": 8, "x": 8, "y": 11 },
+      "id": 21,
       "options": {
         "legend": { "calcs": ["mean", "max"], "displayMode": "table", "placement": "bottom", "showLegend": true },
         "tooltip": { "mode": "multi", "sort": "desc" }
       },
-      "title": "In-Progress Requests",
+      "title": "5xx Error Rate (%)",
       "type": "timeseries",
       "targets": [
         { "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "expr": "sum(http_requests_in_progress{job=\"guild-service\"})",
+          "expr": "sum(rate(http_requests_received_total{job=\"guild-service\",statusCode=~\"5..\"}[2m])) / sum(rate(http_requests_received_total{job=\"guild-service\"}[2m])) * 100",
           "legendFormat": "guild-service", "refId": "A" },
         { "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "expr": "sum(http_requests_in_progress{job=\"messaging-service\"})",
+          "expr": "sum(rate(http_requests_received_total{job=\"messaging-service\",statusCode=~\"5..\"}[2m])) / sum(rate(http_requests_received_total{job=\"messaging-service\"}[2m])) * 100",
           "legendFormat": "messaging-service", "refId": "B" },
         { "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "expr": "sum(http_requests_in_progress{job=\"voice-service\"})",
+          "expr": "sum(rate(http_requests_received_total{job=\"voice-service\",statusCode=~\"5..\"}[2m])) / sum(rate(http_requests_received_total{job=\"voice-service\"}[2m])) * 100",
           "legendFormat": "voice-service", "refId": "C" },
         { "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "expr": "sum(http_requests_in_progress{job=\"websocket-gateway\"})",
+          "expr": "sum(rate(http_requests_received_total{job=\"websocket-gateway\",statusCode=~\"5..\"}[2m])) / sum(rate(http_requests_received_total{job=\"websocket-gateway\"}[2m])) * 100",
           "legendFormat": "websocket-gateway", "refId": "D" }
       ]
-    },
-
-    {
-      "collapsed": false,
-      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 14 },
-      "id": 102,
-      "title": "Latency & Errors",
-      "type": "row"
     },
 
     {
@@ -308,84 +441,28 @@
         },
         "overrides": []
       },
-      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 15 },
-      "id": 20,
+      "gridPos": { "h": 8, "w": 8, "x": 16, "y": 11 },
+      "id": 22,
       "options": {
         "legend": { "calcs": ["mean", "max"], "displayMode": "table", "placement": "bottom", "showLegend": true },
         "tooltip": { "mode": "multi", "sort": "desc" }
       },
-      "title": "P99 Latency (s)",
+      "title": "P99 / P50 Latency (s)",
       "type": "timeseries",
       "targets": [
         { "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "expr": "histogram_quantile(0.99, sum(rate(http_request_duration_seconds_bucket{job=\"guild-service\"}[2m])) by (le))",
-          "legendFormat": "guild-service p99", "refId": "A" },
-        { "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "expr": "histogram_quantile(0.99, sum(rate(http_request_duration_seconds_bucket{job=\"messaging-service\"}[2m])) by (le))",
-          "legendFormat": "messaging-service p99", "refId": "B" },
-        { "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "expr": "histogram_quantile(0.99, sum(rate(http_request_duration_seconds_bucket{job=\"voice-service\"}[2m])) by (le))",
-          "legendFormat": "voice-service p99", "refId": "C" },
-        { "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "expr": "histogram_quantile(0.99, sum(rate(http_request_duration_seconds_bucket{job=\"websocket-gateway\"}[2m])) by (le))",
-          "legendFormat": "websocket-gateway p99", "refId": "D" },
+          "expr": "histogram_quantile(0.99, sum(rate(http_request_duration_seconds_bucket{job=~\"guild-service|messaging-service|voice-service|websocket-gateway\"}[2m])) by (job, le))",
+          "legendFormat": "{{job}} p99", "refId": "A" },
         { "datasource": { "type": "prometheus", "uid": "prometheus" },
           "expr": "histogram_quantile(0.50, sum(rate(http_request_duration_seconds_bucket{job=~\"guild-service|messaging-service|voice-service|websocket-gateway\"}[2m])) by (job, le))",
-          "legendFormat": "{{job}} p50", "refId": "E" }
-      ]
-    },
-
-    {
-      "datasource": { "type": "prometheus", "uid": "prometheus" },
-      "fieldConfig": {
-        "defaults": {
-          "color": { "mode": "palette-classic" },
-          "custom": {
-            "axisBorderShow": false, "axisCenteredZero": false, "axisColorMode": "text",
-            "axisLabel": "", "axisPlacement": "auto", "barAlignment": 0,
-            "drawStyle": "line", "fillOpacity": 20, "gradientMode": "none",
-            "hideFrom": { "legend": false, "tooltip": false, "viz": false },
-            "insertNulls": false, "lineInterpolation": "linear", "lineWidth": 2,
-            "pointSize": 5, "scaleDistribution": { "type": "linear" },
-            "showPoints": "never", "spanNulls": false,
-            "stacking": { "group": "A", "mode": "none" },
-            "thresholdsStyle": { "mode": "off" }
-          },
-          "color": { "mode": "fixed", "fixedColor": "red" },
-          "mappings": [],
-          "thresholds": { "mode": "absolute", "steps": [ { "color": "green", "value": null }, { "color": "red", "value": 0.01 } ] },
-          "unit": "reqps"
-        },
-        "overrides": []
-      },
-      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 15 },
-      "id": 21,
-      "options": {
-        "legend": { "calcs": ["mean", "max"], "displayMode": "table", "placement": "bottom", "showLegend": true },
-        "tooltip": { "mode": "multi", "sort": "desc" }
-      },
-      "title": "5xx Error Rate (req/s)",
-      "type": "timeseries",
-      "targets": [
-        { "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "expr": "sum(rate(http_requests_received_total{job=\"guild-service\",statusCode=~\"5..\"}[2m]))",
-          "legendFormat": "guild-service", "refId": "A" },
-        { "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "expr": "sum(rate(http_requests_received_total{job=\"messaging-service\",statusCode=~\"5..\"}[2m]))",
-          "legendFormat": "messaging-service", "refId": "B" },
-        { "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "expr": "sum(rate(http_requests_received_total{job=\"voice-service\",statusCode=~\"5..\"}[2m]))",
-          "legendFormat": "voice-service", "refId": "C" },
-        { "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "expr": "sum(rate(http_requests_received_total{job=\"websocket-gateway\",statusCode=~\"5..\"}[2m]))",
-          "legendFormat": "websocket-gateway", "refId": "D" }
+          "legendFormat": "{{job}} p50", "refId": "B" }
       ]
     },
 
     {
       "collapsed": false,
-      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 23 },
-      "id": 103,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 19 },
+      "id": 400,
       "title": ".NET Runtime",
       "type": "row"
     },
@@ -412,27 +489,18 @@
         },
         "overrides": []
       },
-      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 24 },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 20 },
       "id": 30,
       "options": {
         "legend": { "calcs": ["mean", "max"], "displayMode": "table", "placement": "bottom", "showLegend": true },
         "tooltip": { "mode": "multi", "sort": "desc" }
       },
-      "title": "GC Heap Size (bytes)",
+      "title": "GC Heap Size (total per service)",
       "type": "timeseries",
       "targets": [
         { "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "expr": "dotnet_gc_heap_size_bytes{job=\"guild-service\"}",
-          "legendFormat": "guild-service {{generation}}", "refId": "A" },
-        { "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "expr": "dotnet_gc_heap_size_bytes{job=\"messaging-service\"}",
-          "legendFormat": "messaging-service {{generation}}", "refId": "B" },
-        { "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "expr": "dotnet_gc_heap_size_bytes{job=\"voice-service\"}",
-          "legendFormat": "voice-service {{generation}}", "refId": "C" },
-        { "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "expr": "dotnet_gc_heap_size_bytes{job=\"websocket-gateway\"}",
-          "legendFormat": "websocket-gateway {{generation}}", "refId": "D" }
+          "expr": "sum by (job) (dotnet_gc_heap_size_bytes{job=~\"guild-service|messaging-service|voice-service|websocket-gateway\"})",
+          "legendFormat": "{{job}}", "refId": "A" }
       ]
     },
 
@@ -458,7 +526,7 @@
         },
         "overrides": []
       },
-      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 24 },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 20 },
       "id": 31,
       "options": {
         "legend": { "calcs": ["mean", "max"], "displayMode": "table", "placement": "bottom", "showLegend": true },
@@ -475,41 +543,16 @@
 
     {
       "collapsed": false,
-      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 32 },
-      "id": 104,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 28 },
+      "id": 500,
       "title": "Logs",
       "type": "row"
     },
 
     {
       "datasource": { "type": "loki", "uid": "loki" },
-      "gridPos": { "h": 10, "w": 24, "x": 0, "y": 33 },
+      "gridPos": { "h": 10, "w": 24, "x": 0, "y": 29 },
       "id": 40,
-      "options": {
-        "dedupStrategy": "none",
-        "enableLogDetails": true,
-        "prettifyLogMessage": false,
-        "showCommonLabels": false,
-        "showLabels": false,
-        "showTime": true,
-        "sortOrder": "Descending",
-        "wrapLogMessage": false
-      },
-      "title": "Live Logs (all services)",
-      "type": "logs",
-      "targets": [
-        { "datasource": { "type": "loki", "uid": "loki" },
-          "expr": "{service=~\"guild-service|messaging-service|voice-service|websocket-gateway\"} | json",
-          "legendFormat": "",
-          "queryType": "range",
-          "refId": "A" }
-      ]
-    },
-
-    {
-      "datasource": { "type": "loki", "uid": "loki" },
-      "gridPos": { "h": 10, "w": 24, "x": 0, "y": 43 },
-      "id": 41,
       "options": {
         "dedupStrategy": "none",
         "enableLogDetails": true,
@@ -524,7 +567,32 @@
       "type": "logs",
       "targets": [
         { "datasource": { "type": "loki", "uid": "loki" },
-          "expr": "{service=~\"guild-service|messaging-service|voice-service|websocket-gateway\", level=~\"Error|Warning|Fatal\"} | json",
+          "expr": "{namespace=\"nextalk\", level=~\"Error|Fatal|Warning\"} | json",
+          "legendFormat": "",
+          "queryType": "range",
+          "refId": "A" }
+      ]
+    },
+
+    {
+      "datasource": { "type": "loki", "uid": "loki" },
+      "gridPos": { "h": 10, "w": 24, "x": 0, "y": 39 },
+      "id": 41,
+      "options": {
+        "dedupStrategy": "none",
+        "enableLogDetails": true,
+        "prettifyLogMessage": false,
+        "showCommonLabels": false,
+        "showLabels": false,
+        "showTime": true,
+        "sortOrder": "Descending",
+        "wrapLogMessage": false
+      },
+      "title": "All Service Logs",
+      "type": "logs",
+      "targets": [
+        { "datasource": { "type": "loki", "uid": "loki" },
+          "expr": "{namespace=\"nextalk\", service=~\"guild-service|messaging-service|voice-service|websocket-gateway\"} | json",
           "legendFormat": "",
           "queryType": "range",
           "refId": "A" }
@@ -543,6 +611,6 @@
   "timezone": "browser",
   "title": "NexTalk — Overview",
   "uid": "nextalk-overview",
-  "version": 1,
+  "version": 2,
   "weekStart": ""
 }
