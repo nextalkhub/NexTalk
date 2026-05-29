@@ -11,6 +11,8 @@
 
 ufw_extra_rules:
   - { rule: allow, port: '6443',       proto: tcp, src: "{{ private_network_cidr }}", comment: 'k3s apiserver' }
+  # Поды (kubernetes_sd_configs, Prometheus) обращаются к k8s API из pod CIDR
+  - { rule: allow, port: '6443',       proto: tcp, src: "{{ k3s_cluster_cidr }}", comment: 'k3s apiserver (pod cidr)' }
   - { rule: allow, port: '2379:2380',  proto: tcp, src: "{{ private_network_cidr }}", comment: 'etcd' }
   - { rule: allow, port: '10250',      proto: tcp, src: "{{ private_network_cidr }}", comment: 'kubelet' }
   # metrics-server поды ходят из pod CIDR (10.42.0.0/16), не из node CIDR

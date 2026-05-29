@@ -102,14 +102,21 @@ spec:
           port: 3100
         - protocol: TCP
           port: 9090
-    # Kubernetes API (ClusterIP 10.43.0.1:443) — нужен Alloy для discovery.kubernetes.
-    # Без этого правила Alloy не видит поды и логи не собираются.
+    # Kubernetes API: ClusterIP 10.43.0.1:443 → kube-proxy DNAT → 10.19.0.X:6443.
+    # kube-router применяет NetworkPolicy ПОСЛЕ DNAT, поэтому нужны оба правила:
+    # port 443 к service CIDR (для conntrack) и port 6443 к private CIDR (post-DNAT).
     - to:
         - ipBlock:
             cidr: {{ .Values.network.clusterServiceCidr }}
       ports:
         - protocol: TCP
           port: 443
+    - to:
+        - ipBlock:
+            cidr: {{ .Values.network.privateCidr }}
+      ports:
+        - protocol: TCP
+          port: 6443
     # HTTPS (внешний интернет): cert-manager ACME, image pull, OIDC discovery.
     - to:
         - ipBlock:
