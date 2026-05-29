@@ -316,6 +316,95 @@
     {
       "collapsed": false,
       "gridPos": { "h": 1, "w": 24, "x": 0, "y": 10 },
+      "id": 600,
+      "title": "Business Metrics",
+      "type": "row"
+    },
+
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "mappings": [],
+          "thresholds": { "mode": "absolute", "steps": [ { "color": "blue", "value": null } ] },
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "gridPos": { "h": 4, "w": 8, "x": 0, "y": 11 },
+      "id": 50,
+      "options": { "colorMode": "value", "graphMode": "area", "justifyMode": "center",
+                   "orientation": "auto", "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+                   "textMode": "auto", "wideLayout": true },
+      "title": "WebSocket Connections",
+      "type": "stat",
+      "targets": [
+        { "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "expr": "sum(nextalk_websocket_connections_active)",
+          "instant": true,
+          "legendFormat": "connections",
+          "refId": "A" }
+      ]
+    },
+
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "mappings": [],
+          "thresholds": { "mode": "absolute", "steps": [ { "color": "blue", "value": null } ] },
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "gridPos": { "h": 4, "w": 8, "x": 8, "y": 11 },
+      "id": 51,
+      "options": { "colorMode": "value", "graphMode": "area", "justifyMode": "center",
+                   "orientation": "auto", "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+                   "textMode": "auto", "wideLayout": true },
+      "title": "Voice Sessions Active",
+      "type": "stat",
+      "targets": [
+        { "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "expr": "sum(nextalk_voice_sessions_active)",
+          "instant": true,
+          "legendFormat": "sessions",
+          "refId": "A" }
+      ]
+    },
+
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "mappings": [],
+          "thresholds": { "mode": "absolute", "steps": [ { "color": "blue", "value": null } ] },
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "gridPos": { "h": 4, "w": 8, "x": 16, "y": 11 },
+      "id": 52,
+      "options": { "colorMode": "value", "graphMode": "area", "justifyMode": "center",
+                   "orientation": "auto", "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+                   "textMode": "auto", "wideLayout": true },
+      "title": "Messages / hour",
+      "type": "stat",
+      "targets": [
+        { "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "expr": "sum(increase(nextalk_messages_created_total[1h]))",
+          "instant": true,
+          "legendFormat": "messages",
+          "refId": "A" }
+      ]
+    },
+
+    {
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 15 },
       "id": 300,
       "title": "HTTP Traffic",
       "type": "row"
@@ -343,7 +432,7 @@
         },
         "overrides": []
       },
-      "gridPos": { "h": 8, "w": 8, "x": 0, "y": 11 },
+      "gridPos": { "h": 8, "w": 8, "x": 0, "y": 16 },
       "id": 20,
       "options": {
         "legend": { "calcs": ["mean", "max"], "displayMode": "table", "placement": "bottom", "showLegend": true },
@@ -389,7 +478,7 @@
         },
         "overrides": []
       },
-      "gridPos": { "h": 8, "w": 8, "x": 8, "y": 11 },
+      "gridPos": { "h": 8, "w": 8, "x": 8, "y": 16 },
       "id": 21,
       "options": {
         "legend": { "calcs": ["mean", "max"], "displayMode": "table", "placement": "bottom", "showLegend": true },
@@ -441,7 +530,7 @@
         },
         "overrides": []
       },
-      "gridPos": { "h": 8, "w": 8, "x": 16, "y": 11 },
+      "gridPos": { "h": 8, "w": 8, "x": 16, "y": 16 },
       "id": 22,
       "options": {
         "legend": { "calcs": ["mean", "max"], "displayMode": "table", "placement": "bottom", "showLegend": true },
@@ -461,7 +550,7 @@
 
     {
       "collapsed": false,
-      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 19 },
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 24 },
       "id": 400,
       "title": ".NET Runtime",
       "type": "row"
@@ -489,7 +578,7 @@
         },
         "overrides": []
       },
-      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 20 },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 25 },
       "id": 30,
       "options": {
         "legend": { "calcs": ["mean", "max"], "displayMode": "table", "placement": "bottom", "showLegend": true },
@@ -526,7 +615,7 @@
         },
         "overrides": []
       },
-      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 20 },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 25 },
       "id": 31,
       "options": {
         "legend": { "calcs": ["mean", "max"], "displayMode": "table", "placement": "bottom", "showLegend": true },
@@ -543,7 +632,7 @@
 
     {
       "collapsed": false,
-      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 28 },
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 33 },
       "id": 500,
       "title": "Logs",
       "type": "row"
@@ -551,7 +640,7 @@
 
     {
       "datasource": { "type": "loki", "uid": "loki" },
-      "gridPos": { "h": 10, "w": 24, "x": 0, "y": 29 },
+      "gridPos": { "h": 10, "w": 24, "x": 0, "y": 34 },
       "id": 40,
       "options": {
         "dedupStrategy": "none",
@@ -576,7 +665,7 @@
 
     {
       "datasource": { "type": "loki", "uid": "loki" },
-      "gridPos": { "h": 10, "w": 24, "x": 0, "y": 39 },
+      "gridPos": { "h": 10, "w": 24, "x": 0, "y": 44 },
       "id": 41,
       "options": {
         "dedupStrategy": "none",

@@ -2,6 +2,7 @@ using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using NexTalk.Messaging.Service.Domain;
 using NexTalk.Messaging.Service.Infrastructure;
+using NexTalk.Messaging.Service.Shared;
 using NexTalk.Messaging.Service.Shared.Exceptions;
 
 namespace NexTalk.Messaging.Service.Features.Messages.CreateMessage;
@@ -73,6 +74,7 @@ public sealed class CreateMessageHandler
 
         await tx.CommitAsync(ct);
 
+        NexTalkMetrics.MessagesCreated.Inc();
         _logger.LogInformation(
             "Message created: id={MessageId} channel={ChannelId} guild={GuildId} correlation={CorrelationId}",
             message.Id, cmd.ChannelId, cmd.GuildId, cmd.CorrelationId);

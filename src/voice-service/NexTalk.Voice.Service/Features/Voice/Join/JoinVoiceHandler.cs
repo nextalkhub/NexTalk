@@ -1,4 +1,5 @@
 using NexTalk.Voice.Service.Infrastructure;
+using NexTalk.Voice.Service.Shared;
 using NexTalk.Voice.Service.Shared.Exceptions;
 
 namespace NexTalk.Voice.Service.Features.Voice.Join;
@@ -56,6 +57,7 @@ public sealed class JoinVoiceHandler
         var livekitUrl = _config["LiveKit:PublicUrl"]
                          ?? throw new InvalidOperationException("LiveKit:PublicUrl is not configured.");
 
+        NexTalkMetrics.ActiveVoiceSessions.Inc();
         _logger.LogInformation(
             "Voice join: user={UserId} channel={ChannelId} guild={GuildId} correlation={CorrelationId}",
             cmd.UserId, cmd.ChannelId, access.GuildId, cmd.CorrelationId);

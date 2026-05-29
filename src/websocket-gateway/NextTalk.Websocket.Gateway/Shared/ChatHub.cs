@@ -64,6 +64,7 @@ public sealed class ChatHub : Hub
             }
         }
 
+        NexTalkMetrics.ActiveConnections.Inc();
         _logger.LogInformation("User {UserId} connected ({ConnectionId}), guilds: {GuildCount}",
             userId, Context.ConnectionId, guilds.Count);
 
@@ -85,6 +86,7 @@ public sealed class ChatHub : Hub
             }
         }
 
+        NexTalkMetrics.ActiveConnections.Dec();
         if (exception is not null)
             _logger.LogWarning(exception, "User {UserId} disconnected with error ({ConnectionId})", userId, Context.ConnectionId);
         else
