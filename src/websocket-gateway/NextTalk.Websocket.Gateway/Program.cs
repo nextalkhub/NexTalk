@@ -195,6 +195,7 @@ builder.Services.AddHostedService<PresenceMonitor>();
 
 // DAU/WAU/MAU: уникальные пользователи через Redis sorted set
 builder.Services.AddSingleton<UserActivityService>();
+builder.Services.AddSingleton<IUserActivityService>(sp => sp.GetRequiredService<UserActivityService>());
 builder.Services.AddHostedService(sp => sp.GetRequiredService<UserActivityService>());
 
 // ChatHub is transient (one instance per connection), handler must be stateless

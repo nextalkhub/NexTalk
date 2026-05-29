@@ -11,7 +11,7 @@ public sealed class ChatHub : Hub
     private readonly IPresenceTracker _presence;
     private readonly SendMessageHandler _sendMessageHandler;
     private readonly GuildServiceClient _guildClient;
-    private readonly UserActivityService _activity;
+    private readonly IUserActivityService _activity;
     private readonly TimeSpan _offlineTimeout;
     private readonly ILogger<ChatHub> _logger;
 
@@ -20,7 +20,7 @@ public sealed class ChatHub : Hub
         IPresenceTracker presence,
         SendMessageHandler sendMessageHandler,
         GuildServiceClient guildClient,
-        UserActivityService activity,
+        IUserActivityService activity,
         IOptions<PresenceOptions> presenceOptions,
         ILogger<ChatHub> logger)
     {

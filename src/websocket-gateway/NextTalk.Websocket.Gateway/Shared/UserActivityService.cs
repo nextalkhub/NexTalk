@@ -8,7 +8,7 @@ namespace NextTalk.Websocket.Gateway.Shared;
 // Все реплики gateway пишут в один ключ → точный cross-replica подсчёт.
 public sealed class UserActivityService(
     IConnectionMultiplexer redis,
-    ILogger<UserActivityService> logger) : BackgroundService
+    ILogger<UserActivityService> logger) : BackgroundService, IUserActivityService
 {
     private const string RedisKey = "nextalk:user_activity";
     private static readonly TimeSpan UpdateInterval = TimeSpan.FromMinutes(1);
