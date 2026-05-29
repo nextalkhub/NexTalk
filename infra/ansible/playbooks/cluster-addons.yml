@@ -116,6 +116,7 @@
         release_namespace: kube-system
         create_namespace: false
         kubeconfig: "{{ kubeconfig }}"
+        force: true
         values:
           args:
             - --kubelet-insecure-tls

@@ -17,6 +17,8 @@ ufw_extra_rules:
 
   # Внутренние порты k3s — только из приватной сети.
   - { rule: allow, port: '10250', proto: tcp, src: "{{ private_network_cidr }}", comment: 'kubelet' }
+  # metrics-server поды ходят из pod CIDR (10.42.0.0/16), не из node CIDR
+  - { rule: allow, port: '10250', proto: tcp, src: "{{ k3s_cluster_cidr }}", comment: 'kubelet (pod cidr)' }
   - { rule: allow, port: '8472',  proto: udp, src: "{{ private_network_cidr }}", comment: 'flannel vxlan' }
   - { rule: allow, port: '51820', proto: udp, src: "{{ private_network_cidr }}", comment: 'flannel wg (опц.)' }
 
