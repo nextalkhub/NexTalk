@@ -56,13 +56,13 @@
 - name: Импортировать дашборд nextalk-overview в Grafana через API
   ansible.builtin.shell: |
     python3 -c "
-    import json, urllib.request, base64, time
+    import json, urllib.request, base64, time, os
     for _ in range(10):
         try:
             with open('{{ observability_target_dir }}/grafana/provisioning/dashboards/nextalk-overview.json') as f:
                 dash = json.load(f)
             payload = json.dumps({'dashboard': dash, 'overwrite': True, 'folderId': 0}).encode()
-            creds = base64.b64encode(b'admin:{{ grafana_admin_password | default(\"admin\") }}').decode()
+            creds = base64.b64encode(('admin:' + os.environ['GRAFANA_PASS']).encode()).decode()
             req = urllib.request.Request('http://localhost:3000/api/dashboards/db', data=payload,
                 headers={'Content-Type': 'application/json', 'Authorization': 'Basic ' + creds}, method='POST')
             with urllib.request.urlopen(req) as r:
@@ -71,6 +71,8 @@
         except Exception as e:
             time.sleep(3)
     "
+  environment:
+    GRAFANA_PASS: "{{ grafana_admin_password | default('admin') }}"
   register: grafana_import
   changed_when: "'success' in grafana_import.stdout"
   tags: [observability]
