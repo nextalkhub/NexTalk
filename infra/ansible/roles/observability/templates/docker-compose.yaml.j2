@@ -57,9 +57,7 @@ services:
     environment:
       - TEMPO_RETENTION={{ tempo_retention_period }}
     ports:
-      - "4317:4317"   # OTLP gRPC
-      - "4318:4318"   # OTLP HTTP
-      - "3200:3200"   # Tempo HTTP
+      - "3200:3200"   # Tempo HTTP API (Grafana datasource)
     networks: [observability]
 
   grafana:
@@ -73,4 +71,16 @@ services:
       - GF_AUTH_ANONYMOUS_ENABLED=false
     ports:
       - "3000:3000"
+    networks: [observability]
+
+  otel-collector:
+    image: "otel/opentelemetry-collector-contrib:{{ observability_otelcol_version }}"
+    restart: unless-stopped
+    command: ["--config=/etc/otel-collector/config.yaml"]
+    volumes:
+      - ./otel-collector/config.yaml:/etc/otel-collector/config.yaml:ro
+    ports:
+      - "4317:4317"   # OTLP gRPC (конфликт с Tempo — см. ниже)
+      - "4318:4318"   # OTLP HTTP
+      - "8888:8888"   # self-metrics для Prometheus
     networks: [observability]
