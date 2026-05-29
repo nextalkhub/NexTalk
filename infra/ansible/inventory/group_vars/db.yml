@@ -26,10 +26,13 @@ postgres_users:
 postgres_allowed_hosts:
   - "10.19.0.0/16"
 
-# Файрвол: 5432 и 6379 — только из приватной сети.
+# Файрвол: 5432, 6379 и порты экспортеров — только из приватной сети.
 ufw_extra_rules:
   - { rule: allow, port: '5432', proto: tcp, src: "{{ private_network_cidr }}", comment: 'postgres' }
   - { rule: allow, port: '6379', proto: tcp, src: "{{ private_network_cidr }}", comment: 'redis' }
+  - { rule: allow, port: '9187', proto: tcp, src: "{{ private_network_cidr }}", comment: 'postgres_exporter (prometheus)' }
+  - { rule: allow, port: '9121', proto: tcp, src: "{{ private_network_cidr }}", comment: 'redis_exporter (prometheus)' }
+  - { rule: allow, port: '9100', proto: tcp, src: "{{ private_network_cidr }}", comment: 'node_exporter (prometheus)' }
 
 # Redis
 redis_bind_address: "{{ ansible_host }}"

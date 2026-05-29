@@ -8,3 +8,8 @@
   ansible.builtin.systemd:
     name: "postgresql@{{ postgresql_version }}-main"
     state: reloaded
+
+- name: restart postgres-exporter
+  ansible.builtin.systemd:
+    name: prometheus-postgres-exporter
+    state: restarted

@@ -164,3 +164,72 @@
   become: true
   become_user: postgres
   tags: [postgres, db]
+
+# ─── Мониторинг: postgres_exporter ───────────────────────────────────────────
+
+- name: Создать роль prometheus в PostgreSQL
+  community.postgresql.postgresql_user:
+    name: prometheus
+    role_attr_flags: LOGIN,NOSUPERUSER,NOCREATEDB,NOCREATEROLE
+    state: present
+    login_unix_socket: /var/run/postgresql
+  become: true
+  become_user: postgres
+  tags: [postgres, monitoring]
+
+- name: Выдать pg_monitor prometheus
+  community.postgresql.postgresql_membership:
+    group: pg_monitor
+    target_roles: [prometheus]
+    state: present
+    login_unix_socket: /var/run/postgresql
+  become: true
+  become_user: postgres
+  tags: [postgres, monitoring]
+
+- name: Разрешить prometheus подключаться к каждой БД
+  community.postgresql.postgresql_privs:
+    db: "{{ item.name }}"
+    privs: CONNECT
+    type: database
+    role: prometheus
+    state: present
+    login_unix_socket: /var/run/postgresql
+  loop: "{{ postgres_databases }}"
+  become: true
+  become_user: postgres
+  tags: [postgres, monitoring]
+
+- name: Установить экспортеры Prometheus (postgres, node)
+  ansible.builtin.apt:
+    name:
+      - prometheus-postgres-exporter
+      - prometheus-node-exporter
+    state: present
+  tags: [postgres, monitoring]
+
+- name: Настроить DATA_SOURCE_NAME для postgres_exporter
+  ansible.builtin.lineinfile:
+    path: /etc/default/prometheus-postgres-exporter
+    regexp: '^DATA_SOURCE_NAME='
+    line: "DATA_SOURCE_NAME='user=prometheus host=/run/postgresql dbname=postgres'"
+    create: true
+    owner: root
+    group: root
+    mode: '0640'
+  notify: restart postgres-exporter
+  tags: [postgres, monitoring]
+
+- name: Включить и запустить prometheus-postgres-exporter
+  ansible.builtin.systemd:
+    name: prometheus-postgres-exporter
+    enabled: true
+    state: started
+  tags: [postgres, monitoring]
+
+- name: Включить и запустить prometheus-node-exporter
+  ansible.builtin.systemd:
+    name: prometheus-node-exporter
+    enabled: true
+    state: started
+  tags: [postgres, monitoring]

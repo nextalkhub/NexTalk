@@ -26,3 +26,30 @@
     enabled: true
     state: started
   tags: [redis]
+
+# ─── Мониторинг: redis_exporter ──────────────────────────────────────────────
+
+- name: Установить prometheus-redis-exporter
+  ansible.builtin.apt:
+    name: prometheus-redis-exporter
+    state: present
+  tags: [redis, monitoring]
+
+- name: Настроить параметры redis_exporter
+  ansible.builtin.lineinfile:
+    path: /etc/default/prometheus-redis-exporter
+    regexp: '^ARGS='
+    line: "ARGS=\"--redis.addr=redis://127.0.0.1:{{ redis_port }} --redis.password={{ redis_password }}\""
+    create: true
+    owner: root
+    group: root
+    mode: '0640'
+  notify: restart redis-exporter
+  tags: [redis, monitoring]
+
+- name: Включить и запустить prometheus-redis-exporter
+  ansible.builtin.systemd:
+    name: prometheus-redis-exporter
+    enabled: true
+    state: started
+  tags: [redis, monitoring]
