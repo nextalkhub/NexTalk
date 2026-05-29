@@ -27,4 +27,10 @@ internal static class NexTalkMetrics
     public static readonly Gauge KnownUsersTotal = Metrics.CreateGauge(
         "nextalk_users_known_total",
         "Всего уникальных пользователей когда-либо подключавшихся к сервису.");
+
+    // Уникальных пользователей онлайн прямо сейчас (из PresenceTracker).
+    // Обновляется PresenceMonitor каждые 10 с. Один userId с несколькими вкладками считается один раз.
+    public static readonly Gauge UsersOnlineNow = Metrics.CreateGauge(
+        "nextalk_users_online_now",
+        "Уникальных пользователей с активным heartbeat прямо сейчас.");
 }

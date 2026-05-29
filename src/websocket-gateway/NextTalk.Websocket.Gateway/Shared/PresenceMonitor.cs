@@ -60,6 +60,9 @@ public sealed class PresenceMonitor : BackgroundService
 
                 _logger.LogDebug("User {UserId} went offline: heartbeat timeout", userId);
             }
+
+            var online = _tracker.GetAllOnline(_offlineTimeout);
+            NexTalkMetrics.UsersOnlineNow.Set(online.Count);
         }
     }
 }

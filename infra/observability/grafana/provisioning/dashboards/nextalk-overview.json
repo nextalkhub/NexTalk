@@ -885,13 +885,13 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "sum(nextalk_websocket_connections_active)",
+          "expr": "max(nextalk_users_online_now)",
           "instant": true,
-          "legendFormat": "connections",
+          "legendFormat": "online users",
           "refId": "A"
         }
       ],
-      "description": "Пользователей с активным WebSocket (SignalR) соединением прямо сейчас."
+      "description": "Уникальных пользователей с активным heartbeat прямо сейчас. Один userId с несколькими вкладками считается один раз."
     },
     {
       "datasource": {
@@ -2203,7 +2203,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "up{job=\"prometheus\"}",
+          "expr": "up{job=\"prometheus-obs\"}",
           "instant": true,
           "legendFormat": "prometheus",
           "refId": "A"

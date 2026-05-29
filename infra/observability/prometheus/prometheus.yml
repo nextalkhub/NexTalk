@@ -21,8 +21,9 @@ global:
 # ─── Локальные сервисы Obs VPS ───────────────────────────────────────────────
 scrape_configs:
 
-  # Self-monitoring Prometheus
-  - job_name: prometheus
+  # Self-monitoring Prometheus (OBS VPS). Отдельное имя чтобы не конфликтовать
+  # с up{job="prometheus"} который remote_write шлёт k3s Prometheus.
+  - job_name: prometheus-obs
     static_configs:
       - targets: ["localhost:9090"]
 
