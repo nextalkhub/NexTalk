@@ -31,6 +31,7 @@
     rsync_opts:
       - "--exclude=.git"
       - "--exclude=*.log"
+  notify: restart prometheus
   tags: [observability]
 
 - name: Положить docker-compose.yaml для observability-стека
@@ -48,4 +49,28 @@
     state: present
     pull: missing
     remove_orphans: true
+  tags: [observability]
+
+# Grafana кеширует провижнинг-дашборды в SQLite и не перезаписывает их при рестарте.
+# Импортируем через API с overwrite=true — единственный надёжный способ обновить дашборд.
+- name: Импортировать дашборд nextalk-overview в Grafana через API
+  ansible.builtin.shell: |
+    python3 -c "
+    import json, urllib.request, base64, time
+    for _ in range(10):
+        try:
+            with open('{{ observability_target_dir }}/grafana/provisioning/dashboards/nextalk-overview.json') as f:
+                dash = json.load(f)
+            payload = json.dumps({'dashboard': dash, 'overwrite': True, 'folderId': 0}).encode()
+            creds = base64.b64encode(b'admin:{{ grafana_admin_password | default(\"admin\") }}').decode()
+            req = urllib.request.Request('http://localhost:3000/api/dashboards/db', data=payload,
+                headers={'Content-Type': 'application/json', 'Authorization': 'Basic ' + creds}, method='POST')
+            with urllib.request.urlopen(req) as r:
+                print(json.load(r).get('status', '?'))
+            break
+        except Exception as e:
+            time.sleep(3)
+    "
+  register: grafana_import
+  changed_when: "'success' in grafana_import.stdout"
   tags: [observability]

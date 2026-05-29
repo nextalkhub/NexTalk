@@ -1,0 +1,6 @@
+---
+- name: restart prometheus
+  community.docker.docker_container:
+    name: observability-prometheus-1
+    state: started
+    restart: true
