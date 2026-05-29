@@ -1,38 +1,5 @@
 ---
 apiVersion: v1
-kind: ServiceAccount
-metadata:
-  name: prometheus
-  namespace: {{ .Values.namespace }}
-
----
-apiVersion: rbac.authorization.k8s.io/v1
-kind: ClusterRole
-metadata:
-  name: prometheus-{{ .Values.namespace }}
-rules:
-  - apiGroups: [""]
-    resources: [pods, endpoints, nodes]
-    verbs: [get, list, watch]
-  - nonResourceURLs: [/metrics]
-    verbs: [get]
-
----
-apiVersion: rbac.authorization.k8s.io/v1
-kind: ClusterRoleBinding
-metadata:
-  name: prometheus-{{ .Values.namespace }}
-roleRef:
-  apiGroup: rbac.authorization.k8s.io
-  kind: ClusterRole
-  name: prometheus-{{ .Values.namespace }}
-subjects:
-  - kind: ServiceAccount
-    name: prometheus
-    namespace: {{ .Values.namespace }}
-
----
-apiVersion: v1
 kind: ConfigMap
 metadata:
   name: prometheus-config
@@ -48,6 +15,8 @@ data:
         project:     nextalk
         cluster:     k3s
 
+    # Метрики отправляются на Obs VPS Prometheus через приватную сеть Beget.
+    # Obs VPS Prometheus запущен с --web.enable-remote-write-receiver.
     remote_write:
       - url: {{ .Values.observability.prometheusRemoteWriteUrl }}
         queue_config:
@@ -60,114 +29,45 @@ data:
     scrape_configs:
 
       - job_name: guild-service
-        kubernetes_sd_configs:
-          - role: pod
-            namespaces:
-              names: ["{{ .Values.namespace }}"]
-        relabel_configs:
-          - source_labels: [__meta_kubernetes_pod_label_app]
-            action: keep
-            regex: guild-service
-          - source_labels: [__meta_kubernetes_pod_ip]
-            target_label: __address__
-            replacement: "$1:5001"
-          - source_labels: [__meta_kubernetes_pod_name]
-            target_label: pod
-          - target_label: service
-            replacement: guild-service
+        static_configs:
+          - targets: ["guild-service:5001"]
+            labels:
+              service: guild-service
         metrics_path: /metrics
 
       - job_name: messaging-service
-        kubernetes_sd_configs:
-          - role: pod
-            namespaces:
-              names: ["{{ .Values.namespace }}"]
-        relabel_configs:
-          - source_labels: [__meta_kubernetes_pod_label_app]
-            action: keep
-            regex: messaging-service
-          - source_labels: [__meta_kubernetes_pod_ip]
-            target_label: __address__
-            replacement: "$1:5002"
-          - source_labels: [__meta_kubernetes_pod_name]
-            target_label: pod
-          - target_label: service
-            replacement: messaging-service
+        static_configs:
+          - targets: ["messaging-service:5002"]
+            labels:
+              service: messaging-service
         metrics_path: /metrics
 
       - job_name: voice-service
-        kubernetes_sd_configs:
-          - role: pod
-            namespaces:
-              names: ["{{ .Values.namespace }}"]
-        relabel_configs:
-          - source_labels: [__meta_kubernetes_pod_label_app]
-            action: keep
-            regex: voice-service
-          - source_labels: [__meta_kubernetes_pod_ip]
-            target_label: __address__
-            replacement: "$1:5003"
-          - source_labels: [__meta_kubernetes_pod_name]
-            target_label: pod
-          - target_label: service
-            replacement: voice-service
+        static_configs:
+          - targets: ["voice-service:5003"]
+            labels:
+              service: voice-service
         metrics_path: /metrics
 
       - job_name: websocket-gateway
-        kubernetes_sd_configs:
-          - role: pod
-            namespaces:
-              names: ["{{ .Values.namespace }}"]
-        relabel_configs:
-          - source_labels: [__meta_kubernetes_pod_label_app]
-            action: keep
-            regex: websocket-gateway
-          - source_labels: [__meta_kubernetes_pod_ip]
-            target_label: __address__
-            replacement: "$1:5004"
-          - source_labels: [__meta_kubernetes_pod_name]
-            target_label: pod
-          - target_label: service
-            replacement: websocket-gateway
+        static_configs:
+          - targets: ["websocket-gateway:5004"]
+            labels:
+              service: websocket-gateway
         metrics_path: /metrics
 
       - job_name: zitadel
-        kubernetes_sd_configs:
-          - role: pod
-            namespaces:
-              names: ["{{ .Values.namespace }}"]
-        relabel_configs:
-          - source_labels: [__meta_kubernetes_pod_label_app]
-            action: keep
-            regex: zitadel
-          - source_labels: [__meta_kubernetes_pod_container_name]
-            action: keep
-            regex: api
-          - source_labels: [__meta_kubernetes_pod_ip]
-            target_label: __address__
-            replacement: "$1:8080"
-          - source_labels: [__meta_kubernetes_pod_name]
-            target_label: pod
-          - target_label: service
-            replacement: zitadel
+        static_configs:
+          - targets: ["zitadel:8080"]
+            labels:
+              service: zitadel
         metrics_path: /debug/metrics
 
       - job_name: livekit
-        kubernetes_sd_configs:
-          - role: pod
-            namespaces:
-              names: ["{{ .Values.namespace }}"]
-        relabel_configs:
-          - source_labels: [__meta_kubernetes_pod_label_app]
-            action: keep
-            regex: livekit
-          - source_labels: [__meta_kubernetes_pod_ip]
-            target_label: __address__
-            replacement: "$1:6789"
-          - source_labels: [__meta_kubernetes_pod_name]
-            target_label: pod
-          - target_label: service
-            replacement: livekit
+        static_configs:
+          - targets: ["livekit:6789"]
+            labels:
+              service: livekit
         metrics_path: /metrics
 
       - job_name: prometheus
@@ -205,7 +105,6 @@ spec:
       labels:
         app: prometheus
     spec:
-      serviceAccountName: prometheus
       securityContext:
         runAsNonRoot: true
         runAsUser: 65534
@@ -224,6 +123,7 @@ spec:
           args:
             - --config.file=/etc/prometheus/prometheus.yml
             - --storage.tsdb.path=/prometheus
+            # Короткий retention: долгосрочное хранение — на Obs VPS через remote_write.
             - --storage.tsdb.retention.time={{ .Values.prometheus.retention }}
           ports:
             - containerPort: 9090
