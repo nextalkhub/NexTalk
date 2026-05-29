@@ -1,0 +1,51 @@
+#!/usr/bin/env bash
+# SC-04: убийство одного pod'а websocket-gateway (из 2 реплик).
+# Ожидаемое поведение:
+#   - k8s мгновенно перемаршрутирует трафик на вторую реплику
+#   - убитый pod пересоздаётся автоматически
+#   - /healthz не прерывается (допустима 1-2s пауза при переключении)
+
+set -euo pipefail
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "${SCRIPT_DIR}/../config.env"
+source "${SCRIPT_DIR}/../lib/assert.sh"
+source "${SCRIPT_DIR}/../lib/grafana.sh"
+
+DEPLOY=websocket-gateway
+
+log "=== SC-04: ws-gateway pod kill ==="
+
+# Проверяем наличие ≥ 2 реплик
+CURRENT=$(running_pods "$DEPLOY")
+if (( CURRENT < 2 )); then
+    fail "Нужно ≥ 2 running pod'ов $DEPLOY, текущих: $CURRENT"
+fi
+log "Running pods перед тестом: $CURRENT"
+
+assert_http_status 200 "${API_BASE}/healthz"
+
+grafana_region_start "SC-04: ws-gateway pod kill" "chaos,sc-04"
+
+kill_one_pod "$DEPLOY"
+
+# Даём 2s на перемаршрутизацию kube-proxy
+sleep 2
+
+log "Проверяем доступность после убийства pod..."
+assert_http_status 200 "${API_BASE}/healthz"
+
+# Ждём пересоздания убитого pod'а
+wait_healthy "$DEPLOY"
+
+grafana_region_end "SC-04: ws-gateway pod kill" "chaos,sc-04"
+
+AFTER=$(running_pods "$DEPLOY")
+log "Running pods после восстановления: $AFTER"
+
+if (( AFTER < CURRENT )); then
+    fail "Кластер не восстановил pod: $AFTER < $CURRENT"
+fi
+
+assert_http_status 200 "${API_BASE}/healthz"
+
+scenario_pass
