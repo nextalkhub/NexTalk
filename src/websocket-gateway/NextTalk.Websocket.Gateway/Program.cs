@@ -334,6 +334,9 @@ DisconnectEndpoints.Map(app);
 
 app.MapHub<ChatHub>("/hubs/chat");
 
+// Принудительная инициализация — метрики регистрируются сразу, не дожидаясь первого события.
+_ = NexTalkMetrics.ActiveConnections;
+
 app.Run();
 
 file sealed class ZitadelBackchannelHandler(string externalBase, string internalBase) : HttpClientHandler

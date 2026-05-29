@@ -283,6 +283,8 @@ app.MapHealthChecks("/readyz", new HealthCheckOptions
 }).AllowAnonymous();
 app.MapMetrics().AllowAnonymous();
 
+_ = NexTalkMetrics.MessagesCreated;
+
 app.Run();
 
 static void MigrateDatabase(WebApplication app)

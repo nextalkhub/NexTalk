@@ -308,6 +308,8 @@ app.MapHealthChecks("/readyz", new HealthCheckOptions
 }).AllowAnonymous();
 app.MapMetrics().AllowAnonymous();
 
+_ = NexTalkMetrics.ActiveVoiceSessions;
+
 app.Run();
 
 internal sealed record ParameterDoc(params (string Name, string Description)[] Params);
