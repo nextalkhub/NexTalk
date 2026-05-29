@@ -1,35 +1,66 @@
 ---
-# Настройка GRE-туннеля для выхода в интернет через worker-1 (NAT-шлюз).
+# Настройка GRE-туннелей + NAT для VPS без прямого интернета.
 #
-# Текущая схема:
-#   observability-vps (10.19.0.41, 172.16.0.2) ──GRE── worker-1 (10.19.0.21, 172.16.0.1)
+# Схема:
+#   observability-vps (10.19.0.41) ──gre1──┐
+#                                           ├── worker-1 (10.19.0.21) ── NAT ── интернет
+#   db-vps            (10.19.0.31) ──gre2──┘
 #
-# Для добавления ещё одного хоста без интернета:
-#   1. Добавить в группу gre_clients в hosts.ini
-#   2. Задать ему gre_tunnel_ip = 172.16.0.3 (следующий свободный)
-#   3. Добавить на worker-1 отдельный туннель gre2 с remote = IP нового хоста
-#      (или расширить роль — сейчас для простоты один туннель на шлюзе)
+# Подсети туннелей:
+#   gre1: 172.16.0.1/30 (worker-1) ↔ 172.16.0.2/30 (observability-vps)
+#   gre2: 172.16.1.1/30 (worker-1) ↔ 172.16.1.2/30 (db-vps)
+#
+# Запуск:
+#   ansible-playbook -i inventory/hosts.ini playbooks/gre-nat.yml
 
-- name: GRE NAT — шлюз (worker-1)
+- name: GRE NAT — шлюз worker-1 (туннель к observability-vps)
   hosts: worker-1
   become: true
   roles:
     - role: gre_nat
       vars:
         gre_nat_mode: gateway
+        gre_iface: gre1
         gre_local_ip: "10.19.0.21"
         gre_remote_ip: "10.19.0.41"
         gre_tunnel_ip: "172.16.0.1"
         gre_public_iface: eth0
 
-- name: GRE NAT — клиент (observability-vps)
+- name: GRE NAT — шлюз worker-1 (туннель к db-vps)
+  hosts: worker-1
+  become: true
+  roles:
+    - role: gre_nat
+      vars:
+        gre_nat_mode: gateway
+        gre_iface: gre2
+        gre_local_ip: "10.19.0.21"
+        gre_remote_ip: "10.19.0.31"
+        gre_tunnel_ip: "172.16.1.1"
+        gre_public_iface: eth0
+
+- name: GRE NAT — клиент observability-vps
   hosts: observability-vps
   become: true
   roles:
     - role: gre_nat
       vars:
         gre_nat_mode: client
+        gre_iface: gre1
         gre_local_ip: "10.19.0.41"
         gre_remote_ip: "10.19.0.21"
         gre_tunnel_ip: "172.16.0.2"
         gre_peer_tunnel_ip: "172.16.0.1"
+
+- name: GRE NAT — клиент db-vps
+  hosts: db-vps
+  become: true
+  roles:
+    - role: gre_nat
+      vars:
+        gre_nat_mode: client
+        gre_iface: gre2
+        gre_local_ip: "10.19.0.31"
+        gre_remote_ip: "10.19.0.21"
+        gre_tunnel_ip: "172.16.1.2"
+        gre_peer_tunnel_ip: "172.16.1.1"
