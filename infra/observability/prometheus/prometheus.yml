@@ -58,3 +58,26 @@ scrape_configs:
         labels:
           service: grafana
     metrics_path: /metrics
+
+# ─── DB VPS (postgres_exporter + redis_exporter + node_exporter) ─────────────
+
+  # PostgreSQL — postgres_exporter на DB VPS (порт 9187)
+  - job_name: postgres
+    static_configs:
+      - targets: ["10.19.0.31:9187"]
+        labels:
+          service: postgres
+
+  # Redis — redis_exporter на DB VPS (порт 9121)
+  - job_name: redis
+    static_configs:
+      - targets: ["10.19.0.31:9121"]
+        labels:
+          service: redis
+
+  # Node metrics DB VPS — node_exporter (порт 9100)
+  - job_name: db-node
+    static_configs:
+      - targets: ["10.19.0.31:9100"]
+        labels:
+          service: db-node
