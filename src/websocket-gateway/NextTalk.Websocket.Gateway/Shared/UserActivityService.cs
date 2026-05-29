@@ -6,7 +6,7 @@ namespace NextTalk.Websocket.Gateway.Shared;
 // Ключ: nextalk:user_activity, score = unix-timestamp активности, member = userId.
 // DAU/WAU/MAU считаются как ZCOUNT за соответствующий диапазон времени.
 // Все реплики gateway пишут в один ключ → точный cross-replica подсчёт.
-internal sealed class UserActivityService(
+public sealed class UserActivityService(
     IConnectionMultiplexer redis,
     ILogger<UserActivityService> logger) : BackgroundService
 {
