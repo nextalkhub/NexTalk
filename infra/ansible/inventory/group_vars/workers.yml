@@ -14,6 +14,9 @@ ufw_extra_rules:
   # TCP 7881 — fallback для клиентов, которым UDP заблокирован.
   - { rule: allow, port: '7882', proto: udp, comment: 'livekit rtc udp mux' }
   - { rule: allow, port: '7881', proto: tcp, comment: 'livekit rtc tcp fallback' }
+  # LiveKit Prometheus metrics (hostNetwork=true → порт на хосте, не в pod-сети).
+  # Prometheus из pod CIDR подключается к ноде через kube-proxy DNAT → INPUT chain.
+  - { rule: allow, port: '6789', proto: tcp, src: "{{ private_network_cidr }}", comment: 'livekit metrics (prometheus)' }
 
   # Внутренние порты k3s — только из приватной сети.
   - { rule: allow, port: '10250', proto: tcp, src: "{{ private_network_cidr }}", comment: 'kubelet' }

@@ -21,4 +21,10 @@ internal static class NexTalkMetrics
     public static readonly Gauge MonthlyActiveUsers = Metrics.CreateGauge(
         "nextalk_monthly_active_users",
         "Уникальных активных пользователей за последние 30 дней.");
+
+    // Всего уникальных userId, когда-либо подключавшихся (из Redis SET).
+    // Растёт монотонно — прокси-метрика для числа зарегистрированных пользователей.
+    public static readonly Gauge KnownUsersTotal = Metrics.CreateGauge(
+        "nextalk_users_known_total",
+        "Всего уникальных пользователей когда-либо подключавшихся к сервису.");
 }

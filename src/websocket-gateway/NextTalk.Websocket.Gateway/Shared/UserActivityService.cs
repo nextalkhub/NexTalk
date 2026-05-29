@@ -10,7 +10,8 @@ public sealed class UserActivityService(
     IConnectionMultiplexer redis,
     ILogger<UserActivityService> logger) : BackgroundService, IUserActivityService
 {
-    private const string RedisKey = "nextalk:user_activity";
+    private const string RedisKey      = "nextalk:user_activity";
+    private const string KnownUsersKey = "nextalk:users_known";
     private static readonly TimeSpan UpdateInterval = TimeSpan.FromMinutes(1);
 
     public async Task RecordActivityAsync(string userId)
@@ -21,6 +22,8 @@ public sealed class UserActivityService(
             var score = (double)DateTimeOffset.UtcNow.ToUnixTimeSeconds();
             // NX=false: обновляем score если пользователь уже есть (обновляем timestamp)
             await db.SortedSetAddAsync(RedisKey, userId, score, SortedSetWhen.Always);
+            // SET для подсчёта уникальных пользователей за всё время (не ротируется).
+            await db.SetAddAsync(KnownUsersKey, userId);
         }
         catch (Exception ex)
         {
@@ -62,6 +65,9 @@ public sealed class UserActivityService(
             NexTalkMetrics.MonthlyActiveUsers.Set(mau);
             NexTalkMetrics.WeeklyActiveUsers.Set(wau);
             NexTalkMetrics.DailyActiveUsers.Set(dau);
+
+            var knownCount = await db.SetLengthAsync(KnownUsersKey);
+            NexTalkMetrics.KnownUsersTotal.Set(knownCount);
         }
         catch (Exception ex)
         {

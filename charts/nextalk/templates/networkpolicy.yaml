@@ -111,12 +111,15 @@ spec:
       ports:
         - protocol: TCP
           port: 443
+    # LiveKit metrics (6789) — hostNetwork pod: пакет после DNAT идёт на node IP:6789.
     - to:
         - ipBlock:
             cidr: {{ .Values.network.privateCidr }}
       ports:
         - protocol: TCP
           port: 6443
+        - protocol: TCP
+          port: 6789
     # HTTPS (внешний интернет): cert-manager ACME, image pull, OIDC discovery.
     - to:
         - ipBlock:
