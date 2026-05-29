@@ -15,7 +15,8 @@ import { VoiceParticipant } from '../types'
 
 export const useVoice = () => {
     const roomRef = useRef<Room | null>(null)
-    const connectingRef = useRef(false)
+    // Каждый новый join инкрементирует счётчик; устаревшие попытки сравнивают с ним и молча выходят.
+    const connectGenRef = useRef(0)
     const speakingIdsRef = useRef<Set<string>>(new Set())
     const audioCleanups = useRef<Map<string, () => void>>(new Map())
 
@@ -77,18 +78,20 @@ export const useVoice = () => {
 
     const joinVoice = useCallback(
         async (channelId: string, _: { id: string; name: string }) => {
-            if (connectingRef.current) return
+            // Инвалидируем предыдущую попытку подключения.
+            const gen = ++connectGenRef.current
 
+            // Отключаем текущую комнату (это прерывает незавершённый room.connect()).
             if (roomRef.current) {
-                await roomRef.current.disconnect()
+                roomRef.current.disconnect()
                 roomRef.current = null
             }
 
             cleanupAudio()
-            connectingRef.current = true
 
             try {
                 const response = await joinVoiceChannel(channelId)
+                if (gen !== connectGenRef.current) return // вытеснено следующим join
 
                 const room = new Room({
                     adaptiveStream: true,
@@ -122,7 +125,6 @@ export const useVoice = () => {
                     }
                 )
 
-                // Очищаем <audio> элемент при отзыве трека (участник ушёл / замьютился на уровне публикации)
                 room.on(
                     RoomEvent.TrackUnsubscribed,
                     (_track: RemoteTrack, pub: RemoteTrackPublication) => {
@@ -146,6 +148,12 @@ export const useVoice = () => {
 
                 await room.connect(response.liveKitUrl, response.token)
 
+                // Проверяем снова после async — мог прийти новый join пока ждали.
+                if (gen !== connectGenRef.current) {
+                    room.disconnect()
+                    return
+                }
+
                 try {
                     await room.localParticipant.setMicrophoneEnabled(true)
                     setHasMicrophonePermission(true)
@@ -160,9 +168,9 @@ export const useVoice = () => {
                 syncParticipants()
 
             } catch (err) {
+                // Если gen устарел — это ожидаемый abort от disconnect(), не логируем.
+                if (gen !== connectGenRef.current) return
                 console.error('Voice connect error:', err)
-            } finally {
-                connectingRef.current = false
             }
         },
         [syncParticipants, cleanupAudio]
@@ -170,8 +178,8 @@ export const useVoice = () => {
 
     const leaveVoice = useCallback(
         async (channelId: string) => {
-            const room = roomRef.current
-            if (!room) return
+            // Инвалидируем любую текущую попытку подключения.
+            connectGenRef.current++
 
             try {
                 await leaveVoiceChannel(channelId)
@@ -179,8 +187,10 @@ export const useVoice = () => {
                 console.error(err)
             }
 
-            room.disconnect()
-            roomRef.current = null
+            if (roomRef.current) {
+                roomRef.current.disconnect()
+                roomRef.current = null
+            }
             cleanupAudio()
 
             setParticipants([])
