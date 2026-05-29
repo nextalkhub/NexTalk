@@ -161,8 +161,11 @@
       "fieldConfig": { "defaults": { "color": { "mode": "palette-classic" }, "custom": { "axisBorderShow": false, "axisCenteredZero": false, "axisColorMode": "text", "axisLabel": "", "axisPlacement": "auto", "barAlignment": 0, "drawStyle": "line", "fillOpacity": 10, "gradientMode": "none", "hideFrom": { "legend": false, "tooltip": false, "viz": false }, "insertNulls": false, "lineInterpolation": "linear", "lineWidth": 2, "pointSize": 5, "scaleDistribution": { "type": "linear" }, "showPoints": "never", "spanNulls": false, "stacking": { "group": "A", "mode": "none" }, "thresholdsStyle": { "mode": "off" } }, "mappings": [], "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }] }, "unit": "short" }, "overrides": [] },
       "gridPos": { "h": 8, "w": 12, "x": 12, "y": 24 }, "id": 31,
       "options": { "legend": { "calcs": ["mean", "max"], "displayMode": "table", "placement": "bottom", "showLegend": true }, "tooltip": { "mode": "multi", "sort": "desc" } },
-      "title": "ThreadPool Threads", "type": "timeseries",
-      "targets": [{ "datasource": { "type": "prometheus", "uid": "prometheus" }, "expr": "system_runtime_dotnet_thread_pool_thread_count{job=~\"guild-service|messaging-service|voice-service|websocket-gateway\"}", "legendFormat": "{{job}}", "refId": "A" }] },
+      "title": "ThreadPool Threads / Queue", "type": "timeseries",
+      "targets": [
+        { "datasource": { "type": "prometheus", "uid": "prometheus" }, "expr": "system_runtime_dotnet_thread_pool_thread_count{job=~\"guild-service|messaging-service|voice-service|websocket-gateway\"}", "legendFormat": "{{job}} threads", "refId": "A" },
+        { "datasource": { "type": "prometheus", "uid": "prometheus" }, "expr": "system_runtime_dotnet_thread_pool_queue_length{job=~\"guild-service|messaging-service|voice-service|websocket-gateway\"}", "legendFormat": "{{job}} queue", "refId": "B" }
+      ] },
 
     { "collapsed": false, "gridPos": { "h": 1, "w": 24, "x": 0, "y": 32 }, "id": 500, "title": "Logs", "type": "row" },
 
