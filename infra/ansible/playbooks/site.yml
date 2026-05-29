@@ -5,15 +5,17 @@
 #   ansible-playbook -i inventory/hosts.ini playbooks/site.yml --ask-vault-pass
 #
 # Порядок осознанный:
-#   1. bootstrap.yml     — пакеты, sysctl, ufw на всех нодах.
-#   2. haproxy.yml       — HAProxy (балансировщик apiserver) до k3s.
-#   3. db.yml            — Postgres + Redis.
-#   4. observability.yml — observability stack.
-#   5. k3s.yml           — кластер k3s (cp + workers через HAProxy).
-#   6. cluster-addons.yml — ingress-nginx + cert-manager.
-#   7. helm-deploy.yml   — приложения NexTalk.
+#   1. bootstrap.yml      — пакеты, sysctl, ufw на всех нодах.
+#   2. gre-nat.yml        — GRE-туннель для VPS без интернета (obs-vps через worker-1).
+#   3. haproxy.yml        — HAProxy (балансировщик apiserver) до k3s.
+#   4. db.yml             — Postgres + Redis.
+#   5. observability.yml  — observability stack.
+#   6. k3s.yml            — кластер k3s (cp + workers через HAProxy).
+#   7. cluster-addons.yml — ingress-nginx + cert-manager.
+#   8. helm-deploy.yml    — приложения NexTalk.
 
 - import_playbook: bootstrap.yml
+- import_playbook: gre-nat.yml
 - import_playbook: haproxy.yml
 - import_playbook: db.yml
 - import_playbook: observability.yml

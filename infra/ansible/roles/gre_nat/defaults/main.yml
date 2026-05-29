@@ -1,0 +1,4 @@
+---
+gre_nat_mode: client          # gateway | client
+gre_public_iface: eth0        # публичный интерфейс шлюза (только для gateway)
+gre_peer_tunnel_ip: 172.16.0.1  # адрес шлюза внутри туннеля (только для client)

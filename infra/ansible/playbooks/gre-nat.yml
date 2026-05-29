@@ -1,0 +1,35 @@
+---
+# Настройка GRE-туннеля для выхода в интернет через worker-1 (NAT-шлюз).
+#
+# Текущая схема:
+#   observability-vps (10.19.0.41, 172.16.0.2) ──GRE── worker-1 (10.19.0.21, 172.16.0.1)
+#
+# Для добавления ещё одного хоста без интернета:
+#   1. Добавить в группу gre_clients в hosts.ini
+#   2. Задать ему gre_tunnel_ip = 172.16.0.3 (следующий свободный)
+#   3. Добавить на worker-1 отдельный туннель gre2 с remote = IP нового хоста
+#      (или расширить роль — сейчас для простоты один туннель на шлюзе)
+
+- name: GRE NAT — шлюз (worker-1)
+  hosts: worker-1
+  become: true
+  roles:
+    - role: gre_nat
+      vars:
+        gre_nat_mode: gateway
+        gre_local_ip: "10.19.0.21"
+        gre_remote_ip: "10.19.0.41"
+        gre_tunnel_ip: "172.16.0.1"
+        gre_public_iface: eth0
+
+- name: GRE NAT — клиент (observability-vps)
+  hosts: observability-vps
+  become: true
+  roles:
+    - role: gre_nat
+      vars:
+        gre_nat_mode: client
+        gre_local_ip: "10.19.0.41"
+        gre_remote_ip: "10.19.0.21"
+        gre_tunnel_ip: "172.16.0.2"
+        gre_peer_tunnel_ip: "172.16.0.1"

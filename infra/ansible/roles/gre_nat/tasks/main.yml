@@ -1,0 +1,112 @@
+---
+# Настройка GRE-туннеля для выхода в интернет через шлюз.
+# Переменные:
+#   gre_nat_mode        — gateway | client
+#   gre_local_ip        — приватный IP этого хоста
+#   gre_remote_ip       — приватный IP другой стороны туннеля
+#   gre_tunnel_ip       — адрес этого хоста внутри туннеля (172.16.0.x/24)
+#   gre_peer_tunnel_ip  — адрес шлюза внутри туннеля (нужен клиенту для маршрута)
+#   gre_public_iface    — публичный интерфейс шлюза (нужен только gateway, обычно eth0)
+
+- name: Поднять GRE-туннель
+  ansible.builtin.command:
+    cmd: "ip link add gre1 type gre local {{ gre_local_ip }} remote {{ gre_remote_ip }}"
+  register: gre_add
+  changed_when: gre_add.rc == 0
+  failed_when: gre_add.rc != 0 and 'File exists' not in gre_add.stderr
+  tags: [gre_nat]
+
+- name: Включить интерфейс gre1
+  ansible.builtin.command:
+    cmd: "ip link set gre1 up"
+  changed_when: true
+  tags: [gre_nat]
+
+- name: Назначить адрес туннелю
+  ansible.builtin.command:
+    cmd: "ip addr add {{ gre_tunnel_ip }}/24 dev gre1"
+  register: addr_add
+  changed_when: addr_add.rc == 0
+  failed_when: addr_add.rc != 0 and 'File exists' not in addr_add.stderr
+  tags: [gre_nat]
+
+- name: Включить ip_forward (gateway)
+  ansible.posix.sysctl:
+    name: net.ipv4.ip_forward
+    value: "1"
+    sysctl_set: true
+    state: present
+    reload: true
+  when: gre_nat_mode == 'gateway'
+  tags: [gre_nat]
+
+- name: Добавить MASQUERADE (gateway)
+  ansible.builtin.iptables:
+    table: nat
+    chain: POSTROUTING
+    out_interface: "{{ gre_public_iface }}"
+    jump: MASQUERADE
+    state: present
+  when: gre_nat_mode == 'gateway'
+  tags: [gre_nat]
+
+- name: Заменить шлюз по умолчанию (client)
+  block:
+    - name: Удалить текущий default route
+      ansible.builtin.command:
+        cmd: "ip route del default"
+      register: route_del
+      changed_when: route_del.rc == 0
+      failed_when: route_del.rc != 0 and 'No such process' not in route_del.stderr
+
+    - name: Добавить default route через GRE-шлюз
+      ansible.builtin.command:
+        cmd: "ip route add default via {{ gre_peer_tunnel_ip }}"
+      changed_when: true
+  when: gre_nat_mode == 'client'
+  tags: [gre_nat]
+
+# ── Персистентность ────────────────────────────────────────────────────────────
+
+- name: Сохранить конфиг туннеля в /etc/network/interfaces (gateway)
+  ansible.builtin.blockinfile:
+    path: /etc/network/interfaces
+    marker: "# {mark} GRE NAT GATEWAY"
+    block: |
+      auto gre1
+      iface gre1 inet static
+          address {{ gre_tunnel_ip }}/24
+          pre-up iptunnel add gre1 mode gre local {{ gre_local_ip }} remote {{ gre_remote_ip }}
+          post-down iptunnel del gre1
+  when: gre_nat_mode == 'gateway'
+  tags: [gre_nat]
+
+- name: Сохранить конфиг туннеля в /etc/network/interfaces (client)
+  ansible.builtin.blockinfile:
+    path: /etc/network/interfaces
+    marker: "# {mark} GRE NAT CLIENT"
+    block: |
+      auto gre1
+      iface gre1 inet static
+          address {{ gre_tunnel_ip }}/24
+          gateway {{ gre_peer_tunnel_ip }}
+          pre-up iptunnel add gre1 mode gre local {{ gre_local_ip }} remote {{ gre_remote_ip }}
+          post-down iptunnel del gre1
+  when: gre_nat_mode == 'client'
+  tags: [gre_nat]
+
+- name: Включить ip_forward постоянно в sysctl.conf (gateway)
+  ansible.builtin.lineinfile:
+    path: /etc/sysctl.conf
+    regexp: '^net.ipv4.ip_forward'
+    line: 'net.ipv4.ip_forward = 1'
+    state: present
+  when: gre_nat_mode == 'gateway'
+  tags: [gre_nat]
+
+- name: Сохранить iptables (gateway)
+  ansible.builtin.shell:
+    cmd: "iptables-save > /etc/iptables/rules.v4"
+  changed_when: true
+  when: gre_nat_mode == 'gateway'
+  tags: [gre_nat]
