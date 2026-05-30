@@ -160,7 +160,7 @@
   hosts: localhost
   connection: local
   gather_facts: false
-  tags: [run]
+  tags: [never, run]
   vars:
     chaos_dir: "{{ k6_chaos_dir }}"
     kubeconfig: "{{ playbook_dir }}/../kubeconfig"
