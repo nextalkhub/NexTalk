@@ -1,0 +1,82 @@
+---
+- name: Установить зависимости для apt-key
+  ansible.builtin.apt:
+    name: [gnupg, apt-transport-https, ca-certificates]
+    state: present
+    update_cache: false
+
+- name: Добавить GPG-ключ k6
+  ansible.builtin.get_url:
+    url: https://dl.k6.io/key.gpg
+    dest: /usr/share/keyrings/k6-archive-keyring.gpg
+    mode: "0644"
+
+- name: Добавить apt-репозиторий k6
+  ansible.builtin.apt_repository:
+    repo: "deb [signed-by=/usr/share/keyrings/k6-archive-keyring.gpg] https://dl.k6.io/deb stable main"
+    filename: k6
+    state: present
+    update_cache: true
+
+- name: Установить k6
+  ansible.builtin.apt:
+    name: k6
+    state: present
+
+- name: Проверить версию k6
+  ansible.builtin.command: k6 version
+  register: k6_version
+  changed_when: false
+
+- name: Вывести версию k6
+  ansible.builtin.debug:
+    msg: "{{ k6_version.stdout }}"
+
+- name: Создать рабочую директорию chaos-тестов
+  ansible.builtin.file:
+    path: "{{ k6_chaos_dir }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: Создать поддиректории
+  ansible.builtin.file:
+    path: "{{ k6_chaos_dir }}/{{ item }}"
+    state: directory
+    mode: "0755"
+  loop:
+    - k6
+    - scenarios
+    - lib
+    - logs
+
+- name: Скопировать k6 скрипты
+  ansible.builtin.copy:
+    src: "{{ playbook_dir }}/../../../tests/chaos/k6/"
+    dest: "{{ k6_chaos_dir }}/k6/"
+    mode: "0644"
+
+- name: Скопировать chaos-сценарии
+  ansible.builtin.copy:
+    src: "{{ playbook_dir }}/../../../tests/chaos/scenarios/"
+    dest: "{{ k6_chaos_dir }}/scenarios/"
+    mode: "0755"
+
+- name: Скопировать библиотеки bash
+  ansible.builtin.copy:
+    src: "{{ playbook_dir }}/../../../tests/chaos/lib/"
+    dest: "{{ k6_chaos_dir }}/lib/"
+    mode: "0755"
+
+- name: Скопировать run-all.sh
+  ansible.builtin.copy:
+    src: "{{ playbook_dir }}/../../../tests/chaos/run-all.sh"
+    dest: "{{ k6_chaos_dir }}/run-all.sh"
+    mode: "0755"
+
+- name: Сгенерировать config.env из шаблона
+  ansible.builtin.template:
+    src: config.env.j2
+    dest: "{{ k6_chaos_dir }}/config.env"
+    mode: "0600"

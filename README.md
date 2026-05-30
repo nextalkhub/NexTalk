@@ -3,6 +3,10 @@
 Платформа для командного общения. Аналог Discord.
 Микросервисная архитектура с Kubernetes, Zitadel (IdP), Nginx Ingress и паттернами отказоустойчивости.
 
+[![CI](https://github.com/nextalkhub/NexTalk/actions/workflows/ci-cd.yml/badge.svg)](https://github.com/nextalkhub/NexTalk/actions/workflows/ci-cd.yml)
+[![Coverage](https://raw.githubusercontent.com/nextalkhub/NexTalk/coverage-badges/badge_linecoverage.svg)](https://github.com/nextalkhub/NexTalk/actions/workflows/ci-cd.yml)
+[![Branch Coverage](https://raw.githubusercontent.com/nextalkhub/NexTalk/coverage-badges/badge_branchcoverage.svg)](https://github.com/nextalkhub/NexTalk/actions/workflows/ci-cd.yml)
+
 ## Навигация по проекту
 
 | Вам нужно | Идите сюда |
@@ -19,6 +23,7 @@
 | Увидеть тест-кейсы | [test-case.md](docs/test-case.md) |
 | Понять, как сервисы общаются | [§6 Сервисы](#6-сервисы-системы) |
 | Понять отказоустойчивость | [§7 Отказоустойчивость](#7-отказоустойчивость) |
+| Запустить chaos/load тесты | [§0-C Chaos-тестирование](#вариант-c---chaos--load-тестирование) |
 | Увидеть, что НЕ входит в MVP | [§11 За рамками](#11-за-рамками-mvp) |
 
 ---
@@ -239,6 +244,52 @@ helm uninstall nextalk -n nextalk      # через Helm
 
 Настройка Elastic Alert: [docs/elk-alert-setup.md](docs/elk-alert-setup.md)  
 Grafana дашборд: [grafana/nextalk-dashboard.json](grafana/nextalk-dashboard.json)
+
+---
+
+### Вариант C — Chaos / Load тестирование
+
+Chaos и нагрузочные тесты запускаются на `control-plane-1` (kubectl + k6 уже под рукой).
+
+#### Установка k6 и скриптов (одноразово)
+
+```bash
+# Добавить vault-секреты (если ещё нет)
+ansible-vault edit infra/ansible/inventory/group_vars/all/vault.yml --ask-vault-pass
+# vault_k6_grafana_password: <пароль Grafana admin>
+# vault_k6_test_token: <JWT тестового пользователя>
+
+# Установить k6 и скопировать скрипты
+ansible-playbook -i infra/ansible/inventory/hosts.ini infra/ansible/playbooks/k6.yml --ask-vault-pass
+```
+
+#### Запуск тестов
+
+```bash
+# Все сценарии (baseline → SC-01..SC-07 → spike)
+bash /opt/nextalk-chaos/run-all.sh
+
+# Один сценарий
+ONLY_SCENARIO=SC-01 bash /opt/nextalk-chaos/run-all.sh
+
+# Без baseline/spike (только chaos loop)
+SKIP_BASELINE=1 SKIP_SPIKE=1 bash /opt/nextalk-chaos/run-all.sh
+```
+
+#### Сценарии
+
+| Сценарий | Что проверяет |
+|:--|:--|
+| SC-01 | messaging-service scale=0 → circuit breaker → восстановление |
+| SC-02 | guild-service недоступен → graceful degradation |
+| SC-03 | Redis restart (SSH на db-vps) → автопереподключение |
+| SC-04 | Убийство одного pod ws-gateway (из 2 реплик) → k8s failover |
+| SC-05 | messaging-service 0→1→3→1 под companion-нагрузкой |
+| SC-06 | Cordon cp-2 → etcd-кворум сохранён, API доступен |
+| SC-07 | Rolling restart всех deployment'ов → zero downtime |
+
+Результаты и метрики — в [Grafana](https://grafana.nextalk.fun) (аннотации проставляются автоматически).  
+Скрипты: [tests/chaos/](tests/chaos/)
 
 ---
 

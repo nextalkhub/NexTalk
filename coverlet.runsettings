@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<RunSettings>
+  <DataCollectionRunSettings>
+    <DataCollectors>
+      <DataCollector friendlyName="XPlat Code Coverage">
+        <Configuration>
+          <Format>cobertura</Format>
+          <Include>[NexTalk.*]*</Include>
+          <Exclude>
+            [*.Tests]*;
+            [*]*.Migrations.*;
+            [*]*DbContextModelSnapshot;
+            [*]*Program;
+          </Exclude>
+          <ExcludeByAttribute>
+            GeneratedCodeAttribute;
+            CompilerGeneratedAttribute;
+            ExcludeFromCodeCoverageAttribute;
+          </ExcludeByAttribute>
+          <ExcludeByFile>
+            **/Migrations/*.cs;
+            **/*.g.cs;
+          </ExcludeByFile>
+          <SingleHit>false</SingleHit>
+          <UseSourceLink>true</UseSourceLink>
+          <IncludeTestAssembly>false</IncludeTestAssembly>
+          <SkipAutoProps>true</SkipAutoProps>
+        </Configuration>
+      </DataCollector>
+    </DataCollectors>
+  </DataCollectionRunSettings>
+</RunSettings>

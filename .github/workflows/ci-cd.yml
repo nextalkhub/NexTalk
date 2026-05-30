@@ -99,10 +99,12 @@ jobs:
       - name: Restore
         run: dotnet restore ${{ matrix.solution }}
 
-      - name: Test
+      - name: Test with coverage
         run: >
           dotnet test ${{ matrix.solution }}
           -c Release --no-restore
+          --collect:"XPlat Code Coverage"
+          --settings coverlet.runsettings
           --logger "trx;LogFileName=test-results.trx"
           --logger "console;verbosity=normal"
           --results-directory TestResults
@@ -114,6 +116,65 @@ jobs:
           name: test-results-${{ matrix.name }}
           path: TestResults/**/*.trx
           if-no-files-found: ignore
+
+      - name: Upload coverage XML
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: coverage-${{ matrix.name }}
+          path: TestResults/**/coverage.cobertura.xml
+          if-no-files-found: ignore
+
+  # Coverage report: собирает XML со всех сервисов, генерирует HTML + badges
+  coverage-report:
+    needs: [changes, test-backend-services]
+    if: >-
+      !failure() && !cancelled() &&
+      needs.changes.outputs.backend == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Download all coverage artifacts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: coverage-*
+          path: coverage-xml
+          merge-multiple: false
+
+      - name: Install reportgenerator
+        run: dotnet tool install -g dotnet-reportgenerator-globaltool
+
+      - name: Generate HTML report + badges
+        run: |
+          reportgenerator \
+            -reports:"coverage-xml/**/coverage.cobertura.xml" \
+            -targetdir:"coverage-report" \
+            -reporttypes:"Html;Cobertura;Badges;MarkdownSummaryGithub" \
+            -title:"NexTalk Coverage" \
+            -assemblyfilters:"-*.Tests;-*Migrations*"
+
+      - name: Write summary to GitHub Step Summary
+        run: cat coverage-report/SummaryGithub.md >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload HTML report as artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: coverage-html-report
+          path: coverage-report/
+          retention-days: 30
+
+      - name: Push badges to coverage-badges branch
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: coverage-report
+          publish_branch: coverage-badges
+          keep_files: false
+          commit_message: "ci: update coverage badges [skip ci]"
 
   # Frontend CI (only when frontend changed)
   frontend-ci:

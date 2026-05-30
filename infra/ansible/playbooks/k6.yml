@@ -1,0 +1,94 @@
+---
+# Установка k6 и развёртывание chaos/load-test скриптов на control-plane-1.
+#
+# Что делает:
+#   1. Устанавливает k6 из официального apt-репозитория.
+#   2. Копирует tests/chaos/ (k6/, scenarios/, lib/, run-all.sh) на хост.
+#   3. Генерирует /opt/nextalk-chaos/config.env из vault-переменных.
+#
+# Требования к vault:
+#   vault_k6_grafana_password  — пароль Grafana admin
+#   vault_k6_test_token        — JWT тестового пользователя для нагрузочных тестов
+#
+# Добавить в vault (предварительно расшифровав):
+#   ansible-vault edit inventory/group_vars/all/vault.yml --ask-vault-pass
+#
+# Запуск:
+#   ansible-playbook -i inventory/hosts.ini playbooks/k6.yml --ask-vault-pass
+#
+# Только обновить скрипты (без переустановки k6):
+#   ansible-playbook -i inventory/hosts.ini playbooks/k6.yml --ask-vault-pass --tags scripts
+#
+# Запустить все сценарии после установки:
+#   ansible-playbook -i inventory/hosts.ini playbooks/k6.yml --ask-vault-pass --tags run
+
+- name: Установка k6 и chaos-скриптов на control-plane-1
+  hosts: control_plane[0]
+  become: true
+  gather_facts: true
+
+  pre_tasks:
+    - name: Проверить, что vault-переменные заданы
+      ansible.builtin.assert:
+        that:
+          - vault_k6_grafana_password is defined
+          - vault_k6_test_token is defined
+        fail_msg: >
+          Добавь vault_k6_grafana_password и vault_k6_test_token в vault.yml:
+          ansible-vault edit inventory/group_vars/all/vault.yml --ask-vault-pass
+
+  roles:
+    - role: k6
+      tags: [k6, scripts]
+
+  post_tasks:
+    - name: Проверить, что k6 установлен
+      ansible.builtin.command: k6 version
+      register: k6_check
+      changed_when: false
+      tags: [k6, smoke]
+
+    - name: Проверить наличие run-all.sh
+      ansible.builtin.stat:
+        path: "{{ k6_chaos_dir }}/run-all.sh"
+      register: run_all_stat
+      tags: [k6, smoke]
+
+    - name: Провалить, если run-all.sh отсутствует
+      ansible.builtin.fail:
+        msg: "run-all.sh не найден в {{ k6_chaos_dir }}"
+      when: not run_all_stat.stat.exists
+      tags: [k6, smoke]
+
+    - name: Вывести итог
+      ansible.builtin.debug:
+        msg:
+          - "k6: {{ k6_check.stdout }}"
+          - "Chaos dir: {{ k6_chaos_dir }}"
+          - "Запуск всех сценариев: bash {{ k6_chaos_dir }}/run-all.sh"
+          - "Один сценарий: ONLY_SCENARIO=SC-01 bash {{ k6_chaos_dir }}/run-all.sh"
+          - "Только baseline: SKIP_SPIKE=1 bash {{ k6_chaos_dir }}/run-all.sh"
+      tags: [k6, smoke]
+
+# Опциональный play: запустить run-all.sh немедленно.
+# Активируется тегом 'run': ansible-playbook ... --tags run
+- name: Запустить chaos-сценарии
+  hosts: control_plane[0]
+  become: false
+  gather_facts: false
+  tags: [run]
+
+  tasks:
+    - name: Запустить run-all.sh (async, 2 часа таймаут)
+      ansible.builtin.command:
+        cmd: "bash {{ k6_chaos_dir }}/run-all.sh"
+        chdir: "{{ k6_chaos_dir }}"
+      async: 7200
+      poll: 30
+      register: chaos_run
+      environment:
+        KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+
+    - name: Вывести результат
+      ansible.builtin.debug:
+        var: chaos_run.stdout_lines
