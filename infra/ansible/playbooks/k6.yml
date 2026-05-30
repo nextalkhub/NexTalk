@@ -1,16 +1,15 @@
 ---
-# Установка k6 и развёртывание chaos/load-test скриптов на control-plane-1.
+# Установка k6 и развёртывание chaos/load-test скриптов локально.
 #
-# Что делает:
-#   1. Устанавливает k6 из официального apt-репозитория.
-#   2. Копирует tests/chaos/ (k6/, scenarios/, lib/, run-all.sh) на хост.
-#   3. Генерирует /opt/nextalk-chaos/config.env из vault-переменных.
+# Запускается так же, как cluster-addons.yml и helm-deploy.yml — на localhost,
+# без SSH в кластер. k6 ставится в WSL/Linux, скрипты копируются локально,
+# kubectl использует тот же kubeconfig что и остальные плейбуки.
 #
 # Требования к vault:
 #   vault_k6_grafana_password  — пароль Grafana admin
-#   vault_k6_test_token        — JWT тестового пользователя для нагрузочных тестов
+#   vault_k6_test_token        — JWT тестового пользователя
 #
-# Добавить в vault (предварительно расшифровав):
+# Добавить в vault:
 #   ansible-vault edit inventory/group_vars/all/vault.yml --ask-vault-pass
 #
 # Запуск:
@@ -19,13 +18,20 @@
 # Только обновить скрипты (без переустановки k6):
 #   ansible-playbook -i inventory/hosts.ini playbooks/k6.yml --ask-vault-pass --tags scripts
 #
-# Запустить все сценарии после установки:
+# Запустить все сценарии сразу после установки:
 #   ansible-playbook -i inventory/hosts.ini playbooks/k6.yml --ask-vault-pass --tags run
 
-- name: Установка k6 и chaos-скриптов на control-plane-1
-  hosts: control_plane[0]
-  become: true
+- name: Установка k6 и chaos-скриптов локально
+  hosts: localhost
+  connection: local
   gather_facts: true
+  become: false
+  vars_files:
+    - "{{ playbook_dir }}/../inventory/group_vars/all/vault.yml"
+  vars:
+    kubeconfig: "{{ playbook_dir }}/../kubeconfig"
+    chaos_src: "{{ playbook_dir }}/../../../tests/chaos"
+    chaos_dir: "{{ k6_chaos_dir }}"
 
   pre_tasks:
     - name: Проверить, что vault-переменные заданы
@@ -37,57 +43,138 @@
           Добавь vault_k6_grafana_password и vault_k6_test_token в vault.yml:
           ansible-vault edit inventory/group_vars/all/vault.yml --ask-vault-pass
 
-  roles:
-    - role: k6
-      tags: [k6, scripts]
-
-  post_tasks:
-    - name: Проверить, что k6 установлен
-      ansible.builtin.command: k6 version
-      register: k6_check
-      changed_when: false
-      tags: [k6, smoke]
-
-    - name: Проверить наличие run-all.sh
+    - name: Проверить, что kubeconfig существует
       ansible.builtin.stat:
-        path: "{{ k6_chaos_dir }}/run-all.sh"
-      register: run_all_stat
-      tags: [k6, smoke]
+        path: "{{ kubeconfig }}"
+      register: kube_stat
 
-    - name: Провалить, если run-all.sh отсутствует
+    - name: Провалить если kubeconfig отсутствует
       ansible.builtin.fail:
-        msg: "run-all.sh не найден в {{ k6_chaos_dir }}"
-      when: not run_all_stat.stat.exists
-      tags: [k6, smoke]
-
-    - name: Вывести итог
-      ansible.builtin.debug:
-        msg:
-          - "k6: {{ k6_check.stdout }}"
-          - "Chaos dir: {{ k6_chaos_dir }}"
-          - "Запуск всех сценариев: bash {{ k6_chaos_dir }}/run-all.sh"
-          - "Один сценарий: ONLY_SCENARIO=SC-01 bash {{ k6_chaos_dir }}/run-all.sh"
-          - "Только baseline: SKIP_SPIKE=1 bash {{ k6_chaos_dir }}/run-all.sh"
-      tags: [k6, smoke]
-
-# Опциональный play: запустить run-all.sh немедленно.
-# Активируется тегом 'run': ansible-playbook ... --tags run
-- name: Запустить chaos-сценарии
-  hosts: control_plane[0]
-  become: false
-  gather_facts: false
-  tags: [run]
+        msg: "kubeconfig не найден по пути {{ kubeconfig }}. Запусти сначала playbooks/k3s.yml."
+      when: not kube_stat.stat.exists
 
   tasks:
-    - name: Запустить run-all.sh (async, 2 часа таймаут)
+    # ── Установка k6 ─────────────────────────────────────────────────────────
+    - name: Проверить, установлен ли k6
+      ansible.builtin.command: which k6
+      register: k6_which
+      failed_when: false
+      changed_when: false
+      tags: [k6]
+
+    - name: Добавить GPG-ключ k6
+      ansible.builtin.shell: |
+        gpg --no-default-keyring \
+          --keyring /usr/share/keyrings/k6-archive-keyring.gpg \
+          --keyserver hkp://keyserver.ubuntu.com:80 \
+          --recv-keys C5AD17C747E3415A3642D57D77C6C491D6AC1D69
+      become: true
+      when: k6_which.rc != 0
+      tags: [k6]
+
+    - name: Добавить apt-репозиторий k6
+      ansible.builtin.apt_repository:
+        repo: "deb [signed-by=/usr/share/keyrings/k6-archive-keyring.gpg] https://dl.k6.io/deb stable main"
+        filename: k6
+        state: present
+        update_cache: true
+      become: true
+      when: k6_which.rc != 0
+      tags: [k6]
+
+    - name: Установить k6
+      ansible.builtin.apt:
+        name: k6
+        state: present
+      become: true
+      when: k6_which.rc != 0
+      tags: [k6]
+
+    - name: Проверить версию k6
+      ansible.builtin.command: k6 version
+      register: k6_version
+      changed_when: false
+      tags: [k6]
+
+    - name: Вывести версию k6
+      ansible.builtin.debug:
+        msg: "{{ k6_version.stdout }}"
+      tags: [k6]
+
+    # ── Копирование скриптов ──────────────────────────────────────────────────
+    - name: Создать рабочую директорию
+      ansible.builtin.file:
+        path: "{{ chaos_dir }}/{{ item }}"
+        state: directory
+        mode: "0755"
+      loop: ["", "k6", "scenarios", "lib", "logs"]
+      tags: [scripts]
+
+    - name: Скопировать k6 скрипты
+      ansible.builtin.copy:
+        src: "{{ chaos_src }}/k6/"
+        dest: "{{ chaos_dir }}/k6/"
+        mode: "0644"
+      tags: [scripts]
+
+    - name: Скопировать chaos-сценарии
+      ansible.builtin.copy:
+        src: "{{ chaos_src }}/scenarios/"
+        dest: "{{ chaos_dir }}/scenarios/"
+        mode: "0755"
+      tags: [scripts]
+
+    - name: Скопировать библиотеки bash
+      ansible.builtin.copy:
+        src: "{{ chaos_src }}/lib/"
+        dest: "{{ chaos_dir }}/lib/"
+        mode: "0755"
+      tags: [scripts]
+
+    - name: Скопировать run-all.sh
+      ansible.builtin.copy:
+        src: "{{ chaos_src }}/run-all.sh"
+        dest: "{{ chaos_dir }}/run-all.sh"
+        mode: "0755"
+      tags: [scripts]
+
+    - name: Сгенерировать config.env из vault-переменных
+      ansible.builtin.template:
+        src: "{{ playbook_dir }}/../roles/k6/templates/config.env.j2"
+        dest: "{{ chaos_dir }}/config.env"
+        mode: "0600"
+      tags: [scripts]
+
+    # ── Итог ──────────────────────────────────────────────────────────────────
+    - name: Итог установки
+      ansible.builtin.debug:
+        msg:
+          - "k6: {{ k6_version.stdout }}"
+          - "Скрипты: {{ chaos_dir }}"
+          - "Запуск всех сценариев:  bash {{ chaos_dir }}/run-all.sh"
+          - "Один сценарий:          ONLY_SCENARIO=SC-01 SKIP_BASELINE=1 SKIP_SPIKE=1 bash {{ chaos_dir }}/run-all.sh"
+      tags: [k6, scripts]
+
+# ── Опциональный play: запустить сразу ───────────────────────────────────────
+- name: Запустить chaos-сценарии
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  tags: [run]
+  vars:
+    chaos_dir: "{{ k6_chaos_dir }}"
+    kubeconfig: "{{ playbook_dir }}/../kubeconfig"
+
+  tasks:
+    - name: Запустить run-all.sh
       ansible.builtin.command:
-        cmd: "bash {{ k6_chaos_dir }}/run-all.sh"
-        chdir: "{{ k6_chaos_dir }}"
+        cmd: "bash {{ chaos_dir }}/run-all.sh"
+        chdir: "{{ chaos_dir }}"
+      environment:
+        KUBECONFIG: "{{ kubeconfig }}"
+      register: chaos_run
       async: 7200
       poll: 30
-      register: chaos_run
-      environment:
-        KUBECONFIG: /etc/rancher/k3s/k3s.yaml
 
     - name: Вывести результат
       ansible.builtin.debug:
