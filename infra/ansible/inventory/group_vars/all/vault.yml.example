@@ -40,3 +40,10 @@ vault_livekit_secret_key: "REPLACE_ME"
 # Нужен только при tls.provider: letsencrypt в values.yaml.
 # При tls.provider: cloudflare (default) — не используется.
 vault_acme_email: "REPLACE_ME@nextalk.fun"
+
+# k6 / chaos-тесты (playbooks/k6.yml).
+# Пароль admin-пользователя Grafana (grafana.nextalk.fun).
+vault_k6_grafana_password: "REPLACE_ME"
+# JWT тестового пользователя для нагрузочных запросов k6.
+# Получить: скопировать из DevTools → Network → заголовок Authorization: Bearer <token>.
+vault_k6_test_token: "REPLACE_ME"
