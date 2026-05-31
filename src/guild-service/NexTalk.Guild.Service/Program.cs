@@ -6,7 +6,6 @@ using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Caching.Distributed;
 using Microsoft.Extensions.Http.Resilience;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
@@ -83,14 +82,7 @@ builder.Services.Configure<ForwardedHeadersOptions>(options =>
     options.KnownIPNetworks.Add(new IPNetwork(IPAddress.Parse("10.0.0.0"), 8));
 });
 
-var redisConnectionString = builder.Configuration.GetConnectionString("Redis")!;
 var pgConnectionString = builder.Configuration.GetConnectionString("PostgresConnection")!;
-
-builder.Services.AddStackExchangeRedisCache(opts =>
-{
-    opts.Configuration = redisConnectionString;
-    opts.InstanceName = "nextalk:";
-});
 
 builder.Services.AddDbContext<GuildDbContext>(opts =>
     opts.UseNpgsql(pgConnectionString).UseSnakeCaseNamingConvention());
@@ -323,8 +315,7 @@ builder.Services.AddSwaggerGen(c =>
 });
 
 builder.Services.AddHealthChecks()
-    .AddNpgSql(pgConnectionString, tags: ["ready"])
-    .AddRedis(redisConnectionString, tags: ["ready"]);
+    .AddNpgSql(pgConnectionString, tags: ["ready"]);
 
 var app = builder.Build();
 
@@ -421,33 +412,6 @@ app.MapHealthChecks("/readyz", new HealthCheckOptions
 }).AllowAnonymous();
 app.MapMetrics().AllowAnonymous();
 
-// multiple guild-service replicas share the same Redis db=1.
-//
-// Positive case (cache hit):  key exists → returns cached value from Redis.
-// Negative case (cache miss): key absent → origin computes value, stores in Redis,
-//                              next request (even on another pod) gets cache hit.
-app.MapGet("/guilds/probe", async (IDistributedCache cache, ILogger<Program> logger) =>
-{
-    const string key = "guild:probe";
-
-    var cached = await cache.GetStringAsync(key);
-    if (cached is not null)
-    {
-        logger.LogInformation("Cache hit for key {Key}: {Value}", key, cached);
-        return Results.Ok(new { source = "cache", value = cached });
-    }
-
-    var value = $"set by {Environment.MachineName} at {DateTimeOffset.UtcNow:O}";
-    await cache.SetStringAsync(key, value, new DistributedCacheEntryOptions
-    {
-        AbsoluteExpirationRelativeToNow = TimeSpan.FromSeconds(30)
-    });
-
-    logger.LogInformation("Cache miss for key {Key}, stored by {Instance}", key, Environment.MachineName);
-    return Results.Ok(new { source = "origin", value });
-}).ExcludeFromDescription().AllowAnonymous();
-
-
 app.Run();
 
 static void MigrateDatabase(WebApplication app)
@@ -465,7 +429,7 @@ static void MigrateDatabase(WebApplication app)
 internal sealed class ExcludeNonPublicEndpointsFilter : IDocumentFilter
 {
     private static readonly string[] ExcludedPrefixes =
-        ["/internal", "/metrics", "/healthz", "/readyz", "/guilds/probe"];
+        ["/internal", "/metrics", "/healthz", "/readyz"];
 
     public void Apply(OpenApiDocument swaggerDoc, DocumentFilterContext context)
     {

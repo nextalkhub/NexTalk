@@ -205,7 +205,7 @@ jobs:
         run: npm run lint
 
   # Docker build & push: всегда при пуше в main/deploy-k3s-ha, независимо от того что изменилось.
-  # GHA-кэш делает пересборку неизменившегося сервиса за ~30 сек — цена незначительна,
+  # GHA-кэш делает пересборку неизменившегося сервиса за ~30 сек - цена незначительна,
   # зато все образы получают одинаковый SHA-тег → helm-deploy -e image_tag=<sha> всегда консистентен.
   docker-build-push:
     needs: [build-backend-services, test-backend-services, frontend-ci]
@@ -283,7 +283,7 @@ jobs:
 
   # Скан образов на известные CVE (OS пакеты + NuGet/npm deps).
   # Запускается только после push в main, не блокирует билд на старте
-  # (exit-code: 0). Когда наберём корпус ignore'ов — поставить '1'.
+  # (exit-code: 0). Когда наберем корпус ignore'ов - поставить '1'.
   # Trivy DB ездит через OCI registry, кэшируется в GHA автоматически.
   trivy-scan:
     needs: [docker-build-push]
@@ -304,10 +304,10 @@ jobs:
 
     name: Trivy ${{ matrix.image }}
     steps:
-      # Pin на v0.36.0 — после supply-chain компрометации марта 2026 теги
+      # Pin на v0.36.0 - после supply-chain компрометации марта 2026 теги
       # 0.0.1–0.34.2 (без v-префикса) признаны небезопасными. v0.35.0 был
-      # единственным защищённым во время инцидента, v0.36.0 — текущий.
-      # Доп. безопасность — пин на full commit SHA, см. advisory:
+      # единственным защищенным во время инцидента, v0.36.0 - текущий.
+      # Доп. безопасность - пин на full commit SHA, см. advisory:
       # https://github.com/aquasecurity/trivy/security/advisories/GHSA-69fq-xp46-6x23
       - name: Run Trivy vulnerability scanner
         uses: aquasecurity/trivy-action@v0.36.0
@@ -317,7 +317,7 @@ jobs:
           output: trivy-${{ matrix.image }}.sarif
           severity: HIGH,CRITICAL
           ignore-unfixed: true
-          exit-code: '0'
+          exit-code: '1'
         env:
           TRIVY_DB_REPOSITORY: ghcr.io/aquasecurity/trivy-db:2
           TRIVY_JAVA_DB_REPOSITORY: ghcr.io/aquasecurity/trivy-java-db:1

@@ -25,12 +25,9 @@ check() {
 blue "==> k3s cluster"
 check "kubeconfig доступен"        test -f "$KUBECONFIG"
 check "apiserver отвечает"          kubectl cluster-info
-check "все ноды Ready"              bash -c "kubectl get nodes --no-headers | awk '{print \$2}' | grep -qvE 'NotReady|Unknown'"
+check "все ноды Ready"              bash -c "! kubectl get nodes --no-headers | awk '{print \$2}' | grep -qE 'NotReady|Unknown'"
 check "3 control-plane ноды"        bash -c "[ \$(kubectl get nodes -l node-role.kubernetes.io/control-plane --no-headers | wc -l) -eq 3 ]"
 check "3 worker'а"                  bash -c "[ \$(kubectl get nodes -l '!node-role.kubernetes.io/control-plane' --no-headers | wc -l) -eq 3 ]"
-
-blue "==> kube-vip"
-check "kube-vip DaemonSet running"  bash -c "kubectl -n kube-system get ds kube-vip-ds -o jsonpath='{.status.numberReady}' | grep -q '^3$'"
 
 blue "==> addons"
 check "ingress-nginx Ready"         bash -c "kubectl -n ingress-nginx get ds | grep -q ingress-nginx"
