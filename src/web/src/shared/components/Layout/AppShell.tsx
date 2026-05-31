@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useRef, useState } from 'react'
+import React, { createContext, useContext, useEffect, useState } from 'react'
 import { Outlet, useLocation } from 'react-router-dom'
 import { ServerRail } from './ServerSidebar'
 import { ChannelSidebar } from '../../../modules/channels/components/ChannelSidebar'
@@ -10,43 +10,56 @@ import { useAppDispatch } from '../../../store'
 import { fetchServers } from '../../slices/serverSlice'
 import { logout } from '../../slices/authSlice'
 import { VoiceSessionProvider } from '../../contexts/VoiceContext'
+import { useIsPhone } from '../../hooks/useBreakpoint'
+import { useSwipe } from '../../hooks/useSwipe'
 
 interface LayoutCtx {
   hideRight: boolean
   setHideRight: (v: boolean) => void
-  mobileNavOpen: boolean
-  setMobileNavOpen: (v: boolean) => void
-  mobileRightOpen: boolean
-  setMobileRightOpen: (v: boolean) => void
+  drawerOpen: boolean
+  setDrawerOpen: (v: boolean) => void
+  membersOpen: boolean
+  setMembersOpen: (v: boolean) => void
 }
 
 // eslint-disable-next-line react-refresh/only-export-components
 export const LayoutContext = createContext<LayoutCtx>({
   hideRight: false, setHideRight: () => {},
-  mobileNavOpen: false, setMobileNavOpen: () => {},
-  mobileRightOpen: false, setMobileRightOpen: () => {},
+  drawerOpen: false, setDrawerOpen: () => {},
+  membersOpen: false, setMembersOpen: () => {},
 })
 // eslint-disable-next-line react-refresh/only-export-components
 export const useLayout = () => useContext(LayoutContext)
-
-const MOBILE_BP = 768
 
 const ShellInner: React.FC = () => {
   const dispatch = useAppDispatch()
   const location = useLocation()
   const [hideRight, setHideRight] = useState(false)
-  const [mobileNavOpen, setMobileNavOpen] = useState(false)
-  const [mobileRightOpen, setMobileRightOpen] = useState(false)
+  const [drawerOpen, setDrawerOpen] = useState(false)
+  const [membersOpen, setMembersOpen] = useState(false)
   const { modal, close } = useGlobalModal()
   const [logoutLoading, setLogoutLoading] = useState(false)
-  const touchStartX = useRef(0)
+  const isPhone = useIsPhone()
 
   useEffect(() => { dispatch(fetchServers()) }, [dispatch])
 
-  // Закрывать nav-drawer при смене маршрута
   useEffect(() => {
-    setMobileNavOpen(false)
+    setDrawerOpen(false)
+    setMembersOpen(false)
   }, [location.pathname])
+
+  useEffect(() => {
+    if (drawerOpen || membersOpen) {
+      document.body.style.overflow = 'hidden'
+      return () => { document.body.style.overflow = '' }
+    }
+  }, [drawerOpen, membersOpen])
+
+  useSwipe({
+    enabled: isPhone,
+    onSwipeRight: () => !membersOpen && setDrawerOpen(true),
+    onSwipeLeft:  () => drawerOpen && setDrawerOpen(false),
+  })
 
   const handleLogout = async () => {
     setLogoutLoading(true)
@@ -58,48 +71,29 @@ const ShellInner: React.FC = () => {
     }
   }
 
-  const handleTouchStart = (e: React.TouchEvent) => {
-    touchStartX.current = e.touches[0].clientX
-  }
-
-  const handleTouchEnd = (e: React.TouchEvent) => {
-    const dx = e.changedTouches[0].clientX - touchStartX.current
-    if (dx > 60 && touchStartX.current < 40 && !mobileNavOpen) {
-      setMobileNavOpen(true)
-    } else if (dx < -60 && mobileNavOpen) {
-      setMobileNavOpen(false)
-    }
-  }
-
   const closeAll = () => {
-    setMobileNavOpen(false)
-    setMobileRightOpen(false)
+    setDrawerOpen(false)
+    setMembersOpen(false)
   }
 
   const appClass = [
-    'app',
+    'app-shell',
     hideRight ? 'no-right' : '',
-    mobileNavOpen ? 'mobile-nav-open' : '',
-    mobileRightOpen ? 'mobile-right-open' : '',
+    drawerOpen ? 'is-drawer-open' : '',
+    membersOpen ? 'is-members-open' : '',
   ].filter(Boolean).join(' ')
 
   return (
-    <LayoutContext.Provider value={{ hideRight, setHideRight, mobileNavOpen, setMobileNavOpen, mobileRightOpen, setMobileRightOpen }}>
-      <div
-        className={appClass}
-        onTouchStart={window.innerWidth <= MOBILE_BP ? handleTouchStart : undefined}
-        onTouchEnd={window.innerWidth <= MOBILE_BP ? handleTouchEnd : undefined}
-      >
-        {/* drawer-wrap: display:contents на desktop → rail и side в grid.
-            На mobile: position:fixed flex-контейнер → drawer. */}
-        <div className="drawer-wrap">
-          <ServerRail />
-          <ChannelSidebar />
-        </div>
-
-        <div className="mobile-backdrop" onClick={closeAll} />
+    <LayoutContext.Provider value={{ hideRight, setHideRight, drawerOpen, setDrawerOpen, membersOpen, setMembersOpen }}>
+      <div className={appClass}>
+        <ServerRail />
+        <ChannelSidebar />
 
         <Outlet />
+
+        {(drawerOpen || membersOpen) && (
+          <div className="mobile-backdrop" onClick={closeAll} />
+        )}
       </div>
       <ReconnectBanner />
 

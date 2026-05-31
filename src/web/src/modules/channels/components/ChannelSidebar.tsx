@@ -12,6 +12,7 @@ import { selectUser } from '../../../shared/slices/authSlice'
 import { CreateChannelModal } from './CreateChannelModal'
 import { useSidebarResize } from '../../../shared/hooks/useSidebarResize'
 import { pluralMembers } from '../../../shared/utils/format'
+import { useLayout } from '../../../shared/components/Layout/AppShell'
 
 import type { Channel } from '../../../shared/types'
 
@@ -30,6 +31,7 @@ export const ChannelSidebar: React.FC = () => {
   const onlineSet = useAppSelector(state => state.presence.online)
   const user = useAppSelector(selectUser)
   const { onMouseDown: onResizeMouseDown } = useSidebarResize()
+  const { setDrawerOpen } = useLayout()
 
   const {
     activeChannelId: voiceChannelId,
@@ -73,6 +75,7 @@ export const ChannelSidebar: React.FC = () => {
 
   const handleChannelClick = (ch: Channel) => {
     dispatch(setCurrentChannel(ch.id))
+    setDrawerOpen(false)
     if (ch.type === 'text') {
       navigate(`/servers/${serverId}/channels/${ch.id}`)
     } else {

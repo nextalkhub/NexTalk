@@ -1,0 +1,430 @@
+/* Mobile adaptation for NexTalk web app.
+   Append to global.scss (after existing styles).
+
+   Strategy:
+   - Tablet (< 1024px): hide MembersSidebar by default, show via TopBar toggle
+   - Phone (< 768px): switch shell to single-column with drawer + bottom sheet
+   - Touch targets bumped to 44px minimum
+   - Composer font-size 16px to prevent iOS zoom-on-focus
+   - Safe-area insets respected via env(safe-area-inset-*)              */
+
+/* ============================================================
+   Tablet breakpoint — collapse the right rail
+   ============================================================ */
+
+@media (max-width: 1024px) {
+  .app-shell {
+    grid-template-columns: 64px var(--side-w, 240px) 1fr 0;
+  }
+  .app-shell .right {
+    display: none;
+  }
+  .app-shell.is-members-open .right {
+    display: flex;
+    position: fixed;
+    right: 0;
+    top: 56px;
+    bottom: 0;
+    width: 320px;
+    z-index: 50;
+    box-shadow: -20px 0 40px -20px rgba(0, 0, 0, 0.5);
+    animation: members-slide-in 0.22s ease;
+  }
+}
+@keyframes members-slide-in {
+  from { transform: translateX(100%); }
+  to   { transform: translateX(0); }
+}
+
+/* ============================================================
+   Phone breakpoint — full mobile mode
+   ============================================================ */
+
+@media (max-width: 768px) {
+  :root {
+    --m-safe-top: env(safe-area-inset-top, 0px);
+    --m-safe-bot: env(safe-area-inset-bottom, 0px);
+    --m-tap: 44px;
+  }
+
+  /* ----- Disable text selection on chrome elements ----- */
+  .app-shell, .top, .side, .rail, .right {
+    -webkit-tap-highlight-color: transparent;
+    user-select: none;
+  }
+  .chat-scroll, .m-msg-text, .composer-input {
+    user-select: text;
+  }
+
+  /* ----- App shell becomes single column ----- */
+  .app-shell {
+    grid-template-columns: 1fr !important;
+    grid-template-rows: 52px 1fr !important;
+    grid-template-areas:
+      "top"
+      "main" !important;
+  }
+  .app-shell .rail,
+  .app-shell .side {
+    display: none;
+  }
+  /* When drawer is open, show rail+side as overlay */
+  .app-shell.is-drawer-open .rail,
+  .app-shell.is-drawer-open .side {
+    display: flex;
+    position: fixed;
+    top: 0;
+    bottom: 0;
+    z-index: 60;
+    height: 100vh;
+    height: 100dvh;
+  }
+  .app-shell.is-drawer-open .rail {
+    left: 0;
+    width: 64px;
+    animation: drawer-slide-in 0.28s cubic-bezier(.4, 0, .2, 1);
+  }
+  .app-shell.is-drawer-open .side {
+    left: 64px;
+    width: calc(100vw - 64px - 40px); /* keep peek of backdrop */
+    max-width: 320px;
+    animation: drawer-slide-in 0.28s cubic-bezier(.4, 0, .2, 1);
+  }
+  @keyframes drawer-slide-in {
+    from { transform: translateX(-100%); }
+    to   { transform: translateX(0); }
+  }
+
+  /* ----- Mobile backdrop ----- */
+  .mobile-backdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.55);
+    z-index: 55;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.22s;
+  }
+  .app-shell.is-drawer-open .mobile-backdrop,
+  .app-shell.is-members-open .mobile-backdrop {
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+  /* ----- Top bar compact ----- */
+  .top {
+    height: 52px !important;
+    padding: 0 6px !important;
+    padding-top: var(--m-safe-top);
+    height: calc(52px + var(--m-safe-top)) !important;
+  }
+  .top-left { gap: 8px; }
+  .top-channel-title { font-size: 16px !important; }
+  .top-topic { display: none; } /* topic moves into sheet */
+  .top-search { display: none; }
+  .top-actions .icon-btn,
+  .top .icon-btn,
+  .top button {
+    min-width: 44px;
+    min-height: 44px;
+  }
+
+  /* ----- Show hamburger on phone only ----- */
+  .top .mobile-menu-btn { display: inline-flex !important; }
+  .top .mobile-back-btn { display: inline-flex; }
+
+  /* ----- Chat ----- */
+  .chat-scroll {
+    padding: 14px 12px 8px !important;
+  }
+  .msg-row {
+    grid-template-columns: 36px 1fr !important;
+    gap: 8px !important;
+  }
+  .msg-avatar { width: 32px !important; height: 32px !important; }
+  .msg-author-name { font-size: 14px !important; }
+  .msg-text { font-size: 14.5px !important; }
+
+  /* ----- Composer ----- */
+  .composer {
+    padding: 8px 10px !important;
+    padding-bottom: max(8px, var(--m-safe-bot)) !important;
+    border-radius: 0 !important;
+    background: var(--bg-2) !important;
+    border-top: 1px solid var(--bd-1);
+    border-left: 0 !important;
+    border-right: 0 !important;
+    border-bottom: 0 !important;
+    margin: 0 !important;
+  }
+  .composer-input,
+  .composer textarea {
+    font-size: 16px !important; /* prevents iOS zoom on focus */
+    min-height: 40px;
+    max-height: 120px;
+  }
+  .composer-send,
+  .composer .send-btn {
+    width: 40px !important;
+    height: 40px !important;
+    border-radius: 12px !important;
+  }
+  .composer-attach,
+  .composer .attach-btn {
+    width: 40px !important;
+    height: 40px !important;
+    border-radius: 12px !important;
+  }
+
+  /* Hide composer extras that need more room */
+  .composer .emoji-btn,
+  .composer .gif-btn,
+  .composer .upload-multi {
+    display: none;
+  }
+
+  /* ----- Voice stage ----- */
+  .voice-stage {
+    padding: 14px 14px 0 !important;
+  }
+  .voice-grid {
+    grid-template-columns: 1fr 1fr !important;
+    gap: 10px !important;
+  }
+  .voice-tile {
+    aspect-ratio: 1 !important;
+    border-radius: 18px !important;
+    padding: 12px !important;
+  }
+  .voice-tile .av {
+    width: 56px !important;
+    height: 56px !important;
+    font-size: 20px !important;
+  }
+  .voice-tile-name { font-size: 13px !important; }
+  .voice-dock {
+    flex-wrap: wrap;
+    gap: 8px !important;
+    padding: 12px 14px !important;
+    padding-bottom: max(12px, var(--m-safe-bot)) !important;
+  }
+  .voice-dock .ctrl {
+    width: 48px !important;
+    height: 48px !important;
+    border-radius: 14px !important;
+  }
+  .voice-dock .leave {
+    flex: 1;
+    min-width: 140px;
+  }
+
+  /* ----- Members panel as bottom sheet ----- */
+  .app-shell .right {
+    position: fixed !important;
+    left: 0 !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    top: auto !important;
+    width: 100vw !important;
+    height: 78vh;
+    height: 78dvh;
+    border-left: 0 !important;
+    border-top: 1px solid var(--bd-1);
+    border-radius: 22px 22px 0 0 !important;
+    z-index: 60;
+    transform: translateY(100%);
+    transition: transform 0.28s cubic-bezier(.4, 0, .2, 1);
+    box-shadow: 0 -20px 40px -10px rgba(0, 0, 0, 0.5);
+  }
+  .app-shell.is-members-open .right {
+    display: flex !important;
+    transform: translateY(0) !important;
+    animation: none !important;
+  }
+  .app-shell.is-members-open .right::before {
+    content: "";
+    position: absolute;
+    top: 8px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 36px;
+    height: 4px;
+    background: var(--bd-3);
+    border-radius: 999px;
+  }
+  .members-section-h,
+  .right .right-tabs {
+    padding-top: 18px;
+  }
+
+  /* ----- Settings layout collapses ----- */
+  .settings-layout {
+    grid-template-columns: 1fr !important;
+  }
+  .settings-nav {
+    border-right: 0 !important;
+    border-bottom: 1px solid var(--bd-1);
+    padding: 8px 10px 12px !important;
+  }
+  .settings-nav-h:first-of-type { padding-top: 14px; }
+  .settings-nav-item {
+    min-height: 44px;
+    font-size: 14.5px !important;
+  }
+  .settings-content {
+    padding: 24px 18px 32px !important;
+  }
+  .settings-section-head h1 {
+    font-size: 22px !important;
+  }
+  .settings-row {
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+  .settings-row .info { max-width: 100% !important; }
+
+  /* ----- Data tables → cards on phone ----- */
+  .data-table .dt-head { display: none; }
+  .data-table .dt-row {
+    display: grid !important;
+    grid-template-columns: auto 1fr auto !important;
+    grid-template-rows: auto auto;
+    grid-template-areas:
+      "av  main actions"
+      ".   meta meta" !important;
+    gap: 4px 12px !important;
+    padding: 14px 14px !important;
+  }
+  .data-table .dt-row > *:first-child { grid-area: av; }
+  .data-table .dt-row > *:nth-child(2) { grid-area: main; }
+  .data-table .dt-row > *:nth-child(3),
+  .data-table .dt-row > *:nth-child(4) { grid-area: meta; font-size: 12px; color: var(--fg-2); }
+  .data-table .dt-row .row-actions { grid-area: actions; }
+
+  /* ----- Modals on phone — slide-up sheet ----- */
+  .modal-backdrop {
+    align-items: flex-end !important;
+    padding: 0 !important;
+  }
+  .modal {
+    width: 100% !important;
+    max-width: 100% !important;
+    border-radius: 22px 22px 0 0 !important;
+    max-height: 92vh;
+    max-height: 92dvh;
+    overflow-y: auto;
+    padding-bottom: max(20px, var(--m-safe-bot));
+    animation: modal-up-in 0.28s cubic-bezier(.4, 0, .2, 1) !important;
+  }
+  @keyframes modal-up-in {
+    from { transform: translateY(100%); }
+    to   { transform: translateY(0); }
+  }
+  .modal::before {
+    content: "";
+    display: block;
+    width: 36px;
+    height: 4px;
+    background: var(--bd-3);
+    border-radius: 999px;
+    margin: 8px auto 0;
+  }
+  .modal-head { padding-top: 14px !important; }
+  .modal-foot {
+    flex-direction: column-reverse;
+    gap: 8px !important;
+  }
+  .modal-foot button {
+    width: 100%;
+    height: 48px;
+    border-radius: 12px;
+  }
+  .modal .radio-cards {
+    grid-template-columns: 1fr !important;
+  }
+
+  /* ----- Auth & invite ----- */
+  .auth-page {
+    padding: 0 !important;
+    align-items: stretch !important;
+  }
+  .auth-card {
+    width: 100% !important;
+    max-width: 100% !important;
+    height: 100vh;
+    height: 100dvh;
+    border-radius: 0 !important;
+    border: 0 !important;
+    padding: 40px 22px !important;
+    padding-top: calc(40px + var(--m-safe-top)) !important;
+    padding-bottom: calc(40px + var(--m-safe-bot)) !important;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+  }
+  .invite-card { justify-content: flex-start; }
+  .invite-banner {
+    margin: -40px -22px 24px !important;
+    border-radius: 0 !important;
+  }
+  .invite-actions {
+    flex-direction: column-reverse;
+    gap: 10px;
+  }
+  .invite-actions button { width: 100%; height: 48px; }
+
+  /* ----- Home page ----- */
+  .home {
+    padding: 24px 18px !important;
+  }
+  .home-mark {
+    width: 84px !important;
+    height: 84px !important;
+    font-size: 36px !important;
+    border-radius: 24px !important;
+  }
+  .home h1 { font-size: 28px !important; }
+  .home-cards {
+    grid-template-columns: 1fr !important;
+    gap: 10px !important;
+  }
+  .home-card {
+    padding: 16px !important;
+    flex-direction: row !important;
+    align-items: center !important;
+    text-align: left !important;
+  }
+  .home-card-icon {
+    width: 44px !important;
+    height: 44px !important;
+  }
+
+  /* ----- Profile ----- */
+  .profile-shell {
+    padding: 0 !important;
+  }
+  .profile-card-big {
+    max-width: 100% !important;
+    border-radius: 0 !important;
+    border-left: 0 !important;
+    border-right: 0 !important;
+  }
+  .profile-field {
+    grid-template-columns: 1fr !important;
+    gap: 4px !important;
+  }
+
+  /* ----- System pages ----- */
+  .system-page {
+    padding: 24px !important;
+  }
+  .system-code { font-size: 88px !important; }
+}
+
+/* ============================================================
+   Hide mobile-only buttons by default; show only at <= 768px
+   ============================================================ */
+.mobile-menu-btn,
+.mobile-back-btn {
+  display: none;
+}

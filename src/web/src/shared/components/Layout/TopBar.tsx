@@ -5,8 +5,7 @@ import { useAppSelector } from '../../../store'
 import { selectCurrentServer } from '../../slices/serverSlice'
 import { useGlobalModal } from './ModalProvider'
 import { useLayout } from './AppShell'
-
-const MOBILE_BP = 768
+import { MobileMenuButton } from './MobileMenuButton'
 
 interface TopBarProps {
   showMembers: boolean
@@ -19,7 +18,7 @@ export const TopBar: React.FC<TopBarProps> = ({ showMembers, onToggleMembers }) 
   const currentServer = useAppSelector(selectCurrentServer)
   const channels = useAppSelector(state => state.channels.channels)
   const { open } = useGlobalModal()
-  const { mobileNavOpen, setMobileNavOpen, mobileRightOpen, setMobileRightOpen } = useLayout()
+  const { drawerOpen, setDrawerOpen, membersOpen, setMembersOpen } = useLayout()
   const [logoutFallback, setLogoutFallback] = useState(false)
 
   const channel = channels.find(c => c.id === channelId)
@@ -33,24 +32,18 @@ export const TopBar: React.FC<TopBarProps> = ({ showMembers, onToggleMembers }) 
   }
 
   const handleMembersClick = () => {
-    if (window.innerWidth <= MOBILE_BP) {
-      setMobileRightOpen(!mobileRightOpen)
+    if (window.innerWidth <= 768) {
+      setMembersOpen(!membersOpen)
     } else {
       onToggleMembers()
     }
   }
 
-  const membersActive = window.innerWidth <= MOBILE_BP ? mobileRightOpen : showMembers
+  const membersActive = window.innerWidth <= 768 ? membersOpen : showMembers
 
   return (
     <header className="top">
-      <button
-        className="top-menu-btn"
-        title="Меню"
-        onClick={() => setMobileNavOpen(!mobileNavOpen)}
-      >
-        <IMenu />
-      </button>
+      <MobileMenuButton onClick={() => setDrawerOpen(!drawerOpen)} />
       <div className="top-left">
         <div className="top-breadcrumb">
           {currentServer && (
@@ -91,14 +84,6 @@ export const TopBar: React.FC<TopBarProps> = ({ showMembers, onToggleMembers }) 
     </header>
   )
 }
-
-const IMenu: React.FC = () => (
-  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <line x1="3" y1="6" x2="21" y2="6"/>
-    <line x1="3" y1="12" x2="21" y2="12"/>
-    <line x1="3" y1="18" x2="21" y2="18"/>
-  </svg>
-)
 
 const IChevRightInline: React.FC = () => (
   <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
