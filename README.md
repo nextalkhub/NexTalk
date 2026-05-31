@@ -224,7 +224,7 @@ helm uninstall nextalk -n nextalk      # через Helm
 | **Loki** | Хранение и поиск логов; cross-link с Tempo через TraceId/SpanId |
 
 Архитектура логирования: [docs/observability-logs.md](docs/observability-logs.md)  
-Grafana дашборд: [grafana/nextalk-dashboard.json](grafana/nextalk-dashboard.json)
+Grafana дашборд: [infra/observability/grafana/provisioning/dashboards/nextalk-overview.json](infra/observability/grafana/provisioning/dashboards/nextalk-overview.json)
 
 ---
 
@@ -268,6 +268,13 @@ SKIP_BASELINE=1 SKIP_SPIKE=1 bash /opt/nextalk-chaos/run-all.sh
 | SC-05 | messaging-service 0→1→3→1 под companion-нагрузкой |
 | SC-06 | Cordon cp-2 → etcd-кворум сохранен, API доступен |
 | SC-07 | Rolling restart всех deployment'ов → zero downtime |
+| SC-08 | PostgreSQL restart → сервисы переподключаются автоматически |
+| SC-09 | ws-gateway scale=0 → PresenceMonitor чистит stale данные, OutboxWorker копит события |
+| SC-10 | messaging-service падает, ws-gateway жив → outbox flush после восстановления |
+| SC-11 | Redis outage 60s → ws-gateway CrashLoopBackOff → rollout restart после Redis |
+| SC-12 | LiveKit scale=0 → guild/messaging не затронуты, voice-service pods не крашатся |
+| SC-13 | guild-service падает → новые WS-соединения невозможны, существующие живут |
+| SC-14 | Drain worker-ноды → поды эвакуируются, после uncordon все healthy |
 | SC-08 | PostgreSQL restart → сервисы переподключаются автоматически |
 | SC-09 | ws-gateway scale=0 → PresenceMonitor чистит stale данные, OutboxWorker копит события |
 | SC-10 | messaging-service падает, ws-gateway жив → outbox flush после восстановления |
@@ -462,7 +469,7 @@ docker-compose → k8s. Те же Docker-образы, другой оркест
 | 5 | **Voice Service** | ASP.NET | LiveKit-токены, управление комнатами |
 | 6 | **Zitadel** | Go | IdP: OIDC, регистрация, логин, JWT |
 | 7 | **PostgreSQL** | PostgreSQL 17 | 2 схемы (guild, messaging) + БД Zitadel |
-| 8 | **Redis** | Redis | Distributed cache (Guild Service) |
+| 8 | **Redis** | Redis | SignalR backplane (WS Gateway), voice sessions, presence/activity |
 | 9 | **LiveKit** | Go | SFU + встроенный TURN |
 | 10 | **Prometheus** | Prometheus | Сбор метрик /metrics |
 | 11 | **Grafana** | Grafana | Дашборды, визуализация |
@@ -659,12 +666,19 @@ docker-compose → k8s. Те же Docker-образы, другой оркест
 |`POST`|`/api/guilds/{guildId}/channels`|Создать канал|
 |`GET`|`/api/guilds/{guildId}/channels`|Список каналов|
 |`DELETE`|`/api/guilds/{guildId}/channels/{channelId}`|Удалить канал (Owner/Admin)|
+|`PATCH`|`/api/guilds/{guildId}`|Обновить название сервера (Owner)|
+|`PATCH`|`/api/guilds/{guildId}/channels/{channelId}`|Переименовать канал (Owner/Admin)|
 |`POST`|`/api/guilds/{guildId}/invites`|Создать инвайт|
+|`GET`|`/api/guilds/{guildId}/invites`|Список инвайтов|
+|`DELETE`|`/api/guilds/{guildId}/invites/{code}`|Удалить инвайт|
+|`GET`|`/api/invites/{code}`|Информация об инвайте (предпросмотр сервера)|
 |`POST`|`/api/invites/{code}/accept`|Принять инвайт|
 |`GET`|`/api/guilds/{guildId}/members`|Список участников|
 |`PUT`|`/api/guilds/{guildId}/members/{userId}/role`|Назначить роль|
 |`DELETE`|`/api/guilds/{guildId}/members/{userId}`|Кик участника|
 |`POST`|`/api/guilds/{guildId}/members/{userId}/ban`|Бан участника|
+|`GET`|`/api/guilds/{guildId}/bans`|Список банов|
+|`DELETE`|`/api/guilds/{guildId}/bans/{userId}`|Разбанить участника|
 
 #### Internal эндпоинты
 
@@ -730,7 +744,7 @@ Outbox Pattern: в одной транзакции `INSERT message + INSERT out
 |`DELETE`|`/internal/voice/{userId}/disconnect`|Принудительное отключение пользователя (при бане)|
 |`DELETE`|`/internal/voice/channel/{channelId}/disconnect-all`|Отключить всех из комнаты (при удалении канала)|
 
-Генерирует JWT для LiveKit. Управляет комнатами через LiveKit Server API. In-memory SessionStore (ConcurrentDictionary). Нет собственной схемы БД.
+Генерирует JWT для LiveKit. Управляет комнатами через LiveKit Server API. RedisSessionStore (Hash+Set, DB=3, TTL=8h) — stateless при N репликах. Нет собственной схемы БД.
 
 ---
 
@@ -899,8 +913,8 @@ Polly Circuit Breaker на каждом `HttpClient`:
 
 | Данные                 | Где                                 | Зачем                |
 | ---------------------- | ----------------------------------- | -------------------- |
-| Presence (кто онлайн)  | WS Gateway, ConcurrentDictionary    | Heartbeat TTL        |
-| Voice sessions         | Voice Service, ConcurrentDictionary | Кто в каких каналах  |
+| Presence (кто онлайн)  | WS Gateway, Redis DB=2 (sorted set) | Heartbeat TTL        |
+| Voice sessions         | Voice Service, Redis DB=3 (hash+set)| Кто в каких каналах  |
 | Rate Limiting counters | Каждый сервис, in-memory            | Per-user ограничение |
 | Circuit Breaker state  | Polly in-memory                     | Состояние CB         |
 
@@ -953,7 +967,7 @@ Polly Circuit Breaker на каждом `HttpClient`:
 - Последние 50 сообщений + cursor-pagination вверх
 - При потере WS - banner "Соединение потеряно. Обновите страницу (F5)"
 - Аватары - первая буква имени, цвет по хэшу userId
-- Desktop only (CSS Grid, без мобильного адаптива)
+- Мобильная адаптация: drawer, swipe-жесты, safe-area, breakpoint-aware layout
 - Логин/регистрация - UI Zitadel (кастомизация цветов/лого)
 
 ---
