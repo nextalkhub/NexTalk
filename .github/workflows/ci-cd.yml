@@ -298,24 +298,25 @@ jobs:
       # единственным защищенным во время инцидента, v0.36.0 - текущий.
       # Доп. безопасность - пин на full commit SHA, см. advisory:
       # https://github.com/aquasecurity/trivy/security/advisories/GHSA-69fq-xp46-6x23
+      # Сначала table — видно CVE в логах CI даже когда следующий шаг упадет
+      - name: Trivy table output (видно в логах)
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          image-ref: ${{ env.IMAGE_PREFIX }}/${{ matrix.image }}:latest
+          format: table
+          severity: HIGH,CRITICAL
+          ignore-unfixed: true
+          exit-code: '0'
+        env:
+          TRIVY_DB_REPOSITORY: ghcr.io/aquasecurity/trivy-db:2
+          TRIVY_JAVA_DB_REPOSITORY: ghcr.io/aquasecurity/trivy-java-db:1
+
       - name: Run Trivy vulnerability scanner
         uses: aquasecurity/trivy-action@v0.36.0
         with:
           image-ref: ${{ env.IMAGE_PREFIX }}/${{ matrix.image }}:latest
           format: sarif
           output: trivy-${{ matrix.image }}.sarif
-          severity: HIGH,CRITICAL
-          ignore-unfixed: true
-          exit-code: '1'
-        env:
-          TRIVY_DB_REPOSITORY: ghcr.io/aquasecurity/trivy-db:2
-          TRIVY_JAVA_DB_REPOSITORY: ghcr.io/aquasecurity/trivy-java-db:1
-
-      - name: Trivy table output (видно в логах)
-        uses: aquasecurity/trivy-action@v0.36.0
-        with:
-          image-ref: ${{ env.IMAGE_PREFIX }}/${{ matrix.image }}:latest
-          format: table
           severity: HIGH,CRITICAL
           ignore-unfixed: true
           exit-code: '1'
