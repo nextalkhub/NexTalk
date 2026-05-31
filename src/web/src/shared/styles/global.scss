@@ -91,8 +91,11 @@ a { color: inherit; text-decoration: none; }
   grid-template-columns: var(--rail-w) var(--side-w) 1fr var(--right-w);
   grid-template-rows: var(--topbar-h) 1fr;
   grid-template-areas: "rail side top top" "rail side main right";
-  height: 100vh; width: 100vw;
+  /* 100dvh = dynamic viewport; collapses correctly when mobile browser chrome appears */
+  height: 100dvh;
+  width: 100%;
   background: var(--bg-0);
+  overflow: hidden;
 }
 .app-shell.no-right { grid-template-columns: var(--rail-w) var(--side-w) 1fr 0; }
 .app-shell.no-right .right { display: none; }
@@ -247,7 +250,19 @@ a { color: inherit; text-decoration: none; }
 .members-summary-count { display: flex; align-items: center; gap: 6px; font-size: 12.5px; color: var(--fg-2); }
 
 /* === Avatars & dots === */
-.av { display: inline-flex; align-items: center; justify-content: center; border-radius: 999px; font-family: var(--font-mono); font-weight: 600; color: white; flex-shrink: 0; user-select: none; }
+.av {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  aspect-ratio: 1;
+  font-family: var(--font-mono);
+  font-weight: 600;
+  color: white;
+  flex-shrink: 0;
+  user-select: none;
+  overflow: hidden;
+}
 .dot { width: 8px; height: 8px; border-radius: 999px; background: var(--fg-3); display: inline-block; flex-shrink: 0; }
 .dot.online  { background: var(--ok);  box-shadow: 0 0 10px rgba(52,211,153,.5); }
 .dot.idle    { background: var(--warn); }
@@ -333,25 +348,91 @@ a { color: inherit; text-decoration: none; }
 .composer-foot kbd { background: rgba(255,255,255,.06); border: 1px solid var(--bd-1); border-radius: 4px; padding: 1px 5px; font-family: var(--font-mono); font-size: 10px; color: var(--fg-2); }
 
 /* === Voice stage === */
-.voice-stage { flex: 1; display: flex; flex-direction: column; padding: 24px; background: radial-gradient(800px 400px at 50% 30%,rgba(var(--brand-1-rgb),.08),transparent 70%), var(--bg-3); min-height: 0; }
-.voice-stage-meta { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
-.voice-stage-meta-left { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; }
-.voice-stage-meta h2 { font-family: var(--font-display); font-weight: 600; font-size: 18px; letter-spacing: -.01em; }
-.voice-stage-meta-stats { display: flex; gap: 6px; }
+.voice-stage {
+  flex: 1;
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+  gap: clamp(10px, 1.6vw, 16px);
+  padding: clamp(12px, 2vw, 24px);
+  background: radial-gradient(800px 400px at 50% 30%,rgba(var(--brand-1-rgb),.08),transparent 70%), var(--bg-3);
+  min-height: 0;
+  overflow: hidden;
+}
+.voice-stage-meta { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; }
+.voice-stage-meta-left { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; min-width: 0; }
+.voice-stage-meta h2 { font-family: var(--font-display); font-weight: 600; font-size: clamp(16px, 1.4vw, 20px); letter-spacing: -.01em; }
+.voice-stage-meta-stats { display: flex; gap: 6px; flex-wrap: wrap; }
 
-.voice-grid { flex: 1; display: grid; grid-template-columns: repeat(auto-fit,minmax(220px,1fr)); grid-auto-rows: 1fr; gap: 12px; min-height: 0; }
-.voice-tile { background: linear-gradient(180deg,var(--bg-4),var(--bg-3)); border: 1px solid var(--bd-2); border-radius: var(--r-xl); padding: 20px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; position: relative; overflow: hidden; transition: border-color .2s, transform .2s; min-height: 180px; }
-.voice-tile.is-speaking { border-color: rgba(52,211,153,.55); box-shadow: 0 0 0 2px rgba(52,211,153,.18),0 12px 30px -16px rgba(52,211,153,.35); }
-.voice-tile.is-speaking::before { content: ""; position: absolute; inset: 0; background: radial-gradient(circle at 50% 60%,rgba(52,211,153,.12),transparent 60%); pointer-events: none; animation: pulse-glow 2s ease-in-out infinite; }
+/* Tiles auto-arrange by viewport width.
+   :has(:only-child) centres a solo participant.
+   No aspect-ratio — tiles size to content so controls never overflow. */
+.voice-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(220px, 100%), 1fr));
+  grid-auto-rows: minmax(clamp(140px, 24vh, 200px), 1fr);
+  gap: clamp(8px, 1.2vw, 14px);
+  overflow-y: auto;
+  align-content: start;
+  min-height: 0;
+}
+.voice-grid:has(> .voice-tile:only-child) {
+  grid-template-columns: minmax(0, min(420px, 100%));
+  justify-content: center;
+}
+
+.voice-tile {
+  background: linear-gradient(180deg,var(--bg-4),var(--bg-3));
+  border: 1px solid var(--bd-2);
+  border-radius: var(--r-xl);
+  padding: clamp(14px, 2vw, 24px);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  position: relative;
+  overflow: hidden;
+  transition: border-color .2s, transform .2s;
+  min-height: 140px;
+}
+.voice-tile.is-speaking {
+  border-color: rgba(52,211,153,.55);
+  box-shadow: 0 0 0 2px rgba(52,211,153,.18),0 12px 30px -16px rgba(52,211,153,.35);
+}
+.voice-tile.is-speaking::before {
+  content: ""; position: absolute; inset: 0;
+  background: radial-gradient(circle at 50% 60%,rgba(52,211,153,.12),transparent 60%);
+  pointer-events: none; animation: pulse-glow 2s ease-in-out infinite;
+}
 @keyframes pulse-glow { 0%,100% { opacity: .7; } 50% { opacity: 1; } }
-.voice-tile .av { width: 84px; height: 84px; border-radius: 999px; font-size: 28px; font-weight: 700; box-shadow: 0 0 0 3px transparent; z-index: 1; }
+
+.voice-tile .av {
+  width: clamp(48px, 8vw, 84px);
+  height: clamp(48px, 8vw, 84px);
+  border-radius: 50%;
+  font-size: clamp(18px, 2.4vw, 28px);
+  font-weight: 700;
+  box-shadow: 0 0 0 3px transparent;
+  z-index: 1;
+}
 .voice-tile.is-speaking .av { box-shadow: 0 0 0 3px var(--ok); }
 .voice-tile.is-self.is-speaking .av { box-shadow: 0 0 0 3px var(--brand-1); }
-.voice-tile-name { font-family: var(--font-display); font-weight: 600; font-size: 15px; z-index: 1; }
+.voice-tile-name {
+  font-family: var(--font-display); font-weight: 600;
+  font-size: clamp(12px, 1vw, 15px);
+  z-index: 1; text-align: center; max-width: 100%;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  padding: 0 8px;
+}
 .voice-tile-tags { display: flex; gap: 6px; z-index: 1; }
-.voice-tile-indicator { position: absolute; top: 12px; right: 12px; display: flex; gap: 4px; z-index: 1; }
-.voice-tile-indicator .ind { width: 24px; height: 24px; border-radius: 999px; background: rgba(0,0,0,.55); display: inline-flex; align-items: center; justify-content: center; font-size: 12px; }
-.voice-tile-indicator .ind.muted { color: var(--live); border-color: rgba(255,90,110,.3); }
+.voice-tile-indicator { position: absolute; top: 10px; right: 10px; display: flex; gap: 4px; z-index: 1; }
+.voice-tile-indicator .ind {
+  width: 24px; height: 24px; border-radius: 999px;
+  background: rgba(0,0,0,.55);
+  display: inline-flex; align-items: center; justify-content: center;
+  font-size: 12px;
+}
+.voice-tile-indicator .ind.muted { color: var(--live); }
 
 .tile-wave { position: absolute; bottom: 0; left: 0; right: 0; height: 36px; display: flex; align-items: flex-end; justify-content: center; gap: 3px; padding: 0 24px; opacity: 0; transition: opacity .2s; }
 .is-speaking .tile-wave { opacity: 1; }
@@ -369,17 +450,37 @@ a { color: inherit; text-decoration: none; }
 .tile-wave i:nth-child(10){ animation-delay: .1s; }
 @keyframes tile-wave { 0%,100% { transform: scaleY(.6); } 50% { transform: scaleY(2.4); } }
 
-.voice-controls { margin-top: 16px; background: var(--bg-4); border: 1px solid var(--bd-2); border-radius: var(--r-xl); padding: 14px 20px; display: flex; align-items: center; gap: 12px; }
-.vc-info { display: flex; align-items: center; gap: 10px; flex: 1; }
+/* Voice controls — robust dock; on phone becomes sticky-bottom via mobile.scss */
+.voice-controls {
+  background: var(--bg-4);
+  border: 1px solid var(--bd-2);
+  border-radius: var(--r-xl);
+  padding: clamp(10px, 1.2vw, 14px) clamp(12px, 1.6vw, 20px);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  justify-content: space-between;
+}
+.vc-info { display: flex; align-items: center; gap: 10px; flex: 1; min-width: 140px; }
 .vc-status { display: flex; align-items: center; gap: 6px; font-family: var(--font-mono); font-size: 12px; color: var(--ok); }
 .vc-status .dot { background: var(--ok); box-shadow: 0 0 8px rgba(52,211,153,.5); }
 .vc-stats { display: flex; gap: 6px; margin-left: 16px; }
-.vc-buttons { display: flex; gap: 6px; align-items: center; }
-.vc-btn { width: 44px; height: 44px; border-radius: 999px; background: var(--bg-5); border: 1px solid var(--bd-2); color: var(--fg-1); display: inline-flex; align-items: center; justify-content: center; transition: background .15s, color .15s; cursor: pointer; }
+.vc-buttons { display: flex; gap: 8px; align-items: center; flex-shrink: 0; margin-left: auto; }
+.vc-btn {
+  width: 44px; height: 44px; border-radius: 999px;
+  background: var(--bg-5); border: 1px solid var(--bd-2); color: var(--fg-1);
+  display: inline-flex; align-items: center; justify-content: center;
+  transition: background .15s, color .15s; cursor: pointer; flex-shrink: 0;
+}
 .vc-btn:hover { background: rgba(255,255,255,.10); color: var(--fg-0); }
 .vc-btn.is-muted { background: rgba(255,90,110,.15); color: var(--live); border-color: rgba(255,90,110,.3); }
 .vc-btn.is-active { background: rgba(var(--brand-1-rgb),.15); color: var(--brand-1); border-color: rgba(var(--brand-1-rgb),.3); }
-.vc-btn.is-leave { background: var(--live); color: white; border-color: transparent; padding: 0 18px; width: auto; height: 44px; border-radius: 12px; font-weight: 600; font-size: 13px; gap: 6px; }
+.vc-btn.is-leave {
+  background: var(--live); color: white; border-color: transparent;
+  padding: 0 16px; width: auto; height: 44px;
+  border-radius: 12px; font-weight: 600; font-size: 13px; gap: 6px;
+}
 .vc-btn.is-leave:hover { background: #FF4F66; }
 
 /* === Members panel === */

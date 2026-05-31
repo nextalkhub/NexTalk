@@ -1,110 +1,106 @@
-/* Mobile adaptation for NexTalk web app.
-   Imported at the bottom of global.scss.
+/* Responsive layout for NexTalk.
+   Strategy: progressive enhancement, no `!important` hammer.
+   - All base sizes already use clamp() in global.scss.
+   - This file only handles structural shifts (drawer, bottom sheet) and
+     small platform niceties (iOS zoom, safe-area insets).             */
 
-   Strategy:
-   - Tablet (< 1024px): hide MembersSidebar by default, show via TopBar toggle
-   - Phone (< 768px): switch shell to single-column with drawer + bottom sheet
-   - Touch targets bumped to 44px minimum
-   - Composer font-size 16px to prevent iOS zoom-on-focus
-   - Safe-area insets respected via env(safe-area-inset-*)              */
+/* CSS variables that activate only on mobile so we don't pollute desktop */
+@media (max-width: 768px) {
+  :root {
+    --safe-top: env(safe-area-inset-top, 0px);
+    --safe-bot: env(safe-area-inset-bottom, 0px);
+    --tap: 44px;
+    --topbar-h: 52px;     /* slimmer header to keep more content visible */
+  }
+}
 
 /* ============================================================
-   Tablet breakpoint — collapse the right rail
+   TABLET (769px – 1024px) — hide members rail by default
    ============================================================ */
 
-@media (max-width: 1024px) {
+@media (min-width: 769px) and (max-width: 1024px) {
   .app-shell {
-    grid-template-columns: 64px var(--side-w, 240px) 1fr 0;
+    grid-template-columns: var(--rail-w) var(--side-w) 1fr 0;
   }
-  .app-shell .right {
-    display: none;
-  }
+  .app-shell .right { display: none; }
+
+  /* When the user explicitly opens members, slide in as overlay */
   .app-shell.is-members-open .right {
     display: flex;
     position: fixed;
     right: 0;
-    top: 56px;
+    top: var(--topbar-h);
     bottom: 0;
-    width: 320px;
+    width: min(360px, 80vw);
     z-index: 50;
-    box-shadow: -20px 0 40px -20px rgba(0, 0, 0, 0.5);
-    animation: members-slide-in 0.22s ease;
+    box-shadow: -20px 0 40px -20px rgba(0,0,0,.5);
+    animation: slide-from-right .22s ease;
   }
-}
-@keyframes members-slide-in {
-  from { transform: translateX(100%); }
-  to   { transform: translateX(0); }
+  @keyframes slide-from-right {
+    from { transform: translateX(100%); }
+    to   { transform: translateX(0); }
+  }
 }
 
 /* ============================================================
-   Phone breakpoint — full mobile mode
+   PHONE (≤ 768px) — single column with overlay panels
    ============================================================ */
 
 @media (max-width: 768px) {
-  :root {
-    --m-safe-top: env(safe-area-inset-top, 0px);
-    --m-safe-bot: env(safe-area-inset-bottom, 0px);
-    --m-tap: 44px;
-  }
 
-  /* ----- Disable text selection on chrome elements ----- */
-  .app-shell, .top, .side, .rail, .right {
-    -webkit-tap-highlight-color: transparent;
-    user-select: none;
-  }
-  .chat-scroll, .m-msg-text, .composer-input {
-    user-select: text;
-  }
+  /* No tap highlight, no accidental text selection on chrome */
+  .app-shell, .top, .side, .rail, .right { -webkit-tap-highlight-color: transparent; }
 
-  /* ----- App shell becomes single column ----- */
+  /* ---- Shell collapses to single column ---- */
   .app-shell {
-    grid-template-columns: 1fr !important;
-    /* Top row absorbs notch height so the header doesn't overflow into the chat. */
-    grid-template-rows: calc(52px + var(--m-safe-top)) 1fr !important;
+    grid-template-columns: 1fr;
+    grid-template-rows: calc(var(--topbar-h) + var(--safe-top)) 1fr;
     grid-template-areas:
       "top"
-      "main" !important;
+      "main";
   }
   .app-shell .rail,
   .app-shell .side {
     display: none;
   }
-  /* When drawer is open, show rail+side as overlay */
+
+  /* ---- Drawer (rail + side) opens as overlay ---- */
   .app-shell.is-drawer-open .rail,
   .app-shell.is-drawer-open .side {
     display: flex;
     position: fixed;
     top: 0;
     bottom: 0;
-    z-index: 60;
-    height: 100vh;
     height: 100dvh;
+    z-index: 60;
   }
   .app-shell.is-drawer-open .rail {
     left: 0;
     width: 64px;
-    animation: drawer-slide-in 0.28s cubic-bezier(.4, 0, .2, 1);
+    animation: slide-from-left .25s cubic-bezier(.4,0,.2,1);
   }
   .app-shell.is-drawer-open .side {
     left: 64px;
-    width: calc(100vw - 64px) !important;
-    max-width: none !important;
-    animation: drawer-slide-in 0.28s cubic-bezier(.4, 0, .2, 1);
+    width: calc(100vw - 64px);
+    max-width: 380px;
+    animation: slide-from-left .25s cubic-bezier(.4,0,.2,1);
   }
-  @keyframes drawer-slide-in {
+  @keyframes slide-from-left {
     from { transform: translateX(-100%); }
     to   { transform: translateX(0); }
   }
 
-  /* ----- Mobile backdrop ----- */
+  /* The side has its own resize handle for desktop; hide on phone */
+  .side-resize-handle { display: none; }
+
+  /* ---- Mobile backdrop, shared by drawer & bottom sheets ---- */
   .mobile-backdrop {
-    position: fixed;
-    inset: 0;
-    background: rgba(0, 0, 0, 0.55);
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,.55);
     z-index: 55;
     opacity: 0;
     pointer-events: none;
-    transition: opacity 0.22s;
+    transition: opacity .22s;
   }
   .app-shell.is-drawer-open .mobile-backdrop,
   .app-shell.is-members-open .mobile-backdrop {
@@ -112,340 +108,218 @@
     pointer-events: auto;
   }
 
-  /* ----- Top bar compact ----- */
+  /* ---- Top bar ---- */
   .top {
-    padding: 0 6px !important;
-    padding-top: var(--m-safe-top) !important;
-    /* Height now matches the grid row in .app-shell so it can't overflow. */
-    height: auto !important;
-    min-height: calc(52px + var(--m-safe-top)) !important;
-    gap: 4px !important;
+    padding: var(--safe-top) 6px 0;
+    height: auto;
+    min-height: calc(var(--topbar-h) + var(--safe-top));
+    gap: 4px;
   }
-  /* Hide server breadcrumb on phone — channel name is enough, drawer shows server */
+  .top-left { min-width: 0; gap: 6px; overflow: hidden; }
+  .top-breadcrumb { min-width: 0; }
   .top-breadcrumb .crumb-server,
-  .top-breadcrumb .crumb-sep {
-    display: none !important;
-  }
+  .top-breadcrumb .crumb-sep { display: none; }
   .top-breadcrumb .crumb-channel {
-    font-size: 16px !important;
-    min-width: 0;
+    font-size: 16px;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
-  }
-  .top-left {
-    gap: 6px;
     min-width: 0;
-    overflow: hidden;
   }
-  .top-actions .icon-btn,
   .top .icon-btn,
-  .top button {
-    min-width: 44px;
-    min-height: 44px;
-  }
+  .top button { min-width: var(--tap); min-height: var(--tap); }
+  .top .mobile-menu-btn { display: inline-flex; }
 
-  /* ----- Show hamburger on phone only ----- */
-  .top .mobile-menu-btn { display: inline-flex !important; }
-  .top .mobile-back-btn { display: inline-flex; }
+  /* ---- Chat scroll ---- */
+  .chat-scroll { padding: 12px 12px 4px; }
+  .msg { grid-template-columns: 44px 1fr; }
+  .msg-avatar { width: 36px; height: 36px; }
+  .chat-welcome { padding: 22px 4px 16px; }
+  .chat-welcome h2 { font-size: 22px; }
 
-  /* ----- Chat ----- */
-  .chat-scroll {
-    padding: 14px 12px 8px !important;
-  }
-  .msg-row {
-    grid-template-columns: 36px 1fr !important;
-    gap: 8px !important;
-  }
-  .msg-avatar { width: 32px !important; height: 32px !important; }
-  .msg-author-name { font-size: 14px !important; }
-  .msg-text { font-size: 14.5px !important; }
-
-  /* ----- Composer ----- */
-  /* Reset wrap padding so the input goes edge-to-edge on phone */
-  .composer-wrap {
-    padding: 0 !important;
-  }
-  /* The keyboard helper line is useless on phone */
-  .composer-foot {
-    display: none !important;
-  }
+  /* ---- Composer ---- */
+  .composer-wrap { padding: 0; }
+  .composer-foot { display: none; }   /* keyboard hint not needed on touch */
   .composer {
-    padding: 8px 10px !important;
-    padding-bottom: max(8px, var(--m-safe-bot)) !important;
-    border-radius: 0 !important;
-    background: var(--bg-2) !important;
-    border-top: 1px solid var(--bd-1);
-    border-left: 0 !important;
-    border-right: 0 !important;
-    border-bottom: 0 !important;
-    margin: 0 !important;
+    margin: 0;
+    border-radius: 0;
+    border-left: 0;
+    border-right: 0;
+    border-bottom: 0;
+    padding-bottom: max(8px, var(--safe-bot));
+    background: var(--bg-2);
   }
-  .composer-input,
-  .composer textarea {
-    font-size: 16px !important; /* prevents iOS zoom on focus */
-    min-height: 40px;
-    max-height: 120px;
+  .composer-textarea {
+    font-size: 16px;     /* prevents iOS zoom on focus */
+    min-height: 36px;
+    max-height: 140px;
   }
-  .composer-send,
-  .composer .send-btn {
-    width: 40px !important;
-    height: 40px !important;
-    border-radius: 12px !important;
-  }
-  .composer-attach,
-  .composer .attach-btn {
-    width: 40px !important;
-    height: 40px !important;
-    border-radius: 12px !important;
+  .composer-send {
+    width: 38px;
+    height: 38px;
+    border-radius: 12px;
   }
 
-  /* Hide composer extras that need more room */
-  .composer .emoji-btn,
-  .composer .gif-btn,
-  .composer .upload-multi {
-    display: none;
-  }
-
-  /* ----- Voice stage ----- */
-  .voice-stage {
-    padding: 14px 14px 0 !important;
-  }
+  /* ---- Voice stage ---- */
+  /* Grid columns are already responsive in global.scss; bump min cell width down */
   .voice-grid {
-    grid-template-columns: 1fr 1fr !important;
-    gap: 10px !important;
+    grid-template-columns: repeat(auto-fit, minmax(min(160px, 100%), 1fr));
+    grid-auto-rows: minmax(120px, 1fr);
   }
-  .voice-tile {
-    aspect-ratio: 1 !important;
-    border-radius: 18px !important;
-    padding: 12px !important;
+  .voice-grid:has(> .voice-tile:only-child) {
+    grid-template-columns: minmax(0, 1fr);
   }
-  .voice-tile .av {
-    width: 56px !important;
-    height: 56px !important;
-    font-size: 20px !important;
-  }
-  .voice-tile-name { font-size: 13px !important; }
-  .voice-dock,
+  /* Voice controls — STICKY at bottom of the stage, always reachable */
   .voice-controls {
-    flex-wrap: wrap;
-    gap: 8px !important;
-    padding: 12px 14px !important;
-    padding-bottom: max(12px, var(--m-safe-bot)) !important;
+    position: sticky;
+    bottom: 0;
+    margin: 0 calc(clamp(12px, 2vw, 24px) * -1) calc(var(--safe-bot) * -1);
+    border-radius: 14px 14px 0 0;
+    border-left: 0;
+    border-right: 0;
+    border-bottom: 0;
+    padding-bottom: max(12px, var(--safe-bot));
+    flex-wrap: nowrap;
+    gap: 8px;
   }
-  .voice-dock .ctrl,
-  .voice-controls .vc-btn {
-    width: 48px !important;
-    height: 48px !important;
-    border-radius: 14px !important;
-  }
-  .voice-dock .leave,
-  .voice-controls .vc-btn.is-leave {
-    flex: 1;
-    min-width: 140px;
-    width: auto !important;
-  }
+  .vc-info { min-width: 0; flex-shrink: 1; overflow: hidden; }
+  .vc-status { font-size: 11px; }
+  .vc-stats { display: none; }   /* save space, info is in chips above grid */
+  .vc-buttons { gap: 6px; }
+  .vc-btn { width: 42px; height: 42px; }
+  .vc-btn.is-leave { padding: 0 12px; gap: 4px; font-size: 12px; }
 
-  /* ----- Members panel as bottom sheet ----- */
-  /* Push first content below the grab handle */
-  .members-summary {
-    padding-top: 22px !important;
-  }
+  /* ---- Members panel as bottom sheet ---- */
   .app-shell .right {
-    position: fixed !important;
-    left: 0 !important;
-    right: 0 !important;
-    bottom: 0 !important;
-    top: auto !important;
-    width: 100vw !important;
-    height: 78vh;
-    height: 78dvh;
-    border-left: 0 !important;
+    position: fixed;
+    left: 0; right: 0; bottom: 0; top: auto;
+    width: 100vw;
+    height: min(78vh, 78dvh);
+    border-left: 0;
     border-top: 1px solid var(--bd-1);
-    border-radius: 22px 22px 0 0 !important;
+    border-radius: 22px 22px 0 0;
     z-index: 60;
     transform: translateY(100%);
-    transition: transform 0.28s cubic-bezier(.4, 0, .2, 1);
-    box-shadow: 0 -20px 40px -10px rgba(0, 0, 0, 0.5);
+    transition: transform .28s cubic-bezier(.4,0,.2,1);
+    box-shadow: 0 -20px 40px -10px rgba(0,0,0,.5);
+    display: none;
   }
   .app-shell.is-members-open .right {
-    display: flex !important;
-    transform: translateY(0) !important;
-    animation: none !important;
+    display: flex;
+    transform: translateY(0);
   }
   .app-shell.is-members-open .right::before {
     content: "";
     position: absolute;
-    top: 8px;
-    left: 50%;
+    top: 8px; left: 50%;
     transform: translateX(-50%);
-    width: 36px;
-    height: 4px;
+    width: 36px; height: 4px;
     background: var(--bd-3);
     border-radius: 999px;
     z-index: 2;
   }
+  .members-summary { padding-top: 22px; }
 
-  /* ----- Settings layout collapses ----- */
-  .settings-layout {
-    grid-template-columns: 1fr !important;
-  }
+  /* ---- Settings ---- */
+  .settings-layout { grid-template-columns: 1fr; }
   .settings-nav {
-    border-right: 0 !important;
+    border-right: 0;
     border-bottom: 1px solid var(--bd-1);
-    padding: 8px 10px 12px !important;
-    overflow-y: visible !important;
+    padding: 8px 10px 12px;
+    overflow-y: visible;
   }
-  .settings-nav-h:first-of-type { padding-top: 14px; }
-  .settings-nav-item {
-    min-height: 44px;
-    font-size: 14.5px !important;
-  }
-  .settings-content {
-    padding: 24px 18px 32px !important;
-  }
-  .settings-section-head h1 {
-    font-size: 22px !important;
-  }
-  .settings-row {
-    flex-wrap: wrap;
-    gap: 12px;
-  }
-  .settings-row .info { max-width: 100% !important; }
+  .settings-nav-item { min-height: var(--tap); font-size: 14.5px; }
+  .settings-content { padding: 22px 16px 32px; }
+  .settings-section-head h1 { font-size: 22px; }
+  .settings-row { flex-wrap: wrap; gap: 12px; }
+  .settings-row .info { max-width: 100%; }
 
-  /* ----- Data tables → cards on phone ----- */
-  .data-table .dt-head { display: none; }
-  .data-table .dt-row {
-    display: grid !important;
+  /* Tables collapse to cards on phone */
+  .dt-head { display: none; }
+  .dt-row {
     grid-template-columns: auto 1fr auto !important;
-    grid-template-rows: auto auto;
     grid-template-areas:
       "av  main actions"
-      ".   meta meta" !important;
-    gap: 4px 12px !important;
-    padding: 14px 14px !important;
+      ".   meta meta";
+    gap: 4px 12px;
+    padding: 14px;
   }
-  .data-table .dt-row > *:first-child { grid-area: av; }
-  .data-table .dt-row > *:nth-child(2) { grid-area: main; }
-  .data-table .dt-row > *:nth-child(3),
-  .data-table .dt-row > *:nth-child(4) { grid-area: meta; font-size: 12px; color: var(--fg-2); }
-  .data-table .dt-row .row-actions { grid-area: actions; }
+  .dt-row > *:nth-child(1) { grid-area: av; }
+  .dt-row > *:nth-child(2) { grid-area: main; }
+  .dt-row > *:nth-child(n+3) { grid-area: meta; font-size: 12px; color: var(--fg-2); }
+  .dt-row .row-actions { grid-area: actions; }
 
-  /* ----- Modals on phone — slide-up sheet ----- */
-  .modal-backdrop {
-    align-items: flex-end !important;
-    padding: 0 !important;
-  }
+  /* ---- Modals slide up from bottom on phone ---- */
+  .modal-backdrop { align-items: flex-end; padding: 0; }
   .modal {
-    width: 100% !important;
-    max-width: 100% !important;
-    border-radius: 22px 22px 0 0 !important;
-    max-height: 92vh;
+    width: 100%;
+    max-width: 100%;
+    border-radius: 22px 22px 0 0;
     max-height: 92dvh;
     overflow-y: auto;
-    padding-bottom: max(20px, var(--m-safe-bot));
-    animation: modal-up-in 0.28s cubic-bezier(.4, 0, .2, 1) !important;
+    padding-bottom: max(20px, var(--safe-bot));
+    animation: slide-up .28s cubic-bezier(.4,0,.2,1);
   }
-  @keyframes modal-up-in {
+  @keyframes slide-up {
     from { transform: translateY(100%); }
     to   { transform: translateY(0); }
   }
   .modal::before {
     content: "";
     display: block;
-    width: 36px;
-    height: 4px;
+    width: 36px; height: 4px;
+    margin: 8px auto 0;
     background: var(--bd-3);
     border-radius: 999px;
-    margin: 8px auto 0;
   }
-  .modal-head { padding-top: 14px !important; }
-  .modal-foot {
-    flex-direction: column-reverse;
-    gap: 8px !important;
-  }
-  .modal-foot button {
-    width: 100%;
-    height: 48px;
-    border-radius: 12px;
-  }
-  .modal .radio-cards {
-    grid-template-columns: 1fr !important;
-  }
+  .modal-head { padding-top: 14px; }
+  .modal-foot { flex-direction: column-reverse; gap: 8px; }
+  .modal-foot button { width: 100%; height: 48px; border-radius: 12px; }
+  .modal .radio-cards { grid-template-columns: 1fr; }
 
-  /* ----- Auth & invite ----- */
-  .auth-page {
-    padding: 0 !important;
-    align-items: stretch !important;
-  }
+  /* ---- Auth & invite full-screen on phone ---- */
+  .auth-page { padding: 0; align-items: stretch; }
   .auth-card {
-    width: 100% !important;
-    max-width: 100% !important;
-    height: 100vh;
-    height: 100dvh;
-    border-radius: 0 !important;
-    border: 0 !important;
-    padding: 40px 22px !important;
-    padding-top: calc(40px + var(--m-safe-top)) !important;
-    padding-bottom: calc(40px + var(--m-safe-bot)) !important;
+    width: 100%;
+    max-width: 100%;
+    min-height: 100dvh;
+    border-radius: 0;
+    border: 0;
+    padding: calc(40px + var(--safe-top)) 22px calc(40px + var(--safe-bot));
     display: flex;
     flex-direction: column;
     justify-content: center;
   }
   .invite-card { justify-content: flex-start; }
-  .invite-banner {
-    margin: -40px -22px 24px !important;
-    border-radius: 0 !important;
-  }
-  .invite-actions {
-    flex-direction: column-reverse;
-    gap: 10px;
-  }
+  .invite-banner { margin: -40px -22px 24px; border-radius: 0; }
+  .invite-actions { flex-direction: column-reverse; gap: 10px; }
   .invite-actions button { width: 100%; height: 48px; }
+  .invite-detail-grid { grid-template-columns: 1fr; }
 
-  /* ----- Home page ----- */
-  .home {
-    padding: 24px 18px !important;
-  }
-  .home-mark {
-    width: 84px !important;
-    height: 84px !important;
-    font-size: 36px !important;
-    border-radius: 24px !important;
-  }
-  .home h1 { font-size: 28px !important; }
-  .home-cards {
-    grid-template-columns: 1fr !important;
-    gap: 10px !important;
-  }
-  .home-card {
-    padding: 16px !important;
-  }
+  /* ---- Home page ---- */
+  .home { padding: 24px 18px; }
+  .home-mark { width: 80px; height: 80px; font-size: 36px; border-radius: 24px; }
+  .home h1 { font-size: 28px; }
+  .home-cards { grid-template-columns: 1fr; gap: 10px; }
+  .home-card { padding: 16px; }
 
-  /* ----- Profile ----- */
-  .profile-shell {
-    padding: 0 !important;
-  }
+  /* ---- Profile ---- */
+  .profile-shell { padding: 0; }
   .profile-card-big {
-    max-width: 100% !important;
-    border-radius: 0 !important;
-    border-left: 0 !important;
-    border-right: 0 !important;
+    max-width: 100%;
+    border-radius: 0;
+    border-left: 0;
+    border-right: 0;
   }
-  .profile-field {
-    grid-template-columns: 1fr !important;
-    gap: 4px !important;
-  }
+  .profile-field { grid-template-columns: 1fr; gap: 4px; }
 
-  /* ----- System pages ----- */
-  .system-page {
-    padding: 24px !important;
-  }
-  .system-code { font-size: 88px !important; }
+  /* ---- System pages ---- */
+  .system-page { padding: 24px; }
+  .system-code { font-size: 88px; }
 }
 
 /* ============================================================
-   Hide mobile-only buttons by default; show only at <= 768px
+   Hide mobile-only UI on desktop
    ============================================================ */
 .mobile-menu-btn,
 .mobile-back-btn {
