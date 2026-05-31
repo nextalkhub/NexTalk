@@ -4,8 +4,6 @@
 Микросервисная архитектура с Kubernetes, Zitadel (IdP), Nginx Ingress и паттернами отказоустойчивости.
 
 [![CI](https://github.com/nextalkhub/NexTalk/actions/workflows/ci-cd.yml/badge.svg)](https://github.com/nextalkhub/NexTalk/actions/workflows/ci-cd.yml)
-[![Coverage](https://raw.githubusercontent.com/nextalkhub/NexTalk/coverage-badges/badge_linecoverage.svg)](https://github.com/nextalkhub/NexTalk/actions/workflows/ci-cd.yml)
-[![Branch Coverage](https://raw.githubusercontent.com/nextalkhub/NexTalk/coverage-badges/badge_branchcoverage.svg)](https://github.com/nextalkhub/NexTalk/actions/workflows/ci-cd.yml)
 
 ## Навигация по проекту
 
