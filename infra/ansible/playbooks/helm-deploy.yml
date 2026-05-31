@@ -17,7 +17,7 @@
   gather_facts: false
   become: false
   vars_files:
-    # localhost не в группах из inventory — group_vars/vault.yml авто не подхватится.
+    # localhost не в группах из inventory - group_vars/vault.yml авто не подхватится.
     - "{{ playbook_dir }}/../inventory/group_vars/vault.yml"
   vars:
     kubeconfig: "{{ playbook_dir }}/../kubeconfig"
@@ -30,7 +30,7 @@
       - "{{ helm_chart_dir }}/values.yaml"
       - "{{ helm_secrets_rendered }}"
     # Опциональный override тегов всех 5 наших сервисов одним значением.
-    # Если пусто — берутся теги из values.yaml.
+    # Если пусто - берутся теги из values.yaml.
     image_tag: ""
   tasks:
     - name: Дождаться завершения удаления namespace (если завис в Terminating)
@@ -135,8 +135,8 @@
       tags: [helm]
 
     # HTTP-01 challenge: Let's Encrypt стучится на http://domain/.well-known/acme-challenge/TOKEN.
-    # cert-manager создаёт временный Ingress и pod-solver, Let's Encrypt проверяет его,
-    # после чего выпускает сертификат и кладёт его в Secret nextalk-tls.
+    # cert-manager создает временный Ingress и pod-solver, Let's Encrypt проверяет его,
+    # после чего выпускает сертификат и кладет его в Secret nextalk-tls.
     # Обычно занимает 30–90 секунд. timeout=5m с запасом на медленный DNS propagation.
     - name: Дождаться выпуска Let's Encrypt сертификата
       ansible.builtin.command: >-

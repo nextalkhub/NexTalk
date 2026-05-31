@@ -55,7 +55,7 @@
     replace: '# \1'
   tags: [common, swap]
 
-# sysctl + modules — обязательны для k3s/CNI.
+# sysctl + modules - обязательны для k3s/CNI.
 - name: Загрузить модули ядра (overlay, br_netfilter)
   community.general.modprobe:
     name: "{{ item }}"

@@ -1,4 +1,4 @@
-# pg_hba.conf — управляется Ansible.
+# pg_hba.conf - управляется Ansible.
 # Документация: https://www.postgresql.org/docs/current/auth-pg-hba-conf.html
 
 # --- Локальные подключения ---
@@ -13,6 +13,6 @@ host    all   {{ user.name }}   {{ host }}   scram-sha-256
 {% endfor %}
 {% endfor %}
 
-# --- Всё остальное запрещено ---
+# --- Все остальное запрещено ---
 host    all   all   0.0.0.0/0   reject
 host    all   all   ::/0        reject

@@ -1,5 +1,5 @@
 # ─────────────────────────────────────────────────────────────────────────────
-# NexTalk — DB VPS (Beget)
+# NexTalk - DB VPS (Beget)
 #
 # Запуск:
 #   docker compose -f docker-compose.db.yaml up -d
@@ -13,7 +13,7 @@
 #     ufw deny 5432
 #     ufw deny 6379
 #
-# Переменные окружения — задать в .env рядом с этим файлом:
+# Переменные окружения - задать в .env рядом с этим файлом:
 #   POSTGRES_PASSWORD=<strong-password>
 #   REDIS_PASSWORD=<strong-password>
 # ─────────────────────────────────────────────────────────────────────────────

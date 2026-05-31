@@ -17,7 +17,7 @@ spec:
     spec:
       enableServiceLinks: false
       securityContext:
-        # Zitadel-образ собран под UID 1000, поэтому fsGroup тоже 1000 —
+        # Zitadel-образ собран под UID 1000, поэтому fsGroup тоже 1000 -
         # чтобы /zitadel/bootstrap (PVC) принадлежал нужной группе.
         runAsNonRoot: true
         runAsUser: 1000
@@ -80,7 +80,7 @@ spec:
                 configMapKeyRef:
                   name: nextalk-config
                   key: ZITADEL_PUBLIC_SCHEME
-            # ZITADEL_PORT по умолчанию 8080 — не задаём.
+            # ZITADEL_PORT по умолчанию 8080 - не задаем.
             # Zitadel сам собирает issuer/discovery URL из ExternalDomain
             # + ExternalSecure; ExternalPort при дефолтных 443/80 опускается.
             - name: ZITADEL_EXTERNALDOMAIN
@@ -115,7 +115,7 @@ spec:
               value: "true"
             # URL'ы login UI без явного :port (Zitadel docs: ExternalPort
             # опускается из публичных URL при 443/80). Артефакт `:8080` из
-            # docker-compose снят — в проде домен идёт чистым.
+            # docker-compose снят - в проде домен идет чистым.
             - name: ZITADEL_DEFAULTINSTANCE_FEATURES_LOGINV2_BASEURI
               value: "$(ZITADEL_PUBLIC_SCHEME)://$(ZITADEL_DOMAIN)/ui/v2/login/"
             - name: ZITADEL_OIDC_DEFAULTLOGINURLV2

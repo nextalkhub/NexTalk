@@ -1,14 +1,14 @@
 ---
 # Настройка GRE-туннеля для выхода в интернет через шлюз.
 # Переменные:
-#   gre_nat_mode        — gateway | client
-#   gre_iface           — имя интерфейса туннеля (gre1, gre2, ...), по умолчанию gre1
-#   gre_local_ip        — приватный IP этого хоста
-#   gre_remote_ip       — приватный IP другой стороны туннеля
-#   gre_tunnel_ip       — адрес этого хоста внутри туннеля (172.16.x.y/30)
-#   gre_peer_tunnel_ip  — адрес шлюза внутри туннеля (нужен клиенту для маршрута)
-#   gre_public_iface    — публичный интерфейс шлюза (нужен только gateway, обычно eth0)
-#   gre_marker          — суффикс для blockinfile marker, уникальный на хост (напр. "DB")
+#   gre_nat_mode        - gateway | client
+#   gre_iface           - имя интерфейса туннеля (gre1, gre2, ...), по умолчанию gre1
+#   gre_local_ip        - приватный IP этого хоста
+#   gre_remote_ip       - приватный IP другой стороны туннеля
+#   gre_tunnel_ip       - адрес этого хоста внутри туннеля (172.16.x.y/30)
+#   gre_peer_tunnel_ip  - адрес шлюза внутри туннеля (нужен клиенту для маршрута)
+#   gre_public_iface    - публичный интерфейс шлюза (нужен только gateway, обычно eth0)
+#   gre_marker          - суффикс для blockinfile marker, уникальный на хост (напр. "DB")
 
 - name: Поднять GRE-туннель {{ gre_iface | default('gre1') }}
   ansible.builtin.command:

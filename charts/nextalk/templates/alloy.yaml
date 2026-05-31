@@ -78,12 +78,12 @@ spec:
             readOnlyRootFilesystem: true
             capabilities:
               drop: ["ALL"]
-          # --storage.path в /tmp — единственный гарантированно writable путь
+          # --storage.path в /tmp - единственный гарантированно writable путь
           # при readOnlyRootFilesystem: true. /var/lib/alloy не существует в rootfs
-          # образа как создаваемая директория, kubelet не может её сделать в RO rootfs.
+          # образа как создаваемая директория, kubelet не может ее сделать в RO rootfs.
           args: ["run", "--storage.path=/tmp/alloy-data", "--server.http.listen-addr=0.0.0.0:12345", "/etc/alloy/config.alloy"]
           env:
-            # K8S_NODE_NAME = имя ноды. Не HOSTNAME — container runtime
+            # K8S_NODE_NAME = имя ноды. Не HOSTNAME - container runtime
             # перезаписывает HOSTNAME именем пода до того как сработает fieldRef.
             - name: K8S_NODE_NAME
               valueFrom:
@@ -97,7 +97,7 @@ spec:
               subPath: config.alloy
             - name: tmp
               mountPath: /tmp
-            # Логи подов — стандартный путь k3s/containerd.
+            # Логи подов - стандартный путь k3s/containerd.
             - name: varlogpods
               mountPath: /var/log/pods
               readOnly: true

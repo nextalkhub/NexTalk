@@ -3,11 +3,11 @@
 # Открыто только из приватной сети 10.19.0.0/16.
 #
 # Порты k3s/etcd: https://docs.k3s.io/installation/requirements#networking
-#   6443/tcp       — kube-apiserver
-#   2379-2380/tcp  — etcd client/peer (между control-plane нодами)
-#   10250/tcp      — kubelet
-#   8472/udp       — flannel vxlan (CNI)
-#   51820/udp      — flannel wireguard (если включён)
+#   6443/tcp       - kube-apiserver
+#   2379-2380/tcp  - etcd client/peer (между control-plane нодами)
+#   10250/tcp      - kubelet
+#   8472/udp       - flannel vxlan (CNI)
+#   51820/udp      - flannel wireguard (если включен)
 
 ufw_extra_rules:
   - { rule: allow, port: '6443',       proto: tcp, src: "{{ private_network_cidr }}", comment: 'k3s apiserver' }

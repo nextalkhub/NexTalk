@@ -1,14 +1,14 @@
 // ─────────────────────────────────────────────────────────────
 // Kubernetes Pod Log Collection via /var/log/pods (hostPath)
 //
-// discovery.kubernetes не используется — не требует доступа
+// discovery.kubernetes не используется - не требует доступа
 // к Kubernetes API (10.43.0.1:443), недоступному с control-plane
 // нод при hostNetwork: true.
 //
 // Метаданные (namespace, pod, container) извлекаются из пути:
 //   /var/log/pods/<ns>_<pod>_<uid>/<container>/<n>.log
 //
-// hostNetwork: true оставлен — нужен для доступа к Loki
+// hostNetwork: true оставлен - нужен для доступа к Loki
 // (10.19.0.41:3100) из host network namespace.
 // ─────────────────────────────────────────────────────────────
 

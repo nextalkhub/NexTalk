@@ -1,13 +1,13 @@
 ---
-# Установка k6 и развёртывание chaos/load-test скриптов локально.
+# Установка k6 и развертывание chaos/load-test скриптов локально.
 #
-# Запускается так же, как cluster-addons.yml и helm-deploy.yml — на localhost,
+# Запускается так же, как cluster-addons.yml и helm-deploy.yml - на localhost,
 # без SSH в кластер. k6 ставится в WSL/Linux, скрипты копируются локально,
 # kubectl использует тот же kubeconfig что и остальные плейбуки.
 #
 # Требования к vault:
-#   vault_k6_grafana_password  — пароль Grafana admin
-#   vault_k6_test_token        — JWT тестового пользователя
+#   vault_k6_grafana_password  - пароль Grafana admin
+#   vault_k6_test_token        - JWT тестового пользователя
 #
 # Добавить в vault:
 #   ansible-vault edit inventory/group_vars/all/vault.yml --ask-vault-pass

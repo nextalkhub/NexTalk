@@ -1,10 +1,10 @@
 ---
 # Переменные для k6 / chaos-тестирования.
-# Секреты (vault_k6_grafana_password, vault_k6_test_token) — в vault.yml.
+# Секреты (vault_k6_grafana_password, vault_k6_test_token) - в vault.yml.
 
 k6_chaos_dir: "{{ lookup('env', 'HOME') }}/nextalk-chaos"
 
-# Cluster topology — статические IP (из hosts.ini)
+# Cluster topology - статические IP (из hosts.ini)
 k6_namespace: nextalk
 k6_domain: nextalk.fun
 k6_cp1: "10.19.0.11"
@@ -14,8 +14,8 @@ k6_db_vps: "10.19.0.31"
 k6_obs_vps: "10.19.0.41"
 
 # Endpoints
-k6_api_base: "https://api.nextalk.fun"
-k6_grafana_url: "https://grafana.nextalk.fun"
+k6_api_base: "https://nextalk.fun"
+k6_grafana_url: "https://nextalk.fun"
 k6_prometheus_remote_write: "http://10.19.0.41:9090/api/v1/write"
 
 # Grafana

@@ -6,13 +6,13 @@
 # (см. infra/ansible/playbooks/helm-deploy.yml).
 #
 # Перед деплоем должны быть переопределены:
-#   db.host, db.redisHost           — приватные IP db-vps
-#   tls.email                       — email для Let's Encrypt
-#   postgres.password               — из vault.yml
-#   db.redisPassword                — из vault.yml
-#   zitadel.masterkey               — из vault.yml (ровно 32 символа)
-#   livekit.apiKey, secretKey       — из vault.yml
-#   *Service.image.tag              — конкретная версия (semver или sha)
+#   db.host, db.redisHost           - приватные IP db-vps
+#   tls.email                       - email для Let's Encrypt
+#   postgres.password               - из vault.yml
+#   db.redisPassword                - из vault.yml
+#   zitadel.masterkey               - из vault.yml (ровно 32 символа)
+#   livekit.apiKey, secretKey       - из vault.yml
+#   *Service.image.tag              - конкретная версия (semver или sha)
 # =======================================================================
 
 namespace: nextalk
@@ -21,7 +21,7 @@ namespace: nextalk
 domain: "nextalk.fun"
 
 # -----------------------------------------------------------------------
-# Сеть. Один CIDR — используется в NetworkPolicy egress правилах
+# Сеть. Один CIDR - используется в NetworkPolicy egress правилах
 # для доступа к db-vps и obs-vps по приватной сети Beget.
 # -----------------------------------------------------------------------
 network:
@@ -35,12 +35,12 @@ network:
 # -----------------------------------------------------------------------
 tls:
   enabled: true
-  # cloudflare — использует предсозданный Secret с CF Origin Certificate.
-  #              ClusterIssuer не создаётся, cert-manager не нужен.
-  # letsencrypt — создаёт ClusterIssuer, cert-manager управляет сертификатами.
+  # cloudflare - использует предсозданный Secret с CF Origin Certificate.
+  #              ClusterIssuer не создается, cert-manager не нужен.
+  # letsencrypt - создает ClusterIssuer, cert-manager управляет сертификатами.
   provider: "letsencrypt"
-  # cert-manager создаёт этот Secret автоматически при provider: letsencrypt.
-  # При provider: cloudflare — создать вручную:
+  # cert-manager создает этот Secret автоматически при provider: letsencrypt.
+  # При provider: cloudflare - создать вручную:
   #   kubectl create secret tls cloudflare-origin-cert \
   #     --cert=cert.pem --key=key.pem -n nextalk
   secretName: "nextalk-tls"
@@ -56,7 +56,7 @@ db:
   host: ""               # Приватный IP db-vps
   port: "5432"
   # sslmode для подключений к Postgres.
-  # prefer — TLS если сервер поддерживает, иначе plain. БД в приватной сети
+  # prefer - TLS если сервер поддерживает, иначе plain. БД в приватной сети
   # Beget без TLS пока (roadmap: настроить TLS на db-vps и переключить на require).
   sslmode: "prefer"
   redisHost: ""          # Тот же db-vps или отдельный
@@ -86,7 +86,7 @@ zitadel:
     repository: ghcr.io/zitadel/zitadel-login
     tag: "v4.13.1"
   # Пока 1 реплика. HA требует разделить bootstrap (Job с start-from-init)
-  # и runtime (StatefulSet с start без init) — отдельная итерация.
+  # и runtime (StatefulSet с start без init) - отдельная итерация.
   replicas: 1
 
 # -----------------------------------------------------------------------
@@ -99,10 +99,10 @@ livekit:
     repository: livekit/livekit-server
     tag: "v1.11"
   # Единственный UDP-порт для медиа (UDPMux). Один порт = один hostPort DNAT-rule.
-  # Диапазон не работает: k3s создаёт DNAT только для явно перечисленных портов,
-  # а LiveKit выбирает случайный порт из диапазона — остальные недостижимы снаружи.
+  # Диапазон не работает: k3s создает DNAT только для явно перечисленных портов,
+  # а LiveKit выбирает случайный порт из диапазона - остальные недостижимы снаружи.
   rtcUdpPort: 7882
-  # Redis для shared state (room metadata). База 0 — общая для LiveKit.
+  # Redis для shared state (room metadata). База 0 - общая для LiveKit.
   redisDb: 0
 
 # -----------------------------------------------------------------------
@@ -111,7 +111,7 @@ livekit:
 observability:
   otelEndpoint: "http://10.19.0.41:4317"
   lokiUrl: "http://10.19.0.41:3100"
-  # Tempo HTTP API (для UI и query). OTLP-приём идёт по otelEndpoint.
+  # Tempo HTTP API (для UI и query). OTLP-прием идет по otelEndpoint.
   tempoUrl: "http://10.19.0.41:3200"
   prometheusRemoteWriteUrl: "http://10.19.0.41:9090/api/v1/write"
 
@@ -162,7 +162,7 @@ containerSecurityContext:
     drop: ["ALL"]
 
 # -----------------------------------------------------------------------
-# Application services. Теги фиксированы — никаких :latest в проде.
+# Application services. Теги фиксированы - никаких :latest в проде.
 # Перед каждым деплоем обновлять tag вручную (или из CI).
 # -----------------------------------------------------------------------
 guildService:

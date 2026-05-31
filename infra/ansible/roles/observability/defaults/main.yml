@@ -1,6 +1,6 @@
 ---
 # Версии образов observability-стека. Обновлять ОСОЗНАННО, читать changelog.
-# latest НИКОГДА не использовать — невоспроизводимо + supply-chain риск.
+# latest НИКОГДА не использовать - невоспроизводимо + supply-chain риск.
 
 observability_prometheus_version: "v3.1.0"
 observability_loki_version: "3.3.2"

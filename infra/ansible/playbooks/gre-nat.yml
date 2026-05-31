@@ -13,7 +13,7 @@
 # Запуск:
 #   ansible-playbook -i inventory/hosts.ini playbooks/gre-nat.yml
 
-- name: GRE NAT — шлюз worker-1 (туннель к observability-vps)
+- name: GRE NAT - шлюз worker-1 (туннель к observability-vps)
   hosts: worker-1
   become: true
   roles:
@@ -26,7 +26,7 @@
         gre_tunnel_ip: "172.16.0.1"
         gre_public_iface: eth0
 
-- name: GRE NAT — шлюз worker-1 (туннель к db-vps)
+- name: GRE NAT - шлюз worker-1 (туннель к db-vps)
   hosts: worker-1
   become: true
   roles:
@@ -39,7 +39,7 @@
         gre_tunnel_ip: "172.16.1.1"
         gre_public_iface: eth0
 
-- name: GRE NAT — клиент observability-vps
+- name: GRE NAT - клиент observability-vps
   hosts: observability-vps
   become: true
   roles:
@@ -52,7 +52,7 @@
         gre_tunnel_ip: "172.16.0.2"
         gre_peer_tunnel_ip: "172.16.0.1"
 
-- name: GRE NAT — клиент db-vps
+- name: GRE NAT - клиент db-vps
   hosts: db-vps
   become: true
   roles:

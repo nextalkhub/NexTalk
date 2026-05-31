@@ -62,7 +62,7 @@ data:
 
     scrape_configs:
 
-      # NexTalk pods — kubernetes_sd_configs скрейпит каждый под отдельно по pod IP.
+      # NexTalk pods - kubernetes_sd_configs скрейпит каждый под отдельно по pod IP.
       # Это решает проблему multi-replica: при 2+ репликах static_configs через Service
       # попадает случайно на один под за scrape, kubernetes_sd гарантирует все поды.
       # Под должен иметь аннотации: prometheus.io/scrape="true", prometheus.io/port.
@@ -83,7 +83,7 @@ data:
             regex: (.+);(\d+)
             replacement: $1:$2
             target_label: __address__
-          # Путь из аннотации (если задан — overrides /metrics)
+          # Путь из аннотации (если задан - overrides /metrics)
           - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_path]
             action: replace
             target_label: __metrics_path__
@@ -97,7 +97,7 @@ data:
           - source_labels: [__meta_kubernetes_namespace]
             target_label: namespace
 
-      # Zitadel — единственная реплика, нестандартный путь /debug/metrics
+      # Zitadel - единственная реплика, нестандартный путь /debug/metrics
       - job_name: zitadel
         static_configs:
           - targets: ["zitadel:8080"]
@@ -105,7 +105,7 @@ data:
               service: zitadel
         metrics_path: /debug/metrics
 
-      # LiveKit — hostNetwork=true, pod IP = node IP; static_config через Service ClusterIP
+      # LiveKit - hostNetwork=true, pod IP = node IP; static_config через Service ClusterIP
       - job_name: livekit
         static_configs:
           - targets: ["livekit:6789"]
@@ -170,7 +170,7 @@ spec:
           args:
             - --config.file=/etc/prometheus/prometheus.yml
             - --storage.tsdb.path=/prometheus
-            # Короткий retention: долгосрочное хранение — на Obs VPS через remote_write.
+            # Короткий retention: долгосрочное хранение - на Obs VPS через remote_write.
             - --storage.tsdb.retention.time={{ .Values.prometheus.retention }}
           ports:
             - containerPort: 9090

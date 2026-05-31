@@ -30,7 +30,7 @@
       }
     ]
   },
-  "description": "NexTalk microservices — SLO, business metrics (DAU/WAU/MAU), HTTP, .NET runtime, K8s, logs",
+  "description": "NexTalk microservices - SLO, business metrics (DAU/WAU/MAU), HTTP, .NET runtime, K8s, logs",
   "editable": true,
   "fiscalYearStartMonth": 0,
   "graphTooltip": 1,
@@ -891,7 +891,7 @@
           "refId": "A"
         }
       ],
-      "description": "Активных WebSocket (SignalR) соединений. Один пользователь с несколькими вкладками даёт несколько соединений."
+      "description": "Активных WebSocket (SignalR) соединений. Один пользователь с несколькими вкладками дает несколько соединений."
     },
     {
       "datasource": {
@@ -1092,7 +1092,7 @@
           "refId": "A"
         }
       ],
-      "description": "Уникальных пользователей, активных за последние 24 ч. Не «онлайн прямо сейчас» — см. Online Now."
+      "description": "Уникальных пользователей, активных за последние 24 ч. Не «онлайн прямо сейчас» - см. Online Now."
     },
     {
       "datasource": {
@@ -2569,7 +2569,7 @@
         }
       },
       "title": "Активные пользователи (тренд)",
-      "description": "DAU/WAU/MAU за выбранный период — рост аудитории.",
+      "description": "DAU/WAU/MAU за выбранный период - рост аудитории.",
       "type": "timeseries",
       "targets": [
         {
@@ -2649,7 +2649,7 @@
         "wideLayout": true
       },
       "title": "Всего пользователей",
-      "description": "Уникальных userId когда-либо подключавшихся. Растёт по мере регистрации новых пользователей.",
+      "description": "Уникальных userId когда-либо подключавшихся. Растет по мере регистрации новых пользователей.",
       "type": "stat",
       "targets": [
         {
@@ -3144,7 +3144,7 @@
         "legend": {"displayMode": "list", "placement": "bottom"},
         "tooltip": {"mode": "multi"}
       },
-      "title": "Объём логов по уровню и сервису",
+      "title": "Объем логов по уровню и сервису",
       "type": "timeseries",
       "targets": [
         {
@@ -3215,7 +3215,7 @@
   },
   "timepicker": {},
   "timezone": "browser",
-  "title": "NexTalk — Overview",
+  "title": "NexTalk - Overview",
   "uid": "nextalk-overview",
   "version": 4,
   "weekStart": ""

@@ -45,7 +45,7 @@ spec:
                 secretKeyRef:
                   name: nextalk-secrets
                   key: postgres-dsn-nextalk
-            # Redis password не уезжает в plain env — собираем строку через $(VAR).
+            # Redis password не уезжает в plain env - собираем строку через $(VAR).
             - name: REDIS_PASSWORD
               valueFrom:
                 secretKeyRef:

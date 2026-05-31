@@ -1,8 +1,8 @@
 ---
 # Сброс схемы Zitadel в PostgreSQL.
 #
-# Нужен когда namespace nextalk пересоздавался (PVC bootstrap удалён),
-# но БД zitadel осталась — start-from-init не пишет PAT повторно.
+# Нужен когда namespace nextalk пересоздавался (PVC bootstrap удален),
+# но БД zitadel осталась - start-from-init не пишет PAT повторно.
 # После прогона: перезапустить под zitadel-0 (helm-deploy или kubectl delete pod).
 #
 # Запуск:

@@ -22,7 +22,7 @@ spec:
         prometheus.io/scrape: "true"
         prometheus.io/port: "5004"
     spec:
-      # Даём SignalR-клиентам время заметить разрыв и переподключиться к другому поду.
+      # Даем SignalR-клиентам время заметить разрыв и переподключиться к другому поду.
       terminationGracePeriodSeconds: 60
       securityContext:
         {{- toYaml .Values.podSecurityContext | nindent 8 }}

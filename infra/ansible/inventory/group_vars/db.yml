@@ -9,9 +9,9 @@ postgres_work_mem: "8MB"
 postgres_maintenance_work_mem: "128MB"
 
 # Список БД и пользователей.
-# Один app-юзер на обе БД (nextalk + zitadel) — см. docs/decisions.md.
+# Один app-юзер на обе БД (nextalk + zitadel) - см. docs/decisions.md.
 # Системный postgres не трогаем: postgresql_user с role_attr_flags: LOGIN
-# снёс бы у него SUPERUSER. Поэтому отдельный nextalk_app.
+# снес бы у него SUPERUSER. Поэтому отдельный nextalk_app.
 postgres_databases:
   - name: nextalk
     owner: nextalk_app
@@ -22,11 +22,11 @@ postgres_users:
   - name: nextalk_app
     password: "{{ vault_postgres_password | default('REPLACE_ME') }}"
 
-# Whitelist в pg_hba.conf — вся приватная сеть (control-plane + worker ноды k3s).
+# Whitelist в pg_hba.conf - вся приватная сеть (control-plane + worker ноды k3s).
 postgres_allowed_hosts:
   - "10.19.0.0/16"
 
-# Файрвол: 5432, 6379 и порты экспортеров — только из приватной сети.
+# Файрвол: 5432, 6379 и порты экспортеров - только из приватной сети.
 ufw_extra_rules:
   - { rule: allow, port: '5432', proto: tcp, src: "{{ private_network_cidr }}", comment: 'postgres' }
   - { rule: allow, port: '6379', proto: tcp, src: "{{ private_network_cidr }}", comment: 'redis' }

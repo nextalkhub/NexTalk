@@ -80,7 +80,7 @@ spec:
           averageUtilization: 80
 
 ---
-# WebSocket Gateway: порог ниже (60%) — соединения долгоживущие,
+# WebSocket Gateway: порог ниже (60%) - соединения долгоживущие,
 # лучше держать запас ресурсов для новых подключений.
 apiVersion: autoscaling/v2
 kind: HorizontalPodAutoscaler

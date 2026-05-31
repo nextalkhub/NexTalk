@@ -6,7 +6,7 @@ metadata:
   namespace: {{ .Values.namespace }}
 spec:
   # LiveKit в single-node режиме. Для HA нужен LiveKit Cloud / mesh с
-  # одной точкой входа — это вне scope текущей итерации.
+  # одной точкой входа - это вне scope текущей итерации.
   replicas: 1
   selector:
     matchLabels:
@@ -18,10 +18,10 @@ spec:
     spec:
       enableServiceLinks: false
       # hostNetwork=true: pod биндится напрямую на сетевой стек ноды.
-      # Обязательно для LiveKit на Kubernetes — оверлейная сеть (Flannel)
+      # Обязательно для LiveKit на Kubernetes - оверлейная сеть (Flannel)
       # добавляет NAT-слои, ломающие WebRTC ICE.
       hostNetwork: true
-      # Default = нода's /etc/resolv.conf. LiveKit не нужен cluster DNS —
+      # Default = нода's /etc/resolv.conf. LiveKit не нужен cluster DNS -
       # Redis подключается по IP, STUN нужен только внешний резолв.
       dnsPolicy: Default
       securityContext:

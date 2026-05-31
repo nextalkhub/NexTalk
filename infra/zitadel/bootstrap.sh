@@ -72,8 +72,8 @@ fi
 # ── 2. Create or find OIDC app ────────────────────────────────────────────────
 resolve_oidc_app() {
     local app_name="$1"
-    # $2 — JSON-массив redirect URIs (например '["http://a","http://b"]').
-    # $3 — JSON-массив post-logout URIs.
+    # $2 - JSON-массив redirect URIs (например '["http://a","http://b"]').
+    # $3 - JSON-массив post-logout URIs.
     local redirect_uris_json="$2"
     local post_logout_uris_json="$3"
 
@@ -134,7 +134,7 @@ BRANDING_PAYLOAD='{
 "disableWatermark":true,
 "themeMode":"THEME_MODE_AUTO"
 }'
-# Сначала пробуем POST (создать custom policy если её ещё нет, instance по умолчанию даёт isDefault=true).
+# Сначала пробуем POST (создать custom policy если ее еще нет, instance по умолчанию дает isDefault=true).
 # Если POST упал ("already exists"), делаем PUT для обновления существующей.
 api_post "/management/v1/policies/label" "$BRANDING_PAYLOAD" > /dev/null 2>&1 || \
     api_put "/management/v1/policies/label" "$BRANDING_PAYLOAD" > /dev/null 2>&1 || true

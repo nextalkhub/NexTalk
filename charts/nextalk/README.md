@@ -1,6 +1,6 @@
-# charts/nextalk — Helm-чарт NexTalk
+# charts/nextalk - Helm-чарт NexTalk
 
-Деплоит NexTalk в k3s HA кластер. Постгрес, Redis и observability — вне чарта (на отдельных VPS, см. [docs/deployment.md](../../docs/deployment.md)).
+Деплоит NexTalk в k3s HA кластер. Постгрес, Redis и observability - вне чарта (на отдельных VPS, см. [docs/deployment.md](../../docs/deployment.md)).
 
 ## Состав
 
@@ -28,12 +28,12 @@
 
 ## Безопасность
 
-- Все секреты — только через `required`-валидацию: `helm install` упадёт, если значение пустое.
+- Все секреты - только через `required`-валидацию: `helm install` упадет, если значение пустое.
 - Все поды non-root (`runAsNonRoot: true`).
 - `drop: ALL` capabilities, `allowPrivilegeEscalation: false`.
 - NetworkPolicy default-deny с явным allow-list для DNS / ingress-nginx / db-vps / obs-vps.
 - PSA `baseline` enforce (см. infra/ansible/roles/k3s_server/templates/psa.yaml.j2).
-- Образы — фиксированные теги, `:latest` запрещён.
+- Образы - фиксированные теги, `:latest` запрещен.
 
 См. [docs/security.md](../../docs/deployment.md) для общей модели угроз.
 

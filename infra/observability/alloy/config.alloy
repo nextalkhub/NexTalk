@@ -1,4 +1,4 @@
-// Grafana Alloy — сборщик логов контейнеров NexTalk
+// Grafana Alloy - сборщик логов контейнеров NexTalk
 // Заменяет Promtail (deprecated). Формат: River (*.alloy).
 //
 // Поток данных:
@@ -24,20 +24,20 @@ discovery.docker "containers" {
 discovery.relabel "containers" {
   targets = discovery.docker.containers.targets
 
-  // container — имя без ведущего '/' (/guild-service → guild-service).
+  // container - имя без ведущего '/' (/guild-service → guild-service).
   rule {
     source_labels = ["__meta_docker_container_name"]
     regex         = "/(.+)"
     target_label  = "container"
   }
 
-  // service — значение docker-compose label com.docker.compose.service.
+  // service - значение docker-compose label com.docker.compose.service.
   rule {
     source_labels = ["__meta_docker_container_label_com_docker_compose_service"]
     target_label  = "service"
   }
 
-  // stream — stdout или stderr.
+  // stream - stdout или stderr.
   rule {
     source_labels = ["__meta_docker_container_log_stream"]
     target_label  = "stream"
@@ -57,13 +57,13 @@ loki.source.docker "containers" {
 // .NET сервисы логируют через Serilog CompactJsonFormatter:
 //   {"@t":"...","@m":"...","@l":"Warning","TraceId":"abc...","SpanId":"def..."}
 //
-// Для не-JSON контейнеров (nginx, redis, postgres) stage.json молча пропускает —
-// логи всё равно попадают в Loki как plain text.
+// Для не-JSON контейнеров (nginx, redis, postgres) stage.json молча пропускает -
+// логи все равно попадают в Loki как plain text.
 loki.process "serilog" {
   forward_to = [loki.write.default.receiver]
 
   // Извлекаем поля из JSON.
-  // "@l" и "@t" — JMESPath quoted identifiers: @ специальный символ ("текущий узел"),
+  // "@l" и "@t" - JMESPath quoted identifiers: @ специальный символ ("текущий узел"),
   // поэтому имена полей с @ нужно экранировать как \"@l\" внутри строки River.
   stage.json {
     expressions = {
@@ -75,13 +75,13 @@ loki.process "serilog" {
     }
   }
 
-  // Фильтруем probe-запросы (healthz, readyz, metrics) — они генерируют шум и не несут ценности.
+  // Фильтруем probe-запросы (healthz, readyz, metrics) - они генерируют шум и не несут ценности.
   stage.drop {
     source     = "_request_path"
     expression = "^/(healthz|readyz|metrics)"
   }
 
-  // Serilog опускает "@l" для уровня Information — подставляем дефолт.
+  // Serilog опускает "@l" для уровня Information - подставляем дефолт.
   stage.template {
     source   = "_level"
     template = "{{ if .Value }}{{ .Value }}{{ else }}Information{{ end }}"
@@ -103,7 +103,7 @@ loki.process "serilog" {
     }
   }
 
-  // Timestamp из @t (RFC3339Nano). Fallback — время получения Alloy.
+  // Timestamp из @t (RFC3339Nano). Fallback - время получения Alloy.
   stage.timestamp {
     source           = "_timestamp"
     format           = "RFC3339Nano"

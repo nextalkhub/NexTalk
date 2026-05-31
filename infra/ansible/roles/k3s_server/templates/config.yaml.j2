@@ -1,5 +1,5 @@
 #
-# k3s server config — управляется Ansible.
+# k3s server config - управляется Ansible.
 # Документация: https://docs.k3s.io/installation/configuration
 #
 
@@ -7,7 +7,7 @@
 token: "{{ k3s_token }}"
 
 {% if inventory_hostname == groups['control_plane'][0] %}
-# Первая control-plane нода — инициализирует embedded etcd кластер.
+# Первая control-plane нода - инициализирует embedded etcd кластер.
 cluster-init: true
 {% else %}
 # Остальные control-plane ноды подключаются через HAProxy.
@@ -17,7 +17,7 @@ server: "https://{{ k3s_api_endpoint }}:6443"
 # node-ip = адрес ноды в приватной сети (apiserver слушает 0.0.0.0).
 node-ip: "{{ ansible_host }}"
 
-# TLS SAN — HAProxy IP + IP каждой control-plane ноды.
+# TLS SAN - HAProxy IP + IP каждой control-plane ноды.
 # kubectl и ноды подключаются через HAProxy, поэтому его IP обязан быть в SAN.
 tls-san:
   - "{{ k3s_api_endpoint }}"
@@ -32,14 +32,14 @@ disable:
   - {{ component }}
 {% endfor %}
 
-# CNI — flannel через приватный интерфейс.
+# CNI - flannel через приватный интерфейс.
 flannel-iface: "{{ private_iface }}"
 
 # kubeconfig читаемый для не-root (нам нужно его утащить с control-plane ноды).
 write-kubeconfig-mode: "0644"
 
 # CoreDNS по умолчанию использует /etc/resolv.conf ноды, который на Beget
-# указывает на внутренний резолвер 198.18.18.18 — недоступный из pod-сети
+# указывает на внутренний резолвер 198.18.18.18 - недоступный из pod-сети
 # через flannel VXLAN. Указываем отдельный файл с публичным DNS.
 resolv-conf: /etc/k3s-resolv.conf
 

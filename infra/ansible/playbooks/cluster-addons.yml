@@ -1,8 +1,8 @@
 ---
 # Cluster-addons: ingress-nginx + cert-manager.
-# Запускается ОДИН РАЗ после k3s.yml — оттуда уже есть kubeconfig.
+# Запускается ОДИН РАЗ после k3s.yml - оттуда уже есть kubeconfig.
 #
-# ingress-nginx как DaemonSet с hostNetwork=true: трафик 80/443 идёт
+# ingress-nginx как DaemonSet с hostNetwork=true: трафик 80/443 идет
 # напрямую на воркера, без NodePort/LoadBalancer.
 #
 # cert-manager + Let's Encrypt: ClusterIssuer лежит в Helm-чарте
@@ -32,9 +32,9 @@
         repo_url: https://kubernetes.github.io/ingress-nginx
       tags: [addons, ingress]
 
-    # release-assets.githubusercontent.com заблокирован в РФ — chart download
-    # упадёт по таймауту если ingress-nginx ещё не установлен. Если DaemonSet
-    # уже есть — пропускаем: нет смысла перекачивать чарт при каждом запуске.
+    # release-assets.githubusercontent.com заблокирован в РФ - chart download
+    # упадет по таймауту если ingress-nginx еще не установлен. Если DaemonSet
+    # уже есть - пропускаем: нет смысла перекачивать чарт при каждом запуске.
     - name: Проверить наличие DaemonSet ingress-nginx-controller
       ansible.builtin.command: >-
         kubectl --kubeconfig={{ kubeconfig }}
@@ -82,7 +82,7 @@
 
     # Если metrics-server был установлен вручную (kubectl apply), Helm не может
     # усыновить его ресурсы без меток. Удаляем старую установку, чтобы Helm
-    # поставил заново. На свежем кластере команда вернёт "ok" без изменений.
+    # поставил заново. На свежем кластере команда вернет "ok" без изменений.
     - name: Удалить metrics-server вне Helm (миграция на Helm-управление)
       ansible.builtin.shell: |
         MANAGED=$(kubectl --kubeconfig={{ kubeconfig }} get serviceaccount metrics-server \
@@ -122,17 +122,17 @@
             - --kubelet-insecure-tls
       tags: [addons, metrics-server]
 
-    # Beget выдаёт нодам DNS 198.18.18.18 (внутренний резолвер провайдера).
+    # Beget выдает нодам DNS 198.18.18.18 (внутренний резолвер провайдера).
     # Этот IP доступен с хостового интерфейса ноды, но недоступен из pod-сети
-    # через flannel VXLAN — CoreDNS получает i/o timeout и возвращает SERVFAIL.
+    # через flannel VXLAN - CoreDNS получает i/o timeout и возвращает SERVFAIL.
     # Заменяем forward на публичные DNS (Google + Cloudflare).
     # Аннотация objectset.rio.cattle.io/applied удаляется, чтобы k3s-контроллер
     # не откатил изменение при следующей синхронизации Addon-ресурса.
     #
     # ВАЖНО: никогда не делать `kubectl rollout restart deployment/coredns`.
-    # Если новый pod не может подтянуть образ — DNS ляжет полностью.
+    # Если новый pod не может подтянуть образ - DNS ляжет полностью.
     # CoreDNS сам перечитывает ConfigMap через reload-плагин (~30 сек).
-    - name: Исправить CoreDNS — форвардер на 8.8.8.8 вместо /etc/resolv.conf
+    - name: Исправить CoreDNS - форвардер на 8.8.8.8 вместо /etc/resolv.conf
       ansible.builtin.shell: |
         COREFILE=$(kubectl --kubeconfig={{ kubeconfig }} get cm coredns -n kube-system -o jsonpath='{.data.Corefile}')
         if echo "$COREFILE" | grep -q 'forward . /etc/resolv.conf'; then
@@ -149,7 +149,7 @@
       changed_when: '"patched" in coredns_fix.stdout'
       tags: [addons, coredns]
 
-    # OCI-зеркало на quay.io (Red Hat) — не блокируется в РФ в отличие от charts.jetstack.io (Cloudflare).
+    # OCI-зеркало на quay.io (Red Hat) - не блокируется в РФ в отличие от charts.jetstack.io (Cloudflare).
     - name: Установить cert-manager (OCI quay.io)
       kubernetes.core.helm:
         name: cert-manager
@@ -163,8 +163,8 @@
       tags: [addons, cert-manager]
 
     # Webhook cert-manager регистрирует ValidatingWebhookConfiguration.
-    # ClusterIssuer нельзя создавать раньше — API-сервер отправит запрос на
-    # вебхук, которого ещё нет, и helm upgrade упадёт с connection refused.
+    # ClusterIssuer нельзя создавать раньше - API-сервер отправит запрос на
+    # вебхук, которого еще нет, и helm upgrade упадет с connection refused.
     - name: Дождаться готовности cert-manager webhook
       ansible.builtin.command: >-
         kubectl --kubeconfig={{ kubeconfig }}

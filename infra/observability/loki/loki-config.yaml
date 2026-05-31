@@ -1,5 +1,5 @@
 # ─────────────────────────────────────────────────────────────────────────────
-# Loki 3.x — Single Binary Mode (monolithic)
+# Loki 3.x - Single Binary Mode (monolithic)
 #
 # Single binary запускает все компоненты (ingester, querier, distributor,
 # compactor) в одном процессе. Подходит для dev и небольших нагрузок (< 20 GB/day).
@@ -13,8 +13,8 @@ server:
   grpc_listen_port: 9096
   log_level: warn
 
-# common задаёт defaults для всех компонентов: путь хранилища, репликацию,
-# кольцо координации (inmemory — для single binary без etcd/consul).
+# common задает defaults для всех компонентов: путь хранилища, репликацию,
+# кольцо координации (inmemory - для single binary без etcd/consul).
 common:
   instance_addr: 127.0.0.1
   path_prefix: /loki
@@ -27,8 +27,8 @@ common:
     kvstore:
       store: inmemory
 
-# TSDB — текущий рекомендованный индекс Loki 3.x (заменил boltdb-shipper).
-# schema v13 — последняя стабильная схема.
+# TSDB - текущий рекомендованный индекс Loki 3.x (заменил boltdb-shipper).
+# schema v13 - последняя стабильная схема.
 schema_config:
   configs:
     - from: 2024-01-01

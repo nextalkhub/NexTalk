@@ -1,29 +1,29 @@
 ---
 # Файрвол правил для worker-нод k3s.
-# Воркеры публикуют 80/443 через ingress-nginx с hostNetwork=true —
+# Воркеры публикуют 80/443 через ingress-nginx с hostNetwork=true -
 # поэтому эти порты должны быть открыты В ИНТЕРНЕТ.
 
 ufw_extra_rules:
-  # Внешний трафик (HTTP/HTTPS) — публично.
+  # Внешний трафик (HTTP/HTTPS) - публично.
   - { rule: allow, port: '80',    proto: tcp, comment: 'http (ingress-nginx)' }
   - { rule: allow, port: '443',   proto: tcp, comment: 'https (ingress-nginx)' }
 
   # LiveKit WebRTC media. ICE-кандидаты идут НАПРЯМУЮ на публичный IP ноды
   # через hostPort, минуя ingress-nginx.
-  # UDP 7882 — единственный UDPMux-порт (заменяет диапазон 50000-50200).
-  # TCP 7881 — fallback для клиентов, которым UDP заблокирован.
+  # UDP 7882 - единственный UDPMux-порт (заменяет диапазон 50000-50200).
+  # TCP 7881 - fallback для клиентов, которым UDP заблокирован.
   - { rule: allow, port: '7882', proto: udp, comment: 'livekit rtc udp mux' }
   - { rule: allow, port: '7881', proto: tcp, comment: 'livekit rtc tcp fallback' }
   # LiveKit Prometheus metrics (hostNetwork=true → порт на хосте, не в pod-сети).
   # Prometheus из pod CIDR подключается к ноде через kube-proxy DNAT → INPUT chain.
   - { rule: allow, port: '6789', proto: tcp, src: "{{ private_network_cidr }}", comment: 'livekit metrics (prometheus)' }
 
-  # Внутренние порты k3s — только из приватной сети.
+  # Внутренние порты k3s - только из приватной сети.
   - { rule: allow, port: '10250', proto: tcp, src: "{{ private_network_cidr }}", comment: 'kubelet' }
   # metrics-server поды ходят из pod CIDR (10.42.0.0/16), не из node CIDR
   - { rule: allow, port: '10250', proto: tcp, src: "{{ k3s_cluster_cidr }}", comment: 'kubelet (pod cidr)' }
   - { rule: allow, port: '8472',  proto: udp, src: "{{ private_network_cidr }}", comment: 'flannel vxlan' }
   - { rule: allow, port: '51820', proto: udp, src: "{{ private_network_cidr }}", comment: 'flannel wg (опц.)' }
 
-  # NodePort range — пригодится если будем что-то выставлять напрямую.
+  # NodePort range - пригодится если будем что-то выставлять напрямую.
   # Пока не открываем, ingress-nginx через hostNetwork покрывает все нужды.

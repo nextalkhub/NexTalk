@@ -1,7 +1,7 @@
 {{- if and .Values.tls.enabled (eq .Values.tls.provider "letsencrypt") }}
 ---
-# Let's Encrypt staging — для первоначального тестирования.
-# Выдаёт untrusted-сертификат, но не имеет rate limits prod-окружения.
+# Let's Encrypt staging - для первоначального тестирования.
+# Выдает untrusted-сертификат, но не имеет rate limits prod-окружения.
 apiVersion: cert-manager.io/v1
 kind: ClusterIssuer
 metadata:
@@ -17,7 +17,7 @@ spec:
           ingress:
             ingressClassName: nginx
 ---
-# Let's Encrypt production — trusted CA.
+# Let's Encrypt production - trusted CA.
 # Rate limit: 5 сертификатов на домен в неделю.
 apiVersion: cert-manager.io/v1
 kind: ClusterIssuer

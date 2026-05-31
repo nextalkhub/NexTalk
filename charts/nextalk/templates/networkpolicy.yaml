@@ -1,5 +1,5 @@
 ---
-# Default-deny на весь namespace. Любой ingress/egress, не разрешённый
+# Default-deny на весь namespace. Любой ingress/egress, не разрешенный
 # отдельной NetworkPolicy ниже, дропается.
 # В k3s NetworkPolicy реализуется через встроенный kube-router controller.
 apiVersion: networking.k8s.io/v1
@@ -12,7 +12,7 @@ spec:
   policyTypes: [Ingress, Egress]
 
 ---
-# DNS — всегда нужен. Разрешаем UDP/TCP 53 в kube-system.
+# DNS - всегда нужен. Разрешаем UDP/TCP 53 в kube-system.
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
@@ -33,8 +33,8 @@ spec:
           port: 53
 
 ---
-# Ingress nginx: DaemonSet работает с hostNetwork=true, трафик идёт с IP ноды
-# (10.19.0.x), а не из пода — namespaceSelector не работает. Разрешаем по CIDR.
+# Ingress nginx: DaemonSet работает с hostNetwork=true, трафик идет с IP ноды
+# (10.19.0.x), а не из пода - namespaceSelector не работает. Разрешаем по CIDR.
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
@@ -72,7 +72,7 @@ spec:
 ---
 # Egress наружу: postgres/redis на db-vps, otel/loki на observability-vps,
 # Let's Encrypt ACME-challenge через 443, ghcr/dockerhub для pull.
-# Подсети — Beget внутренняя сеть; внешний egress нужен Zitadel и cert-manager.
+# Подсети - Beget внутренняя сеть; внешний egress нужен Zitadel и cert-manager.
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
@@ -111,7 +111,7 @@ spec:
       ports:
         - protocol: TCP
           port: 443
-    # LiveKit metrics (6789) — hostNetwork pod: пакет после DNAT идёт на node IP:6789.
+    # LiveKit metrics (6789) - hostNetwork pod: пакет после DNAT идет на node IP:6789.
     - to:
         - ipBlock:
             cidr: {{ .Values.network.privateCidr }}
@@ -133,7 +133,7 @@ spec:
           port: 443
         - protocol: TCP
           port: 80
-    # STUN (UDP 19302) — LiveKit с use_external_ip: true опрашивает
+    # STUN (UDP 19302) - LiveKit с use_external_ip: true опрашивает
     # stun.l.google.com:19302 для обнаружения публичного IP под ICE-кандидаты.
     # Без этого правила livekit падает с "could not resolve external IP".
     - to:

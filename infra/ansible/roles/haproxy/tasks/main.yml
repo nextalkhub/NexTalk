@@ -1,5 +1,5 @@
 ---
-# HAProxy — TCP балансировщик для k3s apiserver (port 6443).
+# HAProxy - TCP балансировщик для k3s apiserver (port 6443).
 # Все ноды (cp-2/cp-3, workers, kubectl) подключаются к HAProxy,
 # который проксирует на живой control-plane узел.
 #

@@ -4,7 +4,7 @@
 
 ## team/
 
-Ключи разработчиков. Имя файла — псевдоним владельца.
+Ключи разработчиков. Имя файла - псевдоним владельца.
 
 ```bash
 # Положить свой ключ:
@@ -13,7 +13,7 @@ git add infra/ansible/inventory/files/ssh/team/danil.pub
 git commit -m "ssh: add danil pubkey"
 ```
 
-Удалить ключ — просто удалить файл и закоммитить. Ansible **не** убирает старые ключи автоматически (`exclusive: false`); для очистки сорванных ключей делать `authorized_key state: absent` отдельной таской.
+Удалить ключ - просто удалить файл и закоммитить. Ansible **не** убирает старые ключи автоматически (`exclusive: false`); для очистки сорванных ключей делать `authorized_key state: absent` отдельной таской.
 
 ## ci/
 
@@ -31,4 +31,4 @@ mv github-actions-deploy.pub infra/ansible/inventory/files/ssh/ci/github-actions
 rm github-actions-deploy
 ```
 
-CI-ключи раскатываются с ограничениями (`no-port-forwarding,no-X11-forwarding,no-agent-forwarding`) — см. `roles/ssh_keys/tasks/main.yml`.
+CI-ключи раскатываются с ограничениями (`no-port-forwarding,no-X11-forwarding,no-agent-forwarding`) - см. `roles/ssh_keys/tasks/main.yml`.

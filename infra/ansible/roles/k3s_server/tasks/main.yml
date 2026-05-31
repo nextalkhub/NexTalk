@@ -1,15 +1,15 @@
 ---
 # Установка k3s в режиме server. Порядок:
 #   1. Положить config.yaml (со всеми флагами).
-#   2. На первой control-plane ноде — cluster-init.
-#   3. На остальных — server: https://VIP:6443.
+#   2. На первой control-plane ноде - cluster-init.
+#   3. На остальных - server: https://VIP:6443.
 #
 # Документация: https://docs.k3s.io/installation/configuration
 # HA с embedded etcd: https://docs.k3s.io/datastore/ha-embedded
 
-# Beget выдаёт нодам DNS 198.18.18.18 (Beget-внутренний резолвер).
-# Из pod-сети через flannel VXLAN он недоступен — CoreDNS возвращает SERVFAIL.
-# Создаём отдельный resolv.conf с публичным DNS до старта k3s.
+# Beget выдает нодам DNS 198.18.18.18 (Beget-внутренний резолвер).
+# Из pod-сети через flannel VXLAN он недоступен - CoreDNS возвращает SERVFAIL.
+# Создаем отдельный resolv.conf с публичным DNS до старта k3s.
 - name: Создать /etc/k3s-resolv.conf с публичным DNS
   ansible.builtin.copy:
     dest: /etc/k3s-resolv.conf

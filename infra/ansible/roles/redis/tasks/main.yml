@@ -1,7 +1,7 @@
 ---
 # Установка Redis из стандартного Ubuntu-репозитория.
-# packages.redis.io (Redis 8) недоступен с Beget-сети — SSL handshake timeout.
-# Ubuntu 22.04 (jammy) даёт Redis 6.x, Ubuntu 24.04 (noble) — Redis 7.x.
+# packages.redis.io (Redis 8) недоступен с Beget-сети - SSL handshake timeout.
+# Ubuntu 22.04 (jammy) дает Redis 6.x, Ubuntu 24.04 (noble) - Redis 7.x.
 
 - name: Установить redis-server
   ansible.builtin.apt:

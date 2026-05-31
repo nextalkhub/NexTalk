@@ -14,9 +14,9 @@
     - ufw
     - ssh_keys
 
-# bastion (worker-1) — единственный SSH-эндпоинт извне.
+# bastion (worker-1) - единственный SSH-эндпоинт извне.
 # Дополнительно ставим fail2ban на этот хост.
-# ssh_keys уже раскатаны выше — здесь только защита от перебора.
+# ssh_keys уже раскатаны выше - здесь только защита от перебора.
 - name: SSH-hardening на bastion
   hosts: bastion
   become: true

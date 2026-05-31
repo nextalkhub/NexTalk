@@ -1,9 +1,9 @@
-# NexTalk — Ansible inventory
+# NexTalk - Ansible inventory
 #
 # 1. Скопируй этот файл в hosts.ini.
 # 2. Подставь реальные private IP всех 9 VPS.
-# 3. Подставь public IP трёх worker'ов (для bastion и доступа извне).
-# 4. ansible_user — пользователь с правом sudo (по умолчанию root после bootstrap).
+# 3. Подставь public IP трех worker'ов (для bastion и доступа извне).
+# 4. ansible_user - пользователь с правом sudo (по умолчанию root после bootstrap).
 #
 # Bastion = worker-1. Все остальные хосты доступны только через него.
 # SSH proxy настроен в group_vars/all.yml через ansible_ssh_common_args.
@@ -32,7 +32,7 @@ haproxy-vps ansible_host=10.19.0.51
 control_plane
 workers
 
-# Bastion — единственный хост с прямым SSH из интернета.
+# Bastion - единственный хост с прямым SSH из интернета.
 # Все остальные доступны через ProxyJump (см. group_vars/all.yml).
 [bastion]
 worker-1

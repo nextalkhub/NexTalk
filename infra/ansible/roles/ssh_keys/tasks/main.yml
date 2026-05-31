@@ -19,7 +19,7 @@
     key: "{{ lookup('file', item) }}"
     exclusive: false
     # Ограничиваем CI-ключ: только команды для деплоя, никаких port-forwarding и pty.
-    # Если хочешь дать CI полный shell — убери опции.
+    # Если хочешь дать CI полный shell - убери опции.
     key_options: 'no-port-forwarding,no-X11-forwarding,no-agent-forwarding'
   with_fileglob:
     - "{{ ssh_keys_ci_glob }}"

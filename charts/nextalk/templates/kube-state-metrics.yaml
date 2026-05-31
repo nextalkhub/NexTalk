@@ -1,6 +1,6 @@
 ---
 # kube-state-metrics: экспортирует состояние k8s-объектов как Prometheus-метрики.
-# Даёт kube_pod_container_status_waiting_reason (CrashLoopBackOff alert),
+# Дает kube_pod_container_status_waiting_reason (CrashLoopBackOff alert),
 # kube_deployment_status_replicas_available, kube_horizontalpodautoscaler_status_* и т.д.
 apiVersion: v1
 kind: ServiceAccount
@@ -91,7 +91,7 @@ spec:
           args:
             # Собираем только ресурсы, нужные для NexTalk dashboard и алертов.
             - --resources=pods,deployments,replicasets,statefulsets,daemonsets,horizontalpodautoscalers,nodes,namespaces,persistentvolumeclaims,poddisruptionbudgets
-            # Смотрим только в nextalk (namespace-scoped ресурсы); nodes — cluster-scoped, собираются всегда.
+            # Смотрим только в nextalk (namespace-scoped ресурсы); nodes - cluster-scoped, собираются всегда.
             - --namespaces={{ .Values.namespace }}
           ports:
             - name: metrics

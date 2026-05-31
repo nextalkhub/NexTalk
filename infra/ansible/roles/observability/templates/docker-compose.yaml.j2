@@ -1,5 +1,5 @@
 #
-# docker-compose для observability-vps — управляется Ansible.
+# docker-compose для observability-vps - управляется Ansible.
 # Прометей/Loki/Tempo с retention под 40 GB диск.
 #
 # Порты публикуются на all interfaces, но защищены ufw
@@ -81,7 +81,7 @@ services:
     volumes:
       - ./otel-collector/config.yaml:/etc/otel-collector/config.yaml:ro
     ports:
-      - "4317:4317"   # OTLP gRPC (конфликт с Tempo — см. ниже)
+      - "4317:4317"   # OTLP gRPC (конфликт с Tempo - см. ниже)
       - "4318:4318"   # OTLP HTTP
       - "8888:8888"   # self-metrics для Prometheus
     networks: [observability]

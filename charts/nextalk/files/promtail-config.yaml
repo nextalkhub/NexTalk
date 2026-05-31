@@ -25,7 +25,7 @@ scrape_configs:
         regex: .+
 
       # Путь к лог-файлу: /var/log/pods/<ns>_<pod>_<uid>/<container>/<n>.log
-      # $$1 — экранирование для config.expand-env=true (иначе $1 ест os.ExpandEnv)
+      # $$1 - экранирование для config.expand-env=true (иначе $1 ест os.ExpandEnv)
       - source_labels: [__meta_kubernetes_pod_uid, __meta_kubernetes_pod_container_name]
         separator: /
         target_label: __path__
@@ -47,7 +47,7 @@ scrape_configs:
       # Парсинг формата CRI (containerd): timestamp stream flags log-line
       - cri: {}
 
-      # Serilog CompactJSON: @l/@t — специальные символы, нужны JMESPath-кавычки
+      # Serilog CompactJSON: @l/@t - специальные символы, нужны JMESPath-кавычки
       - json:
           expressions:
             _level: '"@l"'
@@ -55,7 +55,7 @@ scrape_configs:
             _trace_id: TraceId
             _span_id: SpanId
 
-      # Serilog опускает @l для Information — подставляем дефолт
+      # Serilog опускает @l для Information - подставляем дефолт
       - template:
           source: _level
           template: '{{ if .Value }}{{ .Value }}{{ else }}Information{{ end }}'
