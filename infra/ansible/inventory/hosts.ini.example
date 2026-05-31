@@ -1,8 +1,8 @@
-# NexTalk - Ansible inventory
+# Ansible inventory
 #
-# 1. Скопируй этот файл в hosts.ini.
-# 2. Подставь реальные private IP всех 9 VPS.
-# 3. Подставь public IP трех worker'ов (для bastion и доступа извне).
+# 1. Скопировать этот файл в hosts.ini.
+# 2. Подставь реальные private IP всех VPS.
+# 3. Подставить public IP трех worker'ов (для bastion и доступа извне).
 # 4. ansible_user - пользователь с правом sudo (по умолчанию root после bootstrap).
 #
 # Bastion = worker-1. Все остальные хосты доступны только через него.

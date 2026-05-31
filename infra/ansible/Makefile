@@ -1,65 +1,53 @@
-# NexTalk - Ansible orchestrator.
-# Подразумевается, что hosts.ini и vault.yml уже заполнены.
-#
-# Использование:
-#   make galaxy        # установить collections (один раз)
-#   make ping          # проверить SSH до всех хостов
-#   make bootstrap     # базовая настройка всех VPS
-#   make ssh           # раскатать SSH-ключи (без полного bootstrap)
-#   make gre-nat       # GRE-туннели + NAT (obs/db → интернет)
-#   make haproxy       # HAProxy балансировщик k3s API
-#   make db            # PostgreSQL + Redis
-#   make observability # observability stack
-#   make k3s           # k3s HA
-#   make addons        # ingress-nginx + cert-manager
-#   make helm          # деплой приложений NexTalk
-#   make deploy        # все сразу (site.yml)
-#   make smoke         # smoke-тесты после деплоя
-
 INVENTORY    ?= inventory/hosts.ini
 VAULT_PASS   ?= --ask-vault-pass
 ANSIBLE      = ansible-playbook -i $(INVENTORY) $(VAULT_PASS)
 
-.PHONY: galaxy ping bootstrap ssh gre-nat haproxy db observability k3s addons helm deploy smoke clean-kubeconfig
+.DEFAULT_GOAL := help
 
-galaxy:
+.PHONY: help galaxy ping bootstrap ssh gre-nat haproxy db observability k3s addons helm deploy smoke clean-kubeconfig
+
+help: ## Показать эту справку
+	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) \
+	  | awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-18s\033[0m %s\n", $$1, $$2}'
+
+galaxy: ## Установить Ansible collections (один раз)
 	ansible-galaxy collection install -r requirements.yml
 
-ping:
+ping: ## Проверить SSH до всех хостов
 	ansible -i $(INVENTORY) all -m ping
 
-bootstrap:
+bootstrap: ## Базовая настройка всех VPS
 	$(ANSIBLE) playbooks/bootstrap.yml
 
-ssh:
+ssh: ## Раскатать SSH-ключи (без полного bootstrap)
 	$(ANSIBLE) playbooks/bootstrap.yml --tags ssh_keys
 
-gre-nat:
+gre-nat: ## GRE-туннели + NAT (obs/db → интернет)
 	$(ANSIBLE) playbooks/gre-nat.yml
 
-haproxy:
+haproxy: ## HAProxy балансировщик k3s API
 	$(ANSIBLE) playbooks/haproxy.yml
 
-db:
+db: ## PostgreSQL + Redis
 	$(ANSIBLE) playbooks/db.yml
 
-observability:
+observability: ## Observability stack (Prometheus, Loki, Tempo, Grafana)
 	$(ANSIBLE) playbooks/observability.yml
 
-k3s:
+k3s: ## k3s HA кластер (3 CP + 3 workers)
 	$(ANSIBLE) playbooks/k3s.yml
 
-addons:
+addons: ## ingress-nginx + cert-manager
 	ansible-playbook -i $(INVENTORY) playbooks/cluster-addons.yml
 
-helm:
+helm: ## Деплой приложений NexTalk через Helm
 	$(ANSIBLE) playbooks/helm-deploy.yml
 
-deploy:
+deploy: ## Всё сразу (site.yml)
 	$(ANSIBLE) playbooks/site.yml
 
-smoke:
+smoke: ## Smoke-тесты после деплоя
 	bash scripts/smoke-test.sh
 
-clean-kubeconfig:
+clean-kubeconfig: ## Удалить локальный kubeconfig
 	rm -f kubeconfig
