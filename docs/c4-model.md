@@ -1290,6 +1290,9 @@ tagGroups:
 - id: tg-k3s
   name: k3s Role
   icon: cog
+- id: tg-ns
+  name: Kubernetes Namespace
+  icon: cloud
 
 tags:
 - id: tag-worker
@@ -1328,6 +1331,10 @@ tags:
   groupId: tg-infra
   name: DaemonSet
   color: yellow
+- id: tag-ns-nextalk
+  groupId: tg-ns
+  name: nextalk
+  color: red
 
 modelObjects:
 
@@ -1357,7 +1364,7 @@ modelObjects:
 
 - id: comp-haproxy-frontend
   name: frontend k3s-apiserver
-  type: component
+  type: app
   parentId: node-haproxy
   description: bind *:6443 → backend k3s-cp (roundrobin, tcp-check, inter 5s fall 3)
 
@@ -1419,21 +1426,14 @@ modelObjects:
   caption: Worker
   tagIds: [tag-worker]
 
-# ── Namespace: nextalk ───────────────────────────────────────────────────────
-- id: ns-nextalk
-  name: namespace: nextalk
-  type: system
-  parentId: cluster-k3s
-  description: 'Все прикладные поды NexTalk. PSA: privileged. NetworkPolicy ограничивает egress.'
-
 # ── DaemonSet: ingress-nginx (1 pod per worker) ──────────────────────────────
 - id: ds-ingress
   name: ingress-nginx (DaemonSet, ×3)
   type: app
-  parentId: ns-nextalk
+  parentId: cluster-k3s
   description: По одному поду на каждом worker. Принимает :443 → routing по host/path → ClusterIP сервисы. TLS termination с Cloudflare Origin Certificate.
   caption: DaemonSet - ingress controller
-  tagIds: [tag-daemonset]
+  tagIds: [tag-daemonset, tag-ns-nextalk]
 
 - id: comp-ingress-controller
   name: ingress-nginx-controller
@@ -1445,19 +1445,19 @@ modelObjects:
 - id: ds-promtail
   name: alloy (DaemonSet, ×6)
   type: app
-  parentId: ns-nextalk
+  parentId: cluster-k3s
   description: По одному поду на каждой k3s ноде (3 CP + 3 workers). Читает логи подов nextalk_* с hostPath /var/log/pods через Docker API, пушит structured logs в Loki на obs-vps.
   caption: DaemonSet - log collector (Grafana Alloy)
-  tagIds: [tag-daemonset]
+  tagIds: [tag-daemonset, tag-ns-nextalk]
 
 # ── Deployment: guild-service (×2) ───────────────────────────────────────────
 - id: deploy-guild
   name: guild-service (Deployment, ×2)
   type: app
-  parentId: ns-nextalk
+  parentId: cluster-k3s
   description: 2 реплики. PDB minAvailable=1. HPA 2–8 реплик. Readiness /readyz (PostgreSQL + Redis). Liveness /healthz.
   caption: Deployment ×2
-  tagIds: [tag-pod]
+  tagIds: [tag-pod, tag-ns-nextalk]
 
 - id: cont-guild
   name: guild-service
@@ -1470,10 +1470,10 @@ modelObjects:
 - id: deploy-messaging
   name: messaging-service (Deployment, ×2)
   type: app
-  parentId: ns-nextalk
+  parentId: cluster-k3s
   description: 2 реплики. PDB minAvailable=1. HPA 2–8. OutboxWorker как BackgroundService внутри пода.
   caption: Deployment ×2
-  tagIds: [tag-pod]
+  tagIds: [tag-pod, tag-ns-nextalk]
 
 - id: cont-messaging
   name: messaging-service
@@ -1486,10 +1486,10 @@ modelObjects:
 - id: deploy-voice
   name: voice-service (Deployment, ×2)
   type: app
-  parentId: ns-nextalk
+  parentId: cluster-k3s
   description: '2 реплики. PDB minAvailable=1. HPA 2–4. Stateless - RedisSessionStore (Hash+Set, DB=3, TTL=8h).'
   caption: Deployment ×2
-  tagIds: [tag-pod]
+  tagIds: [tag-pod, tag-ns-nextalk]
 
 - id: cont-voice
   name: voice-service
@@ -1502,10 +1502,10 @@ modelObjects:
 - id: deploy-ws
   name: websocket-gateway (Deployment, ×2)
   type: app
-  parentId: ns-nextalk
+  parentId: cluster-k3s
   description: '2 реплики. PDB minAvailable=1. HPA 2–6. SignalR Redis backplane (AddStackExchangeRedis). RedisPresenceTracker (DB=2) - шарится между подами.'
   caption: Deployment ×2
-  tagIds: [tag-pod]
+  tagIds: [tag-pod, tag-ns-nextalk]
 
 - id: cont-ws
   name: websocket-gateway
@@ -1518,10 +1518,10 @@ modelObjects:
 - id: deploy-spa
   name: web-spa (Deployment, ×2)
   type: app
-  parentId: ns-nextalk
+  parentId: cluster-k3s
   description: 2 реплики. Stateless Nginx раздает React SPA как статику.
   caption: Deployment ×2
-  tagIds: [tag-pod]
+  tagIds: [tag-pod, tag-ns-nextalk]
 
 - id: cont-spa
   name: web-spa (nginx)
@@ -1534,10 +1534,10 @@ modelObjects:
 - id: sts-zitadel
   name: zitadel (StatefulSet, ×1)
   type: app
-  parentId: ns-nextalk
+  parentId: cluster-k3s
   description: 1 реплика. Два контейнера в одном поде (sidecar pattern). Общий PVC /zitadel/bootstrap (PAT-файл). HA - будущая итерация (разделить init-Job и runtime StatefulSet).
   caption: StatefulSet ×1 - sidecar
-  tagIds: [tag-pod]
+  tagIds: [tag-pod, tag-ns-nextalk]
 
 - id: cont-zitadel-api
   name: api (Zitadel)
@@ -1557,10 +1557,10 @@ modelObjects:
 - id: deploy-livekit
   name: livekit (Deployment, ×1)
   type: app
-  parentId: ns-nextalk
+  parentId: cluster-k3s
   description: 1 реплика. SFU + встроенный TURN. UDP порты 50000–50200 открыты на воркерах (ufw). SPOF для голосовых звонков.
   caption: Deployment ×1 - SPOF
-  tagIds: [tag-pod]
+  tagIds: [tag-pod, tag-ns-nextalk]
 
 - id: cont-livekit
   name: livekit-server
@@ -1573,10 +1573,10 @@ modelObjects:
 - id: deploy-prometheus
   name: prometheus (Deployment, ×1)
   type: app
-  parentId: ns-nextalk
+  parentId: cluster-k3s
   description: 1 реплика. Scrape 15s. Retention 1d. Долгосрочное хранение на obs-vps через remote_write.
   caption: Deployment ×1
-  tagIds: [tag-pod]
+  tagIds: [tag-pod, tag-ns-nextalk]
 
 - id: cont-prometheus
   name: prometheus
@@ -1596,13 +1596,13 @@ modelObjects:
 
 - id: comp-postgres
   name: PostgreSQL 18
-  type: component
+  type: store
   parentId: node-db
   description: 'Два db: nextalk (guild + messaging) и zitadel. Port 5432. SSL mode prefer. Без репликации.'
 
 - id: comp-redis
   name: Redis 7
-  type: component
+  type: store
   parentId: node-db
   description: Port 6379. DB 0 LiveKit, DB 2 SignalR backplane (WS Gateway), DB 3 Voice SessionStore. Guild Service - IMemoryCache, Redis не использует. Без Sentinel.
 
@@ -1617,25 +1617,25 @@ modelObjects:
 
 - id: comp-obs-prometheus
   name: Prometheus
-  type: component
+  type: app
   parentId: node-obs
   description: Port 9090. --web.enable-remote-write-receiver. Принимает remote_write от in-cluster prometheus. Retention 15d.
 
 - id: comp-obs-loki
   name: Loki
-  type: component
+  type: app
   parentId: node-obs
   description: Port 3100. Single-binary mode. Получает логи от Alloy DaemonSet. Filesystem storage.
 
 - id: comp-obs-tempo
   name: Tempo
-  type: component
+  type: app
   parentId: node-obs
   description: 'Port 4317 OTLP gRPC, 4318 OTLP HTTP, 3200 HTTP API. Принимает трейсы от .NET сервисов. metrics_generator: service-graphs + span-metrics → Prometheus remote_write. Retention 14d.'
 
 - id: comp-obs-grafana
   name: Grafana
-  type: component
+  type: app
   parentId: node-obs
   description: 'Port 3000. Datasources провизированы автоматически: Prometheus (default), Loki (derived fields), Tempo (TraceQL, serviceMap, tracesToLogs, tracesToMetrics).'
 
@@ -1696,69 +1696,69 @@ modelConnections:
 - id: conn-guild-pg
   name: PostgreSQL :5432
   originId: deploy-guild
-  targetId: node-db
+  targetId: comp-postgres
   direction: outgoing
 
 - id: conn-guild-redis
   name: Redis :6379
   originId: deploy-guild
-  targetId: node-db
+  targetId: comp-redis
   direction: outgoing
 
 - id: conn-messaging-pg
   name: PostgreSQL :5432
   originId: deploy-messaging
-  targetId: node-db
+  targetId: comp-postgres
   direction: outgoing
 
 - id: conn-zitadel-pg
   name: PostgreSQL :5432 (zitadel db)
   originId: sts-zitadel
-  targetId: node-db
+  targetId: comp-postgres
   direction: outgoing
 
 - id: conn-livekit-redis
   name: Redis :6379 (db 0)
   originId: deploy-livekit
-  targetId: node-db
+  targetId: comp-redis
   direction: outgoing
 
 # ── Services → Observability ─────────────────────────────────────────────────
 - id: conn-guild-tempo
   name: OTLP gRPC :4317 (traces)
   originId: deploy-guild
-  targetId: node-obs
+  targetId: comp-obs-tempo
   direction: outgoing
 
 - id: conn-messaging-tempo
   name: OTLP gRPC :4317 (traces)
   originId: deploy-messaging
-  targetId: node-obs
+  targetId: comp-obs-tempo
   direction: outgoing
 
 - id: conn-voice-tempo
   name: OTLP gRPC :4317 (traces)
   originId: deploy-voice
-  targetId: node-obs
+  targetId: comp-obs-tempo
   direction: outgoing
 
 - id: conn-ws-tempo
   name: OTLP gRPC :4317 (traces)
   originId: deploy-ws
-  targetId: node-obs
+  targetId: comp-obs-tempo
   direction: outgoing
 
 - id: conn-prometheus-obs
   name: remote_write :9090
   originId: deploy-prometheus
-  targetId: node-obs
+  targetId: comp-obs-prometheus
   direction: outgoing
   description: In-cluster Prometheus → obs-vps Prometheus. Все метрики сервисов с retention 15d.
 
 - id: conn-alloy-loki
   name: HTTP push :3100
   originId: ds-promtail
-  targetId: node-obs
+  targetId: comp-obs-loki
   direction: outgoing
 
 # ── Prometheus scrape ────────────────────────────────────────────────────────
@@ -1781,7 +1781,7 @@ modelConnections:
   direction: outgoing
 
 - id: conn-prom-ws
-  name: scrape /metrics :5004
+  name: scrape /metrics :5000
   originId: deploy-prometheus
   targetId: deploy-ws
   direction: outgoing
