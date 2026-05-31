@@ -14,7 +14,8 @@
 | `templates/clusterissuer.yaml` | cert-manager ClusterIssuer (Let's Encrypt staging + prod) |
 | `templates/ingress.yaml` | Nginx Ingress: маршруты API, Zitadel OIDC, web-spa |
 | `templates/livekit.yaml` | LiveKit SFU (single-node, hostPort для UDP RTC) |
-| `templates/zitadel.yaml` | Zitadel StatefulSet (api + login UI), 2 реплики |
+| `templates/zitadel.yaml` | Zitadel StatefulSet (api + login UI), 1 реплика |
+| `templates/kube-state-metrics.yaml` | kube-state-metrics v2.13.0 (метрики deployments/pods/HPA/nodes) |
 | `templates/guild-service.yaml` | Guild Service |
 | `templates/messaging-service.yaml` | Messaging Service |
 | `templates/voice-service.yaml` | Voice Service |
@@ -59,4 +60,4 @@ helm upgrade --install nextalk charts/nextalk \
 | Redis | db-vps |
 | Loki / Tempo / Grafana | observability-vps (infra/ansible/roles/observability) |
 | Ingress-nginx + cert-manager | playbooks/cluster-addons.yml (через Helm) |
-| kube-vip | playbooks/k3s.yml (DaemonSet manifest) |
+| HAProxy (HA apiserver endpoint) | infra/ansible/roles/haproxy (отдельная VPS 10.19.0.51) |
