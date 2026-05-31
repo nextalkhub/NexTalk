@@ -304,7 +304,7 @@ modelObjects:
   type: store
   parentId: system-nextalk
   description: 'Два DB: nextalk (схемы guild, messaging) и zitadel (managed by Zitadel).'
-  caption: PostgreSQL 17
+  caption: PostgreSQL 18
   tagIds: [tag-storage, tag-postgres]
 
 - id: store-redis
@@ -1424,7 +1424,7 @@ modelObjects:
   name: namespace: nextalk
   type: system
   parentId: cluster-k3s
-  description: Все прикладные поды NexTalk. PSA: privileged. NetworkPolicy ограничивает egress.
+  description: 'Все прикладные поды NexTalk. PSA: privileged. NetworkPolicy ограничивает egress.'
 
 # ── DaemonSet: ingress-nginx (1 pod per worker) ──────────────────────────────
 - id: ds-ingress
@@ -1487,7 +1487,7 @@ modelObjects:
   name: voice-service (Deployment, ×2)
   type: app
   parentId: ns-nextalk
-  description: 2 реплики. PDB minAvailable=1. HPA 2–4. Stateless - SessionStore in-memory. Restart сбрасывает голосовые сессии.
+  description: '2 реплики. PDB minAvailable=1. HPA 2–4. Stateless - RedisSessionStore (Hash+Set, DB=3, TTL=8h).'
   caption: Deployment ×2
   tagIds: [tag-pod]
 
@@ -1495,7 +1495,7 @@ modelObjects:
   name: voice-service
   type: component
   parentId: deploy-voice
-  description: ASP.NET 10. Port 5003. Metrics /metrics. OTLP traces → obs-vps:4317. InMemory SessionStore.
+  description: 'ASP.NET 10. Port 5003. Metrics /metrics. OTLP traces → obs-vps:4317. RedisSessionStore (DB=3).'
   tagIds: [tag-container]
 
 # ── Deployment: websocket-gateway (×2) ───────────────────────────────────────
@@ -1503,7 +1503,7 @@ modelObjects:
   name: websocket-gateway (Deployment, ×2)
   type: app
   parentId: ns-nextalk
-  description: 2 реплики. PDB minAvailable=1. HPA 2–6. SignalR Redis backplane подключен (AddStackExchangeRedis). Presence in-memory (ConcurrentDictionary) - не шарится между подами, сбрасывается при рестарте.
+  description: '2 реплики. PDB minAvailable=1. HPA 2–6. SignalR Redis backplane (AddStackExchangeRedis). RedisPresenceTracker (DB=2) - шарится между подами.'
   caption: Deployment ×2
   tagIds: [tag-pod]
 
@@ -1598,7 +1598,7 @@ modelObjects:
   name: PostgreSQL 18
   type: component
   parentId: node-db
-  description: Два db: nextalk (guild + messaging) и zitadel. Port 5432. SSL mode prefer. Без репликации.
+  description: 'Два db: nextalk (guild + messaging) и zitadel. Port 5432. SSL mode prefer. Без репликации.'
 
 - id: comp-redis
   name: Redis 7
@@ -1637,7 +1637,7 @@ modelObjects:
   name: Grafana
   type: component
   parentId: node-obs
-  description: Port 3000. Datasources провизированы автоматически: Prometheus (default), Loki (derived fields), Tempo (TraceQL, serviceMap, tracesToLogs, tracesToMetrics).
+  description: 'Port 3000. Datasources провизированы автоматически: Prometheus (default), Loki (derived fields), Tempo (TraceQL, serviceMap, tracesToLogs, tracesToMetrics).'
 
 modelConnections:
 
