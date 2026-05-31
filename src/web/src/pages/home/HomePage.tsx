@@ -2,6 +2,7 @@ import React, { useContext, useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { IPlus, IArrowOut } from '../../shared/components/Icons/Icons'
 import { LayoutContext } from '../../shared/components/Layout/AppShell'
+import { MobileMenuButton } from '../../shared/components/Layout/MobileMenuButton'
 import { useGlobalModal } from '../../shared/components/Layout/ModalProvider'
 import { useAppDispatch, useAppSelector } from '../../store'
 import { selectUser } from '../../shared/slices/authSlice'
@@ -13,7 +14,7 @@ import { pluralize } from '../../shared/utils/format'
 export const HomePage: React.FC = () => {
   const navigate = useNavigate()
   const dispatch = useAppDispatch()
-  const { setHideRight } = useContext(LayoutContext)
+  const { setHideRight, drawerOpen, setDrawerOpen } = useContext(LayoutContext)
   const { open } = useGlobalModal()
   const user = useAppSelector(selectUser)
   const servers = useAppSelector(selectServers)
@@ -31,7 +32,6 @@ export const HomePage: React.FC = () => {
   const extractCode = (raw: string): string => {
     const trimmed = raw.trim()
     if (!trimmed) return ''
-    // Accept either bare code or full URL like https://app/invite/<code>
     const match = trimmed.match(/\/invite\/([^/?\s]+)/i)
     return (match ? match[1] : trimmed).trim()
   }
@@ -55,6 +55,7 @@ export const HomePage: React.FC = () => {
   return (
     <>
       <header className="top">
+        <MobileMenuButton onClick={() => setDrawerOpen(!drawerOpen)} />
         <div className="top-left">
           <div className="top-breadcrumb">
             <span className="crumb-channel">

@@ -27,11 +27,16 @@ export const TopBar: React.FC<TopBarProps> = ({
   const currentServer = useAppSelector(selectCurrentServer)
   const channels = useAppSelector(state => state.channels.channels)
   const { open } = useGlobalModal()
-  const { drawerOpen, setDrawerOpen, membersOpen, setMembersOpen } = useLayout()
+  const { drawerOpen, setDrawerOpen, membersOpen, setMembersOpen, hideRight } = useLayout()
   const isPhone = useIsPhone()
   const [logoutFallback, setLogoutFallback] = useState(false)
 
   const channel = channels.find(c => c.id === channelId)
+
+  // The Users toggle is meaningless on pages that suppress the right rail
+  // (Home / Profile / Settings / Voice). Hide it there instead of opening
+  // an empty backdrop.
+  const showMembersButton = hasMembers && !hideRight
 
   // Settings / Profile / Home don't have a real "channel" — show a friendly label
   const isSettings  = pathname.startsWith('/settings') || /\/servers\/[^/]+\/settings/.test(pathname)
@@ -82,7 +87,7 @@ export const TopBar: React.FC<TopBarProps> = ({
         </div>
       </div>
       <div className="top-actions">
-        {hasMembers && (
+        {showMembersButton && (
           <button
             className={`icon-btn${membersActive ? ' is-active' : ''}`}
             title="Участники"

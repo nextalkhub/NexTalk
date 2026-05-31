@@ -1,18 +1,19 @@
 import React, { useContext, useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { LayoutContext } from '../../../shared/components/Layout/AppShell'
+import { MobileMenuButton } from '../../../shared/components/Layout/MobileMenuButton'
 import { useGlobalModal } from '../../../shared/components/Layout/ModalProvider'
 import { IGear, IMic, IShield, ILogout, IX } from '../../../shared/components/Icons/Icons'
 import { useAppSelector } from '../../../store'
 import { selectUser } from '../../../shared/slices/authSlice'
-import { loadPrefs, savePrefs, applyPrefs, PALETTES, FONT_SIZE_STEPS, type Prefs } from '../../../shared/prefs/prefs'
+import { loadPrefs, savePrefs, applyPrefs, PALETTES, type Prefs } from '../../../shared/prefs/prefs'
 
 type Tab = 'appearance' | 'audio' | 'notifications' | 'session'
 
 export const AppSettingsPage: React.FC = () => {
   const navigate = useNavigate()
   const user = useAppSelector(selectUser)
-  const { setHideRight } = useContext(LayoutContext)
+  const { setHideRight, drawerOpen, setDrawerOpen } = useContext(LayoutContext)
   const { open } = useGlobalModal()
   const [tab, setTab] = useState<Tab>('appearance')
   const [prefs, setPrefs] = useState<Prefs>(() => loadPrefs())
@@ -41,6 +42,7 @@ export const AppSettingsPage: React.FC = () => {
   return (
     <>
       <header className="top">
+        <MobileMenuButton onClick={() => setDrawerOpen(!drawerOpen)} />
         <div className="top-left">
           <div className="top-breadcrumb">
             <span className="crumb-channel"><IGear />Настройки приложения</span>
@@ -126,29 +128,38 @@ const AppearanceTab: React.FC<{
       </div>
     </div>
 
-    <div className="settings-field">
-      <label className="settings-label">Размер шрифта</label>
-      <div className="font-preview">
-        <span style={{ fontSize: prefs.fontScale }}>
-          Быстрая коричневая лиса перепрыгнула ленивую собаку - the quick brown fox 0123
-        </span>
+    <div className="settings-row">
+      <div className="info">
+        <div className="info-h">Плотность интерфейса</div>
+        <div className="info-s">Расстояние между элементами в списках и каналах.</div>
       </div>
-      <div className="font-slider-wrap">
-        <input
-          type="range"
-          min={FONT_SIZE_STEPS[0]}
-          max={FONT_SIZE_STEPS[FONT_SIZE_STEPS.length - 1]}
-          step={1}
-          value={prefs.fontScale}
-          onChange={e => update('fontScale', parseInt(e.target.value))}
-          className="font-slider"
-        />
-        <div className="font-slider-labels">
-          {FONT_SIZE_STEPS.map(px => (
-            <span key={px} className={prefs.fontScale === px ? 'active' : ''}>{px}px</span>
-          ))}
-        </div>
+      <div style={{ display: 'flex', gap: 6 }}>
+        {(['cozy', 'comfortable', 'airy'] as const).map(d => (
+          <button
+            key={d}
+            type="button"
+            onClick={() => update('density', d)}
+            className={`chip${prefs.density === d ? ' is-brand' : ''}`}
+            style={{ cursor: 'pointer', padding: '4px 12px', height: 28 }}
+          >
+            {d === 'cozy' ? 'Cozy' : d === 'comfortable' ? 'Обычная' : 'Воздушная'}
+          </button>
+        ))}
       </div>
+    </div>
+
+    <div className="settings-row">
+      <div className="info">
+        <div className="info-h">Размер шрифта</div>
+        <div className="info-s">Текущее значение: {Math.round(prefs.fontScale * 100)}%.</div>
+      </div>
+      <input
+        type="range"
+        min="0.9" max="1.15" step="0.01"
+        value={prefs.fontScale}
+        onChange={e => update('fontScale', parseFloat(e.target.value))}
+        style={{ width: 160 }}
+      />
     </div>
   </>
 )
@@ -166,7 +177,7 @@ const AudioTab: React.FC<{
         const list = await navigator.mediaDevices.enumerateDevices()
         setDevices(list.filter(d => d.kind === 'audioinput' || d.kind === 'audiooutput'))
       } catch {
-        // permission denied - leave empty
+        // permission denied — leave empty
       }
     }
     load()
@@ -224,7 +235,7 @@ const AudioTab: React.FC<{
           </select>
         ) : (
           <div className="ro-field" style={{ color: 'var(--fg-2)' }}>
-            Браузер не отдает список устройств вывода.
+            Браузер не отдаёт список устройств вывода.
           </div>
         )}
       </div>
@@ -282,7 +293,7 @@ const NotificationsTab: React.FC<{
             {permission === 'granted'
               ? 'Браузер разрешил показ уведомлений.'
               : permission === 'denied'
-              ? 'Браузер запретил уведомления - измените в настройках сайта.'
+              ? 'Браузер запретил уведомления — измените в настройках сайта.'
               : 'Требуется запросить разрешение у браузера.'}
           </div>
         </div>
@@ -325,7 +336,7 @@ const SessionTab: React.FC<{
     <>
       <div className="settings-section-head">
         <h1>Сессия и токены</h1>
-        <p>Информация о текущей JWT-сессии. Управление аккаунтом - в Zitadel.</p>
+        <p>Информация о текущей JWT-сессии. Управление аккаунтом — в Zitadel.</p>
       </div>
 
       <div className="settings-field">
@@ -346,7 +357,7 @@ const SessionTab: React.FC<{
         <div className="info">
           <div className="info-h">Управление аккаунтом</div>
           <div className="info-s">
-            Смена пароля, email, 2FA - только в Zitadel. NexTalk эти данные не хранит.
+            Смена пароля, email, 2FA — только в Zitadel. NexTalk эти данные не хранит.
           </div>
         </div>
         <a

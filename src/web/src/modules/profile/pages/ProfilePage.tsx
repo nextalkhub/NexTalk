@@ -2,6 +2,7 @@ import React, { useContext, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { avatarBg } from '../../../shared/components/Avatar/Avatar'
 import { LayoutContext } from '../../../shared/components/Layout/AppShell'
+import { MobileMenuButton } from '../../../shared/components/Layout/MobileMenuButton'
 import { IArrowOut, ICopy, IX } from '../../../shared/components/Icons/Icons'
 import { useAppSelector } from '../../../store'
 import { selectUser } from '../../../shared/slices/authSlice'
@@ -15,7 +16,7 @@ const ZITADEL_PROFILE_URL =
 export const ProfilePage: React.FC = () => {
   const navigate = useNavigate()
   const user = useAppSelector(selectUser)
-  const { setHideRight } = useContext(LayoutContext)
+  const { setHideRight, drawerOpen, setDrawerOpen } = useContext(LayoutContext)
 
   useEffect(() => {
     setHideRight(true)
@@ -26,7 +27,7 @@ export const ProfilePage: React.FC = () => {
     try {
       await navigator.clipboard.writeText(value)
     } catch {
-      // ignore - clipboard may be blocked
+      // clipboard may be blocked
     }
   }
 
@@ -44,6 +45,7 @@ export const ProfilePage: React.FC = () => {
   return (
     <>
       <header className="top">
+        <MobileMenuButton onClick={() => setDrawerOpen(!drawerOpen)} />
         <div className="top-left">
           <div className="top-breadcrumb">
             <span className="crumb-channel">Профиль</span>
@@ -78,19 +80,13 @@ export const ProfilePage: React.FC = () => {
             </div>
 
             <div className="profile-body">
-              <ProfileField label="Имя">
-                {user.name}
-              </ProfileField>
+              <ProfileField label="Имя">{user.name}</ProfileField>
 
               {user.email && (
                 <ProfileField
                   label="Email"
                   actions={
-                    <button
-                      className="copy-ic"
-                      title="Скопировать"
-                      onClick={() => handleCopy(user.email)}
-                    >
+                    <button className="copy-ic" title="Скопировать" onClick={() => handleCopy(user.email)}>
                       <ICopy />
                     </button>
                   }
@@ -102,11 +98,7 @@ export const ProfilePage: React.FC = () => {
               <ProfileField
                 label="User ID"
                 actions={
-                  <button
-                    className="copy-ic"
-                    title="Скопировать"
-                    onClick={() => handleCopy(user.id)}
-                  >
+                  <button className="copy-ic" title="Скопировать" onClick={() => handleCopy(user.id)}>
                     <ICopy />
                   </button>
                 }
@@ -124,7 +116,7 @@ export const ProfilePage: React.FC = () => {
 
             <div className="profile-action-bar">
               <span className="lead-text">
-                Имя, email и пароль изменяются в Zitadel - NexTalk эти данные не хранит.
+                Имя, email и пароль изменяются в Zitadel — NexTalk эти данные не хранит.
               </span>
               <a
                 href={ZITADEL_PROFILE_URL}
@@ -152,10 +144,11 @@ interface ProfileFieldProps {
 const ProfileField: React.FC<ProfileFieldProps> = ({ label, children, actions }) => (
   <div className="profile-field">
     <span className="lbl">{label}</span>
-    <span className="val" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
-      <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-        {children}
-      </span>
+    <span
+      className="val"
+      style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}
+    >
+      <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{children}</span>
       {actions}
     </span>
   </div>
