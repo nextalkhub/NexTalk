@@ -306,8 +306,8 @@ Retention под 40 GB диск:
 
 ### 9.2 PostgreSQL 18
 
-- 3 БД: `guild`, `messaging`, `zitadel`
-- Bind на private IP `10.19.0.31` + `pg_hba.conf` whitelisting worker'ов
+- 2 БД: `nextalk` (схемы `guild` + `messaging`) и `zitadel`
+- Bind на private IP `10.19.0.31` + `pg_hba.conf` whitelisting `10.19.0.0/16`
 - Connection pool через Npgsql, `MaxPoolSize=20`
 
 ### 9.3 Redis
@@ -368,7 +368,7 @@ control_plane
 workers
 ```
 
-SSH через bastion (worker-1), ProxyJump в `group_vars/all.yml`.
+SSH через bastion (worker-1), ProxyJump в `group_vars/all/vars.yml`.
 
 ---
 
@@ -390,9 +390,9 @@ Standalone PG = единая точка отказа. Митигация: бэк
 
 haproxy-vps - единственная точка входа для kubectl и регистрации нод. При падении: работающие поды и трафик продолжают работать, но kubectl и новые деплои недоступны. Митигация: быстрое восстановление через Ansible (`ansible-playbook haproxy.yml`). Полная HA потребует keepalived/VRRP - не тестировали на Beget.
 
-### 11.5 In-memory state в WS Gateway / Voice Service
+### 11.5 Redis как единственный stateful слой для WS Gateway / Voice Service
 
-`PresenceTracker` и `SessionStore` теряются при рестарте пода. Sticky sessions покрывают штатную работу, но не failover.
+`RedisPresenceTracker` (DB=2) и `RedisSessionStore` (DB=3) переживают рестарт пода — состояние в Redis. При падении Redis оба сервиса деградируют (см. §11.3).
 
 ### 11.6 Outbox polling latency
 
