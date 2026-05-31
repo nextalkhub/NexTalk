@@ -7,10 +7,10 @@
 ## Топология
 
 ```
-интернет → bastion (worker-1, публичный IP) → ProxyJump → остальные 7 VPS
+интернет → bastion (worker-1, публичный IP) → ProxyJump → остальные 8 VPS
 ```
 
-Только `worker-2`, `worker-3` имеют публичные IP (для ingress 80/443). У остальных публичный IPv4 отключён в панели Beget.
+Все три worker'а имеют публичные IP: worker-1 - bastion (SSH 22), все три - ingress 80/443. У остальных 6 VPS (3 control-plane, haproxy, db, obs) публичный IPv4 отключен в панели Beget.
 
 `worker-1` принимает SSH на 22, через него (`ProxyJump`) ходят и Ansible, и люди.
 
@@ -46,26 +46,21 @@ cd infra/ansible && ansible-playbook -i inventory/hosts.ini playbooks/bootstrap.
 
 ```bash
 # ~/.ssh/config
-Host nextalk-bastion
-  HostName <public_ip_worker_1>
-  User root
-  IdentityFile ~/.ssh/id_ed25519
+Host bastion
+    HostName <public_ip_worker_1>
+    User root
+    IdentityFile ~/.ssh/nextalk_deploy
 
-Host nextalk-*
-  ProxyJump nextalk-bastion
-  User root
-  IdentityFile ~/.ssh/id_ed25519
-
-Host nextalk-control-plane-1
-  HostName 10.19.0.11
-Host nextalk-db
-  HostName 10.19.0.20
-# и т.д.
+Host 10.19.0.*
+    User root
+    IdentityFile ~/.ssh/nextalk_deploy
+    ProxyJump bastion
 ```
 
 ```bash
-ssh nextalk-bastion              # на воркер-1 напрямую
-ssh nextalk-control-plane-1      # через ProxyJump
+ssh bastion         # на worker-1 напрямую
+ssh 10.19.0.11      # control-plane-1 через ProxyJump
+ssh 10.19.0.31      # db-vps через ProxyJump
 ```
 
 ## Удалить разработчика
@@ -75,7 +70,7 @@ git rm infra/ansible/inventory/files/ssh/team/<имя>.pub
 git commit -m "ssh: remove <имя> pubkey"
 ```
 
-⚠ `authorized_key state: present, exclusive: false` — Ansible **не удаляет** старые записи. Для жёсткого удаления добавь отдельную таску с `state: absent` и точным значением ключа, либо переключи на `exclusive: true` (тогда любые ручные правки authorized_keys будут затёрты).
+⚠ `authorized_key state: present, exclusive: false` - Ansible **не удаляет** старые записи. Для жесткого удаления добавь отдельную таску с `state: absent` и точным значением ключа, либо переключи на `exclusive: true` (тогда любые ручные правки authorized_keys будут затерты).
 
 ## CI/CD deploy-ключ
 
@@ -107,7 +102,7 @@ rm github-actions-deploy
 | `ANSIBLE_HOSTS_INI` | содержимое `inventory/hosts.ini` (реальные приватные IP) |
 | `BASTION_HOST` | публичный IP/хостнейм bastion'а (для `ssh-keyscan`) |
 
-CI-ключи раскатываются с ограничениями: `no-port-forwarding,no-X11-forwarding,no-agent-forwarding`. Если CI понадобится больше — править `roles/ssh_keys/tasks/main.yml`.
+CI-ключи раскатываются с ограничениями: `no-port-forwarding,no-X11-forwarding,no-agent-forwarding`. Если CI понадобится больше - править `roles/ssh_keys/tasks/main.yml`.
 
 ## Hardening (deferred)
 
@@ -123,9 +118,9 @@ ssh_keys_disable_passwords: true
 - `PermitRootLogin prohibit-password`
 - `KbdInteractiveAuthentication no`
 
-⚠ Перед переключением — войти под ключом и убедиться, что работает. Иначе можно потерять доступ к bastion'у и придётся восстанавливать через консоль Beget.
+⚠ Перед переключением - войти под ключом и убедиться, что работает. Иначе можно потерять доступ к bastion'у и придется восстанавливать через консоль Beget.
 
-`fail2ban` на bastion уже включён по умолчанию (`ssh_keys_install_fail2ban: true` в playbook).
+`fail2ban` на bastion уже включен по умолчанию (`ssh_keys_install_fail2ban: true` в playbook).
 
 ## Ссылки
 

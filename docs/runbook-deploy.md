@@ -1,15 +1,15 @@
 # Runbook: первый деплой NexTalk в k3s
 
-Стартовая точка: 8 VPS Beget куплены и доступны, домен `nextalk.fun` зарегистрирован, есть аккаунт GitHub с правом push в `ghcr.io/nextalkhub/nextalk/*`. Финиш: открывается `https://nextalk.fun`, логин через `https://auth.nextalk.fun`.
+Стартовая точка: 9 VPS Beget куплены и доступны, домен `nextalk.fun` зарегистрирован, есть аккаунт GitHub с правом push в `ghcr.io/nextalkhub/nextalk/*`. Финиш: открывается `https://nextalk.fun`, логин через `https://auth.nextalk.fun`.
 
 Связано:
-- [pre-deployment-checklist.md](pre-deployment-checklist.md) — что должно быть готово (с обоснованиями)
-- [deployment.md](deployment.md) — физическая топология
-- [decisions.md](decisions.md) — какие компромиссы осознанно отложены
+- [pre-deployment-checklist.md](pre-deployment-checklist.md) - что должно быть готово (с обоснованиями)
+- [deployment.md](deployment.md) - физическая топология
+- [decisions.md](decisions.md) - какие компромиссы осознанно отложены
 
-**Все команды — для Linux/macOS shell.** На Windows работай в **WSL2** (Ubuntu 22.04+): ansible-playbook нативно под Windows не работает, и helm/kubectl там же удобнее.
+**Все команды - для Linux/macOS shell.** На Windows работай в **WSL2** (Ubuntu 22.04+): ansible-playbook нативно под Windows не работает, и helm/kubectl там же удобнее.
 
-**Все пути — от корня репо** `~/projects/NexTalk` (подставь свой).
+**Все пути - от корня репо** `~/projects/NexTalk` (подставь свой).
 
 ---
 
@@ -21,9 +21,9 @@ PowerShell с правами админа:
 ```powershell
 wsl --install -d Ubuntu-22.04
 ```
-После reboot — открыть Ubuntu, создать пользователя.
+После reboot - открыть Ubuntu, создать пользователя.
 
-Дальше **все команды — из WSL Ubuntu**, не из PowerShell/cmd.
+Дальше **все команды - из WSL Ubuntu**, не из PowerShell/cmd.
 
 ### 0.2 Поставь нужные тулзы в WSL
 
@@ -58,11 +58,11 @@ helm version    # >= v3.14
 cd ~/projects/NexTalk
 ansible-galaxy collection install -r infra/ansible/requirements.yml
 ```
-Это поставит `kubernetes.core`, `community.postgresql`, `community.docker`, `ansible.posix`.
+Это поставит `community.general`, `community.postgresql`, `community.docker`, `ansible.posix`, `kubernetes.core`.
 
 ---
 
-## Шаг 1. Pre-flight: SSH доступ к 8 VPS
+## Шаг 1. Pre-flight: SSH доступ к 9 VPS
 
 ### 1.1 Сгенерируй ed25519-ключ для деплоя
 
@@ -73,17 +73,17 @@ ssh-keygen -t ed25519 -C "ansible-deploy-nextalk" -f ~/.ssh/nextalk_deploy
 
 Получишь два файла: `~/.ssh/nextalk_deploy` (приватный) и `~/.ssh/nextalk_deploy.pub` (публичный).
 
-### 1.2 Разложи **публичный** ключ на 8 VPS
+### 1.2 Разложи **публичный** ключ на 9 VPS
 
-Через web-консоль Beget, для каждой из 8 VPS, добавь содержимое `nextalk_deploy.pub` в `~/.ssh/authorized_keys` пользователя `root`. Альтернативно — `ssh-copy-id` если есть временный пароль:
+Через web-консоль Beget, для каждой из 9 VPS, добавь содержимое `nextalk_deploy.pub` в `~/.ssh/authorized_keys` пользователя `root`. Альтернативно - `ssh-copy-id` если есть временный пароль:
 
 ```bash
-for ip in <8 public-or-temp IP>; do
+for ip in <9 public-or-temp IP>; do
   ssh-copy-id -i ~/.ssh/nextalk_deploy.pub root@$ip
 done
 ```
 
-После раскатки — отключи парольный SSH (`PasswordAuthentication no` в `/etc/ssh/sshd_config`). Bootstrap playbook не делает этого автоматически (см. [bootstrap.yml:33](../infra/ansible/playbooks/bootstrap.yml#L33) — `ssh_keys_disable_passwords: false` по умолчанию).
+После раскатки - отключи парольный SSH (`PasswordAuthentication no` в `/etc/ssh/sshd_config`). Bootstrap playbook не делает этого автоматически (см. [bootstrap.yml:33](../infra/ansible/playbooks/bootstrap.yml#L33) - `ssh_keys_disable_passwords: false` по умолчанию).
 
 ### 1.3 Настрой `~/.ssh/config` (опционально, для ручного SSH)
 
@@ -123,7 +123,7 @@ Host nextalk-obs
 ssh nextalk-bastion 'ping -c2 10.19.0.31'  # пинг до db-vps
 ```
 **Ожидаемо:** `0% packet loss`.
-**Если 100% loss:** в панели Beget включи приватную сеть для всех 8 VPS и проверь, что назначены IP из `10.19.0.0/16`.
+**Если 100% loss:** в панели Beget включи приватную сеть для всех 9 VPS и проверь, что назначены IP из `10.19.0.0/16`.
 
 ### 1.5 Определи имя интерфейса приватной сети
 
@@ -131,7 +131,7 @@ ssh nextalk-bastion 'ping -c2 10.19.0.31'  # пинг до db-vps
 ```bash
 ssh nextalk-control-plane-1 'ip -br addr'
 ```
-**Найди интерфейс с IP `10.19.0.X/16`.** Если он не `eth1` (а, например, `ens4` или `enp7s0`) — **отредактируй** [group_vars/all.yml:28](../infra/ansible/inventory/group_vars/all.yml#L28) под реальное имя.
+**Найди интерфейс с IP `10.19.0.X/16`.** Если он не `eth1` (а, например, `ens4` или `enp7s0`) - **отредактируй** [group_vars/all.yml:28](../infra/ansible/inventory/group_vars/all.yml#L28) под реальное имя.
 
 ---
 
@@ -139,7 +139,7 @@ ssh nextalk-control-plane-1 'ip -br addr'
 
 Reference: [deployment.md §7.2](deployment.md#72-dns-записи).
 
-В DNS-зоне `nextalk.fun` добавь A-записи на **публичные IP трёх worker'ов** (получи из панели Beget):
+В DNS-зоне `nextalk.fun` добавь A-записи на **публичные IP трех worker'ов** (получи из панели Beget):
 
 ```
 nextalk.fun.            A    <worker-1-public-ip>
@@ -151,7 +151,7 @@ auth.nextalk.fun.       A    <worker-2-public-ip>
 auth.nextalk.fun.       A    <worker-3-public-ip>
 ```
 
-**TTL:** 300 (5 минут) на время первого деплоя — позволит быстро перенастроить если ошибся.
+**TTL:** 300 (5 минут) на время первого деплоя - позволит быстро перенастроить если ошибся.
 
 **Проверка после 5-30 минут:**
 ```bash
@@ -160,7 +160,7 @@ dig +short auth.nextalk.fun
 ```
 Оба должны вернуть **3 IP**, совпадающих с public IP worker'ов.
 
-**Если не возвращает:** DNS ещё пропагируется. Дождись. **Без пропагированного DNS cert-manager не выпустит сертификат** на шаге 6 (HTTP-01 челлендж провалится).
+**Если не возвращает:** DNS еще пропагируется. Дождись. **Без пропагированного DNS cert-manager не выпустит сертификат** на шаге 6 (HTTP-01 челлендж провалится).
 
 ---
 
@@ -184,7 +184,7 @@ gh workflow run ci.yml --ref deploy-k3s-ha
 gh run watch
 ```
 
-Иначе — локально для каждого сервиса (пример для guild-service):
+Иначе - локально для каждого сервиса (пример для guild-service):
 ```bash
 docker build -t ghcr.io/nextalkhub/nextalk/guild-service:0.1.0 \
   -f src/guild-service/Dockerfile .
@@ -194,7 +194,7 @@ docker push ghcr.io/nextalkhub/nextalk/guild-service:0.1.0
 
 ### 3.4 Сделай ghcr репо публичными
 
-В Github → packages — для каждого из 5 пакетов: Package settings → Change visibility → Public. Без этого нужен `imagePullSecret` (в чарте его нет — см. [decisions.md](decisions.md) → "ghcr.io visibility").
+В Github → packages - для каждого из 5 пакетов: Package settings → Change visibility → Public. Без этого нужен `imagePullSecret` (в чарте его нет - см. [decisions.md](decisions.md) → "ghcr.io visibility").
 
 ### 3.5 Проверь, что образы доступны
 
@@ -218,13 +218,13 @@ cd ~/projects/NexTalk
 cp infra/ansible/inventory/hosts.ini.example infra/ansible/inventory/hosts.ini
 ```
 
-Отредактируй `infra/ansible/inventory/hosts.ini` — замени **3** строки `public_ip=CHANGE_ME` на реальные public IP worker'ов.
+Отредактируй `infra/ansible/inventory/hosts.ini` - замени **3** строки `public_ip=CHANGE_ME` на реальные public IP worker'ов.
 
 **Проверка:**
 ```bash
 ansible-inventory -i infra/ansible/inventory/hosts.ini --list | jq '.workers'
 ```
-Видны 3 worker'а, у каждого `public_ip` — реальный IP.
+Видны 3 worker'а, у каждого `public_ip` - реальный IP.
 
 ### 4.2 Создай `vault.yml` и сгенерируй секреты
 
@@ -249,7 +249,7 @@ echo "vault_livekit_secret_key: $(openssl rand -base64 32)"
 > ```bash
 > awk -F'"' '/vault_zitadel_masterkey/{print length($2)}' infra/ansible/inventory/group_vars/vault.yml
 > ```
-> Должно вывести `32`. Иначе Zitadel упадёт с `masterkey must be 32 bytes`.
+> Должно вывести `32`. Иначе Zitadel упадет с `masterkey must be 32 bytes`.
 
 ### 4.3 Зашифруй vault.yml
 
@@ -287,18 +287,18 @@ source ~/.bashrc
 cd infra/ansible
 ansible all -i inventory/hosts.ini -m ping
 ```
-**Ожидаемо:** 8 раз `"ping": "pong"`.
+**Ожидаемо:** 9 раз `"ping": "pong"`.
 **Если падает на каком-то хосте:** проверь Шаг 1.2 (ключ на этой VPS) и Шаг 1.4 (приватная сеть).
 
 ---
 
 ## Шаг 5. Прогон Ansible-playbook'ов
 
-Все команды — из `infra/ansible/`.
+Все команды - из `infra/ansible/`.
 
-> **Совет:** делай playbook'и **по одному** (не `site.yml` всё разом). При первом деплое каждый — проверочная точка. Дальше уже можно `site.yml`.
+> **Совет:** делай playbook'и **по одному** (не `site.yml` все разом). При первом деплое каждый - проверочная точка. Дальше уже можно `site.yml`.
 
-### 5.1 bootstrap — пакеты, sysctl, ufw, ssh_keys на 8 нодах
+### 5.1 bootstrap - пакеты, sysctl, ufw, ssh_keys на 9 нодах
 
 ```bash
 ansible-playbook -i inventory/hosts.ini playbooks/bootstrap.yml
@@ -313,23 +313,51 @@ ansible all -i inventory/hosts.ini -m shell -a 'ufw status | head -5'   # active
 ```
 
 **Частые проблемы:**
-- `Failed to lock apt`: на VPS уже идёт apt update — подожди, перезапусти.
+- `Failed to lock apt`: на VPS уже идет apt update - подожди, перезапусти.
 - `Could not import python module: jinja2`: Ansible на хосте через pip → лучше через `sudo apt install ansible`.
 
-### 5.2 db — PostgreSQL 18 + Redis на db-vps
+### 5.2 gre-nat - GRE-туннели + NAT (obs-vps и db-vps → интернет)
+
+```bash
+ansible-playbook -i inventory/hosts.ini playbooks/gre-nat.yml
+```
+**Время:** 1-2 мин.
+**Что делает:** создает GRE-туннели с worker-1 до obs-vps (gre1) и db-vps (gre2), настраивает MASQUERADE на worker-1. Без этого obs-vps не может делать `docker pull`, db-vps - `apt`.
+
+**Проверка:**
+```bash
+ssh nextalk-obs 'ping -c 2 8.8.8.8'
+# 0% packet loss
+```
+
+### 5.3 haproxy - балансировщик k3s API (10.19.0.51)
+
+```bash
+ansible-playbook -i inventory/hosts.ini playbooks/haproxy.yml
+```
+**Время:** 1-2 мин.
+**Что делает:** ставит HAProxy на отдельную VPS `10.19.0.51`, настраивает frontend `:6443` → backend 3 CP-ноды. k3s.yml (шаг 5.6) будет регистрировать control-plane-2 и control-plane-3 через этот адрес.
+
+**Проверка:**
+```bash
+ssh -J root@nextalk-bastion root@10.19.0.51 'systemctl is-active haproxy'
+# active
+```
+
+### 5.4 db - PostgreSQL 18 + Redis на db-vps
 
 ```bash
 ansible-playbook -i inventory/hosts.ini playbooks/db.yml
 ```
 **Время:** 5-7 мин.
-**Что делает:** `apt install postgresql-18 redis`, создаёт user `nextalk_app` + БД `nextalk` и `zitadel` (см. [group_vars/db.yml:15-23](../infra/ansible/inventory/group_vars/db.yml#L15-L23)), bind на private IP `10.19.0.31`, `pg_hba.conf` whitelist `10.19.0.21-23`, Redis с `requirepass` и `maxmemory 512mb`.
+**Что делает:** `apt install postgresql-18 redis`, создает user `nextalk_app` + БД `nextalk` и `zitadel` (см. [group_vars/db.yml:15-23](../infra/ansible/inventory/group_vars/db.yml#L15-L23)), bind на private IP `10.19.0.31`, `pg_hba.conf` whitelist `10.19.0.21-23`, Redis с `requirepass` и `maxmemory 512mb`.
 
 **Проверка после (с локалки через bastion):**
 ```bash
 # psql клиент для проверки
 sudo apt install -y postgresql-client redis-tools
 
-# Достаём пароли из vault для проверки
+# Достаем пароли из vault для проверки
 PG_PASS=$(ansible-vault view inventory/group_vars/vault.yml | grep vault_postgres_password | cut -d'"' -f2)
 REDIS_PASS=$(ansible-vault view inventory/group_vars/vault.yml | grep vault_redis_password | cut -d'"' -f2)
 
@@ -343,7 +371,7 @@ ssh -J root@nextalk-bastion root@10.19.0.21 \
 # PONG
 ```
 
-### 5.3 observability — Tempo + Loki + Prometheus + Grafana на obs-vps
+### 5.5 observability - Tempo + Loki + Prometheus + Grafana на obs-vps
 
 ```bash
 ansible-playbook -i inventory/hosts.ini playbooks/observability.yml
@@ -363,16 +391,16 @@ ssh -J root@nextalk-bastion root@10.19.0.21 'curl -s http://10.19.0.41:3100/read
 # ready
 ```
 
-### 5.4 k3s — HA control-plane + workers + kubeconfig
+### 5.6 k3s - HA control-plane + workers + kubeconfig
 
 ```bash
 ansible-playbook -i inventory/hosts.ini playbooks/k3s.yml
 ```
 **Время:** 8-12 мин.
 **Что делает:**
-1. `serial: 1` — ставит k3s на control-plane-1 c `--cluster-init`, ждёт apiserver, потом control-plane-2 → control-plane-3 через HAProxy `https://10.19.0.51:6443`.
+1. `serial: 1` - ставит k3s на control-plane-1 c `--cluster-init`, ждет apiserver, потом control-plane-2 → control-plane-3 через HAProxy `https://10.19.0.51:6443`.
 2. Ставит k3s agent на 3 worker'ах.
-3. **Скачивает kubeconfig с control-plane-1**, заменяет `127.0.0.1` → `10.19.0.51` (HAProxy), кладёт в `infra/ansible/kubeconfig` (gitignored).
+3. **Скачивает kubeconfig с control-plane-1**, заменяет `127.0.0.1` → `10.19.0.51` (HAProxy), кладет в `infra/ansible/kubeconfig` (gitignored).
 
 **Проверка с control-plane (через bastion):**
 ```bash
@@ -380,23 +408,23 @@ ssh -J root@nextalk-bastion root@10.19.0.11 'kubectl get nodes'
 # 6 нод Ready: 3 control-plane с ролями control-plane,etcd,master; 3 worker
 ```
 
-**Проверка с локалки — нужен SSH-туннель** (HAProxy на `10.19.0.51` приватный, снаружи недоступен):
+**Проверка с локалки - нужен SSH-туннель** (HAProxy на `10.19.0.51` приватный, снаружи недоступен):
 ```bash
 # Открыть туннель: localhost:6443 → 10.19.0.51:6443 через bastion
 ssh -i ~/.ssh/nextalk_deploy -L 6443:10.19.0.51:6443 -N -f root@<worker-1-public-ip>
 
-# Kubeconfig уже указывает на 127.0.0.1:6443 — больше ничего менять не нужно
-kubectl --kubeconfig=infra/ansible/kubeconfig get nodes
+# Kubeconfig указывает на 10.19.0.51:6443 - для локального туннеля нужен server override
+kubectl --kubeconfig=infra/ansible/kubeconfig --server=https://127.0.0.1:6443 --insecure-skip-tls-verify get nodes
 ```
 
-> Туннель живёт до закрытия терминала. При следующей сессии открывай заново. Для cluster-addons и helm-deploy он тоже нужен.
+> Туннель живет до закрытия терминала. При следующей сессии открывай заново. Для cluster-addons и helm-deploy он тоже нужен.
 
 **Частые проблемы:**
 - `control-plane-2 не присоединяется`: HAProxy не healthy или `vault_k3s_token` разный. Откат: `ssh control-plane-N '/usr/local/bin/k3s-uninstall.sh'` и заново.
 
-### 5.4.1 Taint control-plane нод
+### 5.6.1 Taint control-plane нод
 
-k3s по умолчанию не запрещает размещать пользовательские поды на CP-нодах. CP-ноды не имеют публичного IP и не могут тянуть образы из `ghcr.io` — поды уйдут в `ImagePullBackOff`.
+k3s по умолчанию не запрещает размещать пользовательские поды на CP-нодах. CP-ноды не имеют публичного IP и не могут тянуть образы из `ghcr.io` - поды уйдут в `ImagePullBackOff`.
 
 Taint уже прописан в `roles/k3s_server/templates/config.yaml.j2` и применится автоматически при пересоздании кластера. Для уже работающего кластера примени вручную:
 
@@ -413,13 +441,13 @@ kubectl taint nodes \
 # Найти поды на CP-нодах
 kubectl get pods -n nextalk -o wide --kubeconfig=infra/ansible/kubeconfig | grep -E '<cp-node-1>|<cp-node-2>|<cp-node-3>'
 
-# Удалить — k3s пересоздаст их на workers
+# Удалить - k3s пересоздаст их на workers
 kubectl delete pod <pod-name> -n nextalk --kubeconfig=infra/ansible/kubeconfig
 ```
 
-### 5.5 cluster-addons — ingress-nginx + cert-manager
+### 5.7 cluster-addons - ingress-nginx + cert-manager + metrics-server
 
-Запускается с локалки (`hosts: localhost`), требует kubeconfig из 5.4 и **открытый SSH-туннель** (см. 5.4).
+Запускается с локалки (`hosts: localhost`), требует kubeconfig из 5.6 и **открытый SSH-туннель** (см. 5.6).
 
 ```bash
 ansible-playbook -i inventory/hosts.ini playbooks/cluster-addons.yml
@@ -437,7 +465,7 @@ kubectl get crd | grep cert-manager
 
 # Снаружи (с любого устройства)
 curl -I http://<любой-worker-public-ip>
-# HTTP/1.1 404 Not Found, Server: nginx — это ОК
+# HTTP/1.1 404 Not Found, Server: nginx - это ОК
 ```
 
 ---
@@ -451,7 +479,7 @@ curl -I http://<любой-worker-public-ip>
 tls:
   issuer: "letsencrypt-staging"  # было: letsencrypt-prod
 ```
-LE prod даёт **5 сертификатов в неделю на домен** — если HTTP-01 не пройдёт несколько раз, ты заблокирован на неделю.
+LE prod дает **5 сертификатов в неделю на домен** - если HTTP-01 не пройдет несколько раз, ты заблокирован на неделю.
 
 ### 6.2 Запуск helm-deploy
 
@@ -468,19 +496,19 @@ kubectl get pods -n nextalk
 # Все Running:
 #   guildService x2, messagingService x2, voiceService x2,
 #   websocketGateway x2, webSpa x2, zitadel x1, livekit x1, prometheus x1
-#   alloy — DaemonSet, по поду на каждую из 6 нод k3s
+#   alloy - DaemonSet, по поду на каждую из 6 нод k3s
 
 kubectl get certificate -n nextalk
-# nextalk-tls и auth-nextalk-tls — READY=True (ждать 1-3 мин на ACME)
+# nextalk-tls и auth-nextalk-tls - READY=True (ждать 1-3 мин на ACME)
 
 kubectl get ingress -n nextalk
 # 3-4 ingress объекта
 ```
 
 **Частые проблемы:**
-- `ImagePullBackOff`: образ не публичный или не существует — Шаг 3.4 / 3.5. Если под на CP-ноде — Шаг 5.4.1 (taint).
+- `ImagePullBackOff`: образ не публичный или не существует - Шаг 3.4 / 3.5. Если под на CP-ноде - Шаг 5.6.1 (taint).
 - `CrashLoopBackOff zitadel`: `kubectl logs -n nextalk deploy/zitadel` → `masterkey must be 32 bytes` → vault.yml в 4.2.
-- `CrashLoopBackOff messagingService`: connection refused 10.19.0.31:5432 → Шаг 5.2 (db.yml не прогнан или pg_hba whitelist неверный).
+- `CrashLoopBackOff messagingService`: connection refused 10.19.0.31:5432 → Шаг 5.4 (db.yml не прогнан или pg_hba whitelist неверный).
 - `Certificate not Ready 5+ мин`: `kubectl describe certificate nextalk-tls -n nextalk` → ищи `dnsName != hostname` или `HTTP-01 timeout`. DNS не пропагирован (Шаг 2) или ingress-nginx недоступен извне (`curl http://<worker-ip>/.well-known/acme-challenge/test`).
 
 ### 6.3 Smoke staging-сертификата
@@ -489,7 +517,7 @@ kubectl get ingress -n nextalk
 curl -kI https://nextalk.fun   # -k т.к. staging untrusted
 # HTTP/2 200 (или 301 на /login)
 ```
-**Если 200/301 с самоподписанным сертификатом** — HTTP-01 работает. Переходим к prod.
+**Если 200/301 с самоподписанным сертификатом** - HTTP-01 работает. Переходим к prod.
 
 ### 6.4 Переключи на prod-issuer
 
@@ -534,11 +562,11 @@ curl -I https://nextalk.fun
 curl -s https://auth.nextalk.fun/.well-known/openid-configuration | jq .issuer
 # "https://auth.nextalk.fun"
 ```
-**Если issuer содержит `:443` или `http://`** — Zitadel сконфигурирован неверно. См. [decisions.md → ":port в Zitadel URL'ах"](decisions.md).
+**Если issuer содержит `:443` или `http://`** - Zitadel сконфигурирован неверно. См. [decisions.md → ":port в Zitadel URL'ах"](decisions.md).
 
 ### 7.3 Логин в браузере
 
-Открой `https://nextalk.fun` → редирект на `https://auth.nextalk.fun` → залогинься (для первого логина — дефолтные креды Zitadel в логе пода при первом старте: `kubectl logs -n nextalk deploy/zitadel | grep -i password`) → возврат на фронт.
+Открой `https://nextalk.fun` → редирект на `https://auth.nextalk.fun` → залогинься (для первого логина - дефолтные креды Zitadel в логе пода при первом старте: `kubectl logs -n nextalk deploy/zitadel | grep -i password`) → возврат на фронт.
 
 ### 7.4 Логи и метрики идут
 
@@ -561,7 +589,7 @@ git push origin v0.1.0
 
 ### 8.2 Зафиксируй runbook-замечания
 
-Если что-то пошло не как описано — обнови этот файл и [decisions.md](decisions.md). Сэкономишь себе и следующему деплою час.
+Если что-то пошло не как описано - обнови этот файл и [decisions.md](decisions.md). Сэкономишь себе и следующему деплою час.
 
 ### 8.3 Что включить в backlog
 
@@ -572,7 +600,7 @@ Reference: [decisions.md → "Отложено"](decisions.md). Высокопр
 
 ---
 
-## Если всё пошло не так — куда смотреть
+## Если все пошло не так - куда смотреть
 
 | Симптом | Куда |
 |:--|:--|
@@ -580,8 +608,8 @@ Reference: [decisions.md → "Отложено"](decisions.md). Высокопр
 | ansible-playbook ругается на vault | `ANSIBLE_VAULT_PASSWORD_FILE` (Шаг 4.4) или `ansible-vault view ...` |
 | k3s упал на VIP | Шаг 1.5 (`private_iface`), `journalctl -u k3s` на control-plane ноде |
 | HTTP-01 challenge не проходит | DNS (Шаг 2), `kubectl describe challenge -A` |
-| Под падает с DB error | Шаг 5.2, pg_hba whitelist, vault_postgres_password |
+| Под падает с DB error | Шаг 5.4, pg_hba whitelist, vault_postgres_password |
 | Zitadel masterkey error | Шаг 4.2 проверка длины 32 |
-| 502 на https | `kubectl get endpoints -n nextalk` — пустые? значит селектор Service не совпал с лейблами подов |
+| 502 на https | `kubectl get endpoints -n nextalk` - пустые? значит селектор Service не совпал с лейблами подов |
 
-Для каждого нового бага — открой `kubectl describe` затронутого ресурса, потом `kubectl logs`. 90% инцидентов оттуда читаются.
+Для каждого нового бага - открой `kubectl describe` затронутого ресурса, потом `kubectl logs`. 90% инцидентов оттуда читаются.

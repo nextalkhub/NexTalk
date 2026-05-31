@@ -81,7 +81,7 @@
 | App | Voice Service | ASP.NET | Голосовые сессии, LiveKit-токены |
 | App | Zitadel | Go | IdP: OIDC, регистрация, логин, JWT |
 | Store | PostgreSQL | PostgreSQL 17 | БД nextalk (guild, messaging) + БД zitadel |
-| Store | Redis | Redis 8 | Distributed cache (Guild Service: Zitadel UserInfo) + LiveKit: состояние комнат и участников |
+| Store | Redis | Redis 8 | SignalR backplane (WS Gateway, DB=2) + Voice SessionStore (DB=3) + LiveKit (DB=0). Guild Service кеширует Zitadel UserInfo в IMemoryCache (in-memory). |
 | App | LiveKit | Go | SFU + встроенный TURN |
 | App | Prometheus | Prometheus | Сбор метрик /metrics |
 | App | Grafana | Grafana | Дашборды |
@@ -101,7 +101,7 @@
 
 | Компонент | Описание |
 |:--|:--|
-| ChatHub (SignalR) | Client→server: SendMessage, Heartbeat. Server→client: GatewayEvent (broadcast), MessageAck, Error |
+| ChatHub (SignalR) | Client→server: SendMessage, Heartbeat, GetOnlineUsers, JoinGuildGroup, LeaveGuildGroup. Server→client: GatewayEvent (broadcast), MessageAck, Error |
 | ConnectionManager | userId ↔ connectionId маппинг |
 | PresenceTracker | In-memory ConcurrentDictionary, heartbeat TTL |
 | MessagingHttpClient | HTTP → Messaging Service (Polly: Retry + CB) |
@@ -311,7 +311,7 @@ modelObjects:
   name: Redis
   type: store
   parentId: system-nextalk
-  description: 'Distributed cache. Guild Service: кэш Zitadel UserInfo (ключ zitadel:ui:{sub}, TTL до истечения access_token). LiveKit: состояние комнат и участников (room registry, participant tracking).'
+  description: 'DB 0 - LiveKit (room registry, participant tracking). DB 2 - SignalR backplane (WS Gateway). DB 3 - Voice SessionStore (TTL 8h). Guild Service использует IMemoryCache (in-memory), не Redis.'
   caption: Redis 8
   tagIds: [tag-storage]
 
@@ -346,7 +346,7 @@ modelObjects:
   name: ChatHub
   type: component
   parentId: app-ws-gateway
-  description: 'SignalR Hub. Client→server: SendMessage, Heartbeat. Server→client: GatewayEvent (broadcast), MessageAck, Error'
+  description: 'SignalR Hub. Client→server: SendMessage, Heartbeat, GetOnlineUsers, JoinGuildGroup, LeaveGuildGroup. Server→client: GatewayEvent (broadcast), MessageAck, Error'
 
 - id: comp-ws-presence
   name: PresenceTracker
@@ -497,14 +497,14 @@ modelConnections:
   originId: actor-user
   targetId: app-nginx
   direction: outgoing
-  description: 'Браузер. Весь трафик — SPA, REST, WS, OIDC — входит через Nginx.'
+  description: 'Браузер. Весь трафик - SPA, REST, WS, OIDC - входит через Nginx.'
 
 - id: conn-nginx-spa
   name: HTTP (статика)
   originId: app-nginx
   targetId: app-spa
   direction: outgoing
-  description: 'Nginx проксирует location / → web-spa:80 (отдельный nginx-контейнер с Vite build). Раздаёт index.html + ассеты с долгим кэшем.'
+  description: 'Nginx проксирует location / → web-spa:80 (отдельный nginx-контейнер с Vite build). Раздает index.html + ассеты с долгим кэшем.'
 
 - id: conn-admin-grafana
   name: Мониторинг
@@ -519,7 +519,7 @@ modelConnections:
   originId: app-spa
   targetId: app-nginx
   direction: outgoing
-  description: 'Все запросы браузера идут через Nginx (same-origin — CORS не нужен). REST: /api/*. WS: /hubs/chat (SignalR). OIDC: /oauth/*, /ui/*. LiveKit signaling: /livekit/.'
+  description: 'Все запросы браузера идут через Nginx (same-origin - CORS не нужен). REST: /api/*. WS: /hubs/chat (SignalR). OIDC: /oauth/*, /ui/*. LiveKit signaling: /livekit/.'
 
 # --- SPA → Zitadel (через Nginx) ---
 - id: conn-spa-zitadel
@@ -535,7 +535,7 @@ modelConnections:
   originId: app-spa
   targetId: app-livekit
   direction: bidirectional
-  description: 'UDP SRTP media: напрямую браузер ↔ LiveKit (порты 50000-50200). WS signaling идёт через Nginx /livekit/ (см. conn-spa-nginx + conn-nginx-livekit).'
+  description: 'UDP SRTP media: напрямую браузер ↔ LiveKit (порты 50000-50200). WS signaling идет через Nginx /livekit/ (см. conn-spa-nginx + conn-nginx-livekit).'
 
 # --- nginx → Services ---
 - id: conn-nginx-guild
@@ -571,7 +571,7 @@ modelConnections:
   originId: app-nginx
   targetId: app-livekit
   direction: outgoing
-  description: 'LiveKit WS signaling proxy (location /livekit/ → livekit:7880). TCP/WS termination — nginx не проксирует UDP (50000-50200).'
+  description: 'LiveKit WS signaling proxy (location /livekit/ → livekit:7880). TCP/WS termination - nginx не проксирует UDP (50000-50200).'
 
 - id: conn-nginx-zitadel
   name: '/.well-known/, /oauth/, /oidc/, /ui/ → Zitadel'
@@ -630,12 +630,6 @@ modelConnections:
   direction: outgoing
   description: Хранение состояния комнат и участников (room registry, participant tracking)
 
-- id: conn-guild-redis
-  name: Cache
-  originId: app-guild
-  targetId: store-redis
-  direction: outgoing
-  description: 'Distributed cache: Zitadel UserInfo (ключ zitadel:ui:{sub}, TTL до истечения access_token). Probe-ключ для демонстрации shared cache между репликами.'
 
 - id: conn-guild-wsgw
   name: HTTP
@@ -823,7 +817,7 @@ modelConnections:
 10. Voice Service → Nginx → React SPA: 200 OK { token: "<LiveKit JWT>", livekitUrl }
 
 11. React SPA → Nginx → LiveKit: room.connect(livekitUrl, token)
-    [WS signaling через /livekit/ — livekitUrl = http://domain:port/livekit]
+    [WS signaling через /livekit/ - livekitUrl = http://domain:port/livekit]
 12. React SPA ↔ LiveKit (WebRTC/UDP): аудио-трек напрямую (порты 50000-50200, nginx UDP не проксирует)
 13. LiveKit: пересылает SRTP-пакеты остальным участникам комнаты
 
@@ -884,7 +878,7 @@ modelConnections:
 
 9. Guild Service → Voice Service (HTTP):
    DELETE /internal/voice/{userId}/disconnect
-   [идемпотентен: если X не был в голосе — 204 без ошибки]
+   [идемпотентен: если X не был в голосе - 204 без ошибки]
 10. Voice Service → SessionStore: Удалить сессию X (получить channelId, guildId)
 11. Voice Service → LiveKit HTTP API: RemoveParticipant(identity=X)
 12. Voice Service → WS Gateway (HTTP):
@@ -1003,9 +997,9 @@ modelConnections:
 1. Owner/Admin → React SPA: "Пригласить участников" → настройка TTL и лимита
 2. React SPA → Nginx: POST /api/guilds/{guildId}/invites + JWT
    Body: { expiresIn: "24h", maxUses: 25 }
-   expiresIn — строка с суффиксом единицы ("24h", "7d", "30m", "3600s")
-   expiresInSeconds — альтернативная legacy-форма (целое число секунд)
-   maxUses — опционально; null = безлимитный инвайт
+   expiresIn - строка с суффиксом единицы ("24h", "7d", "30m", "3600s")
+   expiresInSeconds - альтернативная legacy-форма (целое число секунд)
+   maxUses - опционально; null = безлимитный инвайт
 
 3. Nginx: rate limit, X-Request-Id → Proxy к Guild Service
    Маршрут /api/guilds/* → guild-service/guilds/* (стрипается /api)
@@ -1016,7 +1010,7 @@ modelConnections:
 
 6. Guild Service → PostgreSQL:
    INSERT INTO invites (code, guild_id, created_by, expires_at=NOW()+TTL, max_uses)
-   code — криптографически случайный base64url-токен, 12 символов (~72 бита энтропии),
+   code - криптографически случайный base64url-токен, 12 символов (~72 бита энтропии),
           алфавит A-Z a-z 0-9 - _ (URL-safe, не UUID)
 
 7. Guild Service → Nginx → React SPA:
@@ -1121,7 +1115,7 @@ modelConnections:
 
 ```
 Сценарий: Voice Service вызывает Guild Service (проверка доступа к каналу),
-          Guild Service отвечает слишком долго — дедлайн истекает.
+          Guild Service отвечает слишком долго - дедлайн истекает.
 
 1. React SPA → Nginx → Voice Service: POST /api/voice/join/{channelId} + JWT
 
@@ -1130,26 +1124,26 @@ modelConnections:
    DeadlineForwardingHandler добавляет: X-Deadline = UtcNow + 1.5 сек
 
 3. Guild Service: DeadlineMiddleware читает X-Deadline
-   Если дедлайн уже истёк на входе → немедленно: 504 { error: "Request timeout", retryAfter: 5 }
-   Иначе → создаёт CancellationTokenSource(remaining), подменяет HttpContext.RequestAborted
+   Если дедлайн уже истек на входе → немедленно: 504 { error: "Request timeout", retryAfter: 5 }
+   Иначе → создает CancellationTokenSource(remaining), подменяет HttpContext.RequestAborted
 
-4. [Сценарий: Guild Service отвечает очень медленно — DB lock, GC pause и т.п.]
+4. [Сценарий: Guild Service отвечает очень медленно - DB lock, GC pause и т.п.]
    CancellationToken, привязанный к X-Deadline, срабатывает →
    OperationCanceledException в хендлере →
    DeadlineMiddleware перехватывает → 504 { error: "Request timeout", retryAfter: 5 }
 
 5. Voice Service получает 504 от Guild Service
-   Polly Retry срабатывает, но дедлайн уже истёк → повторные попытки тоже 504
+   Polly Retry срабатывает, но дедлайн уже истек → повторные попытки тоже 504
 
 6. Voice Service → Nginx → React SPA: 504 Gateway Timeout
 
 7. React SPA: показывает пользователю "Не удалось подключиться. Попробуйте снова."
-   (в отличие от Circuit Breaker — это разовый сбой по тайм-ауту, не накопительный)
+   (в отличие от Circuit Breaker - это разовый сбой по тайм-ауту, не накопительный)
 
 Инфраструктура:
-  DeadlineMiddleware        — Guild Service, Messaging Service (ASP.NET Core middleware)
-  DeadlineForwardingHandler — Voice Service → Guild Service (DelegatingHandler, X-Deadline = UtcNow+1.5s)
-  Default budget            — 1.5 сек (< Polly Timeout 2s на том же клиенте — deadline срабатывает первым)
+  DeadlineMiddleware        - Guild Service, Messaging Service (ASP.NET Core middleware)
+  DeadlineForwardingHandler - Voice Service → Guild Service (DelegatingHandler, X-Deadline = UtcNow+1.5s)
+  Default budget            - 1.5 сек (< Polly Timeout 2s на том же клиенте - deadline срабатывает первым)
 ```
 
 ### Flow 17: Создание канала
@@ -1252,7 +1246,7 @@ modelConnections:
 
 ---
 
-## C4 Level 4 — Deployment Diagram
+## C4 Level 4 - Deployment Diagram
 
 ### Топология кластера
 
@@ -1272,16 +1266,16 @@ modelConnections:
 
 | Workload | Kind | Replicas | Containers | Примечание |
 |---|---|---|---|---|
-| guild-service | Deployment | 2 | guild-service (ASP.NET) | HPA 2–5 |
-| messaging-service | Deployment | 2 | messaging-service (ASP.NET) | HPA 2–5 |
-| voice-service | Deployment | 2 | voice-service (ASP.NET) | HPA 2–5 |
-| websocket-gateway | Deployment | 2 | websocket-gateway (ASP.NET) | HPA 2–5 |
-| web-spa | Deployment | 2 | web-spa (Nginx + static) | HPA 2–5 |
-| zitadel | StatefulSet | 1 | api (Zitadel Go) + login (Next.js) — sidecar | SPOF |
+| guild-service | Deployment | 2 | guild-service (ASP.NET) | HPA 2–8 |
+| messaging-service | Deployment | 2 | messaging-service (ASP.NET) | HPA 2–8 |
+| voice-service | Deployment | 2 | voice-service (ASP.NET) | HPA 2–4 |
+| websocket-gateway | Deployment | 2 | websocket-gateway (ASP.NET) | HPA 2–6 |
+| web-spa | Deployment | 2 | web-spa (Nginx + static) | - |
+| zitadel | StatefulSet | 1 | api (Zitadel Go) + login (Next.js) - sidecar | SPOF |
 | livekit | Deployment | 1 | livekit-server (Go) | SPOF |
 | prometheus | Deployment | 1 | prometheus | SPOF |
 | ingress-nginx | DaemonSet | 3 (1/node) | ingress-nginx-controller | все workers |
-| promtail | DaemonSet | 3 (1/node) | promtail | все workers |
+| alloy | DaemonSet | 6 (1/node) | alloy | все k3s ноды (3 CP + 3 workers) |
 
 ### YAML для импорта в IcePanel (C4 L4 Deployment)
 
@@ -1358,7 +1352,7 @@ modelObjects:
   type: system
   parentId: env-prod
   description: HAProxy :6443. L4 TCP roundrobin по 3 control-plane нодам. Stable endpoint для k3s API. Единая точка отказа для kubectl и node-join.
-  caption: HAProxy — k3s API load balancer
+  caption: HAProxy - k3s API load balancer
   tagIds: [tag-lb]
 
 - id: comp-haproxy-frontend
@@ -1373,7 +1367,7 @@ modelObjects:
   type: system
   parentId: env-prod
   description: HA k3s с embedded etcd. 3 control-plane + 3 workers. Tolerates 1 CP failure (etcd quorum 2/3).
-  caption: k3s v1.33 — 6 nodes
+  caption: k3s v1.33 - 6 nodes
 
 # ── Control Plane Nodes ─────────────────────────────────────────────────────
 - id: node-cp-1
@@ -1405,7 +1399,7 @@ modelObjects:
   name: worker-1 (10.19.0.21, public)
   type: app
   parentId: cluster-k3s
-  description: k3s agent. Bastion — единственный публичный IP. Входящий трафик :443 от Cloudflare. SSH ProxyJump для всего кластера.
+  description: k3s agent. Bastion - единственный публичный IP. Входящий трафик :443 от Cloudflare. SSH ProxyJump для всего кластера.
   caption: Worker + Bastion
   tagIds: [tag-worker]
 
@@ -1438,7 +1432,7 @@ modelObjects:
   type: app
   parentId: ns-nextalk
   description: По одному поду на каждом worker. Принимает :443 → routing по host/path → ClusterIP сервисы. TLS termination с Cloudflare Origin Certificate.
-  caption: DaemonSet — ingress controller
+  caption: DaemonSet - ingress controller
   tagIds: [tag-daemonset]
 
 - id: comp-ingress-controller
@@ -1447,13 +1441,13 @@ modelObjects:
   parentId: ds-ingress
   description: Container. nginx с Ingress CRD. Routes по host nextalk.fun и *.nextalk.fun.
 
-# ── DaemonSet: promtail (1 pod per worker) ───────────────────────────────────
+# ── DaemonSet: alloy (1 pod per node) ───────────────────────────────────────
 - id: ds-promtail
-  name: promtail (DaemonSet, ×3)
+  name: alloy (DaemonSet, ×6)
   type: app
   parentId: ns-nextalk
-  description: По одному поду на каждом worker. Читает логи подов с hostPath /var/log/pods, пушит в Loki на obs-vps.
-  caption: DaemonSet — log collector
+  description: По одному поду на каждой k3s ноде (3 CP + 3 workers). Читает логи подов nextalk_* с hostPath /var/log/pods через Docker API, пушит structured logs в Loki на obs-vps.
+  caption: DaemonSet - log collector (Grafana Alloy)
   tagIds: [tag-daemonset]
 
 # ── Deployment: guild-service (×2) ───────────────────────────────────────────
@@ -1461,7 +1455,7 @@ modelObjects:
   name: guild-service (Deployment, ×2)
   type: app
   parentId: ns-nextalk
-  description: 2 реплики. PDB maxUnavailable=1. HPA 2–5 реплик. Readiness /readyz (PostgreSQL + Redis). Liveness /healthz.
+  description: 2 реплики. PDB minAvailable=1. HPA 2–8 реплик. Readiness /readyz (PostgreSQL + Redis). Liveness /healthz.
   caption: Deployment ×2
   tagIds: [tag-pod]
 
@@ -1477,7 +1471,7 @@ modelObjects:
   name: messaging-service (Deployment, ×2)
   type: app
   parentId: ns-nextalk
-  description: 2 реплики. PDB maxUnavailable=1. HPA 2–5. OutboxWorker как BackgroundService внутри пода.
+  description: 2 реплики. PDB minAvailable=1. HPA 2–8. OutboxWorker как BackgroundService внутри пода.
   caption: Deployment ×2
   tagIds: [tag-pod]
 
@@ -1493,7 +1487,7 @@ modelObjects:
   name: voice-service (Deployment, ×2)
   type: app
   parentId: ns-nextalk
-  description: 2 реплики. Stateless — SessionStore in-memory. Restart сбрасывает голосовые сессии.
+  description: 2 реплики. PDB minAvailable=1. HPA 2–4. Stateless - SessionStore in-memory. Restart сбрасывает голосовые сессии.
   caption: Deployment ×2
   tagIds: [tag-pod]
 
@@ -1509,7 +1503,7 @@ modelObjects:
   name: websocket-gateway (Deployment, ×2)
   type: app
   parentId: ns-nextalk
-  description: 2 реплики. SignalR in-memory — Presence и Heartbeat state не расшарены между подами. Redis backplane не подключён (будущая итерация).
+  description: 2 реплики. PDB minAvailable=1. HPA 2–6. SignalR Redis backplane подключен (AddStackExchangeRedis). Presence in-memory (ConcurrentDictionary) - не шарится между подами, сбрасывается при рестарте.
   caption: Deployment ×2
   tagIds: [tag-pod]
 
@@ -1525,7 +1519,7 @@ modelObjects:
   name: web-spa (Deployment, ×2)
   type: app
   parentId: ns-nextalk
-  description: 2 реплики. Stateless Nginx раздаёт React SPA как статику.
+  description: 2 реплики. Stateless Nginx раздает React SPA как статику.
   caption: Deployment ×2
   tagIds: [tag-pod]
 
@@ -1536,13 +1530,13 @@ modelObjects:
   description: Nginx. Port 80. Статика React SPA.
   tagIds: [tag-container]
 
-# ── StatefulSet: zitadel (×1) — sidecar pattern ──────────────────────────────
+# ── StatefulSet: zitadel (×1) - sidecar pattern ──────────────────────────────
 - id: sts-zitadel
   name: zitadel (StatefulSet, ×1)
   type: app
   parentId: ns-nextalk
-  description: 1 реплика. Два контейнера в одном поде (sidecar pattern). Общий PVC /zitadel/bootstrap (PAT-файл). HA — будущая итерация (разделить init-Job и runtime StatefulSet).
-  caption: StatefulSet ×1 — sidecar
+  description: 1 реплика. Два контейнера в одном поде (sidecar pattern). Общий PVC /zitadel/bootstrap (PAT-файл). HA - будущая итерация (разделить init-Job и runtime StatefulSet).
+  caption: StatefulSet ×1 - sidecar
   tagIds: [tag-pod]
 
 - id: cont-zitadel-api
@@ -1553,7 +1547,7 @@ modelObjects:
   tagIds: [tag-container]
 
 - id: cont-zitadel-login
-  name: login (Next.js) — sidecar
+  name: login (Next.js) - sidecar
   type: component
   parentId: sts-zitadel
   description: Sidecar container. Port 3000. Next.js login UI. ZITADEL_API_URL=http://localhost:8080 (loopback к api в том же поде). Разделяет PVC bootstrap для PAT.
@@ -1565,7 +1559,7 @@ modelObjects:
   type: app
   parentId: ns-nextalk
   description: 1 реплика. SFU + встроенный TURN. UDP порты 50000–50200 открыты на воркерах (ufw). SPOF для голосовых звонков.
-  caption: Deployment ×1 — SPOF
+  caption: Deployment ×1 - SPOF
   tagIds: [tag-pod]
 
 - id: cont-livekit
@@ -1596,7 +1590,7 @@ modelObjects:
   name: db-vps (10.19.0.31)
   type: system
   parentId: env-prod
-  description: Вне k3s. Управляется Ansible (roles/postgres, roles/redis). Без репликации — SPOF для данных.
+  description: Вне k3s. Управляется Ansible (roles/postgres, roles/redis). Без репликации - SPOF для данных.
   caption: PostgreSQL 18 + Redis 7
   tagIds: [tag-db]
 
@@ -1610,14 +1604,14 @@ modelObjects:
   name: Redis 7
   type: component
   parentId: node-db
-  description: Port 6379. DB 0 LiveKit, DB 1 Guild cache, DB 2 Zitadel sessions. Без Sentinel.
+  description: Port 6379. DB 0 LiveKit, DB 2 SignalR backplane (WS Gateway), DB 3 Voice SessionStore. Guild Service - IMemoryCache, Redis не использует. Без Sentinel.
 
 # ── Observability VPS ────────────────────────────────────────────────────────
 - id: node-obs
   name: obs-vps (10.19.0.41)
   type: system
   parentId: env-prod
-  description: Docker Compose. Изолирован от k3s. Порты защищены ufw — только приватная сеть 10.19.0.0/16.
+  description: Docker Compose. Изолирован от k3s. Порты защищены ufw - только приватная сеть 10.19.0.0/16.
   caption: Prometheus + Loki + Tempo + Grafana
   tagIds: [tag-obs]
 
@@ -1631,7 +1625,7 @@ modelObjects:
   name: Loki
   type: component
   parentId: node-obs
-  description: Port 3100. Single-binary mode. Получает логи от Promtail DaemonSet. Filesystem storage.
+  description: Port 3100. Single-binary mode. Получает логи от Alloy DaemonSet. Filesystem storage.
 
 - id: comp-obs-tempo
   name: Tempo
@@ -1653,7 +1647,7 @@ modelConnections:
   originId: ext-cloudflare
   targetId: node-worker-1
   direction: outgoing
-  description: Origin Certificate TLS. Cloudflare terminates TLS с клиентом, передаёт на worker-1 с Origin Cert.
+  description: Origin Certificate TLS. Cloudflare terminates TLS с клиентом, передает на worker-1 с Origin Cert.
 
 # ── ingress → services ───────────────────────────────────────────────────────
 - id: conn-ingress-guild
@@ -1761,7 +1755,7 @@ modelConnections:
   direction: outgoing
   description: In-cluster Prometheus → obs-vps Prometheus. Все метрики сервисов с retention 15d.
 
-- id: conn-promtail-loki
+- id: conn-alloy-loki
   name: HTTP push :3100
   originId: ds-promtail
   targetId: node-obs

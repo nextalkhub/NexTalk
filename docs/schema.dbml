@@ -2,9 +2,9 @@ Project NexTalk {
   database_type: 'PostgreSQL'
   Note: '''
     Бизнес-БД `nextalk` с двумя схемами:
-    - guild     — Guild Service (5 таблиц, hard-FK + cascade)
-    - messaging — Messaging Service (3 таблицы, без hard-FK)
-    Zitadel использует отдельную БД `zitadel`, поэтому связи на sub — без FK.
+    - guild     - Guild Service (5 таблиц, hard-FK + cascade)
+    - messaging - Messaging Service (3 таблицы, без hard-FK)
+    Zitadel использует отдельную БД `zitadel`, поэтому связи на sub - без FK.
   '''
 }
 
@@ -38,7 +38,7 @@ Table guild.members {
   user_id      varchar(36) [not null, note: 'Zitadel sub']
   display_name varchar(255) [not null, note: 'snapshot из JWT claim name']
   username     varchar(254) [not null, note: 'snapshot из JWT claim preferred_username (RFC 5321 email max)']
-  role         text        [not null, default: 'member', note: 'enum: member|admin|owner']
+  role         text        [not null, note: 'enum: member|admin|owner; DB default нет - значение всегда передается приложением']
   joined_at    timestamptz [not null, default: `now()`]
 
   Indexes {

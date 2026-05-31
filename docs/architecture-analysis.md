@@ -1,7 +1,9 @@
 # Анализ архитектуры NexTalk
 
-Дата: 2026-05-28  
-Кластер: k3s 3-node HA (Beget VPS), 2 control-plane + 1 worker
+Дата: 2026-05-31  
+Кластер: k3s 6-node HA (Beget VPS), 3 control-plane + 3 workers
+
+Связанные документы: [decisions.md](decisions.md), [tests/chaos/CHAOS_TESTING.md](../tests/chaos/CHAOS_TESTING.md).
 
 ---
 
@@ -11,28 +13,25 @@
 
 | Компонент | Реплики | Кворум |
 |-----------|---------|--------|
-| k3s control-plane | 2 | требуется 2 из 2 — нет кворума при потере одной ноды |
-| etcd (embedded) | 2 | **проблема**: 2 узла не образуют кворум raft (нужно нечётное число ≥ 3) |
+| k3s control-plane | 3 | кворум 2/3 - выдерживает потерю одной CP ноды |
+| etcd (embedded) | 3 | кворум 2/3 - нечетное число, Raft работает корректно |
 | HAProxy (балансировщик CP) | 1 | **SPOF**: падение = недоступность API server для всего кластера |
-
-**Рекомендация по control plane:** добавить третью control-plane ноду. Тогда etcd получает кворум 2/3, HAProxy можно убрать или дублировать keepalived.
 
 ### Приложение
 
 | Сервис | minReplicas | maxReplicas | PDB |
 |--------|-------------|-------------|-----|
-| gateway | 2 | 8 | нет |
-| rtc | 1 | 4 | нет |
-| media | 1 | 3 | нет |
-| zitadel | 1 | — | нет |
-
-Без PDB (`PodDisruptionBudget`) rolling update или дренаж ноды могут временно обнулить количество подов.
+| websocket-gateway | 2 | 6 | minAvailable: 1 |
+| voice-service | 2 | 4 | minAvailable: 1 |
+| messaging-service | 2 | 8 | minAvailable: 1 |
+| guild-service | 2 | 8 | minAvailable: 1 |
+| zitadel | 1 | - | minAvailable: 1 |
 
 **Критические SPOF:**
-- **Zitadel** — 1 реплика, нет HA. Падение = невозможность логина и верификации токенов.
-- **PostgreSQL** — один инстанс (CloudNativePG single). Нет реплики чтения, нет автофейловера.
-- **LiveKit** — 1 реплика. Падение = все голосовые сессии обрываются.
-- **HAProxy** — 1 под, балансирует трафик на CP API; нет keepalived/VRRP.
+- **Zitadel** - 1 реплика, нет HA. Падение = невозможность логина и верификации токенов.
+- **PostgreSQL** - один инстанс (CloudNativePG single). Нет реплики чтения, нет автофейловера.
+- **LiveKit** - 1 реплика. Падение = все голосовые сессии обрываются.
+- **HAProxy** - 1 под, балансирует трафик на CP API; нет keepalived/VRRP.
 
 ---
 
@@ -42,50 +41,37 @@
 
 | Сервис | CPU threshold | Логика |
 |--------|---------------|--------|
-| gateway | 60% | Держит WebSocket-соединения — снижен порог, чтобы не терять соединения при пике |
-| media | 70% | REST, stateless — стандартный порог |
-| rtc | 70% | LiveKit-обёртка |
+| websocket-gateway | 60% | Держит WebSocket-соединения - снижен порог, чтобы не терять соединения при пике |
+| guild-service | 70% | REST, stateless - стандартный порог |
+| messaging-service | 70% | REST, stateless - стандартный порог |
+| voice-service | 70% | LiveKit-обертка |
 
 ### Проблема: PostgreSQL `max_connections`
 
 CloudNativePG конфиг: `max_connections: 100`.
 
 При максимальных репликах HPA:
-- gateway: 8 реплик × N соединений пула
-- rtc: 4 реплики
-- media: 3 реплики
+- websocket-gateway: 6 реплик × N соединений пула
+- voice-service: 4 реплики
+- messaging-service: 8 реплик
+- guild-service: 8 реплик
 - zitadel: 1 реплика (держит свой пул)
 
-При агрессивном пуле соединений суммарное число может превысить 100 — PostgreSQL начнёт отклонять соединения с `FATAL: sorry, too many clients`. **Решение:** добавить PgBouncer в transaction mode.
+При агрессивном пуле соединений суммарное число может превысить 100 - PostgreSQL начнет отклонять соединения с `FATAL: sorry, too many clients`. **Решение:** добавить PgBouncer в transaction mode.
 
-### Проблема: SignalR без Redis backplane
+### SignalR Redis backplane
 
-Gateway при `minReplicas: 2` держит WebSocket-соединения в памяти. При scale-in:
-- Под с активными соединениями убивается
-- Клиенты реконнектятся к другому поду
-- Сообщения в очереди теряются
-
-При scale-out:
-- Новый под не знает о соединениях на других подах
-- Broadcast (`SendAll`, группы по каналу) доходит только до части клиентов
-
-**Решение:** подключить Redis backplane для SignalR. Тогда все поды шарят состояние соединений через Redis pub/sub.
-
-```csharp
-// Program.cs
-builder.Services.AddSignalR().AddStackExchangeRedis(redisConnectionString);
-```
-
-Redis уже есть в Helm-чарте (используется для кеша) — достаточно указать тот же инстанс или выделить отдельный.
+Реализован: `AddStackExchangeRedis` в `Program.cs` websocket-gateway. Все поды шарят состояние соединений через Redis pub/sub - broadcast доходит до всех клиентов при любом числе реплик.
 
 ### Stateless vs Stateful
 
 | Сервис | Stateless? | Примечание |
 |--------|-----------|------------|
-| gateway | частично | SignalR держит соединения в памяти |
-| media | да | REST, можно масштабировать без ограничений |
-| rtc | нет | LiveKit rooms — внутреннее состояние |
-| zitadel | нет | сессии, токены — нужна БД |
+| websocket-gateway | частично | SignalR backplane через Redis; presence (ConcurrentDictionary) in-memory per-pod |
+| guild-service | да | REST; Zitadel UserInfo кешируется в IMemoryCache per-pod (не в Redis) |
+| messaging-service | да | REST, stateless; Outbox poll из PostgreSQL |
+| voice-service | да | Redis SessionStore (DB=3) - stateless при наличии Redis |
+| zitadel | нет | сессии, токены - нужна БД |
 
 ---
 
@@ -97,39 +83,59 @@ Redis уже есть в Helm-чарте (используется для кеш
 |-----------|--------|------------|
 | Prometheus | работает | scrape метрик с подов |
 | remote_write → obs-vps | работает | метрики уходят во внешний Prometheus/Thanos |
-| Grafana | работает | дашборды настроены |
-| Alloy / Promtail | **отключён** | `alloy.enabled: false` в values — логи не собираются |
-| Tempo (трейсы) | готов к работе | инстанс поднят, но приложение не инструментировано |
-| AlertManager | **нет** | никаких алертов — инциденты обнаруживаются вручную |
-| kube-state-metrics | нет данных | неизвестно, установлен ли |
-| node-exporter | нет данных | метрики нод могут отсутствовать |
+| Grafana | работает | дашборды настроены; alerting rules через Grafana managed alerts |
+| Alloy | работает | DaemonSet на всех 6 нодах; читает `/var/log/pods/nextalk_*`, пушит в Loki на obs-vps |
+| Tempo (трейсы) | работает | все 4 сервиса инструментированы OpenTelemetry SDK, OTLP → Tempo |
+| AlertManager | нет | алерты настроены через Grafana managed alerts (CrashLoop, error rate, cert expiry, latency) |
+| kube-state-metrics | работает | установлен v2.13.0, scrape deployments/pods/HPA/nodes |
+| node-exporter | **нет** | метрики нод (CPU/RAM/disk) недоступны |
 
 ### Что нужно сделать
 
-1. **Включить Alloy** — поменять `alloy.enabled: true` в Helm values, настроить loki endpoint для сбора логов.
-2. **AlertManager** — настроить хотя бы базовые алерты:
-   - pod CrashLoopBackOff
-   - pod OOMKilled
-   - certificate expiry < 7 дней
-   - PostgreSQL connections > 80%
-3. **Инструментировать приложение для Tempo** — добавить OpenTelemetry SDK в gateway, настроить exporter на Tempo endpoint.
-4. **Проверить kube-state-metrics и node-exporter** — без них нет метрик по состоянию деплойментов и ресурсам нод.
-
-### Логирование
-
-Сейчас логи доступны только через `kubectl logs`. При рестарте пода логи теряются. Alloy/Promtail → Loki закрывает эту проблему.
+1. **node-exporter** - без него нет метрик CPU/RAM/disk нод. Добавить DaemonSet или установить через kube-prometheus-stack.
+2. **OOMKilled алерт** - в Grafana managed alerts пока нет правила на OOMKilled и PostgreSQL connections > 80%.
 
 ---
 
 ## Приоритеты
 
-| Приоритет | Задача | Риск без неё |
+| Приоритет | Задача | Риск без нее |
 |-----------|--------|--------------|
-| 🔴 высокий | Redis backplane для SignalR | потеря сообщений при scale-out |
-| 🔴 высокий | AlertManager с базовыми алертами | инциденты не обнаруживаются |
 | 🔴 высокий | PgBouncer или ограничение пула соединений | отказ БД при пиковой нагрузке |
-| 🟡 средний | PDB для gateway и rtc | downtime при rolling update |
-| 🟡 средний | Включить Alloy/Loki | нет логов при постмортеме |
+| 🔴 высокий | node-exporter | нет метрик нод - незаметный OOM/disk full |
 | 🟡 средний | Zitadel HA (2+ реплик) | SPOF аутентификации |
-| 🟢 низкий | Третья control-plane нода | etcd без кворума |
-| 🟢 низкий | Инструментирование OpenTelemetry | нет трейсов |
+| 🟡 средний | OOMKilled + PostgreSQL connections алерты в Grafana | пропущенные инциденты |
+
+---
+
+## 4. Известные SPOF и ограничения деплоя
+
+Каждый пункт - это либо единственная точка отказа, либо место где отказ влечет деградацию без автоматического восстановления.
+
+### Инфраструктура
+
+| Компонент | Проблема | Что происходит при отказе | Возможное решение |
+|-----------|----------|--------------------------|-------------------|
+| **HAProxy** | 1 инстанс без резервирования | k3s API server недоступен: нельзя делать kubectl, деплой зависает. Поды продолжают работать, но управление кластером теряется. | Два HAProxy + keepalived (VRRP). kube-vip не работает на Beget (ARP блокируется гипервизором - см. decisions.md) |
+| **PostgreSQL** | Single instance, нет реплики | guild-service и messaging-service возвращают 503. Данные не теряются если диск цел, но сервис недоступен до перезапуска БД. | Streaming replication + Patroni; или CloudNativePG HA mode |
+| **Redis** | Single instance | websocket-gateway входит в CrashLoopBackOff (SignalR backplane), voice-service теряет сессии. Восстановление требует `kubectl rollout restart`. | Redis Sentinel; или принять как риск для текущего масштаба |
+| **etcd: 3 CP** | кворум 2/3 | Потеря одной CP ноды - etcd продолжает работать (2/3 кворум). Потеря двух CP нод = кворум потерян, деплои не проходят. | Принято как допустимый риск для текущего масштаба |
+| **Zitadel** | 1 реплика | Нельзя логиниться. Существующие токены работают до истечения (~1 час). После - 401 везде. | Zitadel HA: отдельные Job init+setup, PAT в Secret (задокументировано в decisions.md) |
+| **LiveKit** | 1 реплика | Все голосовые сессии обрываются при рестарте. Клиент должен переподключиться. | Нет простого self-hosted HA; документировать как known limitation |
+| **etcd backup** | Snapshots только локально | Потеря всех 3 CP нод = безвозвратная потеря состояния кластера. | `k3s etcd-snapshot` по cron + offload в S3 (см. decisions.md) |
+
+### Сеть и DNS
+
+| Место | Проблема | Что происходит | Возможное решение |
+|-------|----------|----------------|-------------------|
+| **DNS TTL на worker-нодах** | 3 A-записи на 3 worker IP, TTL=300 | Если worker умирает, DNS продолжает отправлять на него трафик до 5 минут. Часть запросов падает с connection refused. | Снизить TTL до 60 сек; или Cloudflare Proxy (мгновенный failover через Anycast healthcheck) |
+| **GRE-туннель obs-vps** | obs-vps ходит в интернет через bastion (worker-1) | Падение bastion = obs-vps теряет интернет. Docker pull не работает, образы не обновить. Уже запущенные контейнеры продолжают работать. | Дать obs-vps публичный IP напрямую |
+| **cert-manager HTTP-01** | Зависит от публичного DNS и доступности ingress-nginx | Если HTTP-01 challenge не проходит (DNS смена, ingress недоступен) - сертификат не перевыпустится через 90 дней. TLS ломается. | Мониторинг expiry (алерт за 14 дней); или переход на DNS-01 challenge |
+
+### Приложение
+
+| Место | Проблема | Что происходит | Возможное решение |
+|-------|----------|----------------|-------------------|
+| **PostgreSQL `max_connections=100`** | При максимальных репликах HPA сумма пулов > 100 | `FATAL: sorry, too many clients` - часть подов не может подключиться к БД. | PgBouncer в transaction mode перед PostgreSQL |
+| **Presence: in-memory** | WS Gateway хранит presence в ConcurrentDictionary | При рестарте пода все статусы сбрасываются. Клиенты видят всех офлайн до следующего heartbeat (20 сек). | Redis для presence (аналогично SessionStore в voice-service) |
+| **Outbox: нет дедупликации при конкурентных workers** | OutboxWorker опрашивает outbox_events каждые 100 мс | При 2+ репликах messaging-service два воркера могут забрать одно событие одновременно. Защита - `processed = true` в транзакции, но window гонки есть. | SELECT FOR UPDATE SKIP LOCKED в OutboxWorker |

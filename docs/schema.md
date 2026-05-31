@@ -18,7 +18,7 @@ DBML-версия для [dbdiagram.io](https://dbdiagram.io/d): [schema.dbml](s
 
 ## 2. Связь с Zitadel
 
-Идентификатор пользователя — сырая строка из JWT-claim `sub` (Zitadel выдаёт snowflake-ID, например `"287040091499675137"`).
+Идентификатор пользователя - сырая строка из JWT-claim `sub` (Zitadel выдает snowflake-ID, например `"287040091499675137"`).
 Поля, хранящие sub пользователя:
 
 | Таблица              | Поле                   | Семантика                   |
@@ -63,7 +63,7 @@ DBML-версия для [dbdiagram.io](https://dbdiagram.io/d): [schema.dbml](s
 | `user_id`      | `varchar(36)` |  no  | -        | **PK**, Zitadel sub                         |
 | `display_name` | `varchar(255)` |  no  | -        | snapshot из JWT claim `name`                |
 | `username`     | `varchar(254)` |  no  | -        | snapshot из JWT claim `preferred_username`  |
-| `role`         | `text`        |  no  | `member` | enum: `member`, `admin`, `owner`            |
+| `role`         | `text`        |  no  | -        | enum: `member`, `admin`, `owner`; DB default нет, значение передает приложение |
 | `joined_at`    | `timestamptz` |  no  | `now`    | Момент вступления                           |
 
 Индексы: составной PK `(guild_id, user_id)`.
@@ -266,4 +266,4 @@ erDiagram
 |:--|:--|
 |`DELETE FROM guild.guilds WHERE id = ?`|`channels`, `members`, `invites`, `bans` той же гильдии (PG CASCADE)|
 
-Сообщения в `messaging.messages` **не удаляются** при удалении гильдии: они в другой БД-схеме и каскад не дотягивается. Чистка — отдельная задача Messaging Service (в MVP не реализована).
+Сообщения в `messaging.messages` **не удаляются** при удалении гильдии: они в другой БД-схеме и каскад не дотягивается. Чистка - отдельная задача Messaging Service (в MVP не реализована).

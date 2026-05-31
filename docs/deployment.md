@@ -1,4 +1,4 @@
-# NexTalk — Deployment
+# NexTalk - Deployment
 
 Физическая топология: какие серверы, как соединены, что где запущено, как переживает отказы.
 
@@ -26,11 +26,11 @@
 
 ## 1. Цели
 
-- Production HA — переживание падения любой одной control-plane / worker ноды без простоя.
+- Production HA - переживание падения любой одной control-plane / worker ноды без простоя.
 - Соответствие NFR из [README §8](../README.md#8-нефункциональные-требования-nfr): 99% uptime, p95 < 150ms, 200–300 concurrent WS.
-- Разделение слоёв: stateless (k3s) / stateful (db-vps) / observability (observability-vps) / lb (haproxy-vps).
+- Разделение слоев: stateless (k3s) / stateful (db-vps) / observability (observability-vps) / lb (haproxy-vps).
 
-Выбор k3s HA на VPS: managed K8s дорого, single-node Compose не даёт NFR-6, in-cluster PostgreSQL без оператора — SPOF.
+Выбор k3s HA на VPS: managed K8s дорого, single-node Compose не дает NFR-6, in-cluster PostgreSQL без оператора - SPOF.
 
 ---
 
@@ -41,8 +41,8 @@
 | Параметр                  | Значение                | NFR     |
 |:--------------------------|:------------------------|:--------|
 | Concurrent WS             | 200–300                 | NFR-20  |
-| Пиковый RPS на ingress    | 100–150                 | —       |
-| Поток сообщений           | 60 msg/sec              | —       |
+| Пиковый RPS на ingress    | 100–150                 | -       |
+| Поток сообщений           | 60 msg/sec              | -       |
 | ACK p95                   | < 200 ms                | NFR-2   |
 | Доставка p95              | < 500 ms                | NFR-3   |
 | REST API p95              | < 150 ms                | NFR-1   |
@@ -50,7 +50,7 @@
 | RTO                       | < 45 с                  | NFR-7   |
 | PG pool                   | 20 conn/service         | NFR-22  |
 
-Запас на железо — ~30% поверх этих чисел.
+Запас на железо - ~30% поверх этих чисел.
 
 ---
 
@@ -115,7 +115,7 @@ graph TB
     W3Pub --> W3
 ```
 
-HAProxy проксирует k3s apiserver (TCP :6443) с health-check на каждую control-plane ноду. Между control-plane нодами — etcd Raft.
+HAProxy проксирует k3s apiserver (TCP :6443) с health-check на каждую control-plane ноду. Между control-plane нодами - etcd Raft.
 
 ---
 
@@ -143,7 +143,7 @@ HAProxy проксирует k3s apiserver (TCP :6443) с health-check на ка
 
 ### 5.1 etcd и quorum
 
-k3s HA использует [embedded etcd](https://docs.k3s.io/datastore/ha-embedded) — распределённая key-value БД с консенсусом Raft.
+k3s HA использует [embedded etcd](https://docs.k3s.io/datastore/ha-embedded) - распределенная key-value БД с консенсусом Raft.
 
 | Control-plane | Quorum | Переживает падений |
 |:--------------|:-------|:-------------------|
@@ -152,21 +152,21 @@ k3s HA использует [embedded etcd](https://docs.k3s.io/datastore/ha-emb
 | **3**         | **2**  | **1**              |
 | 5             | 3      | 2                  |
 
-Берём 3 — минимум для HA. Чётные числа не дают выигрыша, увеличивают risk split-brain.
+Берем 3 - минимум для HA. Четные числа не дают выигрыша, увеличивают risk split-brain.
 
-### 5.2 HAProxy — балансировщик для apiserver
+### 5.2 HAProxy - балансировщик для apiserver
 
 Все ноды и `kubectl` обращаются к `https://10.19.0.51:6443` (haproxy-vps). HAProxy делает TCP health-check на все три control-plane ноды (`check inter 5s rise 2 fall 3`) и автоматически исключает упавший узел из ротации.
 
-kube-vip ARP mode не применяется: Beget hypervisor фильтрует gratuitous ARP для IP-адресов, не назначенных VM при создании. Подробнее — [decisions.md](decisions.md).
+kube-vip ARP mode не применяется: Beget hypervisor фильтрует gratuitous ARP для IP-адресов, не назначенных VM при создании. Подробнее - [decisions.md](decisions.md).
 
 ### 5.3 Failover-сценарии
 
 | Сценарий           | Влияние                                                                            | Восстановление                          |
 |:-------------------|:-----------------------------------------------------------------------------------|:----------------------------------------|
-| 1 control-plane    | HAProxy перестаёт слать трафик на упавший узел (~10 сек), кластер работает        | Авто после возврата                     |
+| 1 control-plane    | HAProxy перестает слать трафик на упавший узел (~10 сек), кластер работает        | Авто после возврата                     |
 | 2 control-plane    | etcd теряет quorum, read-only. Существующие поды работают, новых не создать.      | Поднять любой → quorum                  |
-| haproxy-vps        | kubectl и регистрация новых нод недоступны. Работающие поды и трафик — без изменений | Поднять haproxy-vps (fast restore)   |
+| haproxy-vps        | kubectl и регистрация новых нод недоступны. Работающие поды и трафик - без изменений | Поднять haproxy-vps (fast restore)   |
 | 1 worker           | Поды пересоздаются на остальных, 1/3 пользователей переподключаются через DNS      | Авто; DNS-failover 30–60 сек            |
 | 2 worker           | Поды на 1 ноде → resource pressure, часть в Pending                                | Поднять воркер                          |
 | db-vps             | **Полная остановка приложения**                                                    | Бэкап + restore                         |
@@ -188,14 +188,14 @@ kube-vip ARP mode не применяется: Beget hypervisor фильтруе
 
 | Хост               | Private IP    | Public IP    |
 |:-------------------|:--------------|:-------------|
-| haproxy-vps        | `10.19.0.51`  | —            |
-| control-plane-1    | `10.19.0.11`  | —            |
-| control-plane-2    | `10.19.0.12`  | —            |
-| control-plane-3    | `10.19.0.13`  | —            |
+| haproxy-vps        | `10.19.0.51`  | -            |
+| control-plane-1    | `10.19.0.11`  | -            |
+| control-plane-2    | `10.19.0.12`  | -            |
+| control-plane-3    | `10.19.0.13`  | -            |
 | worker-1           | `10.19.0.21`  | статический  |
 | worker-2           | `10.19.0.22`  | статический  |
 | worker-3           | `10.19.0.23`  | статический  |
-| db-vps             | `10.19.0.31`  | —            |
+| db-vps             | `10.19.0.31`  | -            |
 | observability-vps  | `10.19.0.41`  | опц. (Grafana) |
 
 ### 6.3 Firewall (ufw)
@@ -240,7 +240,7 @@ grafana.nextalk.fun.    A    <public-IP-worker-1>
 
 DNS round-robin. При падении воркера 1/3 пользователей попадают в timeout → retry на живой. Floating IP в Beget не поддерживается, failover через DNS (30–60 сек).
 
-### 7.3 TLS — cert-manager + Let's Encrypt
+### 7.3 TLS - cert-manager + Let's Encrypt
 
 - [cert-manager](https://cert-manager.io/docs/installation/helm/) в k3s
 - Два ClusterIssuer: staging (для отладки) и prod
@@ -257,7 +257,7 @@ DNS round-robin. При падении воркера 1/3 пользовател
 
 ### 8.1 Почему отдельный слой
 
-При падении k3s теряем мониторинг тогда, когда он нужен. Метрики/логи — write-heavy с retention, не соседствуют со stateless нагрузкой.
+При падении k3s теряем мониторинг тогда, когда он нужен. Метрики/логи - write-heavy с retention, не соседствуют со stateless нагрузкой.
 
 ### 8.2 Поток данных
 
@@ -288,9 +288,9 @@ DNS round-robin. При падении воркера 1/3 пользовател
 docker-compose: Prometheus, Loki, Tempo (OTLP :4317/4318), Grafana.
 
 Retention под 40 GB диск:
-- **Prometheus** — 7 дней
-- **Loki** — 7 дней
-- **Tempo** — 3 дня
+- **Prometheus** - 15 дней
+- **Loki** - 30 дней
+- **Tempo** - 3 дня
 
 ---
 
@@ -313,7 +313,11 @@ Retention под 40 GB диск:
 ### 9.3 Redis
 
 - Standalone, bind на private IP + `requirepass`
-- `db=0` — Guild Service cache, `db=1` — общий кэш, `db=2` — SignalR backplane
+- `db=0` - LiveKit (room registry, participant tracking)
+- `db=2` - SignalR backplane (WS Gateway)
+- `db=3` - Voice SessionStore (сессии пользователей в голосовых каналах, TTL 8h)
+
+> Guild Service кеширует Zitadel UserInfo в `IMemoryCache` (in-memory, per-pod), не в Redis.
 
 ### 9.4 Бэкапы
 
@@ -325,15 +329,17 @@ Retention под 40 GB диск:
 
 ### Playbook'и
 
-| Playbook              | Цель                                                    | Хосты              |
-|:----------------------|:--------------------------------------------------------|:-------------------|
-| `bootstrap.yml`       | sysctl, swapoff, ufw, NTP, базовые пакеты               | все 9              |
-| `haproxy.yml`         | HAProxy TCP балансировщик для apiserver                 | haproxy-vps        |
-| `k3s.yml`             | k3s HA install (cp + workers через HAProxy)             | control-plane + workers |
-| `db.yml`              | PostgreSQL 18 + Redis                                   | db-vps             |
-| `observability.yml`   | docker + compose stack                                  | observability-vps  |
-| `helm-deploy.yml`     | `helm upgrade --install nextalk ./charts/nextalk`       | первая control-plane |
-| `site.yml`            | всё вместе в правильном порядке                         | все                |
+| Playbook              | Цель                                                                   | Хосты                   |
+|:----------------------|:-----------------------------------------------------------------------|:------------------------|
+| `site.yml`            | все вместе в правильном порядке (оркестратор)                          | все                     |
+| `bootstrap.yml`       | sysctl, swapoff, ufw, NTP, базовые пакеты                              | все 9                   |
+| `gre-nat.yml`         | GRE-туннели + NAT: obs-vps и db-vps выходят в интернет через worker-1  | worker-1, obs-vps, db-vps |
+| `haproxy.yml`         | HAProxy TCP балансировщик для apiserver (:6443)                        | haproxy-vps             |
+| `db.yml`              | PostgreSQL 18 + Redis                                                  | db-vps                  |
+| `observability.yml`   | docker-compose: Prometheus + Loki + Tempo + Grafana                    | observability-vps       |
+| `k3s.yml`             | k3s HA install (cp + workers через HAProxy)                            | control-plane + workers |
+| `cluster-addons.yml`  | ingress-nginx (DaemonSet) + metrics-server + CoreDNS fix + cert-manager | localhost (kubectl)    |
+| `helm-deploy.yml`     | `helm upgrade --install nextalk ./charts/nextalk`                      | localhost (kubectl)     |
 
 ### Inventory
 
@@ -344,9 +350,9 @@ control-plane-2 ansible_host=10.19.0.12
 control-plane-3 ansible_host=10.19.0.13
 
 [workers]
-worker-1 ansible_host=10.19.0.21 public_ip=85.198.100.100
-worker-2 ansible_host=10.19.0.22 public_ip=159.194.218.53
-worker-3 ansible_host=10.19.0.23 public_ip=217.26.28.162
+worker-1 ansible_host=10.19.0.21 public_ip=<WORKER1_PUBLIC_IP>
+worker-2 ansible_host=10.19.0.22 public_ip=<WORKER2_PUBLIC_IP>
+worker-3 ansible_host=10.19.0.23 public_ip=<WORKER3_PUBLIC_IP>
 
 [db]
 db-vps ansible_host=10.19.0.31
@@ -368,21 +374,21 @@ SSH через bastion (worker-1), ProxyJump в `group_vars/all.yml`.
 
 ## 11. Узкие места
 
-### 11.1 WebSocket Gateway — non-trivial scaling
+### 11.1 WebSocket Gateway - non-trivial scaling
 
 SignalR требует sticky sessions. HPA работает, но при большом числе чатов Redis pub/sub backplane фанаутит сообщения во все узлы с участниками.
 
-### 11.2 PostgreSQL — SPOF
+### 11.2 PostgreSQL - SPOF
 
-Standalone PG = единая точка отказа. Митигация: бэкапы + runbook. Следующая ступень — streaming replica с ручным failover.
+Standalone PG = единая точка отказа. Митигация: бэкапы + runbook. Следующая ступень - streaming replica с ручным failover.
 
-### 11.3 Redis — SPOF
+### 11.3 Redis - SPOF
 
-Менее критично: cache регенерируется, presence эфемерна. Без SignalR backplane сломается broadcast между подами WS Gateway.
+При падении: SignalR backplane недоступен (WS Gateway не может broadcast между подами), голосовые сессии теряются (Voice SessionStore), Guild cache пустеет (регенерируется автоматически при следующем запросе). Требуется `kubectl rollout restart deployment/websocket-gateway`.
 
-### 11.4 HAProxy — SPOF для управления кластером
+### 11.4 HAProxy - SPOF для управления кластером
 
-haproxy-vps — единственная точка входа для kubectl и регистрации нод. При падении: работающие поды и трафик продолжают работать, но kubectl и новые деплои недоступны. Митигация: быстрое восстановление через Ansible (`ansible-playbook haproxy.yml`). Полная HA потребует keepalived/VRRP — не тестировали на Beget.
+haproxy-vps - единственная точка входа для kubectl и регистрации нод. При падении: работающие поды и трафик продолжают работать, но kubectl и новые деплои недоступны. Митигация: быстрое восстановление через Ansible (`ansible-playbook haproxy.yml`). Полная HA потребует keepalived/VRRP - не тестировали на Beget.
 
 ### 11.5 In-memory state в WS Gateway / Voice Service
 
@@ -390,19 +396,19 @@ haproxy-vps — единственная точка входа для kubectl и
 
 ### 11.6 Outbox polling latency
 
-OutboxWorker polling 100 мс — нижняя граница NFR-3. При росте — LISTEN/NOTIFY или event-bus.
+OutboxWorker polling 100 мс - нижняя граница NFR-3. При росте - LISTEN/NOTIFY или event-bus.
 
-### 11.7 Ingress — внешний failover
+### 11.7 Ingress - внешний failover
 
-Beget не даёт floating public IP. Внешний HA через 3 A-records DNS round-robin, failover 30–60 сек.
+Beget не дает floating public IP. Внешний HA через 3 A-records DNS round-robin, failover 30–60 сек.
 
-### 11.8 Observability VPS — single instance
+### 11.8 Observability VPS - single instance
 
 При падении теряем мониторинг. Prometheus буферизует remote_write в WAL короткое время.
 
 ### 11.9 Нет cluster autoscaler
 
-3 воркера фиксированного размера. Если HPA выкручивает реплики до потолка — поды в `Pending`.
+3 воркера фиксированного размера. Если HPA выкручивает реплики до потолка - поды в `Pending`.
 
 ### 11.10 Disk pressure на db-vps
 
@@ -410,57 +416,57 @@ Beget не даёт floating public IP. Внешний HA через 3 A-records
 
 ### 11.11 Достижимость k3s API с CI-runner
 
-Kubeconfig указывает на `10.19.0.51` (приватная Beget-сеть) — runner из интернета не достучится. Варианты: SSH-tunnel через bastion, self-hosted runner внутри Beget, делегировать helm-task через ProxyJump.
+Kubeconfig указывает на `10.19.0.51` (приватная Beget-сеть) - runner из интернета не достучится. Варианты: SSH-tunnel через bastion, self-hosted runner внутри Beget, делегировать helm-task через ProxyJump.
 
 ---
 
 ## 12. Roadmap
 
-### Блок 1 — Подготовка инфраструктуры
+### Блок 1 - Подготовка инфраструктуры
 
 1.1. Заказать 9 VPS `2vCPU/4GB/40GB SSD` (Ubuntu 22.04+)
 1.2. Подключить к приватной сети `10.19.0.0/16`
 1.3. Назначить статические приватные IP по [§6.2](#62-ip-план)
-1.4. Назначить публичные IP трём worker'ам
+1.4. Назначить публичные IP трем worker'ам
 1.5. Сгенерировать SSH-ключ для Ansible, разложить на все 9 хостов
-1.6. Назначить bastion (worker-1) — единственный SSH-вход из интернета
+1.6. Назначить bastion (worker-1) - единственный SSH-вход из интернета
 
-### Блок 2 — Ansible bootstrap
+### Блок 2 - Ansible bootstrap
 
-2.1. `bootstrap.yml` — sysctl, swapoff, ufw, NTP, пакеты на всех 9 нодах
-2.2. `haproxy.yml` — HAProxy на haproxy-vps
+2.1. `bootstrap.yml` - sysctl, swapoff, ufw, NTP, пакеты на всех 9 нодах
+2.2. `haproxy.yml` - HAProxy на haproxy-vps
 
-### Блок 3 — Database VPS
+### Блок 3 - Database VPS
 
 3.1. PostgreSQL 18 + Redis через `db.yml`
 3.2. Проверить с воркера: `psql -h 10.19.0.31`, `redis-cli -h 10.19.0.31`
 
-### Блок 4 — k3s HA control-plane
+### Блок 4 - k3s HA control-plane
 
 4.1. `ansible-playbook k3s.yml`
 4.2. cp-1 устанавливается с `cluster-init`, cp-2/cp-3 джойнятся через HAProxy
-4.3. `kubectl get nodes` — 3 ноды `control-plane,etcd`
+4.3. `kubectl get nodes` - 3 ноды `control-plane,etcd`
 4.4. kubeconfig сохраняется в `infra/kubeconfig` с server=`https://10.19.0.51:6443`
-4.5. **Демо failover**: выключить cp-1, повторить `kubectl get nodes` — должно работать через cp-2/cp-3
+4.5. **Демо failover**: выключить cp-1, повторить `kubectl get nodes` - должно работать через cp-2/cp-3
 
-### Блок 5 — k3s workers
+### Блок 5 - k3s workers
 
 5.1. Workers джойнятся через HAProxy в том же `k3s.yml`
-5.2. `kubectl get nodes` — 6 нод
+5.2. `kubectl get nodes` - 6 нод
 5.3. ingress-nginx через Helm
-5.4. **Демо failover**: выключить worker-1, `kubectl get pods -n nextalk` — поды переехали
+5.4. **Демо failover**: выключить worker-1, `kubectl get pods -n nextalk` - поды переехали
 
-### Блок 6 — DNS и TLS
+### Блок 6 - DNS и TLS
 
 6.1. DNS A-records по [§7.2](#72-dns-записи)
 6.2. cert-manager через Helm, ClusterIssuer prod
 
-### Блок 7 — Observability VPS
+### Блок 7 - Observability VPS
 
 7.1. `observability.yml`
 7.2. Проверить Grafana через SSH-tunnel
 
-### Блок 8 — Деплой приложения
+### Блок 8 - Деплой приложения
 
 8.1. Обновить `values.yaml`: `domain`, `authDomain`, `db.host`, `tls.enabled=true`
 8.2. `helm upgrade --install nextalk ./charts/nextalk`

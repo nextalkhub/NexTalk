@@ -1,90 +1,70 @@
-# Настройка GRE-туннеля + NAT между VPS Beget
+# GRE-туннели + NAT
 
-### Схема
-```
-10.19.0.41 (без интернета) ──GRE── 10.19.0.21 (с интернетом) ──NAT── интернет
-            172.16.0.2                        172.16.0.1
+Управляется Ansible: `infra/ansible/playbooks/gre-nat.yml`.
+
+Запуск (обычно не нужен отдельно - входит в `site.yml`):
+```bash
+ansible-playbook -i inventory/hosts.ini playbooks/gre-nat.yml --ask-vault-pass
 ```
 
 ---
 
-### Шлюз (та VPS, у которой есть интернет)
+## Схема
 
-```bash
-IP_REMOTE=10.19.0.41   # VPS без интернета
-IP_LOCAL=10.19.0.21
+obs-vps и db-vps не имеют прямого доступа в интернет. worker-1 выступает NAT-шлюзом через два GRE-туннеля:
 
-# 1. Создать GRE-туннель
-ip link add gre1 type gre local $IP_LOCAL remote $IP_REMOTE
-ip link set gre1 up
-ip addr add 172.16.0.1/24 dev gre1
+```
+obs-vps (10.19.0.41) ──gre1── worker-1 (10.19.0.21) ── NAT ── интернет
+          172.16.0.2                    172.16.0.1
 
-# 2. Включить форвардинг
-sysctl -w net.ipv4.ip_forward=1
-
-# 3. Включить NAT
-iptables -t nat -A POSTROUTING -o eth0 -j MASQUERADE
+db-vps  (10.19.0.31) ──gre2── worker-1 (10.19.0.21) ── NAT ── интернет
+          172.16.1.2                    172.16.1.1
 ```
 
-### Клиент (VPS, которой нужен интернет)
+| Туннель | Шлюз (worker-1) | Клиент | Назначение |
+|---------|-----------------|--------|------------|
+| gre1 | 172.16.0.1 | 172.16.0.2 (obs-vps) | docker pull, apt, Grafana plugins |
+| gre2 | 172.16.1.1 | 172.16.1.2 (db-vps) | apt, postgres updates |
+
+---
+
+## Диагностика вручную
+
+Если туннель не поднялся после Ansible:
 
 ```bash
-IP_REMOTE=10.19.0.21   # VPS с интернетом
-IP_LOCAL=10.19.0.41
+# На worker-1: проверить туннели
+ip link show gre1 gre2
+ip route
 
-# 1. Создать GRE-туннель
-ip link add gre1 type gre local $IP_LOCAL remote $IP_REMOTE
+# С obs-vps: проверить интернет через туннель
+ping -c 3 8.8.8.8
+
+# С db-vps: аналогично
+ping -c 3 8.8.8.8
+```
+
+Пересоздать туннель вручную (если роль не отрабатывает):
+
+```bash
+# На worker-1 (шлюз)
+ip link add gre1 type gre local 10.19.0.21 remote 10.19.0.41
 ip link set gre1 up
-ip addr add 172.16.0.2/24 dev gre1
+ip addr add 172.16.0.1/30 dev gre1
+sysctl -w net.ipv4.ip_forward=1
+iptables -t nat -A POSTROUTING -o eth0 -j MASQUERADE
 
-# 2. Заменить шлюз по умолчанию
-ip route del default
+# На obs-vps (клиент)
+ip link add gre1 type gre local 10.19.0.41 remote 10.19.0.21
+ip link set gre1 up
+ip addr add 172.16.0.2/30 dev gre1
 ip route add default via 172.16.0.1
 ```
 
-### Проверка
-
-```bash
-ping 8.8.8.8
-```
-
 ---
 
-### Сохранить после перезагрузки
+## Примечания
 
-**Шлюз** — добавить в `/etc/network/interfaces`:
-```
-auto gre1
-iface gre1 inet static
-    address 172.16.0.1/24
-    pre-up iptunnel add gre1 mode gre local 10.19.0.21 remote 10.19.0.41
-    post-down iptunnel del gre1
-```
-
-**Клиент** — добавить в `/etc/network/interfaces`:
-```
-auto gre1
-iface gre1 inet static
-    address 172.16.0.2/24
-    gateway 172.16.0.1
-    pre-up iptunnel add gre1 mode gre local 10.19.0.41 remote 10.19.0.21
-    post-down iptunnel del gre1
-```
-
-**Шлюз** — `/etc/sysctl.conf`:
-```
-net.ipv4.ip_forward = 1
-```
-
-**Шлюз** — сохранить iptables:
-```bash
-iptables-save > /etc/iptables/rules.v4
-```
-
----
-
-### Примечания
-
-- Между VPS Beget в одном регионе есть приватная сеть — GRE работает без проблем
-- Для нескольких VPS без интернета — добавить по туннелю на каждую, адреса `172.16.0.3`, `172.16.0.4` и т.д.
-- Если нужно автоматизировать — заворачивается в Ansible
+- Beget блокирует gratuitous ARP - VRRP/keepalived не работают, GRE работает без ограничений
+- Персистентность обеспечивает Ansible-роль `gre_nat` (systemd unit при каждом запуске)
+- Падение worker-1 = obs-vps и db-vps теряют интернет (Docker pull не работает, apt недоступен). Уже запущенные контейнеры продолжают работать.
