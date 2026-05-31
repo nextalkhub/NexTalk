@@ -61,7 +61,7 @@
         try:
             with open('{{ observability_target_dir }}/grafana/provisioning/dashboards/nextalk-overview.json') as f:
                 dash = json.load(f)
-            payload = json.dumps({'dashboard': dash, 'overwrite': True, 'folderId': 0}).encode()
+            payload = json.dumps({'dashboard': dash, 'overwrite': True, 'folderUid': 'nextalk'}).encode()
             creds = base64.b64encode(('admin:' + os.environ['GRAFANA_PASS']).encode()).decode()
             req = urllib.request.Request('http://localhost:3000/api/dashboards/db', data=payload,
                 headers={'Content-Type': 'application/json', 'Authorization': 'Basic ' + creds}, method='POST')
