@@ -33,10 +33,9 @@ export const TopBar: React.FC<TopBarProps> = ({
 
   const channel = channels.find(c => c.id === channelId)
 
-  // The Users toggle is meaningless on pages that suppress the right rail
-  // (Home / Profile / Settings / Voice). Hide it there instead of opening
-  // an empty backdrop.
-  const showMembersButton = hasMembers && !hideRight
+  // На телефоне кнопка всегда нужна — открывает bottom sheet.
+  // На десктопе/планшете скрываем когда правая колонка отключена страницей.
+  const showMembersButton = hasMembers && (isPhone || !hideRight)
 
   // Settings / Profile / Home don't have a real "channel" — show a friendly label
   const isSettings  = pathname.startsWith('/settings') || /\/servers\/[^/]+\/settings/.test(pathname)

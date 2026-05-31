@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useState } from 'react'
+import React, { createContext, useCallback, useContext, useEffect, useState } from 'react'
 import { Outlet, useLocation } from 'react-router-dom'
 import { ServerRail } from './ServerSidebar'
 import { ChannelSidebar } from '../../../modules/channels/components/ChannelSidebar'
@@ -55,11 +55,10 @@ const ShellInner: React.FC = () => {
     }
   }, [drawerOpen, membersOpen])
 
-  useSwipe({
-    enabled: isPhone,
-    onSwipeRight: () => !membersOpen && setDrawerOpen(true),
-    onSwipeLeft:  () => drawerOpen && setDrawerOpen(false),
-  })
+  const onSwipeRight = useCallback(() => { if (!membersOpen) setDrawerOpen(true) }, [membersOpen])
+  const onSwipeLeft  = useCallback(() => { if (drawerOpen)  setDrawerOpen(false) }, [drawerOpen])
+
+  useSwipe({ enabled: isPhone, onSwipeRight, onSwipeLeft })
 
   const handleLogout = async () => {
     setLogoutLoading(true)
