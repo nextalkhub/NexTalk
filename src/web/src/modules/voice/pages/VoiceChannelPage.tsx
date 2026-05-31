@@ -40,7 +40,7 @@ export const VoiceChannelPage: React.FC = () => {
   // Join voice when arriving at this route. The context handles:
   // - same channel → noop (already connected)
   // - different channel → leave old, join new
-  // No cleanup on unmount — voice persists when navigating away.
+  // No cleanup on unmount - voice persists when navigating away.
   useEffect(() => {
     if (!channelId || !user) return
     joinVoice(channelId, { id: user.id, name: user.name }).catch(console.error)

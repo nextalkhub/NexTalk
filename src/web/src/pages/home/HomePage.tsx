@@ -48,7 +48,7 @@ export const HomePage: React.FC = () => {
       await dispatch(fetchServers())
       navigate(`/servers/${guildId}/channels`)
     } catch {
-      setJoinError('Недействительный или истёкший код приглашения.')
+      setJoinError('Недействительный или истекший код приглашения.')
     }
   }
 
@@ -80,7 +80,7 @@ export const HomePage: React.FC = () => {
             <p>
               {servers.length === 0
                 ? 'Ваше пространство для голосового и текстового общения. Создайте сервер или присоединитесь по приглашению.'
-                : `Слева ${pluralize(servers.length, 'сервер', 'сервера', 'серверов')} — выберите любой, чтобы продолжить, или создайте новый.`}
+                : `Слева ${pluralize(servers.length, 'сервер', 'сервера', 'серверов')} - выберите любой, чтобы продолжить, или создайте новый.`}
             </p>
 
             <div className="home-cards">
@@ -126,7 +126,7 @@ export const HomePage: React.FC = () => {
             <div style={{ marginTop: 28, display: 'flex', gap: 8, justifyContent: 'center', flexWrap: 'wrap' }}>
               <span className="chip">
                 <span className={`dot ${isConnected ? 'online' : 'offline'}`} />
-                {isConnected ? 'SignalR подключён' : 'нет соединения'}
+                {isConnected ? 'SignalR подключен' : 'нет соединения'}
               </span>
               {user && (
                 <span className="chip is-brand mono">{user.nickname ? `@${user.nickname}` : user.email}</span>

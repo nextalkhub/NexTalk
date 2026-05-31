@@ -39,7 +39,7 @@ export const MessageList: React.FC<MessageListProps> = ({
     [messages]
   )
 
-  // Detect a user's role within the current guild — used to gate delete/manage buttons.
+  // Detect a user's role within the current guild - used to gate delete/manage buttons.
   const currentUserRole = useMemo(() => {
     if (!user) return 'Member'
     if (user.id === guildOwnerId) return 'Owner'
@@ -71,7 +71,7 @@ export const MessageList: React.FC<MessageListProps> = ({
             <h2>Это начало канала #{channelName}</h2>
             <p>
               {isEmpty
-                ? 'Сообщений ещё нет. Напишите первым — Enter отправляет, Shift+Enter переносит строку.'
+                ? 'Сообщений еще нет. Напишите первым - Enter отправляет, Shift+Enter переносит строку.'
                 : 'Прокручивайте вниз, чтобы читать историю. Новые сообщения появятся сами.'}
             </p>
           </div>

@@ -25,7 +25,7 @@ public static class AcceptInviteEndpoint
         .WithSummary("Вступить по приглашению")
         .WithDescription(
             "Добавляет текущего пользователя в гильдию по коду из ссылки-приглашения. " +
-            "Код — 12-символьная строка base64url из URL вида /invite/{code}. " +
+            "Код - 12-символьная строка base64url из URL вида /invite/{code}. " +
             "Возвращает данные гильдии, в которую вступил пользователь.")
         .Produces<AcceptInviteResponse>(200)
         .Produces(400)

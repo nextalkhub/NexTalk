@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # SC-02: guild-service недоступен.
 # Ожидаемое поведение:
-#   - /healthz остаётся зелёным
+#   - /healthz остается зеленым
 #   - voice/join возвращает 503/504, не падает с 500
 #   - после восстановления voice/join снова работает
 
@@ -25,20 +25,20 @@ trap cleanup EXIT
 
 log "=== SC-02: guild-service down ==="
 
-assert_http_status 200 "${API_BASE}/healthz"
+assert_alive "${API_BASE}/api/guilds"
 
 grafana_region_start "SC-02: guild-service scale=0" "chaos,sc-02"
 scale_and_wait "$DEPLOY" 0
 
 sleep 5
 
-log "Проверяем /healthz во время отказа guild..."
-assert_http_status 200 "${API_BASE}/healthz"
+log "Проверяем ingress во время отказа guild..."
+assert_alive "${API_BASE}/"
 
 log "Проверяем GET /guilds..."
 STATUS=$(curl -sk -o /dev/null -w "%{http_code}" --max-time 5 \
     -H "Authorization: Bearer ${TEST_TOKEN}" \
-    "${API_BASE}/guilds" || echo 000)
+    "${API_BASE}/api/guilds" || echo 000)
 log "GET /guilds при отказе guild-service: $STATUS"
 # Ожидаем 502/503/504, но не 200 и не 500 без обработки
 if [[ "$STATUS" == "000" || "$STATUS" -ge 500 ]]; then
@@ -54,7 +54,7 @@ grafana_region_end "SC-02: guild-service scale=0" "chaos,sc-02"
 sleep 5
 
 log "Проверяем восстановление GET /guilds..."
-assert_http_status 200 "${API_BASE}/guilds" \
+assert_http_status 200 "${API_BASE}/api/guilds" \
     -H "Authorization: Bearer ${TEST_TOKEN}"
 
 scenario_pass

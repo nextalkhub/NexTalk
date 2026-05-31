@@ -678,10 +678,10 @@ select.settings-input, select.settings-select {
 [data-density="airy"] .msg { padding: 3px 0; }
 
 /* ===================================================================
-   Mobile (≤ 768px) — Discord-like drawer layout
+   Mobile (≤ 768px) - Discord-like drawer layout
    =================================================================== */
 
-/* Гамбургер — скрыт на десктопе, виден на мобиле */
+/* Гамбургер - скрыт на десктопе, виден на мобиле */
 .top-menu-btn {
   display: none;
   align-items: center; justify-content: center;
@@ -693,7 +693,7 @@ select.settings-input, select.settings-select {
 }
 .top-menu-btn:hover { background: rgba(255,255,255,.06); color: var(--fg-0); }
 
-/* drawer-wrap: прозрачная обёртка на десктопе — дети участвуют в grid напрямую */
+/* drawer-wrap: прозрачная обертка на десктопе - дети участвуют в grid напрямую */
 .drawer-wrap { display: contents; }
 
 @media (max-width: 768px) {
@@ -750,7 +750,7 @@ select.settings-input, select.settings-select {
   }
   .app.mobile-right-open .right { transform: translateX(0); }
 
-  /* Backdrop — затемнение за открытым drawer */
+  /* Backdrop - затемнение за открытым drawer */
   .mobile-backdrop {
     display: none;
     position: fixed;
@@ -765,7 +765,7 @@ select.settings-input, select.settings-select {
   /* Гамбургер видим на мобиле */
   .top-menu-btn { display: flex; }
 
-  /* Topbar — меньше отступов, breadcrumb truncated */
+  /* Topbar - меньше отступов, breadcrumb truncated */
   .top { padding: 0 10px; gap: 8px; }
   .top-left { min-width: 0; flex: 1; overflow: hidden; }
   .top-breadcrumb { flex-wrap: nowrap; overflow: hidden; }
@@ -773,7 +773,7 @@ select.settings-input, select.settings-select {
   .top-breadcrumb .crumb-sep { display: none; }
   .top-breadcrumb .crumb-channel { font-size: 15px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
-  /* Чат — меньше паддингов */
+  /* Чат - меньше паддингов */
   .chat-scroll { padding: 12px 12px 8px; }
   .msg { grid-template-columns: 44px 1fr; }
   .msg-avatar { width: 34px; height: 34px; }
@@ -786,10 +786,10 @@ select.settings-input, select.settings-select {
   ::-webkit-scrollbar { display: none; }
   * { scrollbar-width: none; }
 
-  /* Голосовой грид — одна колонка */
+  /* Голосовой грид - одна колонка */
   .voice-grid { grid-template-columns: 1fr 1fr !important; }
 
-  /* Settings / profile — полная ширина */
+  /* Settings / profile - полная ширина */
   .settings-layout { flex-direction: column; }
   .settings-nav { width: 100%; border-right: none; border-bottom: 1px solid var(--bd-1); flex-direction: row; overflow-x: auto; padding: 8px; gap: 4px; }
   .settings-nav-item { white-space: nowrap; }

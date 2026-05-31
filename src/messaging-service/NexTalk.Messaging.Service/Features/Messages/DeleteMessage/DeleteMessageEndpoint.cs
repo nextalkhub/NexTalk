@@ -23,7 +23,7 @@ public static class DeleteMessageEndpoint
         .WithSummary("Удалить сообщение")
         .WithDescription(
             "Помечает сообщение как удаленное. Автор может удалить свое сообщение; " +
-            "Admin и Owner гильдии — любое сообщение в своем канале.")
+            "Admin и Owner гильдии - любое сообщение в своем канале.")
         .Produces(204)
         .Produces(401)
         .Produces(403)

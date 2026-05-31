@@ -11,7 +11,7 @@ namespace NexTalk.Messaging.Service.Infrastructure;
 public class WsGatewayClient
 {
     // camelCase: frontend ожидает event.payload.userId, а не event.payload.UserId.
-    // BroadcastEndpoints передаёт JsonElement дальше как есть, поэтому case фиксируется здесь.
+    // BroadcastEndpoints передает JsonElement дальше как есть, поэтому case фиксируется здесь.
     private static readonly JsonSerializerOptions JsonOpts = new(JsonSerializerDefaults.Web);
 
     private readonly HttpClient _http;

@@ -1,11 +1,11 @@
 /**
- * Spike test — резкий рост нагрузки: 0 → 100 VU → 0.
+ * Spike test - резкий рост нагрузки: 0 → 100 VU → 0.
  * Цель: проверить, что система не падает под пиком и восстанавливается.
  *
  * Запуск:
  *   k6 run spike.js \
  *     --out experimental-prometheus-rw \
- *     -e API_BASE=https://api.nextalk.fun \
+ *     -e API_BASE=https://nextalk.fun \
  *     -e TOKEN=<jwt>
  */
 import http from 'k6/http';
@@ -16,7 +16,7 @@ const errorRate = new Rate('spike_errors');
 
 export const options = {
     stages: [
-        { duration: '30s', target: 0   },  // старт — тишина
+        { duration: '30s', target: 0   },  // старт - тишина
         { duration: '30s', target: 100 },  // резкий рост
         { duration: '1m',  target: 100 },  // держим пик
         { duration: '30s', target: 0   },  // спад
@@ -29,22 +29,15 @@ export const options = {
     },
 };
 
-const BASE  = __ENV.API_BASE || 'https://api.nextalk.fun';
+const BASE  = __ENV.API_BASE || 'https://nextalk.fun';
 const TOKEN = __ENV.TOKEN    || '';
 
 export default function () {
-    const res = http.post(
-        `${BASE}/internal/messages`,
-        JSON.stringify({
-            channelId: '00000000-0000-0000-0000-000000000001',
-            content:   `spike-${__VU}-${__ITER}`,
-            authorId:  `k6-spike-${__VU}`,
-        }),
+    const res = http.get(
+        `${BASE}/api/guilds`,
         {
             headers: {
-                'Content-Type':      'application/json',
-                'Authorization':     `Bearer ${TOKEN}`,
-                'X-Idempotency-Key': `spike-${__VU}-${__ITER}-${Date.now()}`,
+                'Authorization': `Bearer ${TOKEN}`,
             },
             timeout: '5s',
         }

@@ -256,7 +256,7 @@ const authSlice = createSlice({
         })
 
         builder.addCase(logout.pending, (state) => {
-            // блокируем ProtectedRoute пока страница не уйдёт на Zitadel logout
+            // блокируем ProtectedRoute пока страница не уйдет на Zitadel logout
             state.isLoading = true
         })
         builder.addCase(logout.fulfilled, (state) => {

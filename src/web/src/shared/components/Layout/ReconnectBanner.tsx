@@ -17,7 +17,7 @@ export const ReconnectBanner: React.FC = () => {
   return (
     <div className="reconnect-banner" role="status" aria-live="polite">
       <span className="spin" />
-      Соединение потеряно — пытаемся восстановить...
+      Соединение потеряно - пытаемся восстановить...
     </div>
   )
 }

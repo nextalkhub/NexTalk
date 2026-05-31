@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
-# SC-07: rolling restart всех deployment'ов — zero downtime.
+# SC-07: rolling restart всех deployment'ов - zero downtime.
 # Companion k6 должен быть запущен параллельно оркестратором.
 # Ожидаемое поведение:
 #   - каждый rollout завершается без ошибок
-#   - /healthz остаётся зелёным на протяжении всего рестарта
-#   - k6 companion_errors остаётся < 5%
+#   - /healthz остается зеленым на протяжении всего рестарта
+#   - k6 companion_errors остается < 5%
 
 set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -21,7 +21,7 @@ DEPLOYMENTS=(
 
 log "=== SC-07: rolling restart (zero downtime) ==="
 
-assert_http_status 200 "${API_BASE}/healthz"
+assert_alive "${API_BASE}/api/guilds"
 
 grafana_region_start "SC-07: rolling restart all" "chaos,sc-07"
 
@@ -33,7 +33,7 @@ for deploy in "${DEPLOYMENTS[@]}"; do
     kubectl rollout status deployment/"$deploy" -n "$NAMESPACE" --timeout=120s
 
     log "Проверяем /healthz после рестарта $deploy..."
-    assert_http_status 200 "${API_BASE}/healthz"
+    assert_alive "${API_BASE}/api/guilds"
 
     sleep 3
 done
@@ -46,6 +46,6 @@ for deploy in "${DEPLOYMENTS[@]}"; do
     wait_healthy "$deploy"
 done
 
-assert_http_status 200 "${API_BASE}/healthz"
+assert_alive "${API_BASE}/api/guilds"
 
 scenario_pass

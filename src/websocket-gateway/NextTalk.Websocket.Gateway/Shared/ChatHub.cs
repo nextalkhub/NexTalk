@@ -155,7 +155,7 @@ public sealed class ChatHub : Hub
     /// <summary>
     /// Подписать соединение на realtime-события указанной гильдии. Фронт вызывает
     /// после принятия инвайта / создания гильдии, иначе member.joined / channel.created
-    /// прилетят остальным, а новому участнику — нет.
+    /// прилетят остальным, а новому участнику - нет.
     /// Membership проверяется через guild-service: иначе можно подписаться на чужую гильдию.
     /// </summary>
     public async Task<bool> JoinGuildGroup(Guid guildId)

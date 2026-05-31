@@ -166,7 +166,7 @@ export const ServerSettingsPage: React.FC = () => {
       setCopiedCode(code)
       setTimeout(() => setCopiedCode(c => (c === code ? null : c)), 1500)
     } catch {
-      // браузер запретил clipboard — игнорируем
+      // браузер запретил clipboard - игнорируем
     }
   }
 
@@ -305,7 +305,7 @@ export const ServerSettingsPage: React.FC = () => {
       <ConfirmDialog
         open={!!kickTarget}
         title={kickTarget ? `Кикнуть ${kickTarget.displayName}?` : ''}
-        description="Участник будет немедленно отключён от всех каналов сервера. Он сможет вернуться по новому приглашению."
+        description="Участник будет немедленно отключен от всех каналов сервера. Он сможет вернуться по новому приглашению."
         confirmLabel="Кикнуть"
         danger
         onConfirm={handleConfirmKick}
@@ -315,7 +315,7 @@ export const ServerSettingsPage: React.FC = () => {
       <ConfirmDialog
         open={!!banTarget}
         title={banTarget ? `Забанить ${banTarget.displayName}?` : ''}
-        description="Участник будет отключён и не сможет вернуться, даже по приглашению. Решение можно отменить во вкладке «Баны»."
+        description="Участник будет отключен и не сможет вернуться, даже по приглашению. Решение можно отменить во вкладке «Баны»."
         confirmLabel="Забанить"
         danger
         onConfirm={handleConfirmBan}
@@ -349,7 +349,7 @@ const OverviewTab: React.FC<{
         maxLength={100}
       />
       <div className="settings-help">
-        От 1 до 100 символов. {readOnly && '— у вас нет прав на изменение.'}
+        От 1 до 100 символов. {readOnly && '- у вас нет прав на изменение.'}
       </div>
     </div>
     {!readOnly && (
@@ -652,7 +652,7 @@ const InvitesTab: React.FC<{
     <div>
       <div className="settings-section-head">
         <h1>Приглашения</h1>
-        <p>Гибкие ссылки с TTL и лимитом использований. Делитесь ссылкой целиком — она ведёт на /invite/&lt;код&gt;.</p>
+        <p>Гибкие ссылки с TTL и лимитом использований. Делитесь ссылкой целиком - она ведет на /invite/&lt;код&gt;.</p>
       </div>
 
       <div className="list-toolbar">
@@ -721,10 +721,10 @@ const InvitesTab: React.FC<{
                 </button>
               </div>
               <div style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--fg-3)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                {inv.createdBy ?? '—'}
+                {inv.createdBy ?? '-'}
               </div>
               <div style={{ color: 'var(--fg-2)', fontSize: 12 }}>
-                {inv.createdAt ? timeAgo(inv.createdAt) : '—'}
+                {inv.createdAt ? timeAgo(inv.createdAt) : '-'}
               </div>
               <div className="uses-cell">
                 {usedCount} / {inv.maxUses || '∞'}
@@ -817,7 +817,7 @@ const BansTab: React.FC<{
                 </div>
               </div>
               <div className="reason">
-                {ban.reason || <span style={{ color: 'var(--fg-3)' }}>—</span>}
+                {ban.reason || <span style={{ color: 'var(--fg-3)' }}>-</span>}
               </div>
               <div>
                 <div style={{ fontSize: 13 }}>{resolveName(ban.bannedBy)}</div>
@@ -870,7 +870,7 @@ const DangerTab: React.FC<{
   <div>
     <div className="settings-section-head">
       <h1>Опасная зона</h1>
-      <p>Необратимые действия. Подумайте дважды — отменить будет нельзя.</p>
+      <p>Необратимые действия. Подумайте дважды - отменить будет нельзя.</p>
     </div>
 
     <div className="danger-card">

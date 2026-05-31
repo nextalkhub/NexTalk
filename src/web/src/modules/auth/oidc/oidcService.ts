@@ -134,7 +134,7 @@ class OidcService {
         // Загружаем информацию о пользователе
         await this.loadUserInfo()
 
-        // Сохраняем после loadUserInfo — иначе userInfo не попадёт в localStorage
+        // Сохраняем после loadUserInfo - иначе userInfo не попадет в localStorage
         this.saveTokensToStorage()
 
         // Настраиваем автообновление токена
@@ -221,7 +221,7 @@ class OidcService {
 
         window.location.href = `${this.config.authority}/oidc/v1/end_session?${params.toString()}`
 
-        // Зависаем — страница уйдёт сама, fulfilled не должен срабатывать до навигации.
+        // Зависаем - страница уйдет сама, fulfilled не должен срабатывать до навигации.
         await new Promise<never>(() => {})
     }
 

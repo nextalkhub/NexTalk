@@ -24,7 +24,7 @@ public sealed class MessagingServiceClient
         string correlationId,
         CancellationToken ct = default)
     {
-        // X-Deadline: ISO 8601 через 5 с — DeadlineMiddleware парсит через DateTimeOffset.TryParse.
+        // X-Deadline: ISO 8601 через 5 с - DeadlineMiddleware парсит через DateTimeOffset.TryParse.
         var deadline = DateTimeOffset.UtcNow.AddSeconds(5).ToString("O");
 
         using var httpRequest = new HttpRequestMessage(HttpMethod.Post, "/internal/messages");

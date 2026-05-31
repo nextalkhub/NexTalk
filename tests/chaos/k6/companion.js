@@ -1,12 +1,12 @@
 /**
- * Companion load — фоновая нагрузка во время chaos-сценариев (10 VU, бесконечно).
+ * Companion load - фоновая нагрузка во время chaos-сценариев (10 VU, бесконечно).
  * Запускается run-all.sh параллельно с bash-сценариями.
  * Завершается сигналом SIGINT от оркестратора.
  *
  * Запуск:
  *   k6 run companion.js \
  *     --out experimental-prometheus-rw \
- *     -e API_BASE=https://api.nextalk.fun \
+ *     -e API_BASE=https://nextalk.fun \
  *     -e TOKEN=<jwt>
  */
 import http from 'k6/http';
@@ -25,7 +25,7 @@ export const options = {
     noConnectionReuse: false,
 };
 
-const BASE  = __ENV.API_BASE || 'https://api.nextalk.fun';
+const BASE  = __ENV.API_BASE || 'https://nextalk.fun';
 const TOKEN = __ENV.TOKEN    || '';
 
 const HEADERS = {
@@ -35,26 +35,13 @@ const HEADERS = {
 
 export default function () {
     // Чередуем разные endpoint'ы равномерно.
-    const roll = __ITER % 3;
+    const roll = __ITER % 2;
 
     let res;
     if (roll === 0) {
-        res = http.get(`${BASE}/healthz`, { timeout: '3s' });
-    } else if (roll === 1) {
-        res = http.get(`${BASE}/guilds`, { headers: HEADERS, timeout: '3s' });
+        res = http.get(`${BASE}/`, { timeout: '3s' });
     } else {
-        res = http.post(
-            `${BASE}/internal/messages`,
-            JSON.stringify({
-                channelId: '00000000-0000-0000-0000-000000000001',
-                content:   `companion-${__VU}-${__ITER}`,
-                authorId:  `companion-${__VU}`,
-            }),
-            {
-                headers: { ...HEADERS, 'X-Idempotency-Key': `cp-${__VU}-${__ITER}` },
-                timeout: '3s',
-            }
-        );
+        res = http.get(`${BASE}/api/guilds`, { headers: HEADERS, timeout: '3s' });
     }
 
     requestCount.add(1);

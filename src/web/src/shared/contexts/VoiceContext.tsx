@@ -42,7 +42,7 @@ export const VoiceSessionProvider: React.FC<{ children: React.ReactNode }> = ({ 
   const activeChannelIdRef = useRef<string | null>(null)
 
   const joinVoice = useCallback(async (channelId: string, user: { id: string; name: string }) => {
-    // same channel and already connected — skip
+    // same channel and already connected - skip
     if (activeChannelIdRef.current === channelId) return
 
     // leave old channel if we were in one

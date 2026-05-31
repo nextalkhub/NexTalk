@@ -34,7 +34,7 @@ public sealed class LiveKitRoomClient
         catch (Exception ex)
         {
             // Комната уже существует или другая несмертельная ошибка.
-            // Клиент всё равно сможет подключиться - LiveKit создаст комнату при первом join.
+            // Клиент все равно сможет подключиться - LiveKit создаст комнату при первом join.
             _logger.LogWarning(ex,
                 "LiveKit EnsureRoom: room {ChannelId} may already exist, continuing.",
                 channelId);

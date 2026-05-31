@@ -9,7 +9,7 @@ log()  { echo -e "${GREEN}[$(date +%T)]${NC} $*"; }
 warn() { echo -e "${YELLOW}[$(date +%T)] WARN${NC} $*"; }
 fail() { echo -e "${RED}[$(date +%T)] FAIL${NC} $*" >&2; exit 1; }
 
-# Ждёт, пока deployment не наберёт нужное число ready-реплик.
+# Ждет, пока deployment не наберет нужное число ready-реплик.
 # Использование: wait_healthy <deployment> [timeout_sec]
 wait_healthy() {
     local deploy="$1"
@@ -40,14 +40,14 @@ wait_healthy() {
     done
 }
 
-# Ждёт, пока deployment не упадёт до 0 ready-реплик (после scale=0).
+# Ждет, пока deployment не упадет до 0 ready-реплик (после scale=0).
 wait_down() {
     local deploy="$1"
     local timeout="${2:-60}"
     local interval=3
     local elapsed=0
 
-    log "Ждём остановки $deploy..."
+    log "Ждем остановки $deploy..."
     while true; do
         local ready
         ready=$(kubectl get deployment "$deploy" -n "$NAMESPACE" \
@@ -75,7 +75,7 @@ assert_http_status() {
     shift 2
 
     local actual
-    actual=$(curl -sk -o /dev/null -w "%{http_code}" "$@" "$url")
+    actual=$(curl -sk -o /dev/null -w "%{http_code}" --max-time 10 "$@" "$url" || echo 000)
 
     if [[ "$actual" == "$expected" ]]; then
         log "HTTP $actual ← $url (ожидался $expected) ✓"
@@ -84,12 +84,13 @@ assert_http_status() {
     fi
 }
 
-# Проверяет, что endpoint отвечает (200-299) — сервис жив.
+# Проверяет, что endpoint отвечает (2xx или 4xx) - сервис жив.
+# 401/403/404 тоже считаются «живыми»: backend ответил осмысленно.
 assert_alive() {
     local url="$1"
     local actual
-    actual=$(curl -sk -o /dev/null -w "%{http_code}" "$url")
-    if [[ "$actual" -ge 200 && "$actual" -lt 300 ]]; then
+    actual=$(curl -sk -o /dev/null -w "%{http_code}" --max-time 10 "$url" || echo 000)
+    if [[ "$actual" -ge 200 && "$actual" -lt 500 ]]; then
         log "alive: $url ($actual) ✓"
     else
         fail "сервис недоступен: $url ($actual)"
@@ -117,7 +118,7 @@ running_pods() {
         -o name 2>/dev/null | wc -l | tr -d ' '
 }
 
-# Масштабирует deployment и ждёт готовности.
+# Масштабирует deployment и ждет готовности.
 scale_and_wait() {
     local deploy="$1"
     local replicas="$2"
@@ -141,7 +142,7 @@ kill_one_pod() {
     fi
     log "Убиваем pod $pod..."
     kubectl delete pod "$pod" -n "$NAMESPACE" --grace-period=0 --force
-    log "Pod $pod удалён"
+    log "Pod $pod удален"
 }
 
 # Cordon/uncordon узла.

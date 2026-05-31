@@ -20,7 +20,7 @@ public class DeadlineMiddlewareTests : IAsyncLifetime
         return Task.CompletedTask;
     }
 
-    // /healthz — AllowAnonymous, отвечает быстро, удобна для теста middleware без бизнес-логики
+    // /healthz - AllowAnonymous, отвечает быстро, удобна для теста middleware без бизнес-логики
     private const string ProbeUrl = "/healthz";
 
     [Fact]
@@ -93,7 +93,7 @@ public class DeadlineMiddlewareTests : IAsyncLifetime
     [Fact]
     public async Task ExpiredDeadline_AuthenticatedEndpoint_Returns504()
     {
-        // Проверяем, что middleware срабатывает даже для защищённых эндпоинтов
+        // Проверяем, что middleware срабатывает даже для защищенных эндпоинтов
         // (auth проходит, потом deadline → 504)
         var userId = Guid.NewGuid().ToString();
         var client = _factory.CreateAuthenticatedClient(userId);

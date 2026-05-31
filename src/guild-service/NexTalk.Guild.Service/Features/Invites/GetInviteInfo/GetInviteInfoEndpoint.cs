@@ -20,7 +20,7 @@ public static class GetInviteInfoEndpoint
         .WithSummary("Информация об инвайте")
         .WithDescription(
             "Возвращает публичный превью приглашения. " +
-            "403 — пользователь забанен, 410 — инвайт истёк или исчерпан, 404 — не найден.")
+            "403 - пользователь забанен, 410 - инвайт истек или исчерпан, 404 - не найден.")
         .Produces<InviteInfoResponse>(200)
         .Produces(403)
         .Produces(404)

@@ -31,9 +31,9 @@ public static class GetMessagesEndpoint
         .WithSummary("История сообщений канала")
         .WithDescription(
             "Возвращает сообщения канала, отсортированные от новых к старым (курсорная пагинация). " +
-            "Параметр cursor — id последнего полученного сообщения; следующий запрос вернет сообщения до него. " +
+            "Параметр cursor - id последнего полученного сообщения; следующий запрос вернет сообщения до него. " +
             $"Диапазон limit: 1–{MaxLimit}, по умолчанию {DefaultLimit}. " +
-            "Если nextCursor в ответе не null — есть еще страницы.")
+            "Если nextCursor в ответе не null - есть еще страницы.")
         .Produces<GetMessagesResponse>(200)
         .Produces(400)
         .Produces(401)

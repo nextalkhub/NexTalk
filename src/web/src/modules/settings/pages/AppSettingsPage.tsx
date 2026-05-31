@@ -130,7 +130,7 @@ const AppearanceTab: React.FC<{
       <label className="settings-label">Размер шрифта</label>
       <div className="font-preview">
         <span style={{ fontSize: prefs.fontScale }}>
-          Быстрая коричневая лиса перепрыгнула ленивую собаку — the quick brown fox 0123
+          Быстрая коричневая лиса перепрыгнула ленивую собаку - the quick brown fox 0123
         </span>
       </div>
       <div className="font-slider-wrap">
@@ -166,7 +166,7 @@ const AudioTab: React.FC<{
         const list = await navigator.mediaDevices.enumerateDevices()
         setDevices(list.filter(d => d.kind === 'audioinput' || d.kind === 'audiooutput'))
       } catch {
-        // permission denied — leave empty
+        // permission denied - leave empty
       }
     }
     load()
@@ -224,7 +224,7 @@ const AudioTab: React.FC<{
           </select>
         ) : (
           <div className="ro-field" style={{ color: 'var(--fg-2)' }}>
-            Браузер не отдаёт список устройств вывода.
+            Браузер не отдает список устройств вывода.
           </div>
         )}
       </div>
@@ -282,7 +282,7 @@ const NotificationsTab: React.FC<{
             {permission === 'granted'
               ? 'Браузер разрешил показ уведомлений.'
               : permission === 'denied'
-              ? 'Браузер запретил уведомления — измените в настройках сайта.'
+              ? 'Браузер запретил уведомления - измените в настройках сайта.'
               : 'Требуется запросить разрешение у браузера.'}
           </div>
         </div>
@@ -325,7 +325,7 @@ const SessionTab: React.FC<{
     <>
       <div className="settings-section-head">
         <h1>Сессия и токены</h1>
-        <p>Информация о текущей JWT-сессии. Управление аккаунтом — в Zitadel.</p>
+        <p>Информация о текущей JWT-сессии. Управление аккаунтом - в Zitadel.</p>
       </div>
 
       <div className="settings-field">
@@ -346,7 +346,7 @@ const SessionTab: React.FC<{
         <div className="info">
           <div className="info-h">Управление аккаунтом</div>
           <div className="info-s">
-            Смена пароля, email, 2FA — только в Zitadel. NexTalk эти данные не хранит.
+            Смена пароля, email, 2FA - только в Zitadel. NexTalk эти данные не хранит.
           </div>
         </div>
         <a

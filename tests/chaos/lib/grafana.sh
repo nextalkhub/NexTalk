@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
-# Grafana annotations API — маркируем timeline во время chaos-сценариев.
+# Grafana annotations API - маркируем timeline во время chaos-сценариев.
 
 set -euo pipefail
 
-# Создаёт аннотацию-точку в Grafana.
+# Создает аннотацию-точку в Grafana.
 # Возвращает id созданной аннотации (для закрытия regionом).
 grafana_annotate() {
     local text="$1"
@@ -36,7 +36,7 @@ grafana_region_end() {
     grafana_annotate "■ END: ${text}" "$tags"
 }
 
-# Обёртка: аннотирует начало, выполняет команду, аннотирует конец.
+# Обертка: аннотирует начало, выполняет команду, аннотирует конец.
 # Использование: with_annotation "Текст" "tag1,tag2" -- команда аргументы
 with_annotation() {
     local text="$1"

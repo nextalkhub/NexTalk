@@ -2,7 +2,7 @@
 # SC-04: убийство одного pod'а websocket-gateway (из 2 реплик).
 # Ожидаемое поведение:
 #   - k8s мгновенно перемаршрутирует трафик на вторую реплику
-#   - убитый pod пересоздаётся автоматически
+#   - убитый pod пересоздается автоматически
 #   - /healthz не прерывается (допустима 1-2s пауза при переключении)
 
 set -euo pipefail
@@ -22,19 +22,19 @@ if (( CURRENT < 2 )); then
 fi
 log "Running pods перед тестом: $CURRENT"
 
-assert_http_status 200 "${API_BASE}/healthz"
+assert_alive "${API_BASE}/api/guilds"
 
 grafana_region_start "SC-04: ws-gateway pod kill" "chaos,sc-04"
 
 kill_one_pod "$DEPLOY"
 
-# Даём 2s на перемаршрутизацию kube-proxy
+# Даем 2s на перемаршрутизацию kube-proxy
 sleep 2
 
 log "Проверяем доступность после убийства pod..."
-assert_http_status 200 "${API_BASE}/healthz"
+assert_alive "${API_BASE}/api/guilds"
 
-# Ждём пересоздания убитого pod'а
+# Ждем пересоздания убитого pod'а
 wait_healthy "$DEPLOY"
 
 grafana_region_end "SC-04: ws-gateway pod kill" "chaos,sc-04"
@@ -46,6 +46,6 @@ if (( AFTER < CURRENT )); then
     fail "Кластер не восстановил pod: $AFTER < $CURRENT"
 fi
 
-assert_http_status 200 "${API_BASE}/healthz"
+assert_alive "${API_BASE}/api/guilds"
 
 scenario_pass

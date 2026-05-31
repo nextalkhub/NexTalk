@@ -37,7 +37,7 @@ jobs:
           mkdir -p ~/.ssh
           echo "$DEPLOY_KEY" > ~/.ssh/id_ed25519
           chmod 600 ~/.ssh/id_ed25519
-          # known_hosts для bastion — чтобы не словить host-key prompt.
+          # known_hosts для bastion - чтобы не словить host-key prompt.
           ssh-keyscan -H "$BASTION_HOST" >> ~/.ssh/known_hosts
 
       - name: Write vault password
@@ -51,7 +51,7 @@ jobs:
         env:
           VAULT_YML: ${{ secrets.ANSIBLE_VAULT_YML }}
         run: |
-          # vault.yml — ansible-vault-зашифрованный файл, gitignored.
+          # vault.yml - ansible-vault-зашифрованный файл, gitignored.
           # Хранится в GH secret целиком (двойной слой: GH secrets + ansible-vault).
           # Расшифровывается на этапе helm-deploy через ANSIBLE_VAULT_PASSWORD_FILE.
           echo "$VAULT_YML" > infra/ansible/inventory/group_vars/vault.yml
@@ -61,7 +61,7 @@ jobs:
         env:
           HOSTS_INI: ${{ secrets.ANSIBLE_HOSTS_INI }}
         run: |
-          # hosts.ini хранится целиком в secret — там реальные приватные IP,
+          # hosts.ini хранится целиком в secret - там реальные приватные IP,
           # их в репо класть нельзя.
           echo "$HOSTS_INI" > infra/ansible/inventory/hosts.ini
 
@@ -70,7 +70,7 @@ jobs:
           KUBECONFIG_B64: ${{ secrets.KUBECONFIG_B64 }}
         run: |
           # kubeconfig получен через playbooks/k3s.yml (см. role k3s_server),
-          # сохранён в GH secret в base64 (gh secret set KUBECONFIG_B64 < kubeconfig | base64).
+          # сохранен в GH secret в base64 (gh secret set KUBECONFIG_B64 < kubeconfig | base64).
           # helm-deploy playbook ожидает его по пути infra/ansible/kubeconfig.
           echo "$KUBECONFIG_B64" | base64 -d > infra/ansible/kubeconfig
           chmod 600 infra/ansible/kubeconfig

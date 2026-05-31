@@ -34,13 +34,13 @@ public class VoiceServiceFactory : WebApplicationFactory<Program>
                 ["LiveKit:ApiKey"] = "test-api-key",
                 ["LiveKit:SecretKey"] = "test-api-secret-minimum-32-chars-long!",
                 ["LiveKit:TokenTtlMinutes"] = "60",
-                // Redis недоступен в тестах — подменяем ISessionStore на in-memory ниже.
+                // Redis недоступен в тестах - подменяем ISessionStore на in-memory ниже.
                 ["ConnectionStrings:Redis"] = "localhost:6379",
             }));
 
         builder.ConfigureTestServices(services =>
         {
-            // Заменяем Redis-реализации на in-memory — Redis недоступен в тестах.
+            // Заменяем Redis-реализации на in-memory - Redis недоступен в тестах.
             services.RemoveAll<IConnectionMultiplexer>();
             services.RemoveAll<ISessionStore>();
             services.AddSingleton<ISessionStore, SessionStore>();

@@ -70,7 +70,7 @@ public class CreateMessageEndpointTests : IAsyncLifetime
         Assert.Equal(authorId, dto.AuthorId);
         Assert.Equal(authorName, dto.AuthorName);
         Assert.Equal(content, dto.Content);
-        // CreatedAt устанавливается через HasDefaultValueSql("now()") — не работает в InMemory DB
+        // CreatedAt устанавливается через HasDefaultValueSql("now()") - не работает в InMemory DB
     }
 
     [Fact]

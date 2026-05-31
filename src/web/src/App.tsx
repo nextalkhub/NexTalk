@@ -45,7 +45,7 @@ function AppRoutes() {
           <Route path="/callback" element={<OidcCallback />} />
           <Route path="/" element={<Navigate to="/servers" replace />} />
 
-          {/* Public invite acceptance — handles its own auth check internally
+          {/* Public invite acceptance - handles its own auth check internally
               so the OIDC redirect remembers the return URL. */}
           <Route path="/invite/:code" element={<AcceptInvitePage />} />
 

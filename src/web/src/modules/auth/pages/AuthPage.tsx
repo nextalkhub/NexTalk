@@ -39,14 +39,14 @@ export const AuthPage: React.FC = () => {
         <div className="auth-mark">N</div>
         <h1>Войти в NexTalk</h1>
         <p className="sub">
-          Авторизация через Zitadel. NexTalk не хранит ваш пароль —
+          Авторизация через Zitadel. NexTalk не хранит ваш пароль -
           им управляет ваш identity provider.
         </p>
 
         <div className="auth-features">
           <div className="auth-feature">
             <span className="ic"><ICheck /></span>
-            <span>OpenID Connect с PKCE — без секрета на клиенте</span>
+            <span>OpenID Connect с PKCE - без секрета на клиенте</span>
           </div>
           <div className="auth-feature">
             <span className="ic"><ICheck /></span>
@@ -54,7 +54,7 @@ export const AuthPage: React.FC = () => {
           </div>
           <div className="auth-feature">
             <span className="ic"><ICheck /></span>
-            <span>2FA, восстановление пароля — настраиваются в Zitadel</span>
+            <span>2FA, восстановление пароля - настраиваются в Zitadel</span>
           </div>
         </div>
 

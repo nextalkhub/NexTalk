@@ -24,7 +24,7 @@ type ViewState =
  * Public invite acceptance page mounted at /invite/:code.
  *
  *  • If the user isn't authenticated, save the return URL and redirect
- *    to /auth — they'll come back after OIDC.
+ *    to /auth - they'll come back after OIDC.
  *  • Calls GET /api/invites/{code} for preview.
  *  • Accept button calls POST /api/invites/{code}/accept and navigates
  *    to the joined guild.
@@ -141,7 +141,7 @@ export const AcceptInvitePage: React.FC = () => {
           <InviteStatus
             mark="!"
             markBg="linear-gradient(135deg,#F5C451,#D97757)"
-            title="Срок действия истёк"
+            title="Срок действия истек"
             description="Это приглашение больше не действует. Попросите новую ссылку у владельца сервера."
             onBack={() => navigate('/servers')}
           />

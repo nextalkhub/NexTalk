@@ -4,7 +4,6 @@ using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Caching.Distributed;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -27,7 +26,6 @@ public class GuildServiceFactory : WebApplicationFactory<Program>
             config.AddInMemoryCollection(new Dictionary<string, string?>
             {
                 ["ConnectionStrings:PostgresConnection"] = "placeholder",
-                ["ConnectionStrings:Redis"] = "placeholder",
                 ["Zitadel:Authority"] = "http://test-authority",
                 ["Zitadel:MetadataAddress"] = "http://test-authority/.well-known/openid-configuration",
                 ["WsGateway:BaseUrl"] = "http://localhost:19999",
@@ -58,11 +56,6 @@ public class GuildServiceFactory : WebApplicationFactory<Program>
                 .Options);
             services.AddScoped<GuildDbContext>();
 
-            var cacheDescriptors = services
-                .Where(d => d.ServiceType == typeof(IDistributedCache))
-                .ToList();
-            foreach (var d in cacheDescriptors) services.Remove(d);
-            services.AddSingleton<IDistributedCache, MemoryDistributedCache>();
             services.AddSingleton<IMemoryCache, MemoryCache>();
 
             var inviteRepoDescriptors = services

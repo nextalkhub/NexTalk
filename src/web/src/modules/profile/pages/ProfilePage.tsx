@@ -26,7 +26,7 @@ export const ProfilePage: React.FC = () => {
     try {
       await navigator.clipboard.writeText(value)
     } catch {
-      // ignore — clipboard may be blocked
+      // ignore - clipboard may be blocked
     }
   }
 
@@ -124,7 +124,7 @@ export const ProfilePage: React.FC = () => {
 
             <div className="profile-action-bar">
               <span className="lead-text">
-                Имя, email и пароль изменяются в Zitadel — NexTalk эти данные не хранит.
+                Имя, email и пароль изменяются в Zitadel - NexTalk эти данные не хранит.
               </span>
               <a
                 href={ZITADEL_PROFILE_URL}

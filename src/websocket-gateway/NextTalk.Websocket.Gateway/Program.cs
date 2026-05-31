@@ -174,7 +174,7 @@ builder.Services.AddSwaggerGen(c =>
     });
 });
 
-// Redis — ленивая фабрика: ConnectionMultiplexer создаётся при первом resolve.
+// Redis - ленивая фабрика: ConnectionMultiplexer создается при первом resolve.
 // Это позволяет тестам подменить IConnectionMultiplexer / IConnectionManager до того,
 // как соединение с Redis будет реально установлено.
 builder.Services.AddSingleton<IConnectionMultiplexer>(_ =>
@@ -183,7 +183,7 @@ builder.Services.AddSingleton<IConnectionMultiplexer>(_ =>
         ?? throw new InvalidOperationException("ConnectionStrings:Redis is not configured")));
 
 // SignalR - userId маппинг из JWT sub claim через SubClaimUserIdProvider.
-// Redis backplane подключается так же лениво — строка читается только при resolve.
+// Redis backplane подключается так же лениво - строка читается только при resolve.
 builder.Services.AddSingleton<UserIdHubFilter>();
 builder.Services.AddSignalR(o => o.AddFilter<UserIdHubFilter>())
     .AddStackExchangeRedis(builder.Configuration.GetConnectionString("Redis") ?? "localhost:6379");
@@ -343,7 +343,7 @@ DisconnectEndpoints.Map(app);
 
 app.MapHub<ChatHub>("/hubs/chat");
 
-// Принудительная инициализация — метрики регистрируются сразу, не дожидаясь первого события.
+// Принудительная инициализация - метрики регистрируются сразу, не дожидаясь первого события.
 _ = NexTalkMetrics.ActiveConnections;
 _ = NexTalkMetrics.DailyActiveUsers;
 _ = NexTalkMetrics.WeeklyActiveUsers;

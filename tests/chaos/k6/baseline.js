@@ -1,11 +1,11 @@
 /**
- * Baseline load test — 20 VU, 5 минут, steady state.
+ * Baseline load test - 20 VU, 5 минут, steady state.
  * Цель: установить нормальный уровень метрик до chaos-сценариев.
  *
  * Запуск:
  *   k6 run baseline.js \
  *     --out experimental-prometheus-rw \
- *     -e API_BASE=https://api.nextalk.fun \
+ *     -e API_BASE=https://nextalk.fun \
  *     -e TOKEN=<jwt>
  */
 import http from 'k6/http';
@@ -25,7 +25,7 @@ export const options = {
     },
 };
 
-const BASE  = __ENV.API_BASE || 'https://api.nextalk.fun';
+const BASE  = __ENV.API_BASE || 'https://nextalk.fun';
 const TOKEN = __ENV.TOKEN    || '';
 
 const HEADERS = {
@@ -35,15 +35,11 @@ const HEADERS = {
 
 // Разные запросы, имитирующие реальный трафик.
 const SCENARIOS = [
-    () => http.get(`${BASE}/healthz`),
+    () => http.get(`${BASE}/`),
 
-    () => http.post(
-        `${BASE}/internal/messages`,
-        JSON.stringify({ channelId: '00000000-0000-0000-0000-000000000001', content: 'k6 baseline msg', authorId: 'k6-user' }),
-        { headers: { ...HEADERS, 'X-Idempotency-Key': `k6-${Date.now()}-${Math.random()}` } }
-    ),
+    () => http.get(`${BASE}/api/guilds`, { headers: HEADERS }),
 
-    () => http.get(`${BASE}/guilds`, { headers: HEADERS }),
+    () => http.get(`${BASE}/api/guilds`, { headers: HEADERS }),
 ];
 
 export default function () {

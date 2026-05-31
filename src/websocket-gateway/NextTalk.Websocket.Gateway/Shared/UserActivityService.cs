@@ -5,7 +5,7 @@ namespace NextTalk.Websocket.Gateway.Shared;
 // Отслеживает уникальных активных пользователей через Redis sorted set.
 // Ключ: nextalk:user_activity, score = unix-timestamp активности, member = userId.
 // DAU/WAU/MAU считаются как ZCOUNT за соответствующий диапазон времени.
-// Все реплики gateway пишут в один ключ → точный cross-replica подсчёт.
+// Все реплики gateway пишут в один ключ → точный cross-replica подсчет.
 public sealed class UserActivityService(
     IConnectionMultiplexer redis,
     ILogger<UserActivityService> logger) : BackgroundService, IUserActivityService
@@ -22,7 +22,7 @@ public sealed class UserActivityService(
             var score = (double)DateTimeOffset.UtcNow.ToUnixTimeSeconds();
             // NX=false: обновляем score если пользователь уже есть (обновляем timestamp)
             await db.SortedSetAddAsync(RedisKey, userId, score, SortedSetWhen.Always);
-            // SET для подсчёта уникальных пользователей за всё время (не ротируется).
+            // SET для подсчета уникальных пользователей за все время (не ротируется).
             await db.SetAddAsync(KnownUsersKey, userId);
         }
         catch (Exception ex)
@@ -33,7 +33,7 @@ public sealed class UserActivityService(
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
-        // Инициализируем гейджи немедленно (не ждём первую минуту)
+        // Инициализируем гейджи немедленно (не ждем первую минуту)
         await UpdateMetricsAsync();
 
         using var timer = new PeriodicTimer(UpdateInterval);

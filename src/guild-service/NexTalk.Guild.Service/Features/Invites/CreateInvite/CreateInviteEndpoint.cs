@@ -10,10 +10,10 @@ public static class CreateInviteEndpoint
     /// <summary>Тело запроса для создания приглашения.</summary>
     /// <param name="ExpiresIn">
     ///   TTL в виде строки «&lt;число&gt;&lt;единица&gt;»: <c>30m</c>, <c>24h</c>, <c>7d</c>, <c>3600s</c>.
-    ///   Имеет приоритет над <c>expiresInSeconds</c>. Если не указан — приглашение бессрочное.
+    ///   Имеет приоритет над <c>expiresInSeconds</c>. Если не указан - приглашение бессрочное.
     /// </param>
     /// <param name="ExpiresInSeconds">TTL в секундах. Используется, если <c>expiresIn</c> не задан.</param>
-    /// <param name="MaxUses">Максимальное число активаций. Null — без лимита.</param>
+    /// <param name="MaxUses">Максимальное число активаций. Null - без лимита.</param>
     public record Request(string? ExpiresIn, int? ExpiresInSeconds, int? MaxUses);
 
     public static void Map(IEndpointRouteBuilder app) =>
@@ -33,7 +33,7 @@ public static class CreateInviteEndpoint
         .WithTags("Invites")
         .WithSummary("Создать приглашение")
         .WithDescription(
-            "Генерирует ссылку-приглашение в гильдию. Код — 12 символов base64url (~72 бита энтропии). " +
+            "Генерирует ссылку-приглашение в гильдию. Код - 12 символов base64url (~72 бита энтропии). " +
             "TTL и лимит использований опциональны. Требует роль Admin или Owner.")
         .Produces<CreateInviteHandler.InviteResponse>(201)
         .Produces(400)

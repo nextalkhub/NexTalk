@@ -3,11 +3,11 @@ using StackExchange.Redis;
 namespace NexTalk.Voice.Service.Infrastructure;
 
 // Ключи:
-//   voice:session:{userId}     — Hash: channelId, guildId
-//   voice:channel:{channelId}  — Set:  userIds участников
+//   voice:session:{userId}     - Hash: channelId, guildId
+//   voice:channel:{channelId}  - Set:  userIds участников
 //
 // TTL = 8 часов на обоих ключах, обновляется при Join.
-// Если под упал до Leave — сессия автоматически истечёт через TTL.
+// Если под упал до Leave - сессия автоматически истечет через TTL.
 //
 // Ограничения:
 //   Join не атомарен (read-then-write). На практике пользователь
@@ -78,7 +78,7 @@ public sealed class RedisSessionStore : ISessionStore
             _db.KeyDelete(SessionKey(userId));
 
             // Если сессия не найдена (запись истекла по TTL или инконсистентность
-            // при предыдущем краше) — пропускаем, broadcast не нужен.
+            // при предыдущем краше) - пропускаем, broadcast не нужен.
             if (entries.Length > 0)
                 removed.Add((userId, ParseSession(entries)));
         }

@@ -15,7 +15,7 @@ import { VoiceParticipant } from '../types'
 
 export const useVoice = () => {
     const roomRef = useRef<Room | null>(null)
-    // Каждый новый join инкрементирует счётчик; устаревшие попытки сравнивают с ним и молча выходят.
+    // Каждый новый join инкрементирует счетчик; устаревшие попытки сравнивают с ним и молча выходят.
     const connectGenRef = useRef(0)
     const speakingIdsRef = useRef<Set<string>>(new Set())
     const audioCleanups = useRef<Map<string, () => void>>(new Map())
@@ -81,7 +81,7 @@ export const useVoice = () => {
             // Инвалидируем предыдущую попытку подключения.
             const gen = ++connectGenRef.current
 
-            // Отключаем текущую комнату (это прерывает незавершённый room.connect()).
+            // Отключаем текущую комнату (это прерывает незавершенный room.connect()).
             if (roomRef.current) {
                 roomRef.current.disconnect()
                 roomRef.current = null
@@ -148,7 +148,7 @@ export const useVoice = () => {
 
                 await room.connect(response.liveKitUrl, response.token)
 
-                // Проверяем снова после async — мог прийти новый join пока ждали.
+                // Проверяем снова после async - мог прийти новый join пока ждали.
                 if (gen !== connectGenRef.current) {
                     room.disconnect()
                     return
@@ -168,7 +168,7 @@ export const useVoice = () => {
                 syncParticipants()
 
             } catch (err) {
-                // Если gen устарел — это ожидаемый abort от disconnect(), не логируем.
+                // Если gen устарел - это ожидаемый abort от disconnect(), не логируем.
                 if (gen !== connectGenRef.current) return
                 console.error('Voice connect error:', err)
             }

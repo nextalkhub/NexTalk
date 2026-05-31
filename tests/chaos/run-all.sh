@@ -5,7 +5,7 @@
 #   2. Baseline k6 (5 min, 20 VU)
 #   3. Chaos loop: companion k6 фоном + сценарии SC-01..SC-07
 #   4. Spike k6 (финальный стресс)
-#   5. Итоговый отчёт
+#   5. Итоговый отчет
 
 set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -58,7 +58,8 @@ preflight() {
         fail "k6 не найден по пути ${K6_BIN}. Установи k6 и перезапусти."
     fi
 
-    assert_http_status 200 "${API_BASE}/healthz"
+    # /api/guilds без токена → 401 = ingress жив и guild-service отвечает
+    assert_http_status 401 "${API_BASE}/api/guilds"
 
     for deploy in messaging-service guild-service voice-service websocket-gateway; do
         READY=$(kubectl get deployment "$deploy" -n "$NAMESPACE" \
@@ -90,7 +91,7 @@ run_baseline() {
         2>&1 | tee "${LOG_DIR}/baseline.log"
 
     grafana_annotate "Baseline k6 DONE" "chaos,baseline"
-    log "Baseline завершён ✓"
+    log "Baseline завершен ✓"
 }
 
 # ── Companion k6 (фон) ────────────────────────────────────────────────────────
@@ -100,7 +101,7 @@ start_companion() {
         -e "VUS=10" \
         -e "DURATION=60m" \
         "${K6_DIR}/companion.js" \
-        2>&1 | tee "${LOG_DIR}/companion.log" &
+        >"${LOG_DIR}/companion.log" 2>&1 &
     COMPANION_PID=$!
     log "Companion PID: $COMPANION_PID"
     sleep 3  # дать время k6 стартовать
@@ -125,6 +126,14 @@ run_scenario() {
     log "══════════════════════════════════════════"
     log "  СЦЕНАРИЙ: $name"
     log "══════════════════════════════════════════"
+
+    if ! kubectl cluster-info &>/dev/null; then
+        warn "  ✗ $name ПРОПУЩЕН - kubectl недоступен (туннель упал?)"
+        FAILED+=("$name")
+        log "Пауза 15s между сценариями..."
+        sleep 15
+        return
+    fi
 
     grafana_annotate "Scenario START: $name" "chaos,$name"
 
@@ -160,10 +169,10 @@ run_spike() {
         2>&1 | tee "${LOG_DIR}/spike.log"
 
     grafana_annotate "Spike k6 DONE" "chaos,spike"
-    log "Spike завершён ✓"
+    log "Spike завершен ✓"
 }
 
-# ── Итоговый отчёт ────────────────────────────────────────────────────────────
+# ── Итоговый отчет ────────────────────────────────────────────────────────────
 print_summary() {
     log ""
     log "══════════════════════════════════════════"

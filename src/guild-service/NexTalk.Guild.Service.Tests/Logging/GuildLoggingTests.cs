@@ -77,7 +77,7 @@ public class GuildLoggingTests : IAsyncLifetime
     [Fact]
     public async Task CreateChannel_EmitsChannelCreatedLog()
     {
-        // Сначала создаём гильдию чтобы получить guildId
+        // Сначала создаем гильдию чтобы получить guildId
         var client = AuthClient("channel-log-owner");
         var guildRes = await client.PostAsJsonAsync("/guilds", new { Name = "ChannelLogGuild" });
         var guild = await guildRes.Content.ReadFromJsonAsync<GuildResponse>();

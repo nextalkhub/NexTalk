@@ -42,7 +42,7 @@ public sealed class PresenceMonitor : BackgroundService
             foreach (var userId in staleUsers)
             {
                 // Только под, который физически удалил запись, рассылает событие.
-                // Остальные реплики тоже видят stale-пользователей, но Remove вернёт false —
+                // Остальные реплики тоже видят stale-пользователей, но Remove вернет false -
                 // атомарность ZREM гарантирует ровно один broadcast на пользователя.
                 if (!_tracker.Remove(userId))
                     continue;

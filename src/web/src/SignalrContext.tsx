@@ -40,7 +40,7 @@ export const SignalRProvider = ({
 
         if (!oidcService.getAccessToken()) return
 
-        // Фабрика вызывается на каждом коннекте/реконнекте — берём свежий токен
+        // Фабрика вызывается на каждом коннекте/реконнекте - берем свежий токен
         // из oidcService, иначе после refresh SignalR будет ходить с протухшим.
         const conn = new HubConnectionBuilder()
             .withUrl(import.meta.env.VITE_WS_URL, {

@@ -8,7 +8,7 @@ import { ICheck } from '../../../shared/components/Icons/Icons'
  * Handles the Zitadel OIDC redirect. The previous implementation:
  *   • Showed a generic "Loading..." with no progress.
  *   • Always navigated to /servers on success, ignoring the original
- *     destination — so accepting an invite link kicked the user out of
+ *     destination - so accepting an invite link kicked the user out of
  *     the invite preview.
  * This version mirrors the four-step UX from the design and respects
  * the `return_url` saved by AcceptInvitePage / ProtectedRoute.
@@ -66,7 +66,7 @@ export const OidcCallback: React.FC = () => {
       <div className="auth-card callback-card">
         <div className="callback-spinner" />
         <h1>Авторизуемся...</h1>
-        <p className="sub">Не закрывайте вкладку — обмен токенами займёт несколько секунд.</p>
+        <p className="sub">Не закрывайте вкладку - обмен токенами займет несколько секунд.</p>
 
         <div className="callback-steps">
           {steps.map((label, i) => (

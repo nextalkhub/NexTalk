@@ -13,7 +13,7 @@ public sealed class RedisPresenceTracker : IPresenceTracker
     {
         var score = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
         // SortedSetAdd returns true если элемент ДОБАВЛЕН (новый = был офлайн)
-        // и false если обновлён (уже существовал = был онлайн)
+        // и false если обновлен (уже существовал = был онлайн)
         return _db.SortedSetAdd(Key, userId, score);
     }
 

@@ -1,6 +1,6 @@
 namespace NexTalk.Guild.Service.Shared.Responses;
 
-/// <summary>Публичный превью инвайта — возвращается до принятия.</summary>
+/// <summary>Публичный превью инвайта - возвращается до принятия.</summary>
 public record InviteInfoResponse(
     Guid Id,
     string Code,
