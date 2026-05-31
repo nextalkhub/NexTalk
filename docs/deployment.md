@@ -104,6 +104,9 @@ graph TB
         W1 --> OBS
         W2 --> OBS
         W3 --> OBS
+        DB --> OBS
+        W1 -. "GRE NAT\n(интернет для obs/db)" .-> OBS
+        W1 -. "GRE NAT\n(интернет для db)" .-> DB
     end
 
     U --> DNS
