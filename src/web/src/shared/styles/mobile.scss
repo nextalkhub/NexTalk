@@ -19,7 +19,9 @@
    ============================================================ */
 
 @media (min-width: 769px) and (max-width: 1024px) {
-  .app-shell {
+  /* .no-right has specificity 0,2,0 — override it here too */
+  .app-shell,
+  .app-shell.no-right {
     grid-template-columns: var(--rail-w) var(--side-w) 1fr 0;
   }
   .app-shell .right { display: none; }
@@ -52,7 +54,9 @@
   .app-shell, .top, .side, .rail, .right { -webkit-tap-highlight-color: transparent; }
 
   /* ---- Shell collapses to single column ---- */
-  .app-shell {
+  /* .no-right has higher specificity (0,2,0) than .app-shell (0,1,0) — override both */
+  .app-shell,
+  .app-shell.no-right {
     grid-template-columns: 1fr;
     grid-template-rows: calc(var(--topbar-h) + var(--safe-top)) 1fr;
     grid-template-areas:
