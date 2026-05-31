@@ -1,6 +1,4 @@
 ---
-# Переменные общие для всех k3s-нод (control-plane + worker)
-
 # Токен подключения. ОБЯЗАТЕЛЬНО заменить через ansible-vault или env.
 # Сгенерировать: openssl rand -hex 32
 k3s_token: "{{ vault_k3s_token | default('REPLACE_ME_WITH_VAULT') }}"

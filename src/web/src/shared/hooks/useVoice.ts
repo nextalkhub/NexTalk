@@ -78,7 +78,6 @@ export const useVoice = () => {
 
     const joinVoice = useCallback(
         async (channelId: string, _: { id: string; name: string }) => {
-            // Инвалидируем предыдущую попытку подключения.
             const gen = ++connectGenRef.current
 
             // Отключаем текущую комнату (это прерывает незавершенный room.connect()).
@@ -178,7 +177,6 @@ export const useVoice = () => {
 
     const leaveVoice = useCallback(
         async (channelId: string) => {
-            // Инвалидируем любую текущую попытку подключения.
             connectGenRef.current++
 
             try {

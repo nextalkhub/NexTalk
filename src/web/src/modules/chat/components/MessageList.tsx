@@ -39,7 +39,6 @@ export const MessageList: React.FC<MessageListProps> = ({
     [messages]
   )
 
-  // Detect a user's role within the current guild - used to gate delete/manage buttons.
   const currentUserRole = useMemo(() => {
     if (!user) return 'Member'
     if (user.id === guildOwnerId) return 'Owner'
@@ -51,7 +50,6 @@ export const MessageList: React.FC<MessageListProps> = ({
     if (msg) dispatch(deleteMessage({ channelId: msg.channelId, messageId: id }))
   }
 
-  // Load older messages when the user scrolls near the top.
   const onScroll = (e: React.UIEvent<HTMLDivElement>) => {
     const el = e.currentTarget
     if (el.scrollTop < 80 && hasMore && !isLoading) onLoadMore()

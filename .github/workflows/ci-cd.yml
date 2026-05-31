@@ -11,7 +11,6 @@ env:
   IMAGE_PREFIX: ghcr.io/${{ github.repository_owner }}/nextalk
 
 jobs:
-  # Определяем, что изменилось, чтобы не гонять лишние джобы
   changes:
     runs-on: ubuntu-latest
     outputs:
@@ -24,8 +23,8 @@ jobs:
       - uses: dorny/paths-filter@v4
         id: filter
         with:
-          # push: сравниваем только файлы этого пуша (before→after), не весь бранч vs main.
-          # pull_request: base пустой → dorny использует target-бранч автоматически.
+          # push: сравниваем только файлы этого пуша (before -> after), не весь бранч vs main.
+          # pull_request: base пустой -> dorny использует target-бранч автоматически.
           base: ${{ github.event_name == 'push' && github.event.before || '' }}
           filters: |
             backend:
@@ -36,7 +35,6 @@ jobs:
             frontend:
               - 'src/web/**'
 
-  # Build (only when backend changed)
   build-backend-services:
     needs: [changes]
     if: needs.changes.outputs.backend == 'true'
@@ -69,7 +67,6 @@ jobs:
       - name: Build
         run: dotnet build ${{ matrix.project }} -c Release --no-restore
 
-  # Test (only when backend changed)
   test-backend-services:
     needs: [changes, build-backend-services]
     if: needs.changes.outputs.backend == 'true'
@@ -125,7 +122,6 @@ jobs:
           path: TestResults/**/coverage.cobertura.xml
           if-no-files-found: ignore
 
-  # Coverage report: собирает XML со всех сервисов, генерирует HTML + badges
   coverage-report:
     needs: [changes, test-backend-services]
     if: >-
@@ -165,7 +161,6 @@ jobs:
           retention-days: 30
 
 
-  # Frontend CI (only when frontend changed)
   frontend-ci:
     needs: [changes]
     if: needs.changes.outputs.frontend == 'true'
@@ -195,7 +190,7 @@ jobs:
 
   # Docker build & push: всегда при пуше в main/deploy-k3s-ha, независимо от того что изменилось.
   # GHA-кэш делает пересборку неизменившегося сервиса за ~30 сек - цена незначительна,
-  # зато все образы получают одинаковый SHA-тег → helm-deploy -e image_tag=<sha> всегда консистентен.
+  # зато все образы получают одинаковый SHA-тег
   docker-build-push:
     needs: [build-backend-services, test-backend-services, frontend-ci]
     if: >-
@@ -270,7 +265,6 @@ jobs:
             VITE_LIVEKIT_URL=wss://nextalk.fun/livekit
             VITE_API_URL=https://nextalk.fun
 
-  # Скан образов на известные CVE
   trivy-scan:
     needs: [docker-build-push]
     if: >-
@@ -295,17 +289,10 @@ jobs:
       # единственным защищенным во время инцидента, v0.36.0 - текущий.
       # Доп. безопасность - пин на full commit SHA, см. advisory:
       # https://github.com/aquasecurity/trivy/security/advisories/GHSA-69fq-xp46-6x23
-
-      # Сканируем образ по полному SHA-тегу, а не :latest:
-      # :latest обновляется только на main, и на deploy-k3s-ha указывал бы
-      # на чужой/старый образ. github.sha консистентен с тем, что собрал docker-build-push.
-
-      # type=sha,prefix= в metadata-action даёт короткий SHA (7 символов)
       - name: Short SHA
         id: sha
         run: echo "short=${GITHUB_SHA:0:7}" >> $GITHUB_OUTPUT
 
-      # Сначала table — видно CVE в логах CI даже когда следующий шаг упадет
       - name: Trivy table output (видно в логах)
         uses: aquasecurity/trivy-action@v0.36.0
         with:
@@ -326,7 +313,7 @@ jobs:
           output: trivy-${{ matrix.image }}.sarif
           severity: HIGH,CRITICAL
           ignore-unfixed: true
-          exit-code: '0'      # ← не роняем пайплайн на CVE, результат уходит в Security-таб
+          exit-code: '0'
         env:
           TRIVY_DB_REPOSITORY: ghcr.io/aquasecurity/trivy-db:2
           TRIVY_JAVA_DB_REPOSITORY: ghcr.io/aquasecurity/trivy-java-db:1

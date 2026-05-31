@@ -1,10 +1,6 @@
 import React from 'react'
 import { useSignalR } from '../../hooks/useSignalR'
 
-/**
- * Connection-status banner. Shown only when SignalR is reconnecting or
- * disconnected. Sits at the top of the main area inside AppShell.
- */
 export const ReconnectBanner: React.FC = () => {
   const { connection, isConnected } = useSignalR()
 

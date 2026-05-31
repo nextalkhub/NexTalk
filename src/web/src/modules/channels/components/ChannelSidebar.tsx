@@ -89,8 +89,6 @@ export const ChannelSidebar: React.FC = () => {
 
   const handleOpenSettings = () => navigate('/settings')
 
-  // No server selected (Home / Profile / global Settings) - show a minimal sidebar
-  // with friendly empty state instead of an empty list.
   if (!currentServer && !serverId) {
     return (
       <aside className="side">

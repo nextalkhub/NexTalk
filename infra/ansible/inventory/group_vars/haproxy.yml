@@ -1,5 +1,4 @@
 ---
-# UFW правила для HAProxy ноды.
 ufw_extra_rules:
   - { rule: allow, port: '6443', proto: tcp, src: "{{ private_network_cidr }}", comment: 'k3s apiserver proxy' }
   # Поды (kubernetes_sd_configs) обращаются к API через HAProxy из pod CIDR

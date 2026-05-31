@@ -26,7 +26,6 @@ tls-san:
   - "{{ hostvars[h]['ansible_host'] }}"
 {% endfor %}
 
-# Что отключаем из коробки.
 disable:
 {% for component in k3s_server_disable %}
   - {{ component }}

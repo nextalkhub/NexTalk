@@ -3,11 +3,6 @@ using Microsoft.Extensions.Options;
 
 namespace NextTalk.Websocket.Gateway.Shared;
 
-/// <summary>
-/// Фоновый сервис, сканирующий PresenceTracker каждые 10 секунд.
-/// Пользователи, чей последний heartbeat превысил OfflineTimeout, помечаются офлайн
-/// и из guild-группы получают событие presence.offline
-/// </summary>
 public sealed class PresenceMonitor : BackgroundService
 {
     private static readonly TimeSpan ScanInterval = TimeSpan.FromSeconds(10);

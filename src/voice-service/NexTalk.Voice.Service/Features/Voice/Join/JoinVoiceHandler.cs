@@ -34,7 +34,6 @@ public sealed class JoinVoiceHandler
 
     public async Task<JoinVoiceResult> HandleAsync(JoinVoiceCommand cmd, CancellationToken ct)
     {
-        // 1. Проверяем доступ к каналу и получаем guildId + тип канала.
         var access = await _guildClient.CheckChannelAccessAsync(cmd.ChannelId, cmd.UserId, cmd.CorrelationId, ct);
 
         if (access is null)
@@ -46,13 +45,10 @@ public sealed class JoinVoiceHandler
         if (!string.Equals(access.ChannelType, "voice", StringComparison.OrdinalIgnoreCase))
             throw new BadRequestException($"Channel {cmd.ChannelId} is not a voice channel.");
 
-        // 2. Создаем LiveKit-комнату, если еще не существует.
         await _roomClient.EnsureRoomAsync(cmd.ChannelId, ct);
 
-        // 3. Регистрируем сессию (если был в другом канале - переносимся).
         _sessionStore.Join(cmd.UserId, cmd.ChannelId, access.GuildId);
 
-        // 4. Генерируем токен для клиента.
         var token = _tokenGenerator.GenerateToken(cmd.UserId, cmd.DisplayName, cmd.ChannelId);
         var livekitUrl = _config["LiveKit:PublicUrl"]
                          ?? throw new InvalidOperationException("LiveKit:PublicUrl is not configured.");
@@ -62,7 +58,7 @@ public sealed class JoinVoiceHandler
             "Voice join: user={UserId} channel={ChannelId} guild={GuildId} correlation={CorrelationId}",
             cmd.UserId, cmd.ChannelId, access.GuildId, cmd.CorrelationId);
 
-        // 5. Уведомляем участников гильдии через WS Gateway (best-effort - не фейлим join при ошибке).
+        // best-effort: не фейлим join если WS Gateway недоступен
         _ = BroadcastJoinAsync(access.GuildId, cmd.UserId, cmd.ChannelId, cmd.CorrelationId);
 
         return new JoinVoiceResult(token, livekitUrl, cmd.ChannelId, access.GuildId);

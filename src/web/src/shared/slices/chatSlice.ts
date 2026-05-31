@@ -66,7 +66,6 @@ const chatSlice = createSlice({
             )
             if (optIdx >= 0) items.splice(optIdx, 1)
 
-            // дедупликация по id
             if (!items.some(m => m.id === msg.id)) items.push(msg)
         },
 

@@ -23,7 +23,6 @@ export const ChannelChatPage: React.FC = () => {
   const isMobile = useIsMobile()
   const [showMembers, setShowMembers] = React.useState(!isMobile)
 
-  // Sync initial default when breakpoint crosses (e.g. resize desktop→phone)
   const prevIsMobile = useRef(isMobile)
   useEffect(() => {
     if (prevIsMobile.current !== isMobile) {
@@ -71,7 +70,6 @@ export const ChannelChatPage: React.FC = () => {
     prevScrollHeight.current = null
   }, [currentMessages.length])
 
-  // Auto-scroll to bottom only when a brand-new last message arrives.
   useEffect(() => {
     const last = currentMessages[currentMessages.length - 1]
     if (!last) return

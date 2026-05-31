@@ -1,5 +1,4 @@
 ---
-# Переменные для k6 / chaos-тестирования.
 # Секреты (vault_k6_grafana_password, vault_k6_test_token) - в vault.yml.
 
 k6_chaos_dir: "{{ lookup('env', 'HOME') }}/nextalk-chaos"
@@ -13,16 +12,13 @@ k6_cp3: "10.19.0.13"
 k6_db_vps: "10.19.0.31"
 k6_obs_vps: "10.19.0.41"
 
-# Endpoints
 k6_api_base: "https://nextalk.fun"
 k6_grafana_url: "https://nextalk.fun"
 k6_prometheus_remote_write: "http://10.19.0.41:9090/api/v1/write"
 
-# Grafana
 k6_grafana_user: admin
 k6_grafana_dashboard_uid: nextalk-overview
 
-# k6 параметры нагрузки
 k6_vus_baseline: 20
 k6_vus_spike: 100
 k6_duration_baseline: 5m

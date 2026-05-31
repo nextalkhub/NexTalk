@@ -325,8 +325,6 @@ export const ServerSettingsPage: React.FC = () => {
   )
 }
 
-// ─── Overview ────────────────────────────────────────────────────────────────
-
 const OverviewTab: React.FC<{
   name: string
   setName: (v: string) => void
@@ -361,8 +359,6 @@ const OverviewTab: React.FC<{
     )}
   </div>
 )
-
-// ─── Members ─────────────────────────────────────────────────────────────────
 
 const MembersTab: React.FC<{
   members: Member[]
@@ -489,8 +485,6 @@ const MembersTab: React.FC<{
     </div>
   )
 }
-
-// ─── Channels ────────────────────────────────────────────────────────────────
 
 const ChannelsTab: React.FC<{
   channels: { id: string; name: string; type: 'text' | 'voice' }[]
@@ -631,8 +625,6 @@ const ChannelsTab: React.FC<{
     </div>
   )
 }
-
-// ─── Invites ─────────────────────────────────────────────────────────────────
 
 const InvitesTab: React.FC<{
   invites: import('../../../shared/types').Invite[]
@@ -780,8 +772,6 @@ const InvitesTab: React.FC<{
   )
 }
 
-// ─── Bans ────────────────────────────────────────────────────────────────────
-
 const BansTab: React.FC<{
   bans: { userId: string; bannedBy: string; reason: string | null; bannedAt: string }[]
   loading: boolean
@@ -858,8 +848,6 @@ const BansTab: React.FC<{
     </div>
   )
 }
-
-// ─── Danger ──────────────────────────────────────────────────────────────────
 
 const DangerTab: React.FC<{
   serverName: string
