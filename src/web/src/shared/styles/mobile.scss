@@ -1,5 +1,5 @@
 /* Mobile adaptation for NexTalk web app.
-   Append to global.scss (after existing styles).
+   Imported at the bottom of global.scss.
 
    Strategy:
    - Tablet (< 1024px): hide MembersSidebar by default, show via TopBar toggle
@@ -59,7 +59,8 @@
   /* ----- App shell becomes single column ----- */
   .app-shell {
     grid-template-columns: 1fr !important;
-    grid-template-rows: 52px 1fr !important;
+    /* Top row absorbs notch height so the header doesn't overflow into the chat. */
+    grid-template-rows: calc(52px + var(--m-safe-top)) 1fr !important;
     grid-template-areas:
       "top"
       "main" !important;
@@ -113,15 +114,30 @@
 
   /* ----- Top bar compact ----- */
   .top {
-    height: 52px !important;
     padding: 0 6px !important;
-    padding-top: var(--m-safe-top);
-    height: calc(52px + var(--m-safe-top)) !important;
+    padding-top: var(--m-safe-top) !important;
+    /* Height now matches the grid row in .app-shell so it can't overflow. */
+    height: auto !important;
+    min-height: calc(52px + var(--m-safe-top)) !important;
+    gap: 4px !important;
   }
-  .top-left { gap: 8px; }
-  .top-channel-title { font-size: 16px !important; }
-  .top-topic { display: none; } /* topic moves into sheet */
-  .top-search { display: none; }
+  /* Hide server breadcrumb on phone — channel name is enough, drawer shows server */
+  .top-breadcrumb .crumb-server,
+  .top-breadcrumb .crumb-sep {
+    display: none !important;
+  }
+  .top-breadcrumb .crumb-channel {
+    font-size: 16px !important;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .top-left {
+    gap: 6px;
+    min-width: 0;
+    overflow: hidden;
+  }
   .top-actions .icon-btn,
   .top .icon-btn,
   .top button {
@@ -146,6 +162,14 @@
   .msg-text { font-size: 14.5px !important; }
 
   /* ----- Composer ----- */
+  /* Reset wrap padding so the input goes edge-to-edge on phone */
+  .composer-wrap {
+    padding: 0 !important;
+  }
+  /* The keyboard helper line is useless on phone */
+  .composer-foot {
+    display: none !important;
+  }
   .composer {
     padding: 8px 10px !important;
     padding-bottom: max(8px, var(--m-safe-bot)) !important;
@@ -202,23 +226,31 @@
     font-size: 20px !important;
   }
   .voice-tile-name { font-size: 13px !important; }
-  .voice-dock {
+  .voice-dock,
+  .voice-controls {
     flex-wrap: wrap;
     gap: 8px !important;
     padding: 12px 14px !important;
     padding-bottom: max(12px, var(--m-safe-bot)) !important;
   }
-  .voice-dock .ctrl {
+  .voice-dock .ctrl,
+  .voice-controls .vc-btn {
     width: 48px !important;
     height: 48px !important;
     border-radius: 14px !important;
   }
-  .voice-dock .leave {
+  .voice-dock .leave,
+  .voice-controls .vc-btn.is-leave {
     flex: 1;
     min-width: 140px;
+    width: auto !important;
   }
 
   /* ----- Members panel as bottom sheet ----- */
+  /* Push first content below the grab handle */
+  .members-summary {
+    padding-top: 22px !important;
+  }
   .app-shell .right {
     position: fixed !important;
     left: 0 !important;
@@ -251,10 +283,7 @@
     height: 4px;
     background: var(--bd-3);
     border-radius: 999px;
-  }
-  .members-section-h,
-  .right .right-tabs {
-    padding-top: 18px;
+    z-index: 2;
   }
 
   /* ----- Settings layout collapses ----- */
@@ -265,6 +294,7 @@
     border-right: 0 !important;
     border-bottom: 1px solid var(--bd-1);
     padding: 8px 10px 12px !important;
+    overflow-y: visible !important;
   }
   .settings-nav-h:first-of-type { padding-top: 14px; }
   .settings-nav-item {
@@ -390,13 +420,6 @@
   }
   .home-card {
     padding: 16px !important;
-    flex-direction: row !important;
-    align-items: center !important;
-    text-align: left !important;
-  }
-  .home-card-icon {
-    width: 44px !important;
-    height: 44px !important;
   }
 
   /* ----- Profile ----- */

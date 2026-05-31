@@ -1,4 +1,4 @@
-import React, { useContext, useEffect } from 'react'
+import React, { useContext, useEffect, useRef } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { TopBar } from '../../../shared/components/Layout/TopBar'
 import { avatarBg } from '../../../shared/components/Avatar/Avatar'
@@ -6,7 +6,7 @@ import { IMic, IMicOff, IHeadset, IPhoneOff } from '../../../shared/components/I
 import { LayoutContext } from '../../../shared/components/Layout/AppShell'
 import { useAppSelector } from '../../../store'
 import { selectUser } from '../../../shared/slices/authSlice'
-import { useVoiceContext } from '../../../shared/contexts/VoiceContext'
+import { useVoice } from '../../../shared/hooks/useVoice'
 import { pluralize } from '../../../shared/utils/format'
 import { getInitials } from '../../../shared/utils/initials'
 import type { Member } from '../../../shared/types'
@@ -30,22 +30,38 @@ export const VoiceChannelPage: React.FC = () => {
     toggleMic,
     toggleDeafen,
     hasMicrophonePermission,
-  } = useVoiceContext()
+  } = useVoice()
+
+  const prevChannelRef = useRef<string | null>(null)
 
   useEffect(() => {
     setHideRight(true)
     return () => setHideRight(false)
   }, [setHideRight])
 
-  // Join voice when arriving at this route. The context handles:
-  // - same channel → noop (already connected)
-  // - different channel → leave old, join new
-  // No cleanup on unmount - voice persists when navigating away.
   useEffect(() => {
     if (!channelId || !user) return
-    joinVoice(channelId, { id: user.id, name: user.name }).catch(console.error)
+    const connect = async () => {
+      try {
+        if (prevChannelRef.current && prevChannelRef.current !== channelId) {
+          await leaveVoice(prevChannelRef.current)
+        }
+        prevChannelRef.current = channelId
+        await joinVoice(channelId, { id: user.id, name: user.name })
+      } catch (err) {
+        console.error('Voice connect failed:', err)
+      }
+    }
+    connect()
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [channelId, user?.id])
+
+  useEffect(() => {
+    return () => {
+      if (prevChannelRef.current) leaveVoice(prevChannelRef.current)
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   const handleDisconnect = async () => {
     if (channelId) await leaveVoice(channelId)
@@ -81,7 +97,7 @@ export const VoiceChannelPage: React.FC = () => {
 
   return (
     <>
-      <TopBar showMembers={false} onToggleMembers={() => {}} />
+      <TopBar showMembers={false} onToggleMembers={() => {}} hasMembers={false} />
       <main className="main">
         <div className="voice-stage">
           <div className="voice-stage-meta">

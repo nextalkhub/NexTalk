@@ -1,27 +1,48 @@
 import React, { useState } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
+import { useNavigate, useParams, useLocation } from 'react-router-dom'
 import { ISpeaker, IUsers, ILogout } from '../Icons/Icons'
 import { useAppSelector } from '../../../store'
 import { selectCurrentServer } from '../../slices/serverSlice'
 import { useGlobalModal } from './ModalProvider'
 import { useLayout } from './AppShell'
+import { useIsPhone } from '../../hooks/useBreakpoint'
 import { MobileMenuButton } from './MobileMenuButton'
 
 interface TopBarProps {
   showMembers: boolean
   onToggleMembers: () => void
+  /** When false, hides the "Users" toggle button. Use on routes
+   *  that don't render MembersSidebar (e.g. voice channels). */
+  hasMembers?: boolean
 }
 
-export const TopBar: React.FC<TopBarProps> = ({ showMembers, onToggleMembers }) => {
+export const TopBar: React.FC<TopBarProps> = ({
+  showMembers,
+  onToggleMembers,
+  hasMembers = true,
+}) => {
   const navigate = useNavigate()
   const { channelId } = useParams()
+  const { pathname } = useLocation()
   const currentServer = useAppSelector(selectCurrentServer)
   const channels = useAppSelector(state => state.channels.channels)
   const { open } = useGlobalModal()
   const { drawerOpen, setDrawerOpen, membersOpen, setMembersOpen } = useLayout()
+  const isPhone = useIsPhone()
   const [logoutFallback, setLogoutFallback] = useState(false)
 
   const channel = channels.find(c => c.id === channelId)
+
+  // Settings / Profile / Home don't have a real "channel" — show a friendly label
+  const isSettings  = pathname.startsWith('/settings') || /\/servers\/[^/]+\/settings/.test(pathname)
+  const isProfile   = pathname.startsWith('/profile')
+  const isHome      = pathname === '/servers' || pathname === '/'
+
+  const fallbackTitle =
+    isSettings ? 'Настройки' :
+    isProfile  ? 'Профиль' :
+    isHome     ? 'Главная' :
+    'Выберите канал'
 
   const handleLogout = () => {
     try {
@@ -32,50 +53,61 @@ export const TopBar: React.FC<TopBarProps> = ({ showMembers, onToggleMembers }) 
   }
 
   const handleMembersClick = () => {
-    if (window.innerWidth <= 768) {
+    if (isPhone) {
       setMembersOpen(!membersOpen)
     } else {
       onToggleMembers()
     }
   }
 
-  const membersActive = window.innerWidth <= 768 ? membersOpen : showMembers
+  const membersActive = isPhone ? membersOpen : showMembers
 
   return (
     <header className="top">
       <MobileMenuButton onClick={() => setDrawerOpen(!drawerOpen)} />
       <div className="top-left">
         <div className="top-breadcrumb">
-          {currentServer && (
+          {currentServer && !isHome && (
             <>
               <span className="crumb-server">{currentServer.name}</span>
               <span className="crumb-sep"><IChevRightInline /></span>
             </>
           )}
           <span className="crumb-channel">
-            {channel?.type === 'voice'
-              ? <ISpeaker />
-              : <span className="hash">#</span>}
-            {channel?.name ?? 'Выберите канал'}
+            {channel
+              ? (channel.type === 'voice' ? <ISpeaker /> : <span className="hash">#</span>)
+              : null}
+            {channel?.name ?? fallbackTitle}
           </span>
         </div>
       </div>
       <div className="top-actions">
-        <button
-          className={`icon-btn${membersActive ? ' is-active' : ''}`}
-          title="Участники"
-          onClick={handleMembersClick}
-        >
-          <IUsers />
-        </button>
+        {hasMembers && (
+          <button
+            className={`icon-btn${membersActive ? ' is-active' : ''}`}
+            title="Участники"
+            onClick={handleMembersClick}
+          >
+            <IUsers />
+          </button>
+        )}
         <button className="icon-btn" title="Выйти" onClick={handleLogout}>
           <ILogout />
         </button>
       </div>
       {logoutFallback && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.6)', zIndex: 1000 }}
-             onClick={() => setLogoutFallback(false)}>
-          <div onClick={e => e.stopPropagation()} style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', background: 'var(--bg-3)', padding: 24, borderRadius: 12, color: 'var(--fg-0)' }}>
+        <div
+          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.6)', zIndex: 1000 }}
+          onClick={() => setLogoutFallback(false)}
+        >
+          <div
+            onClick={e => e.stopPropagation()}
+            style={{
+              position: 'absolute', top: '50%', left: '50%',
+              transform: 'translate(-50%, -50%)',
+              background: 'var(--bg-3)', padding: 24, borderRadius: 12, color: 'var(--fg-0)',
+            }}
+          >
             <p style={{ marginBottom: 16 }}>Перейти на страницу входа?</p>
             <button className="btn-danger" onClick={() => navigate('/auth')}>Выйти</button>
           </div>
