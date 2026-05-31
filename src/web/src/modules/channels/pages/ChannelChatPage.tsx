@@ -23,6 +23,15 @@ export const ChannelChatPage: React.FC = () => {
   const isMobile = useIsMobile()
   const [showMembers, setShowMembers] = React.useState(!isMobile)
 
+  // Sync initial default when breakpoint crosses (e.g. resize desktop→phone)
+  const prevIsMobile = useRef(isMobile)
+  useEffect(() => {
+    if (prevIsMobile.current !== isMobile) {
+      prevIsMobile.current = isMobile
+      setShowMembers(!isMobile)
+    }
+  }, [isMobile])
+
   const scrollRef = useRef<HTMLDivElement>(null)
   const prevScrollHeight = useRef<number | null>(null)
   const lastSentId = useRef<string | null>(null)
