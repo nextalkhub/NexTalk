@@ -427,52 +427,52 @@ Kubeconfig указывает на `10.19.0.51` (приватная Beget-сет
 
 ### Блок 1 - Подготовка инфраструктуры
 
-1.1. Заказать 9 VPS `2vCPU/4GB/40GB SSD` (Ubuntu 22.04+)
-1.2. Подключить к приватной сети `10.19.0.0/16`
-1.3. Назначить статические приватные IP по [§6.2](#62-ip-план)
-1.4. Назначить публичные IP трем worker'ам
-1.5. Сгенерировать SSH-ключ для Ansible, разложить на все 9 хостов
-1.6. Назначить bastion (worker-1) - единственный SSH-вход из интернета
+- 1.1. Заказать 9 VPS `2vCPU/4GB/40GB SSD` (Ubuntu 22.04+)
+- 1.2. Подключить к приватной сети `10.19.0.0/16`
+- 1.3. Назначить статические приватные IP по [§6.2](#62-ip-план)
+- 1.4. Назначить публичные IP трем worker'ам
+- 1.5. Сгенерировать SSH-ключ для Ansible, разложить на все 9 хостов
+- 1.6. Назначить bastion (worker-1) - единственный SSH-вход из интернета
 
 ### Блок 2 - Ansible bootstrap
 
-2.1. `bootstrap.yml` - sysctl, swapoff, ufw, NTP, пакеты на всех 9 нодах
-2.2. `haproxy.yml` - HAProxy на haproxy-vps
+- 2.1. `bootstrap.yml` - sysctl, swapoff, ufw, NTP, пакеты на всех 9 нодах
+- 2.2. `haproxy.yml` - HAProxy на haproxy-vps
 
 ### Блок 3 - Database VPS
 
-3.1. PostgreSQL 18 + Redis через `db.yml`
-3.2. Проверить с воркера: `psql -h 10.19.0.31`, `redis-cli -h 10.19.0.31`
+- 3.1. PostgreSQL 18 + Redis через `db.yml`
+- 3.2. Проверить с воркера: `psql -h 10.19.0.31`, `redis-cli -h 10.19.0.31`
 
 ### Блок 4 - k3s HA control-plane
 
-4.1. `ansible-playbook k3s.yml`
-4.2. cp-1 устанавливается с `cluster-init`, cp-2/cp-3 джойнятся через HAProxy
-4.3. `kubectl get nodes` - 3 ноды `control-plane,etcd`
-4.4. kubeconfig сохраняется в `infra/kubeconfig` с server=`https://10.19.0.51:6443`
-4.5. **Демо failover**: выключить cp-1, повторить `kubectl get nodes` - должно работать через cp-2/cp-3
+- 4.1. `ansible-playbook k3s.yml`
+- 4.2. cp-1 устанавливается с `cluster-init`, cp-2/cp-3 джойнятся через HAProxy
+- 4.3. `kubectl get nodes` - 3 ноды `control-plane,etcd`
+- 4.4. kubeconfig сохраняется в `infra/kubeconfig` с server=`https://10.19.0.51:6443`
+- 4.5. **Демо failover**: выключить cp-1, повторить `kubectl get nodes` - должно работать через cp-2/cp-3
 
 ### Блок 5 - k3s workers
 
-5.1. Workers джойнятся через HAProxy в том же `k3s.yml`
-5.2. `kubectl get nodes` - 6 нод
-5.3. ingress-nginx через Helm
-5.4. **Демо failover**: выключить worker-1, `kubectl get pods -n nextalk` - поды переехали
+- 5.1. Workers джойнятся через HAProxy в том же `k3s.yml`
+- 5.2. `kubectl get nodes` - 6 нод
+- 5.3. ingress-nginx через Helm
+- 5.4. **Демо failover**: выключить worker-1, `kubectl get pods -n nextalk` - поды переехали
 
 ### Блок 6 - DNS и TLS
 
-6.1. DNS A-records по [§7.2](#72-dns-записи)
-6.2. cert-manager через Helm, ClusterIssuer prod
+- 6.1. DNS A-records по [§7.2](#72-dns-записи)
+- 6.2. cert-manager через Helm, ClusterIssuer prod
 
 ### Блок 7 - Observability VPS
 
-7.1. `observability.yml`
-7.2. Проверить Grafana через SSH-tunnel
+- 7.1. `observability.yml`
+- 7.2. Проверить Grafana через SSH-tunnel
 
 ### Блок 8 - Деплой приложения
 
-8.1. Обновить `values.yaml`: `domain`, `authDomain`, `db.host`, `tls.enabled=true`
-8.2. `helm upgrade --install nextalk ./charts/nextalk`
+- 8.1. Обновить `values.yaml`: `domain`, `authDomain`, `db.host`, `tls.enabled=true`
+- 8.2. `helm upgrade --install nextalk ./charts/nextalk`
 
 ---
 
