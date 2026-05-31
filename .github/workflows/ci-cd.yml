@@ -300,11 +300,16 @@ jobs:
       # :latest обновляется только на main, и на deploy-k3s-ha указывал бы
       # на чужой/старый образ. github.sha консистентен с тем, что собрал docker-build-push.
 
+      # type=sha,prefix= в metadata-action даёт короткий SHA (7 символов)
+      - name: Short SHA
+        id: sha
+        run: echo "short=${GITHUB_SHA:0:7}" >> $GITHUB_OUTPUT
+
       # Сначала table — видно CVE в логах CI даже когда следующий шаг упадет
       - name: Trivy table output (видно в логах)
         uses: aquasecurity/trivy-action@v0.36.0
         with:
-          image-ref: ${{ env.IMAGE_PREFIX }}/${{ matrix.image }}:${{ github.sha }}
+          image-ref: ${{ env.IMAGE_PREFIX }}/${{ matrix.image }}:${{ steps.sha.outputs.short }}
           format: table
           severity: HIGH,CRITICAL
           ignore-unfixed: true
@@ -316,7 +321,7 @@ jobs:
       - name: Run Trivy vulnerability scanner
         uses: aquasecurity/trivy-action@v0.36.0
         with:
-          image-ref: ${{ env.IMAGE_PREFIX }}/${{ matrix.image }}:${{ github.sha }}
+          image-ref: ${{ env.IMAGE_PREFIX }}/${{ matrix.image }}:${{ steps.sha.outputs.short }}
           format: sarif
           output: trivy-${{ matrix.image }}.sarif
           severity: HIGH,CRITICAL
