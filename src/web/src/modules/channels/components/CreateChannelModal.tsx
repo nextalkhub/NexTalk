@@ -21,13 +21,16 @@ export const CreateChannelModal: React.FC<CreateChannelModalProps> = ({ isOpen, 
     e.preventDefault()
     if (!name.trim() || !serverId || serverId === 'undefined') return
     setLoading(true)
-    const formattedName = name.trim().replace(/\s/g, '-')
-    await dispatch(createChannel({ serverId, name: formattedName, type }))
-    setLoading(false)
-    setName('')
-    setType('text')
-    onSuccess?.()
-    onClose()
+    try {
+      const formattedName = name.trim().replace(/\s/g, '-')
+      await dispatch(createChannel({ serverId, name: formattedName, type }))
+      setName('')
+      setType('text')
+      onSuccess?.()
+      onClose()
+    } finally {
+      setLoading(false)
+    }
   }
 
   if (!isOpen) return null

@@ -10,6 +10,7 @@ import { selectUser } from '../../../shared/slices/authSlice'
 import { fetchChannels } from '../../../shared/slices/channelSlice'
 import { fetchMessages, addOptimisticMessage } from '../../../shared/slices/chatSlice'
 import { useSignalR } from '../../../shared/hooks/useSignalR'
+import { useIsMobile } from '../../../shared/hooks/useBreakpoint'
 
 export const ChannelChatPage: React.FC = () => {
   const { serverId, channelId } = useParams()
@@ -19,7 +20,8 @@ export const ChannelChatPage: React.FC = () => {
   const messages = useAppSelector(state => state.chat.messages)
   const { connection, isConnected } = useSignalR()
   const { setHideRight } = useContext(LayoutContext)
-  const [showMembers, setShowMembers] = React.useState(() => window.innerWidth > 768)
+  const isMobile = useIsMobile()
+  const [showMembers, setShowMembers] = React.useState(!isMobile)
 
   const scrollRef = useRef<HTMLDivElement>(null)
   const prevScrollHeight = useRef<number | null>(null)

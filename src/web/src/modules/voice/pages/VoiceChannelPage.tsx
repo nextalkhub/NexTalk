@@ -1,4 +1,4 @@
-import React, { useContext, useEffect, useRef } from 'react'
+import React, { useContext, useEffect } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { TopBar } from '../../../shared/components/Layout/TopBar'
 import { avatarBg } from '../../../shared/components/Avatar/Avatar'
@@ -6,7 +6,7 @@ import { IMic, IMicOff, IHeadset, IPhoneOff } from '../../../shared/components/I
 import { LayoutContext } from '../../../shared/components/Layout/AppShell'
 import { useAppSelector } from '../../../store'
 import { selectUser } from '../../../shared/slices/authSlice'
-import { useVoice } from '../../../shared/hooks/useVoice'
+import { useVoiceContext } from '../../../shared/contexts/VoiceContext'
 import { pluralize } from '../../../shared/utils/format'
 import { getInitials } from '../../../shared/utils/initials'
 import type { Member } from '../../../shared/types'
@@ -30,9 +30,7 @@ export const VoiceChannelPage: React.FC = () => {
     toggleMic,
     toggleDeafen,
     hasMicrophonePermission,
-  } = useVoice()
-
-  const prevChannelRef = useRef<string | null>(null)
+  } = useVoiceContext()
 
   useEffect(() => {
     setHideRight(true)
@@ -41,27 +39,13 @@ export const VoiceChannelPage: React.FC = () => {
 
   useEffect(() => {
     if (!channelId || !user) return
-    const connect = async () => {
-      try {
-        if (prevChannelRef.current && prevChannelRef.current !== channelId) {
-          await leaveVoice(prevChannelRef.current)
-        }
-        prevChannelRef.current = channelId
-        await joinVoice(channelId, { id: user.id, name: user.name })
-      } catch (err) {
-        console.error('Voice connect failed:', err)
-      }
-    }
-    connect()
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [channelId, user?.id])
-
-  useEffect(() => {
+    joinVoice(channelId, { id: user.id, name: user.name }).catch(err => {
+      console.error('Voice connect failed:', err)
+    })
     return () => {
-      if (prevChannelRef.current) leaveVoice(prevChannelRef.current)
+      leaveVoice(channelId)
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+  }, [channelId, user?.id, joinVoice, leaveVoice])
 
   const handleDisconnect = async () => {
     if (channelId) await leaveVoice(channelId)
