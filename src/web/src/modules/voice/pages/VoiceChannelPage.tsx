@@ -42,10 +42,7 @@ export const VoiceChannelPage: React.FC = () => {
     joinVoice(channelId, { id: user.id, name: user.name }).catch(err => {
       console.error('Voice connect failed:', err)
     })
-    return () => {
-      leaveVoice(channelId)
-    }
-  }, [channelId, user?.id, joinVoice, leaveVoice])
+  }, [channelId, user?.id, joinVoice])
 
   const handleDisconnect = async () => {
     if (channelId) await leaveVoice(channelId)
