@@ -132,9 +132,6 @@ jobs:
       !failure() && !cancelled() &&
       needs.changes.outputs.backend == 'true'
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
-
     steps:
       - uses: actions/checkout@v5
 
@@ -167,14 +164,6 @@ jobs:
           path: coverage-report/
           retention-days: 30
 
-      - name: Push badges to coverage-badges branch
-        uses: peaceiris/actions-gh-pages@v4
-        with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: coverage-report
-          publish_branch: coverage-badges
-          keep_files: false
-          commit_message: "ci: update coverage badges [skip ci]"
 
   # Frontend CI (only when frontend changed)
   frontend-ci:
