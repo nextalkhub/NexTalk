@@ -1289,7 +1289,7 @@ tagGroups:
   icon: server
 - id: tg-k3s
   name: k3s Role
-  icon: cube
+  icon: cog
 
 tags:
 - id: tag-worker
@@ -1323,7 +1323,7 @@ tags:
 - id: tag-container
   groupId: tg-infra
   name: Container
-  color: cyan
+  color: dark-blue
 - id: tag-daemonset
   groupId: tg-infra
   name: DaemonSet
