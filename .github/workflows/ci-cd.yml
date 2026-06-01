@@ -5,6 +5,9 @@ on:
     branches: ["**"]
   pull_request:
     branches: ["**"]
+  # Ручной запуск: позволяет собрать и запушить образы в GHCR с любой ветки,
+  # не дожидаясь слияния в main (на не-main ветках автопуша нет).
+  workflow_dispatch:
 
 env:
   REGISTRY: ghcr.io
@@ -188,15 +191,19 @@ jobs:
       - name: ESLint
         run: npm run lint
 
-  # Docker build & push: всегда при пуше в main/deploy-k3s-ha, независимо от того что изменилось.
+  # Docker build & push в GHCR:
+  #   - автоматически при пуше в main (как было);
+  #   - на остальных ветках только вручную (workflow_dispatch).
   # GHA-кэш делает пересборку неизменившегося сервиса за ~30 сек - цена незначительна,
   # зато все образы получают одинаковый SHA-тег
   docker-build-push:
     needs: [build-backend-services, test-backend-services, frontend-ci]
     if: >-
       !failure() && !cancelled() &&
-      github.event_name == 'push' &&
-      (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/deploy-k3s-ha')
+      (
+        (github.event_name == 'push' && github.ref == 'refs/heads/main') ||
+        github.event_name == 'workflow_dispatch'
+      )
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -269,8 +276,10 @@ jobs:
     needs: [docker-build-push]
     if: >-
       !failure() && !cancelled() &&
-      github.event_name == 'push' &&
-      (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/deploy-k3s-ha')
+      (
+        (github.event_name == 'push' && github.ref == 'refs/heads/main') ||
+        github.event_name == 'workflow_dispatch'
+      )
     runs-on: ubuntu-latest
     permissions:
       contents: read
