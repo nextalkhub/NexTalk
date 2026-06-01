@@ -41,17 +41,25 @@ public class BroadcastEndToEndTests : IClassFixture<BroadcastEndToEndTests.E2EFa
         await hub.StartAsync();
         try
         {
-            await Task.Delay(150);
-
             using var client = _factory.CreateClient();
-            var resp = await client.PostAsJsonAsync(
-                $"/internal/broadcast/guild/{guildId}",
-                new { Type = "message.created", Payload = new { messageId = "m-1", content = "hi" } });
 
-            Assert.Equal(HttpStatusCode.NoContent, resp.StatusCode);
+            // OnConnectedAsync добавляет соединение в группу гильдии асинхронно
+            // (через HTTP-вызов в guild-service сквозь Polly-пайплайн), поэтому
+            // фиксированная задержка перед broadcast - гонка, флакающая под нагрузкой CI.
+            // Ретраим broadcast, пока клиент не получит событие или не выйдет таймаут.
+            var deadline = DateTime.UtcNow.AddSeconds(10);
+            while (DateTime.UtcNow < deadline && !received.Task.IsCompleted)
+            {
+                var resp = await client.PostAsJsonAsync(
+                    $"/internal/broadcast/guild/{guildId}",
+                    new { Type = "message.created", Payload = new { messageId = "m-1", content = "hi" } });
+                Assert.Equal(HttpStatusCode.NoContent, resp.StatusCode);
 
-            var done = await Task.WhenAny(received.Task, Task.Delay(TimeSpan.FromSeconds(5)));
-            Assert.Same(received.Task, done);
+                await Task.WhenAny(received.Task, Task.Delay(250));
+            }
+
+            Assert.True(received.Task.IsCompleted,
+                "SignalR-клиент не получил broadcast в отведённое время");
 
             var evt = await received.Task;
             Assert.Equal("message.created", evt.GetProperty("type").GetString());
