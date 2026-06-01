@@ -63,7 +63,9 @@ export const useVoice = () => {
             userId: p.identity,
             username: p.name || p.identity,
             isMuted: !p.isMicrophoneEnabled,
-            isDeafened: false,
+            // deafened другие узнают через attributes (LiveKit раздаёт их всем,
+            // включая позже подключившихся).
+            isDeafened: p.attributes?.['deafened'] === '1',
             isSpeaking: speakingIdsRef.current.has(p.identity),
         }))
 
@@ -141,6 +143,7 @@ export const useVoice = () => {
                 room.on(RoomEvent.ParticipantDisconnected, syncParticipants)
                 room.on(RoomEvent.TrackMuted, syncParticipants)
                 room.on(RoomEvent.TrackUnmuted, syncParticipants)
+                room.on(RoomEvent.ParticipantAttributesChanged, syncParticipants)
 
                 room.on(RoomEvent.ActiveSpeakersChanged, (speakers: Participant[]) => {
                     const ids = new Set(speakers.map(s => s.identity))
@@ -282,6 +285,10 @@ export const useVoice = () => {
             document.querySelectorAll<HTMLAudioElement>('body > audio').forEach(el => {
                 el.muted = next
             })
+            // Транслируем состояние остальным участникам комнаты.
+            roomRef.current?.localParticipant
+                .setAttributes({ deafened: next ? '1' : '0' })
+                .catch(() => { /* best-effort: грант canUpdateOwnMetadata обязателен */ })
             return next
         })
     }, [])

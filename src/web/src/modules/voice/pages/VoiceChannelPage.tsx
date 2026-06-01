@@ -67,6 +67,7 @@ export const VoiceChannelPage: React.FC = () => {
         isSelf: true,
         isSpeaking: isLocalSpeaking,
         isMuted: isMuted || hasMicrophonePermission === false,
+        isDeafened,
       }
     : null
 
@@ -76,6 +77,7 @@ export const VoiceChannelPage: React.FC = () => {
     isSelf: false,
     isSpeaking: p.isSpeaking,
     isMuted: p.isMuted,
+    isDeafened: p.isDeafened,
   }))
 
   const allTiles = selfTile ? [selfTile, ...remoteTiles] : remoteTiles
@@ -179,13 +181,16 @@ interface TileProps {
   isSelf: boolean
   isSpeaking: boolean
   isMuted: boolean
+  isDeafened: boolean
 }
 
-const VoiceTile: React.FC<TileProps> = ({ id, name, isSelf, isSpeaking, isMuted }) => (
+const VoiceTile: React.FC<TileProps> = ({ id, name, isSelf, isSpeaking, isMuted, isDeafened }) => (
   <div className={`voice-tile${isSelf ? ' is-self' : ''}${isSpeaking ? ' is-speaking' : ''}`}>
-    {isMuted && (
+    {(isDeafened || isMuted) && (
       <div className="voice-tile-indicator">
-        <span className="ind muted" title="Микрофон выключен"><IMicOff /></span>
+        {isDeafened
+          ? <span className="ind muted" title="Наушники выключены"><IHeadsetOff /></span>
+          : <span className="ind muted" title="Микрофон выключен"><IMicOff /></span>}
       </div>
     )}
     <span
