@@ -1,0 +1,13 @@
+---
+# Где лежат публичные ключи. Все *.pub из этих папок добавляются root@<host>:~/.ssh/authorized_keys.
+# Путь резолвится относительно playbook'а (см. tasks/main.yml).
+ssh_keys_team_glob: "../inventory/files/ssh/team/*.pub"
+ssh_keys_ci_glob: "../inventory/files/ssh/ci/*.pub"
+
+# Hardening: отключить пароли и root by-password.
+# Включить ТОЛЬКО после успешной раскатки ключей и проверки подключения по ключу!
+# Иначе можно потерять доступ к хосту.
+ssh_keys_disable_passwords: false
+
+# Установить и включить fail2ban (защита от перебора SSH на bastion).
+ssh_keys_install_fail2ban: false

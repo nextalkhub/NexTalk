@@ -64,8 +64,8 @@ namespace NexTalk.Messaging.Service.Infrastructure.Migrations
 
                     b.Property<string>("AuthorName")
                         .IsRequired()
-                        .HasMaxLength(32)
-                        .HasColumnType("character varying(32)")
+                        .HasMaxLength(255)
+                        .HasColumnType("character varying(255)")
                         .HasColumnName("author_name");
 
                     b.Property<Guid>("ChannelId")

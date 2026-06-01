@@ -1,0 +1,58 @@
+#
+# k3s server config - управляется Ansible.
+# Документация: https://docs.k3s.io/installation/configuration
+#
+
+# Токен общий для всех нод (server + agent).
+token: "{{ k3s_token }}"
+
+{% if inventory_hostname == groups['control_plane'][0] %}
+# Первая control-plane нода - инициализирует embedded etcd кластер.
+cluster-init: true
+{% else %}
+# Остальные control-plane ноды подключаются через HAProxy.
+server: "https://{{ k3s_api_endpoint }}:6443"
+{% endif %}
+
+# node-ip = адрес ноды в приватной сети (apiserver слушает 0.0.0.0).
+node-ip: "{{ ansible_host }}"
+
+# TLS SAN - HAProxy IP + IP каждой control-plane ноды.
+# kubectl и ноды подключаются через HAProxy, поэтому его IP обязан быть в SAN.
+tls-san:
+  - "{{ k3s_api_endpoint }}"
+  - "127.0.0.1"
+{% for h in groups['control_plane'] %}
+  - "{{ hostvars[h]['ansible_host'] }}"
+{% endfor %}
+
+disable:
+{% for component in k3s_server_disable %}
+  - {{ component }}
+{% endfor %}
+
+# CNI - flannel через приватный интерфейс.
+flannel-iface: "{{ private_iface }}"
+
+# kubeconfig читаемый для не-root (нам нужно его утащить с control-plane ноды).
+write-kubeconfig-mode: "0644"
+
+# CoreDNS по умолчанию использует /etc/resolv.conf ноды, который на Beget
+# указывает на внутренний резолвер 198.18.18.18 - недоступный из pod-сети
+# через flannel VXLAN. Указываем отдельный файл с публичным DNS.
+resolv-conf: /etc/k3s-resolv.conf
+
+# Шифрование Secret-ов в etcd at-rest. Без этого Secret лежат в base64
+# и читаются любым, кто получил доступ к диску control-plane ноды.
+# Документация: https://docs.k3s.io/security/secrets-encryption
+secrets-encryption: true
+
+# PodSecurity admission controller: enforce baseline по умолчанию.
+# Конфиг лежит рядом, см. /var/lib/rancher/k3s/server/psa.yaml.
+kube-apiserver-arg:
+  - "admission-control-config-file=/var/lib/rancher/k3s/server/psa.yaml"
+
+# Запрещаем планировщику размещать пользовательские поды на control-plane нодах.
+# Системные компоненты (coredns, metrics-server) должны иметь toleration.
+node-taint:
+  - "node-role.kubernetes.io/control-plane:NoSchedule"

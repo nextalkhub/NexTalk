@@ -1,4 +1,3 @@
-using System.Text.Json;
 using StackExchange.Redis;
 
 namespace NextTalk.Websocket.Gateway.Shared;
@@ -12,33 +11,63 @@ public sealed class RedisConnectionManager : IConnectionManager
 
     public void Register(string userId, string connectionId, IReadOnlyList<Guid> guildIds)
     {
-        var json = JsonSerializer.Serialize(new ConnectionData(connectionId, guildIds));
-        _db.StringSet(Key(userId), json, Ttl);
+        _db.SetAdd(ConnsKey(userId), connectionId);
+        _db.KeyExpire(ConnsKey(userId), Ttl);
+
+        // Перезаписать набор гильдий: при OnConnected приходит актуальный список из guild-service.
+        var key = GuildsKey(userId);
+        _db.KeyDelete(key);
+        if (guildIds.Count > 0)
+        {
+            var values = guildIds.Select(g => (RedisValue)g.ToString()).ToArray();
+            _db.SetAdd(key, values);
+            _db.KeyExpire(key, Ttl);
+        }
     }
 
-    public bool TryUnregister(string userId, out IConnectionManager.Entry? entry)
+    public IReadOnlyList<Guid>? Unregister(string userId, string connectionId)
     {
-        var json = _db.StringGetDelete(Key(userId));
-        if (json.IsNullOrEmpty) { entry = null; return false; }
-        entry = Deserialize(json!);
-        return entry is not null;
+        _db.SetRemove(ConnsKey(userId), connectionId);
+        var remaining = _db.SetLength(ConnsKey(userId));
+        if (remaining > 0) return null;
+
+        var guildIds = ReadGuildSet(userId);
+        _db.KeyDelete(ConnsKey(userId));
+        _db.KeyDelete(GuildsKey(userId));
+        return guildIds;
     }
 
-    public IConnectionManager.Entry? Get(string userId)
+    public void AddGuild(string userId, Guid guildId)
     {
-        var json = _db.StringGet(Key(userId));
-        return json.IsNullOrEmpty ? null : Deserialize(json!);
+        _db.SetAdd(GuildsKey(userId), guildId.ToString());
+        _db.KeyExpire(GuildsKey(userId), Ttl);
     }
 
-    public bool IsConnected(string userId) => _db.KeyExists(Key(userId));
+    public void RemoveGuild(string userId, Guid guildId) =>
+        _db.SetRemove(GuildsKey(userId), guildId.ToString());
 
-    private static string Key(string userId) => $"ws:conn:{userId}";
-
-    private static IConnectionManager.Entry? Deserialize(string json)
+    public IReadOnlyList<string> GetConnectionIds(string userId)
     {
-        var data = JsonSerializer.Deserialize<ConnectionData>(json);
-        return data is null ? null : new IConnectionManager.Entry(data.ConnectionId, data.GuildIds);
+        var members = _db.SetMembers(ConnsKey(userId));
+        return members.Select(m => (string)m!).ToList();
     }
 
-    private record ConnectionData(string ConnectionId, IReadOnlyList<Guid> GuildIds);
+    public IReadOnlyList<Guid> GetGuildIds(string userId) => ReadGuildSet(userId);
+
+    public bool IsConnected(string userId) => _db.SetLength(ConnsKey(userId)) > 0;
+
+    private List<Guid> ReadGuildSet(string userId)
+    {
+        var members = _db.SetMembers(GuildsKey(userId));
+        var result = new List<Guid>(members.Length);
+        foreach (var m in members)
+        {
+            if (Guid.TryParse((string?)m, out var g))
+                result.Add(g);
+        }
+        return result;
+    }
+
+    private static string ConnsKey(string userId) => $"ws:conns:{userId}";
+    private static string GuildsKey(string userId) => $"ws:guilds:{userId}";
 }

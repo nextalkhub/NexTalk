@@ -6,4 +6,5 @@ public interface IPresenceTracker
     bool Remove(string userId);
     bool IsOnline(string userId);
     IReadOnlyList<string> GetStale(TimeSpan timeout);
+    IReadOnlyList<string> GetAllOnline(TimeSpan timeout);
 }

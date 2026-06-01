@@ -2,6 +2,7 @@ using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using NexTalk.Messaging.Service.Domain;
 using NexTalk.Messaging.Service.Infrastructure;
+using NexTalk.Messaging.Service.Shared;
 using NexTalk.Messaging.Service.Shared.Exceptions;
 
 namespace NexTalk.Messaging.Service.Features.Messages.CreateMessage;
@@ -12,6 +13,7 @@ public sealed class CreateMessageHandler
     private readonly ILogger<CreateMessageHandler> _logger;
 
     private static readonly TimeSpan IdempotencyTtl = TimeSpan.FromHours(24);
+    private static readonly JsonSerializerOptions WebJsonOpts = new(JsonSerializerDefaults.Web);
 
     public CreateMessageHandler(MessagingDbContext db, ILogger<CreateMessageHandler> logger)
     {
@@ -33,7 +35,7 @@ public sealed class CreateMessageHandler
                 "Idempotency hit: key={Key} correlation={CorrelationId}",
                 cmd.IdempotencyKey, cmd.CorrelationId);
 
-            var cachedDto = JsonSerializer.Deserialize<MessageDto>(cached.Response)!;
+            var cachedDto = JsonSerializer.Deserialize<MessageDto>(cached.Response, WebJsonOpts)!;
             return new CreateMessageResult(cachedDto, IsReplay: true);
         }
 
@@ -57,12 +59,12 @@ public sealed class CreateMessageHandler
         {
             EventType = "message.created",
             GuildId = cmd.GuildId,
-            Payload = JsonSerializer.Serialize(dto),
+            Payload = JsonSerializer.Serialize(dto, WebJsonOpts),
         };
         var idempotencyKey = new IdempotencyKey
         {
             Key = cmd.IdempotencyKey,
-            Response = JsonSerializer.Serialize(dto),
+            Response = JsonSerializer.Serialize(dto, WebJsonOpts),
             ExpiresAt = DateTimeOffset.UtcNow.Add(IdempotencyTtl),
         };
 
@@ -72,6 +74,7 @@ public sealed class CreateMessageHandler
 
         await tx.CommitAsync(ct);
 
+        NexTalkMetrics.MessagesCreated.Inc();
         _logger.LogInformation(
             "Message created: id={MessageId} channel={ChannelId} guild={GuildId} correlation={CorrelationId}",
             message.Id, cmd.ChannelId, cmd.GuildId, cmd.CorrelationId);

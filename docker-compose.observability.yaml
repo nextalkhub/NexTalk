@@ -1,73 +1,33 @@
-# ─────────────────────────────────────────────────────────────────────────────
-# NexTalk — Observability Stack
-# Запуск вместе с основным docker-compose:
+# NexTalk - Observability Stack
 #
-#   docker compose \
-#     -f docker-compose.yaml \
-#     -f infra/observability/docker-compose.observability.yml \
-#     up -d
+# Запуск поверх основного docker-compose:
 #
-# Доступ (http):
+#   docker compose -f docker-compose.yaml -f docker-compose.observability.yaml up -d
+#
+# Только observability (для отладки стека):
+#
+#   docker compose -f docker-compose.observability.yaml up -d
+#
+# Доступ:
 #   Grafana     → http://localhost:3000   (admin / ${GRAFANA_ADMIN_PASSWORD:-admin})
 #   Prometheus  → http://localhost:9090
-#   Jaeger UI   → http://localhost:16686
+#   Loki        → http://localhost:3100
+#   Tempo       → http://localhost:3200
+#   Alloy UI    → http://localhost:12345
 #
-# ─────────────────────────────────────────────────────────────────────────────
+# Трейсы (если OpenTelemetry настроен в сервисах) - Tempo принимает OTLP напрямую:
+#   gRPC → localhost:4317
+#   HTTP → localhost:4318
+#
+# Конфиги: infra/observability/{prometheus,loki,alloy,tempo,grafana}/
+
 name: nextalk
 
 services:
 
-  # ───────────────────────────────────────────────────────────────────────────
-  # OpenTelemetry Collector (contrib)
-  # Принимает трейсы по OTLP gRPC/HTTP от микросервисов (Фаза 2),
-  # маршрутизирует их в Jaeger. Метрики сервисов Prometheus собирает сам.
-  # ───────────────────────────────────────────────────────────────────────────
-  otel-collector:
-    image: otel/opentelemetry-collector-contrib:0.152.0
-    container_name: otel-collector
-    restart: unless-stopped
-    command: ["--config=/etc/otelcol/config.yaml"]
-    volumes:
-      - ./infra/observability/otel-collector/config.yaml:/etc/otelcol/config.yaml:ro
-    ports:
-      - "4317:4317"     # OTLP gRPC
-      - "4318:4318"     # OTLP HTTP
-    networks:
-      - nextalk
-    depends_on:
-      jaeger:
-        condition: service_healthy
-    # distroless образ без shell, healthcheck не настраивается
-
-  # ───────────────────────────────────────────────────────────────────────────
-  # Jaeger v2 — all-in-one (dev, in-memory)
-  # Хранилище и UI для распределённых трейсов.
-  # Принимает OTLP от otel-collector на :4317 (внутренний порт).
-  # UI: http://localhost:16686. Health check: :13133.
-  # ───────────────────────────────────────────────────────────────────────────
-  jaeger:
-    image: jaegertracing/jaeger:2.18.0
-    container_name: jaeger
-    restart: unless-stopped
-    command: ["--config=/etc/jaeger/config.yaml"]
-    volumes:
-      - ./infra/observability/jaeger/config.yaml:/etc/jaeger/config.yaml:ro
-    ports:
-      - "16686:16686"   # Jaeger UI + Query HTTP API
-    networks:
-      - nextalk
-    healthcheck:
-      test: ["CMD", "wget", "-qO-", "http://localhost:13133/status"]
-      interval: 15s
-      timeout: 5s
-      retries: 3
-      start_period: 15s
-
-  # ───────────────────────────────────────────────────────────────────────────
-  # Prometheus
-  # Скрейпит /metrics у всех микросервисов каждые 15 секунд.
-  # Хранение: 15 дней. Remote Write включён (для будущей интеграции с OTel).
-  # ───────────────────────────────────────────────────────────────────────────
+  # ── Prometheus ──────────────────────────────────────────────────────────────
+  # Скрейпит /metrics у микросервисов каждые 15 сек.
+  # remote_write включен - принимает метрики от внешних источников.
   prometheus:
     image: prom/prometheus:v3.11.3
     container_name: prometheus
@@ -94,44 +54,34 @@ services:
       retries: 3
       start_period: 10s
 
-  # ───────────────────────────────────────────────────────────────────────────
-  # Loki
-  # Агрегация и хранение логов. Single-binary mode, filesystem storage.
-  # Logql-запросы через Grafana. Получает логи от Promtail.
-  # ───────────────────────────────────────────────────────────────────────────
+  # ── Loki ────────────────────────────────────────────────────────────────────
+  # Агрегирует и хранит логи. Принимает потоки от Alloy.
+  # Запускается от root (uid 0) - named volume создается как root:root,
+  # иначе Loki не может писать в /loki/chunks.
   loki:
     image: grafana/loki:3.7.2
     container_name: loki
     restart: unless-stopped
-    # user: "0" — Loki 3.x работает под uid 10001, но Docker создаёт named volumes
-    # с root:root. Loki не может писать в /loki/chunks → /ready возвращает 503.
-    # В dev запускаем от root чтобы избежать проблем с правами.
     user: "0:0"
     command: ["-config.file=/etc/loki/config.yaml", "-target=all"]
     volumes:
-      - ./infra/observability/loki/config.yaml:/etc/loki/config.yaml:ro
+      - ./infra/observability/loki/loki-config.yaml:/etc/loki/config.yaml:ro
       - loki-data:/loki
     ports:
-      - "3100:3100"   # открыт для дебага: curl http://localhost:3100/ready
+      - "3100:3100"
     networks:
       - nextalk
     healthcheck:
-      # Образ Loki 3.6+ — полностью distroless: нет sh, wget, curl, nc.
-      # Единственный доступный бинарь — loki. -version выходит с кодом 0
-      # если процесс жив. HTTP /ready проверить изнутри контейнера невозможно.
-      # Для ручной проверки снаружи: curl http://localhost:3100/ready
+      # Loki 3.6+ - distroless образ, нет curl/wget. loki -version выходит с кодом 0.
       test: ["CMD", "loki", "-version"]
       interval: 15s
       timeout: 5s
       retries: 3
       start_period: 45s
 
-  # ───────────────────────────────────────────────────────────────────────────
-  # Grafana Alloy — сборщик логов (заменяет deprecated Promtail)
-  # Читает stdout/stderr контейнеров nextalk через Docker API,
-  # парсит Serilog CompactJson, пишет structured_metadata (trace_id/span_id).
-  # UI (опционально): http://localhost:12345
-  # ───────────────────────────────────────────────────────────────────────────
+  # ── Alloy ───────────────────────────────────────────────────────────────────
+  # Собирает логи контейнеров nextalk через Docker API.
+  # Парсит Serilog CompactJson, кладет structured_metadata (TraceId/SpanId) в Loki.
   alloy:
     image: grafana/alloy:v1.16.1
     container_name: alloy
@@ -140,6 +90,8 @@ services:
     volumes:
       - ./infra/observability/alloy/config.alloy:/etc/alloy/config.alloy:ro
       - /var/run/docker.sock:/var/run/docker.sock:ro
+    ports:
+      - "12345:12345"   # Alloy UI (опционально)
     depends_on:
       loki:
         condition: service_healthy
@@ -152,12 +104,30 @@ services:
       retries: 3
       start_period: 15s
 
-  # ───────────────────────────────────────────────────────────────────────────
-  # Grafana
-  # Единый интерфейс для метрик (Prometheus), логов (Loki) и трейсов (Jaeger).
-  # Datasources и dashboards провизионируются автоматически из /provisioning.
-  # Доступ: http://localhost:3000  →  admin / ${GRAFANA_ADMIN_PASSWORD:-admin}
-  # ───────────────────────────────────────────────────────────────────────────
+  # ── Tempo ───────────────────────────────────────────────────────────────────
+  # Distributed tracing backend. Принимает OTLP напрямую от сервисов.
+  # metrics_generator → RED-метрики из трейсов → Prometheus remote_write.
+  tempo:
+    image: grafana/tempo:2.7.2
+    container_name: tempo
+    restart: unless-stopped
+    command: ["-config.file=/etc/tempo/tempo.yaml"]
+    volumes:
+      - ./infra/observability/tempo/tempo.yaml:/etc/tempo/tempo.yaml:ro
+      - tempo-data:/var/tempo
+    ports:
+      - "3200:3200"   # Tempo HTTP API (Grafana datasource)
+      - "4317:4317"   # OTLP gRPC (трейсы от сервисов)
+      - "4318:4318"   # OTLP HTTP
+    networks:
+      - nextalk
+    depends_on:
+      prometheus:
+        condition: service_healthy
+
+  # ── Grafana ─────────────────────────────────────────────────────────────────
+  # Единый UI: метрики (Prometheus), логи (Loki), трейсы (Tempo).
+  # Datasources и дашборды провизионируются автоматически из /provisioning.
   grafana:
     image: grafana/grafana:13.0.1
     container_name: grafana
@@ -180,8 +150,8 @@ services:
         condition: service_healthy
       loki:
         condition: service_healthy
-      jaeger:
-        condition: service_healthy
+      tempo:
+        condition: service_started
     networks:
       - nextalk
     healthcheck:
@@ -198,4 +168,5 @@ networks:
 volumes:
   prometheus-data:
   loki-data:
+  tempo-data:
   grafana-data:

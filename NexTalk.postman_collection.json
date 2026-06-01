@@ -1534,7 +1534,7 @@
 													"path": ["api", "guilds", ":id", "invites"],
 													"variable": [{"key": "id", "value": "<string>", "description": "(Required) идентификатор сервера"}]
 												},
-												"description": "Создать ссылку-приглашение. expiresIn — срок действия в секундах (необязательно)"
+												"description": "Создать ссылку-приглашение. expiresIn - срок действия в секундах (необязательно)"
 											},
 											"response": [
 												{

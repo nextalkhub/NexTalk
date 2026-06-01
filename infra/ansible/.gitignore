@@ -1,0 +1,19 @@
+# Локальный inventory (содержит реальные IP)
+inventory/hosts.ini
+
+# Vault с настоящими секретами (лежит в group_vars/all/ чтобы применяться ко всем группам)
+inventory/group_vars/all/vault.yml
+
+# Локально установленные collections и роли
+collections/
+.ansible/
+
+# Pull'енутый kubeconfig с control-plane ноды
+kubeconfig
+*.kubeconfig
+
+# Отрендеренный helm-deploy секретный values (см. playbooks/helm-deploy.yml)
+.helm-secrets.values.yaml
+
+# TLS-сертификаты (Cloudflare Origin и прочие)
+inventory/group_vars/all/certs/

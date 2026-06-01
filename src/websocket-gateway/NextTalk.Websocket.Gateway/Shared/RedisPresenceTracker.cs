@@ -13,7 +13,7 @@ public sealed class RedisPresenceTracker : IPresenceTracker
     {
         var score = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
         // SortedSetAdd returns true если элемент ДОБАВЛЕН (новый = был офлайн)
-        // и false если обновлён (уже существовал = был онлайн)
+        // и false если обновлен (уже существовал = был онлайн)
         return _db.SortedSetAdd(Key, userId, score);
     }
 
@@ -25,6 +25,14 @@ public sealed class RedisPresenceTracker : IPresenceTracker
     {
         var cutoff = DateTimeOffset.UtcNow.Subtract(timeout).ToUnixTimeSeconds();
         return _db.SortedSetRangeByScore(Key, 0, cutoff)
+            .Select(v => v.ToString())
+            .ToList();
+    }
+
+    public IReadOnlyList<string> GetAllOnline(TimeSpan timeout)
+    {
+        var cutoff = DateTimeOffset.UtcNow.Subtract(timeout).ToUnixTimeSeconds();
+        return _db.SortedSetRangeByScore(Key, cutoff, double.PositiveInfinity)
             .Select(v => v.ToString())
             .ToList();
     }

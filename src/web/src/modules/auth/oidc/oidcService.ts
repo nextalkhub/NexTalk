@@ -26,7 +26,6 @@ class OidcService {
     private userInfo: UserInfo | null = null
     private tokenExpirationTimer: ReturnType<typeof setTimeout> | null = null
 
-    // Конфигурация Zitadel
     private config = {
         authority: import.meta.env.VITE_OIDC_AUTHORITY,
         clientId: import.meta.env.VITE_OIDC_CLIENT_ID || '',
@@ -60,20 +59,15 @@ class OidcService {
         return OidcService.instance
     }
 
-    // Начало авторизации - редирект на Zitadel
     async login(): Promise<void> {
-        // Генерируем PKCE параметры
         const codeVerifier = generateCodeVerifier()
         const codeChallenge = await generateCodeChallenge(codeVerifier)
 
-        // Сохраняем code_verifier в sessionStorage
         sessionStorage.setItem('code_verifier', codeVerifier)
 
-        // Генерируем state для защиты от CSRF
         const state = generateCodeVerifier()
         sessionStorage.setItem('oauth_state', state)
 
-        // Строим URL для редиректа
         const params = new URLSearchParams({
             client_id: this.config.clientId,
             redirect_uri: this.config.redirectUri,
@@ -86,25 +80,20 @@ class OidcService {
 
         const authUrl = `${this.config.authority}/oauth/v2/authorize?${params.toString()}`
 
-        // Редирект на Zitadel
         window.location.href = authUrl
     }
 
-    // Обработка callback после редиректа от Zitadel
     async handleCallback(code: string, state: string): Promise<Tokens | null> {
-        // Проверяем state
         const savedState = sessionStorage.getItem('oauth_state')
         if (state !== savedState) {
             throw new Error('Invalid state parameter - possible CSRF attack')
         }
 
-        // Получаем code_verifier
         const codeVerifier = sessionStorage.getItem('code_verifier')
         if (!codeVerifier) {
             throw new Error('Code verifier not found')
         }
 
-        // Обмениваем code на токены
         const params = new URLSearchParams({
             client_id: this.config.clientId,
             grant_type: 'authorization_code',
@@ -126,22 +115,20 @@ class OidcService {
         }
 
         this.tokens = await response.json()
-        this.saveTokensToStorage()
 
-        // Очищаем временные данные
         sessionStorage.removeItem('oauth_state')
         sessionStorage.removeItem('code_verifier')
 
-        // Загружаем информацию о пользователе
         await this.loadUserInfo()
 
-        // Настраиваем автообновление токена
+        // Сохраняем после loadUserInfo - иначе userInfo не попадет в localStorage
+        this.saveTokensToStorage()
+
         this.scheduleTokenRefresh()
 
         return this.tokens
     }
 
-    // Загрузка информации о пользователе
     async loadUserInfo(): Promise<UserInfo | null> {
         if (!this.tokens?.access_token) {
             throw new Error('No access token')
@@ -161,7 +148,6 @@ class OidcService {
         return this.userInfo
     }
 
-    // Обновление access_token через refresh_token
     async refreshToken(): Promise<Tokens | null> {
         if (!this.tokens?.refresh_token) {
             throw new Error('No refresh token available')
@@ -192,30 +178,33 @@ class OidcService {
         return this.tokens
     }
 
-    // Выход из системы
     async logout(): Promise<void> {
-        // Очищаем таймер
         if (this.tokenExpirationTimer) {
             clearTimeout(this.tokenExpirationTimer)
             this.tokenExpirationTimer = null
         }
 
-        // Очищаем локальные данные
+        const idToken = this.tokens?.id_token
+
         this.tokens = null
         this.userInfo = null
         localStorage.removeItem('oidc_tokens')
         localStorage.removeItem('oidc_user')
 
-        // Редирект на Zitadel logout
         const params = new URLSearchParams({
             client_id: this.config.clientId,
-            logout_uri: this.config.postLogoutRedirectUri,
+            post_logout_redirect_uri: this.config.postLogoutRedirectUri,
         })
+        if (idToken) {
+            params.set('id_token_hint', idToken)
+        }
 
         window.location.href = `${this.config.authority}/oidc/v1/end_session?${params.toString()}`
+
+        // Зависаем - страница уйдет сама, fulfilled не должен срабатывать до навигации.
+        await new Promise<never>(() => {})
     }
 
-    // Настройка автообновления токена
     private scheduleTokenRefresh(): void {
         if (this.tokenExpirationTimer) {
             clearTimeout(this.tokenExpirationTimer)
@@ -230,7 +219,6 @@ class OidcService {
         }, refreshTime)
     }
 
-    // Сохранение токенов в localStorage
     private saveTokensToStorage(): void {
         if (this.tokens) {
             localStorage.setItem('oidc_tokens', JSON.stringify(this.tokens))
@@ -240,7 +228,6 @@ class OidcService {
         }
     }
 
-    // Загрузка токенов из localStorage
     private loadTokensFromStorage(): void {
         const tokensStr = localStorage.getItem('oidc_tokens')
         const userStr = localStorage.getItem('oidc_user')
@@ -254,17 +241,14 @@ class OidcService {
         }
     }
 
-    // Получение access_token для API запросов
     getAccessToken(): string | null {
         return this.tokens?.access_token || null
     }
 
-    // Получение информации о пользователе
     getUserInfo(): UserInfo | null {
         return this.userInfo
     }
 
-    // Проверка авторизации
     isAuthenticated(): boolean {
         return !!this.tokens?.access_token && !!this.userInfo
     }

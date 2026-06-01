@@ -46,20 +46,6 @@ const chatSlice = createSlice({
     name: 'chat',
     initialState,
     reducers: {
-        sendMessage: (state, action: PayloadAction<MessageInterface>) => {
-            const msg = action.payload
-
-            if (!state.messages[msg.channelId]) {
-                state.messages[msg.channelId] = {
-                    items: [],
-                    nextCursor: null,
-                    hasMore: true,
-                    loading: false,
-                }
-            }
-
-            state.messages[msg.channelId].items.push(msg)
-        },
         messageReceived: (state, action: PayloadAction<MessageInterface>) => {
             const msg = action.payload
 
@@ -72,7 +58,37 @@ const chatSlice = createSlice({
                 }
             }
 
+            const items = state.messages[msg.channelId].items
+
+            // убираем optimistic-сообщение по совпадению автора+контента
+            const optIdx = items.findIndex(
+                m => m.id.startsWith('opt_') && m.authorId === msg.authorId && m.content === msg.content
+            )
+            if (optIdx >= 0) items.splice(optIdx, 1)
+
+            if (!items.some(m => m.id === msg.id)) items.push(msg)
+        },
+
+        addOptimisticMessage: (state, action: PayloadAction<MessageInterface>) => {
+            const msg = action.payload
+            if (!state.messages[msg.channelId]) {
+                state.messages[msg.channelId] = {
+                    items: [],
+                    nextCursor: null,
+                    hasMore: true,
+                    loading: false,
+                }
+            }
             state.messages[msg.channelId].items.push(msg)
+        },
+
+        deleteMessage: (state, action: PayloadAction<{ channelId: string; messageId: string }>) => {
+            const { channelId, messageId } = action.payload
+            if (state.messages[channelId]) {
+                state.messages[channelId].items = state.messages[channelId].items.filter(
+                    m => m.id !== messageId
+                )
+            }
         },
     },
     extraReducers: builder => {
@@ -132,5 +148,5 @@ const chatSlice = createSlice({
     }
 })
 
-export const { sendMessage, messageReceived } = chatSlice.actions
+export const { messageReceived, addOptimisticMessage, deleteMessage } = chatSlice.actions
 export default chatSlice.reducer

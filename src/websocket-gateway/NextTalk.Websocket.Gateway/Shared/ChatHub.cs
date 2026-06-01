@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.SignalR;
+using Microsoft.Extensions.Options;
 using NextTalk.Websocket.Gateway.Features.Chat.SendMessage;
 using NextTalk.Websocket.Gateway.Infrastructure;
 
@@ -10,6 +11,8 @@ public sealed class ChatHub : Hub
     private readonly IPresenceTracker _presence;
     private readonly SendMessageHandler _sendMessageHandler;
     private readonly GuildServiceClient _guildClient;
+    private readonly IUserActivityService _activity;
+    private readonly TimeSpan _offlineTimeout;
     private readonly ILogger<ChatHub> _logger;
 
     public ChatHub(
@@ -17,12 +20,16 @@ public sealed class ChatHub : Hub
         IPresenceTracker presence,
         SendMessageHandler sendMessageHandler,
         GuildServiceClient guildClient,
+        IUserActivityService activity,
+        IOptions<PresenceOptions> presenceOptions,
         ILogger<ChatHub> logger)
     {
         _connections = connections;
         _presence = presence;
         _sendMessageHandler = sendMessageHandler;
         _guildClient = guildClient;
+        _activity = activity;
+        _offlineTimeout = TimeSpan.FromSeconds(presenceOptions.Value.OfflineTimeout);
         _logger = logger;
     }
 
@@ -60,6 +67,8 @@ public sealed class ChatHub : Hub
             }
         }
 
+        NexTalkMetrics.ActiveConnections.Inc();
+        _ = _activity.RecordActivityAsync(userId);
         _logger.LogInformation("User {UserId} connected ({ConnectionId}), guilds: {GuildCount}",
             userId, Context.ConnectionId, guilds.Count);
 
@@ -69,18 +78,19 @@ public sealed class ChatHub : Hub
     public override async Task OnDisconnectedAsync(Exception? exception)
     {
         var userId = GetUserId();
-        _presence.Remove(userId);
 
-        if (_connections.TryUnregister(userId, out var entry) && entry is not null)
+        var guildIds = _connections.Unregister(userId, Context.ConnectionId);
+        if (guildIds is not null)
         {
-            foreach (var guildId in entry.GuildIds)
+            _presence.Remove(userId);
+            foreach (var guildId in guildIds)
             {
-                await Groups.RemoveFromGroupAsync(Context.ConnectionId, GuildGroup(guildId));
                 await Clients.Group(GuildGroup(guildId))
                     .SendAsync("GatewayEvent", new { Type = "presence.offline", Payload = new { UserId = userId } });
             }
         }
 
+        NexTalkMetrics.ActiveConnections.Dec();
         if (exception is not null)
             _logger.LogWarning(exception, "User {UserId} disconnected with error ({ConnectionId})", userId, Context.ConnectionId);
         else
@@ -129,6 +139,49 @@ public sealed class ChatHub : Hub
             _presence.SetOnline(userId);
 
         return Task.CompletedTask;
+    }
+
+    /// <summary>
+    /// Возвращает список userId всех пользователей, чей heartbeat не устарел.
+    /// Фронт вызывает после connect/reconnect чтобы получить начальный снапшот presence.
+    /// </summary>
+    public IReadOnlyList<string> GetOnlineUsers()
+    {
+        var userId = GetUserId();
+        if (string.IsNullOrEmpty(userId)) return [];
+        return _presence.GetAllOnline(_offlineTimeout);
+    }
+
+    /// <summary>
+    /// Подписать соединение на realtime-события указанной гильдии. Фронт вызывает
+    /// после принятия инвайта / создания гильдии, иначе member.joined / channel.created
+    /// прилетят остальным, а новому участнику - нет.
+    /// Membership проверяется через guild-service: иначе можно подписаться на чужую гильдию.
+    /// </summary>
+    public async Task<bool> JoinGuildGroup(Guid guildId)
+    {
+        var userId = GetUserId();
+        if (string.IsNullOrEmpty(userId)) return false;
+
+        var correlationId = Guid.NewGuid().ToString();
+        var guilds = await _guildClient.GetUserGuildsAsync(userId, correlationId);
+        if (guilds.All(g => g.Id != guildId))
+            return false;
+
+        await Groups.AddToGroupAsync(Context.ConnectionId, GuildGroup(guildId));
+        _connections.AddGuild(userId, guildId);
+        return true;
+    }
+
+    /// <summary>
+    /// Отписать соединение от гильдии (например, после guild.force.disconnect / leave guild).
+    /// </summary>
+    public async Task LeaveGuildGroup(Guid guildId)
+    {
+        var userId = GetUserId();
+        await Groups.RemoveFromGroupAsync(Context.ConnectionId, GuildGroup(guildId));
+        if (!string.IsNullOrEmpty(userId))
+            _connections.RemoveGuild(userId, guildId);
     }
 
     private string GetUserId() => Context.User.GetUserId();

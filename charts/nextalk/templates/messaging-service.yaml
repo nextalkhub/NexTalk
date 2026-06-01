@@ -6,6 +6,11 @@ metadata:
   namespace: {{ .Values.namespace }}
 spec:
   replicas: {{ .Values.messagingService.replicas }}
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
   selector:
     matchLabels:
       app: messaging-service
@@ -13,11 +18,18 @@ spec:
     metadata:
       labels:
         app: messaging-service
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "5002"
     spec:
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
       containers:
         - name: messaging-service
-          image: {{ .Values.messagingService.image }}
-          imagePullPolicy: {{ .Values.messagingService.imagePullPolicy }}
+          image: "{{ .Values.messagingService.image.repository }}:{{ .Values.messagingService.image.tag }}"
+          imagePullPolicy: {{ .Values.messagingService.image.pullPolicy }}
+          securityContext:
+            {{- toYaml .Values.containerSecurityContext | nindent 12 }}
           ports:
             - containerPort: 5002
           env:
@@ -33,24 +45,21 @@ spec:
                 secretKeyRef:
                   name: nextalk-secrets
                   key: postgres-dsn-nextalk
-            - name: ZITADEL_DOMAIN
-              valueFrom:
-                configMapKeyRef:
-                  name: nextalk-config
-                  key: ZITADEL_DOMAIN
-            - name: ZITADEL_EXTERNALPORT
-              valueFrom:
-                configMapKeyRef:
-                  name: nextalk-config
-                  key: ZITADEL_EXTERNALPORT
             - name: Zitadel__Authority
-              value: "http://$(ZITADEL_DOMAIN):$(ZITADEL_EXTERNALPORT)"
+              valueFrom:
+                configMapKeyRef:
+                  name: nextalk-config
+                  key: ZITADEL_AUTHORITY
             - name: Zitadel__MetadataAddress
               value: http://zitadel:8080/.well-known/openid-configuration
             - name: Services__WebSocketGateway
               value: http://websocket-gateway:5004
             - name: Services__GuildService
               value: http://guild-service:5001
+            - name: OTEL_EXPORTER_OTLP_ENDPOINT
+              value: {{ .Values.observability.otelEndpoint }}
+            - name: OTEL_EXPORTER_OTLP_PROTOCOL
+              value: grpc
           startupProbe:
             httpGet:
               path: /healthz

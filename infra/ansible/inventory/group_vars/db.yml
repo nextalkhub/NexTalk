@@ -1,0 +1,42 @@
+---
+# PostgreSQL
+postgres_listen_address: "{{ ansible_host }}"
+postgres_port: 5432
+postgres_max_connections: 100
+postgres_shared_buffers: "1GB"
+postgres_effective_cache_size: "2GB"
+postgres_work_mem: "8MB"
+postgres_maintenance_work_mem: "128MB"
+
+# Список БД и пользователей.
+# Один app-юзер на обе БД (nextalk + zitadel) - см. docs/decisions.md.
+# Системный postgres не трогаем: postgresql_user с role_attr_flags: LOGIN
+# снес бы у него SUPERUSER. Поэтому отдельный nextalk_app.
+postgres_databases:
+  - name: nextalk
+    owner: nextalk_app
+  - name: zitadel
+    owner: nextalk_app
+
+postgres_users:
+  - name: nextalk_app
+    password: "{{ vault_postgres_password | default('REPLACE_ME') }}"
+
+# Whitelist в pg_hba.conf - вся приватная сеть (control-plane + worker ноды k3s).
+postgres_allowed_hosts:
+  - "10.19.0.0/16"
+
+# Файрвол: 5432, 6379 и порты экспортеров - только из приватной сети.
+ufw_extra_rules:
+  - { rule: allow, port: '5432', proto: tcp, src: "{{ private_network_cidr }}", comment: 'postgres' }
+  - { rule: allow, port: '6379', proto: tcp, src: "{{ private_network_cidr }}", comment: 'redis' }
+  - { rule: allow, port: '9187', proto: tcp, src: "{{ private_network_cidr }}", comment: 'postgres_exporter (prometheus)' }
+  - { rule: allow, port: '9121', proto: tcp, src: "{{ private_network_cidr }}", comment: 'redis_exporter (prometheus)' }
+  - { rule: allow, port: '9100', proto: tcp, src: "{{ private_network_cidr }}", comment: 'node_exporter (prometheus)' }
+
+# Redis
+redis_bind_address: "{{ ansible_host }}"
+redis_port: 6379
+redis_password: "{{ vault_redis_password | default('REPLACE_ME') }}"
+redis_maxmemory: "512mb"
+redis_maxmemory_policy: "allkeys-lru"

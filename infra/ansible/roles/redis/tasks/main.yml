@@ -1,0 +1,55 @@
+---
+# Установка Redis из стандартного Ubuntu-репозитория.
+# packages.redis.io (Redis 8) недоступен с Beget-сети - SSL handshake timeout.
+# Ubuntu 22.04 (jammy) дает Redis 6.x, Ubuntu 24.04 (noble) - Redis 7.x.
+
+- name: Установить redis-server
+  ansible.builtin.apt:
+    name: redis-server
+    state: present
+    update_cache: true
+  tags: [redis]
+
+- name: Положить redis.conf
+  ansible.builtin.template:
+    src: redis.conf.j2
+    dest: /etc/redis/redis.conf
+    owner: redis
+    group: redis
+    mode: '0640'
+  notify: restart redis
+  tags: [redis, config]
+
+- name: Включить и запустить redis
+  ansible.builtin.systemd:
+    name: redis-server
+    enabled: true
+    state: started
+  tags: [redis]
+
+# ─── Мониторинг: redis_exporter ──────────────────────────────────────────────
+
+- name: Установить prometheus-redis-exporter
+  ansible.builtin.apt:
+    name: prometheus-redis-exporter
+    state: present
+  tags: [redis, monitoring]
+
+- name: Настроить параметры redis_exporter
+  ansible.builtin.lineinfile:
+    path: /etc/default/prometheus-redis-exporter
+    regexp: '^ARGS='
+    line: "ARGS=\"--redis.addr=redis://127.0.0.1:{{ redis_port }} --redis.password={{ redis_password }}\""
+    create: true
+    owner: root
+    group: root
+    mode: '0640'
+  notify: restart redis-exporter
+  tags: [redis, monitoring]
+
+- name: Включить и запустить prometheus-redis-exporter
+  ansible.builtin.systemd:
+    name: prometheus-redis-exporter
+    enabled: true
+    state: started
+  tags: [redis, monitoring]

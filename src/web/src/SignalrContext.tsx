@@ -9,10 +9,20 @@ import {
     HubConnectionBuilder,
     LogLevel,
 } from '@microsoft/signalr'
-import {selectIsAuthenticated} from "./shared/slices/authSlice.ts";
-import {useAppSelector} from "./store.ts";
-import { SignalRContext } from "./shared/hooks/signalRContext.ts";
-import {oidcService} from "./modules/auth/oidc/oidcService.ts";
+import { selectIsAuthenticated } from "./shared/slices/authSlice.ts"
+import { useAppDispatch, useAppSelector } from "./store.ts"
+import { SignalRContext } from "./shared/hooks/signalRContext.ts"
+import { oidcService } from "./modules/auth/oidc/oidcService.ts"
+import { setPresenceBulk } from "./shared/slices/presenceSlice.ts"
+
+const fetchPresenceSnapshot = async (conn: HubConnection, dispatch: ReturnType<typeof useAppDispatch>) => {
+    try {
+        const ids = await conn.invoke<string[]>('GetOnlineUsers')
+        dispatch(setPresenceBulk(ids))
+    } catch (err) {
+        console.warn('GetOnlineUsers failed:', err)
+    }
+}
 
 export const SignalRProvider = ({
                                     children,
@@ -20,6 +30,7 @@ export const SignalRProvider = ({
     children: React.ReactNode
 }) => {
     const isAuthenticated = useAppSelector(selectIsAuthenticated)
+    const dispatch = useAppDispatch()
 
     const [connection, setConnection] = useState<HubConnection | null>(null)
     const [isConnected, setIsConnected] = useState(false)
@@ -27,13 +38,13 @@ export const SignalRProvider = ({
     useEffect(() => {
         if (!isAuthenticated) return
 
-        const token = oidcService.getAccessToken()
+        if (!oidcService.getAccessToken()) return
 
-        if (!token) return
-
+        // Фабрика вызывается на каждом коннекте/реконнекте - берем свежий токен
+        // из oidcService, иначе после refresh SignalR будет ходить с протухшим.
         const conn = new HubConnectionBuilder()
             .withUrl(import.meta.env.VITE_WS_URL, {
-                accessTokenFactory: () => token,
+                accessTokenFactory: () => oidcService.getAccessToken() ?? '',
                 transport: HttpTransportType.WebSockets,
                 skipNegotiation: true,
             })
@@ -45,24 +56,30 @@ export const SignalRProvider = ({
             .then(() => {
                 console.log('SignalR connected')
                 setIsConnected(true)
+                fetchPresenceSnapshot(conn, dispatch)
             })
             .catch(err => {
                 console.error('SignalR error:', err)
             })
 
-        conn.onclose(() => {
-            setIsConnected(false)
+        conn.onclose(() => setIsConnected(false))
+        conn.onreconnecting(() => setIsConnected(false))
+        conn.onreconnected(() => {
+            setIsConnected(true)
+            fetchPresenceSnapshot(conn, dispatch)
         })
 
         setConnection(conn)
 
         return () => {
             conn.stop()
+            setConnection(null)
+            setIsConnected(false)
         }
-    }, [isAuthenticated])
+    }, [isAuthenticated, dispatch])
 
     useEffect(() => {
-        if (!connection) return
+        if (!connection || !isConnected) return
 
         const interval = setInterval(() => {
             connection.invoke('Heartbeat')
@@ -70,7 +87,7 @@ export const SignalRProvider = ({
         }, 20000)
 
         return () => clearInterval(interval)
-    }, [connection])
+    }, [connection, isConnected])
 
     return (
         <SignalRContext.Provider
@@ -83,4 +100,3 @@ export const SignalRProvider = ({
         </SignalRContext.Provider>
     )
 }
-

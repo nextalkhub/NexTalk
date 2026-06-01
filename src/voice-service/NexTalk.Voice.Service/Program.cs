@@ -19,9 +19,13 @@ using OpenTelemetry.Resources;
 using OpenTelemetry.Trace;
 using Polly;
 using Prometheus;
+using Prometheus.DotNetRuntime;
 using Serilog;
 using Serilog.Enrichers.Span;
+using StackExchange.Redis;
 using IPNetwork = System.Net.IPNetwork;
+
+try { DotNetRuntimeStatsBuilder.Customize().StartCollecting(); } catch (InvalidOperationException) { }
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -61,8 +65,11 @@ var swaggerClientId = builder.Configuration["Zitadel:SwaggerClientId"];
 var guildUrl = builder.Configuration["Services:GuildService"] ?? throw new InvalidOperationException("Services:GuildService не задан.");
 var wsGatewayUrl = builder.Configuration["Services:WebSocketGateway"] ?? throw new InvalidOperationException("Services:WebSocketGateway не задан.");
 
-// In-memory сессионное хранилище и LiveKit-инфраструктура.
-builder.Services.AddSingleton<SessionStore>();
+builder.Services.AddSingleton<IConnectionMultiplexer>(_ =>
+    ConnectionMultiplexer.Connect(
+        builder.Configuration.GetConnectionString("Redis")
+        ?? throw new InvalidOperationException("ConnectionStrings:Redis не задан.")));
+builder.Services.AddSingleton<ISessionStore, RedisSessionStore>();
 builder.Services.AddSingleton<LiveKitTokenGenerator>();
 builder.Services.AddSingleton<LiveKitRoomClient>();
 
@@ -233,9 +240,7 @@ builder.Services.AddSwaggerGen(c =>
 var livekitUrl = builder.Configuration["LiveKit:Url"]
     ?? throw new InvalidOperationException("LiveKit:Url не задан.");
 
-builder.Services.AddHealthChecks()
-    .AddUrlGroup(new Uri(livekitUrl), name: "livekit", tags: ["ready"])
-    .AddUrlGroup(new Uri($"{guildUrl}/healthz"), name: "guild-service", tags: ["ready"]);
+builder.Services.AddHealthChecks();
 
 var app = builder.Build();
 
@@ -282,10 +287,13 @@ app.UseHttpMetrics();
 
 app.UseSerilogRequestLogging(opts =>
     opts.EnrichDiagnosticContext = (dc, ctx) =>
+    {
         dc.Set("CorrelationId",
             ctx.Request.Headers["X-Request-Id"].FirstOrDefault()
             ?? ctx.Request.Headers["X-Correlation-Id"].FirstOrDefault()
-            ?? ctx.TraceIdentifier));
+            ?? ctx.TraceIdentifier);
+        dc.Set("UserId", ctx.User?.FindFirst("sub")?.Value ?? "");
+    });
 
 // Публичные эндпоинты (требуют JWT).
 JoinVoiceEndpoint.Map(app);
@@ -302,6 +310,8 @@ app.MapHealthChecks("/readyz", new HealthCheckOptions
     Predicate = check => check.Tags.Contains("ready")
 }).AllowAnonymous();
 app.MapMetrics().AllowAnonymous();
+
+_ = NexTalkMetrics.ActiveVoiceSessions;
 
 app.Run();
 

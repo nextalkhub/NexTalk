@@ -23,7 +23,7 @@ public sealed class ZitadelUserInfoService
         _hostHeader  = new Uri(authority).Authority;
     }
 
-    // Кэшируем до истечения access_token (exp claim) — 1 вызов на пользователя за сессию.
+    // Кэшируем до истечения access_token (exp claim) - 1 вызов на пользователя за сессию.
     public async Task<UserInfo?> GetAsync(string sub, string accessToken, DateTimeOffset tokenExpiry, CancellationToken ct = default)
     {
         var key = $"zitadel:ui:{sub}";

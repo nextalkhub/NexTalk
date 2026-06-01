@@ -1,0 +1,78 @@
+---
+# Деплой observability-стека на observability-vps через docker compose.
+# Источник конфигов: infra/observability/ (репо). Копируем целиком.
+
+- name: Создать целевую директорию {{ observability_target_dir }}
+  ansible.builtin.file:
+    path: "{{ observability_target_dir }}"
+    state: directory
+    owner: root
+    group: root
+    mode: '0755'
+  tags: [observability]
+
+# Docker создает директорию если при монтировании файл не существует.
+# Если rsync потом найдет директорию вместо файла - скопирует внутрь нее, не заменит.
+# Удаляем известные пути где это может произойти.
+- name: Удалить docker-созданные директории на месте конфиг-файлов
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: absent
+  loop:
+    - "{{ observability_target_dir }}/loki/loki-config.yaml"
+    - "{{ observability_target_dir }}/tempo/tempo.yaml"
+  tags: [observability]
+
+- name: Скопировать содержимое infra/observability/ на observability-vps
+  ansible.posix.synchronize:
+    src: "{{ playbook_dir }}/../../observability/"
+    dest: "{{ observability_target_dir }}/"
+    delete: false
+    rsync_opts:
+      - "--exclude=.git"
+      - "--exclude=*.log"
+  notify: restart prometheus
+  tags: [observability]
+
+- name: Положить docker-compose.yaml для observability-стека
+  ansible.builtin.template:
+    src: docker-compose.yaml.j2
+    dest: "{{ observability_target_dir }}/docker-compose.yaml"
+    owner: root
+    group: root
+    mode: '0644'
+  tags: [observability]
+
+- name: Запустить observability-стек через docker compose
+  community.docker.docker_compose_v2:
+    project_src: "{{ observability_target_dir }}"
+    state: present
+    pull: missing
+    remove_orphans: true
+  tags: [observability]
+
+# Grafana кеширует провижнинг-дашборды в SQLite и не перезаписывает их при рестарте.
+# Импортируем через API с overwrite=true - единственный надежный способ обновить дашборд.
+- name: Импортировать дашборд nextalk-overview в Grafana через API
+  ansible.builtin.shell: |
+    python3 -c "
+    import json, urllib.request, base64, time, os
+    for _ in range(10):
+        try:
+            with open('{{ observability_target_dir }}/grafana/provisioning/dashboards/nextalk-overview.json') as f:
+                dash = json.load(f)
+            payload = json.dumps({'dashboard': dash, 'overwrite': True, 'folderUid': 'nextalk'}).encode()
+            creds = base64.b64encode(('admin:' + os.environ['GRAFANA_PASS']).encode()).decode()
+            req = urllib.request.Request('http://localhost:3000/api/dashboards/db', data=payload,
+                headers={'Content-Type': 'application/json', 'Authorization': 'Basic ' + creds}, method='POST')
+            with urllib.request.urlopen(req) as r:
+                print(json.load(r).get('status', '?'))
+            break
+        except Exception as e:
+            time.sleep(3)
+    "
+  environment:
+    GRAFANA_PASS: "{{ grafana_admin_password | default('admin') }}"
+  register: grafana_import
+  changed_when: "'success' in grafana_import.stdout"
+  tags: [observability]

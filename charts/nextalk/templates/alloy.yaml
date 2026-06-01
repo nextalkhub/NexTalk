@@ -1,0 +1,131 @@
+{{- if .Values.alloy.enabled }}
+---
+# ServiceAccount для доступа к Kubernetes API
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: alloy
+  namespace: {{ .Values.namespace }}
+
+---
+# ClusterRole: чтение метаданных подов и стриминг логов
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: alloy-nextalk
+rules:
+  - apiGroups: [""]
+    resources: ["nodes", "nodes/proxy", "pods", "namespaces", "endpoints"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: [""]
+    resources: ["pods/log"]
+    verbs: ["get"]
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: alloy-nextalk
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: alloy-nextalk
+subjects:
+  - kind: ServiceAccount
+    name: alloy
+    namespace: {{ .Values.namespace }}
+
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: alloy-config
+  namespace: {{ .Values.namespace }}
+data:
+  config.alloy: |
+{{ .Files.Get "files/alloy-k8s.alloy" | indent 4 }}
+
+---
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: alloy
+  namespace: {{ .Values.namespace }}
+spec:
+  selector:
+    matchLabels:
+      app: alloy
+  template:
+    metadata:
+      labels:
+        app: alloy
+    spec:
+      serviceAccountName: alloy
+      hostNetwork: true
+      dnsPolicy: ClusterFirstWithHostNet
+      securityContext:
+        # root нужен для чтения /var/log/pods (containerd пишет файлы как root 600).
+        runAsNonRoot: false
+        runAsUser: 0
+        runAsGroup: 0
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: alloy
+          image: "{{ .Values.alloy.image.repository }}:{{ .Values.alloy.image.tag }}"
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+          # --storage.path в /tmp - единственный гарантированно writable путь
+          # при readOnlyRootFilesystem: true. /var/lib/alloy не существует в rootfs
+          # образа как создаваемая директория, kubelet не может ее сделать в RO rootfs.
+          args: ["run", "--storage.path=/tmp/alloy-data", "--server.http.listen-addr=0.0.0.0:12345", "/etc/alloy/config.alloy"]
+          env:
+            # K8S_NODE_NAME = имя ноды. Не HOSTNAME - container runtime
+            # перезаписывает HOSTNAME именем пода до того как сработает fieldRef.
+            - name: K8S_NODE_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: spec.nodeName
+            - name: LOKI_URL
+              value: "{{ .Values.observability.lokiUrl }}"
+          volumeMounts:
+            - name: config
+              mountPath: /etc/alloy/config.alloy
+              subPath: config.alloy
+            - name: tmp
+              mountPath: /tmp
+            # Логи подов - стандартный путь k3s/containerd.
+            - name: varlogpods
+              mountPath: /var/log/pods
+              readOnly: true
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              cpu: 200m
+              memory: 256Mi
+          readinessProbe:
+            httpGet:
+              path: /-/ready
+              port: 12345
+            initialDelaySeconds: 10
+            periodSeconds: 10
+      tolerations:
+        # Запускать и на control-plane нодах k3s
+        - key: node-role.kubernetes.io/control-plane
+          operator: Exists
+          effect: NoSchedule
+      volumes:
+        - name: config
+          configMap:
+            name: alloy-config
+        - name: tmp
+          emptyDir: {}
+        - name: varlogpods
+          hostPath:
+            path: /var/log/pods
+{{- end }}

@@ -1,0 +1,31 @@
+---
+# Секреты (vault_k6_grafana_password, vault_k6_test_token) - в vault.yml.
+
+k6_chaos_dir: "{{ lookup('env', 'HOME') }}/nextalk-chaos"
+
+# Cluster topology - статические IP (из hosts.ini)
+k6_namespace: nextalk
+k6_domain: nextalk.fun
+k6_cp1: "10.19.0.11"
+k6_cp2: "10.19.0.12"
+k6_cp3: "10.19.0.13"
+k6_db_vps: "10.19.0.31"
+k6_obs_vps: "10.19.0.41"
+
+k6_api_base: "https://nextalk.fun"
+k6_grafana_url: "https://nextalk.fun"
+k6_prometheus_remote_write: "http://10.19.0.41:9090/api/v1/write"
+
+k6_grafana_user: admin
+k6_grafana_dashboard_uid: nextalk-overview
+
+k6_vus_baseline: 20
+k6_vus_spike: 100
+k6_duration_baseline: 5m
+k6_duration_spike: 3m
+
+# Таймаут ожидания готовности deployment (секунды)
+k6_wait_healthy_timeout: 120
+
+# SSH для SC-03 (Redis restart на db-vps)
+k6_ssh_user: root

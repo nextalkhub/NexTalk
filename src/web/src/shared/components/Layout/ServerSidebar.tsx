@@ -1,46 +1,56 @@
 import React from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import styles from './ServerSidebar.module.scss'
-import {ServerIcon} from "../../../modules/servers/components/ServerIcon/ServerIcon.tsx";
-import {useAppDispatch, useAppSelector} from "../../../store.ts";
-import {selectServers, setCurrentServer} from "../../slices/serverSlice.ts";
+import { IHome, IPlus } from '../Icons/Icons'
+import { useAppDispatch, useAppSelector } from '../../../store'
+import { selectServers, selectCurrentServer, setCurrentServer } from '../../slices/serverSlice'
+import { useGlobalModal } from './ModalProvider'
+import type { Guild } from '../../types'
 
-const getServerType = (name: string): 'game' | 'dev' | 'music' | 'study' | 'friends' | 'default' => {
-    const lowerName = name.toLowerCase()
-    if (lowerName.includes('game') || lowerName.includes('night')) return 'game'
-    if (lowerName.includes('dev') || lowerName.includes('team')) return 'dev'
-    if (lowerName.includes('music') || lowerName.includes('song')) return 'music'
-    if (lowerName.includes('study') || lowerName.includes('learn')) return 'study'
-    if (lowerName.includes('friend')) return 'friends'
-    return 'default'
-}
+export const ServerRail: React.FC = () => {
+  const navigate = useNavigate()
+  const dispatch = useAppDispatch()
+  const servers = useAppSelector(selectServers)
+  const currentServer = useAppSelector(selectCurrentServer)
+  const { serverId } = useParams()
+  const { open } = useGlobalModal()
 
-export const ServerSidebar: React.FC = () => {
-    const navigate = useNavigate()
-    const servers = useAppSelector(selectServers)
-    const dispatch = useAppDispatch()
-    const { serverId } = useParams()
+  const activeId = serverId ?? currentServer?.id
 
-    const handleServerClick = (id: string) => {
-        const server = servers.find(s => s.id === id)
-        if (!server) return
+  const handleServerClick = (server: Guild) => {
+    if (!server.id || !server.name) return
+    dispatch(setCurrentServer(server))
+    navigate(`/servers/${server.id}/channels`)
+  }
 
-        dispatch(setCurrentServer(server))
-        navigate(`/servers/${id}/channels`)
-    }
-
-    return (
-        <div className={styles.sidebar}>
-            {servers.map((server) => (
-                <ServerIcon
-                    key={server.id}
-                    type={getServerType(server.name)}
-                    isActive={serverId === server.id}
-                    onClick={() => handleServerClick(server.id)}
-                />
-            ))}
-
-            <ServerIcon isAdd onClick={() => navigate('/create-server')} />
-        </div>
-    )
+  return (
+    <nav className="rail">
+      <div className="rail-inner">
+        <button
+          className={`rail-icon${!activeId ? ' is-active' : ''}`}
+          title="Главная"
+          onClick={() => navigate('/servers')}
+        >
+          <IHome />
+        </button>
+        <div className="rail-sep" />
+        {servers.filter(s => s.id && s.name).map(server => (
+          <button
+            key={server.id}
+            className={`rail-icon${activeId === server.id ? ' is-active' : ''}`}
+            title={server.name}
+            onClick={() => handleServerClick(server)}
+          >
+            {(server.name ?? '?').charAt(0).toUpperCase()}
+          </button>
+        ))}
+        <button
+          className="rail-icon rail-icon-ghost"
+          title="Создать сервер"
+          onClick={() => open('create-server')}
+        >
+          <IPlus />
+        </button>
+      </div>
+    </nav>
+  )
 }

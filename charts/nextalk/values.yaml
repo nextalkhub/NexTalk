@@ -1,76 +1,201 @@
-# -----------------------------------------------------------------------
-# Global
-# -----------------------------------------------------------------------
+# =======================================================================
+# NexTalk Helm chart values.
+#
+# Файл НЕ содержит секретов. Все пароли, masterkey, livekit-ключи
+# и acme-email подкатываются на этапе деплоя через -f vault-rendered.yaml
+# (см. infra/ansible/playbooks/helm-deploy.yml).
+#
+# Перед деплоем должны быть переопределены:
+#   db.host, db.redisHost           - приватные IP db-vps
+#   tls.email                       - email для Let's Encrypt
+#   postgres.password               - из vault.yml
+#   db.redisPassword                - из vault.yml
+#   zitadel.masterkey               - из vault.yml (ровно 32 символа)
+#   livekit.apiKey, secretKey       - из vault.yml
+#   *Service.image.tag              - конкретная версия (semver или sha)
+# =======================================================================
+
 namespace: nextalk
+
+# Внешний домен кластера. Используется в Ingress и Zitadel.
+domain: "nextalk.fun"
+
+# -----------------------------------------------------------------------
+# Сеть. Один CIDR - используется в NetworkPolicy egress правилах
+# для доступа к db-vps и obs-vps по приватной сети Beget.
+# -----------------------------------------------------------------------
+network:
+  privateCidr: "10.0.0.0/8"
+  # Service CIDR k3s-кластера. Kubernetes API доступен по ClusterIP 10.43.0.1:443.
+  # Нужен Alloy для discovery.kubernetes. Должен совпадать с k3s_service_cidr в ansible/vars.yml.
+  clusterServiceCidr: "10.43.0.0/16"
+
+# -----------------------------------------------------------------------
+# TLS
+# -----------------------------------------------------------------------
+tls:
+  enabled: true
+  # cloudflare - использует предсозданный Secret с CF Origin Certificate.
+  #              ClusterIssuer не создается, cert-manager не нужен.
+  # letsencrypt - создает ClusterIssuer, cert-manager управляет сертификатами.
+  provider: "letsencrypt"
+  # cert-manager создает этот Secret автоматически при provider: letsencrypt.
+  # При provider: cloudflare - создать вручную:
+  #   kubectl create secret tls cloudflare-origin-cert \
+  #     --cert=cert.pem --key=key.pem -n nextalk
+  secretName: "nextalk-tls"
+  # --- Только для provider: letsencrypt ---
+  issuer: "letsencrypt-prod"
+  # email подкатывается через helm-secrets.values.yaml.j2 из tls_email (vars.yml)
+  email: ""
+
+# -----------------------------------------------------------------------
+# DB VPS (Beget приватная сеть)
+# -----------------------------------------------------------------------
+db:
+  host: ""               # Приватный IP db-vps
+  port: "5432"
+  # sslmode для подключений к Postgres.
+  # prefer - TLS если сервер поддерживает, иначе plain. БД в приватной сети
+  # Beget без TLS пока (roadmap: настроить TLS на db-vps и переключить на require).
+  sslmode: "prefer"
+  redisHost: ""          # Тот же db-vps или отдельный
+  redisPort: "6379"
+  redisPassword: ""      # Подкатить через vault, совпадает с REDIS_PASSWORD в infra/db/.env
+
+# -----------------------------------------------------------------------
+# PostgreSQL credentials (хранятся в Secret nextalk-secrets)
+# -----------------------------------------------------------------------
+postgres:
+  user: "nextalk_app"
+  password: ""           # Подкатить через vault (vault_postgres_password)
+  db: "nextalk"
 
 # -----------------------------------------------------------------------
 # Zitadel (OIDC identity provider)
 # -----------------------------------------------------------------------
 zitadel:
-  domain: "localhost"
-  externalPort: "80"
-  # Must be exactly 32 characters
-  masterkey: "MasterkeyNeedsToHave32Characters"
-
-# -----------------------------------------------------------------------
-# PostgreSQL
-# -----------------------------------------------------------------------
-postgres:
-  user: "postgres"
-  password: "postgres"
-  db: "nextalk"
+  domain: "nextalk.fun"
+  externalPort: "443"
+  # Ровно 32 символа. Подкатить через vault (openssl rand -hex 16).
+  masterkey: ""
+  image:
+    repository: ghcr.io/zitadel/zitadel
+    tag: "v4.13.1"
+  loginImage:
+    repository: ghcr.io/zitadel/zitadel-login
+    tag: "v4.13.1"
+  # Пока 1 реплика. HA требует разделить bootstrap (Job с start-from-init)
+  # и runtime (StatefulSet с start без init) - отдельная итерация.
+  replicas: 1
 
 # -----------------------------------------------------------------------
 # LiveKit (voice/video SFU)
 # -----------------------------------------------------------------------
 livekit:
-  apiKey: "devkey"
-  secretKey: "devsecret"
+  apiKey: ""             # Подкатить через vault
+  secretKey: ""          # Подкатить через vault
+  image:
+    repository: livekit/livekit-server
+    tag: "v1.11"
+  # Единственный UDP-порт для медиа (UDPMux). Один порт = один hostPort DNAT-rule.
+  # Диапазон не работает: k3s создает DNAT только для явно перечисленных портов,
+  # а LiveKit выбирает случайный порт из диапазона - остальные недостижимы снаружи.
+  rtcUdpPort: 7882
+  # Redis для shared state (room metadata). База 0 - общая для LiveKit.
+  redisDb: 0
 
 # -----------------------------------------------------------------------
-# Grafana
+# Observability (Obs VPS, Beget приватная сеть)
 # -----------------------------------------------------------------------
-grafana:
-  adminUser: "admin"
-  adminPassword: "admin"
+observability:
+  otelEndpoint: "http://10.19.0.41:4317"
+  lokiUrl: "http://10.19.0.41:3100"
+  # Tempo HTTP API (для UI и query). OTLP-прием идет по otelEndpoint.
+  tempoUrl: "http://10.19.0.41:3200"
+  prometheusRemoteWriteUrl: "http://10.19.0.41:9090/api/v1/write"
 
 # -----------------------------------------------------------------------
-# Application services
+# In-cluster Prometheus (scrape + remote_write на Obs VPS)
+# -----------------------------------------------------------------------
+prometheus:
+  image:
+    repository: prom/prometheus
+    tag: "v3.11.3"
+  retention: "1d"
+  storage: "2Gi"
+
+# -----------------------------------------------------------------------
+# Alloy (logs collector → Loki на Obs VPS)
+# -----------------------------------------------------------------------
+alloy:
+  enabled: true
+  image:
+    repository: grafana/alloy
+    tag: "v1.16.1"
+
+# -----------------------------------------------------------------------
+# Promtail (logs collector → Loki на Obs VPS)
+# -----------------------------------------------------------------------
+promtail:
+  enabled: false
+  image:
+    repository: grafana/promtail
+    tag: "3.6.1"
+
+# -----------------------------------------------------------------------
+# Дефолтный securityContext для всех сервисов NexTalk.
+# Совместим с PSA baseline и почти со всем restricted (кроме seccomp).
+# -----------------------------------------------------------------------
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 1000
+  runAsGroup: 1000
+  fsGroup: 1000
+  seccompProfile:
+    type: RuntimeDefault
+
+containerSecurityContext:
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: false  # ASP.NET пишет временные файлы; включить позже с emptyDir для /tmp
+  capabilities:
+    drop: ["ALL"]
+
+# -----------------------------------------------------------------------
+# Application services. Теги фиксированы - никаких :latest в проде.
+# Перед каждым деплоем обновлять tag вручную (или из CI).
 # -----------------------------------------------------------------------
 guildService:
   replicas: 2
-  image: "nextalk/guild-service:latest"
-  imagePullPolicy: Always
+  image:
+    repository: "ghcr.io/nextalkhub/nextalk/guild-service"
+    tag: "0.1.0"
+    pullPolicy: IfNotPresent
 
 messagingService:
-  replicas: 1
-  image: "nextalk/messaging-service:latest"
-  imagePullPolicy: Always
+  replicas: 2
+  image:
+    repository: "ghcr.io/nextalkhub/nextalk/messaging-service"
+    tag: "0.1.0"
+    pullPolicy: IfNotPresent
 
 voiceService:
-  replicas: 1
-  image: "nextalk/voice-service:latest"
-  imagePullPolicy: Always
+  replicas: 2
+  image:
+    repository: "ghcr.io/nextalkhub/nextalk/voice-service"
+    tag: "0.1.0"
+    pullPolicy: IfNotPresent
 
 websocketGateway:
-  replicas: 1
-  image: "nextalk/websocket-gateway:latest"
-  imagePullPolicy: Always
+  replicas: 2
+  image:
+    repository: "ghcr.io/nextalkhub/nextalk/websocket-gateway"
+    tag: "0.1.0"
+    pullPolicy: IfNotPresent
 
 webSpa:
-  replicas: 1
-  image: "nextalk/web-spa:latest"
-  imagePullPolicy: Always
-
-# -----------------------------------------------------------------------
-# ELK stack (log aggregation)
-# -----------------------------------------------------------------------
-elasticsearch:
-  image: "elasticsearch:8.13.0"
-  storage: "10Gi"
-
-kibana:
-  image: "kibana:8.13.0"
-
-filebeat:
-  image: "elastic/filebeat:8.13.0"
+  replicas: 2
+  image:
+    repository: "ghcr.io/nextalkhub/nextalk/web-spa"
+    tag: "0.1.0"
+    pullPolicy: IfNotPresent

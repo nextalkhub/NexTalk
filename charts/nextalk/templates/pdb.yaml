@@ -1,0 +1,16 @@
+---
+# PDB защищают от drain/upgrade воркеров. minAvailable: 1 - на время drain
+# хотя бы один под сервиса должен оставаться. Сочетается с replicas≥2.
+{{- range $svc := list "guild-service" "messaging-service" "voice-service" "websocket-gateway" "web-spa" "zitadel" }}
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: {{ $svc }}
+  namespace: {{ $.Values.namespace }}
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app: {{ $svc }}
+---
+{{- end }}

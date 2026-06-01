@@ -1,5 +1,5 @@
 # ─────────────────────────────────────────────────────────────────────────────
-# Grafana — автоматическая провизия datasources
+# Grafana - автоматическая провизия datasources
 #
 # Все три источника данных настраиваются при старте контейнера.
 # Не требует ручной конфигурации через UI.
@@ -20,7 +20,7 @@ datasources:
       httpMethod:      POST
       exemplarTraceIdDestinations:
         - name:          TraceID
-          datasourceUid: jaeger
+          datasourceUid: tempo
 
   # ── Loki ───────────────────────────────────────────────────────────────────
   - name:   Loki
@@ -29,25 +29,25 @@ datasources:
     access: proxy
     url:    http://loki:3100
     jsonData:
-      # Derived fields: клик по TraceId в логе открывает трейс в Jaeger.
+      # Derived fields: клик по TraceId в логе открывает трейс в Tempo.
       # matcherRegex ищет TraceId в JSON-строке лога (Serilog CompactJson).
       derivedFields:
         - name:          TraceID
           matcherRegex:  '"TraceId":"([a-f0-9A-F]{32})"'
           url:           "${__value.raw}"
-          datasourceUid: jaeger
+          datasourceUid: tempo
 
-  # ── Jaeger ─────────────────────────────────────────────────────────────────
-  - name:   Jaeger
-    type:   jaeger
-    uid:    jaeger
+  # ── Tempo ──────────────────────────────────────────────────────────────────
+  - name:   Tempo
+    type:   tempo
+    uid:    tempo
     access: proxy
-    url:    http://jaeger:16686
+    url:    http://tempo:3200
     jsonData:
-      # nodeGraph позволяет видеть DAG зависимостей сервисов в трейсе.
+      # nodeGraph: DAG зависимостей сервисов в трейсе.
       nodeGraph:
         enabled: true
-      # Linking traces → logs (Jaeger → Loki через трейс ID).
+      # Linking traces → logs (Tempo → Loki через trace ID).
       tracesToLogsV2:
         datasourceUid:  loki
         spanStartTimeShift: "-5m"
@@ -62,3 +62,8 @@ datasources:
         queries:
           - name: "Request rate"
             query: 'sum(rate(http_requests_received_total{job="${__tags[service]}"}[5m]))'
+      # Search через TraceQL.
+      search:
+        hide: false
+      serviceMap:
+        datasourceUid: prometheus

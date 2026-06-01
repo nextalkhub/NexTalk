@@ -13,7 +13,7 @@ rtc:
   # Ref: https://docs.livekit.io/home/self-hosting/ports-firewall/
   udp_port: 7882
   use_external_ip: false
-  # node_ip — IP, который LiveKit объявляет в ICE-кандидатах.
+  # node_ip - IP, который LiveKit объявляет в ICE-кандидатах.
   # Для локальной разработки (браузер и Docker на одной машине): 127.0.0.1.
   # Для тестирования с разных машин в сети: заменить на LAN IP хоста (например, 192.168.x.x).
   # Для продакшна: use_external_ip: true.

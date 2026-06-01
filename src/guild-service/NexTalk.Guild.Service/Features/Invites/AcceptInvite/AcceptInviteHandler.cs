@@ -1,4 +1,3 @@
-using System.Threading;
 using Microsoft.EntityFrameworkCore;
 using NexTalk.Guild.Service.Domain;
 using NexTalk.Guild.Service.Infrastructure;
@@ -23,7 +22,7 @@ public class AcceptInviteHandler
         _logger = logger;
     }
 
-    public async Task<GuildResponse> HandleAsync(AcceptInviteCommand cmd, CancellationToken ct = default)
+    public async Task<AcceptInviteResponse> HandleAsync(AcceptInviteCommand cmd, CancellationToken ct = default)
     {
         var row = await _db.Invites
             .Where(i => i.Code == cmd.Code)
@@ -69,6 +68,12 @@ public class AcceptInviteHandler
         }
         catch (Exception ex) { _logger.LogWarning(ex, "Failed to broadcast member.joined: user={UserId} guild={GuildId}", cmd.UserId, row.GuildId); }
 
-        return new GuildResponse(guild.Id, guild.Name, guild.OwnerId, guild.CreatedAt);
+        var firstChannelId = await _db.Channels
+            .Where(c => c.GuildId == row.GuildId && c.Type == ChannelType.Text)
+            .OrderBy(c => c.CreatedAt)
+            .Select(c => c.Id)
+            .FirstOrDefaultAsync(ct);
+
+        return new AcceptInviteResponse(guild.Id.ToString(), firstChannelId == Guid.Empty ? null : firstChannelId.ToString());
     }
 }

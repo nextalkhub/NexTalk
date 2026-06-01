@@ -11,29 +11,30 @@ env:
   IMAGE_PREFIX: ghcr.io/${{ github.repository_owner }}/nextalk
 
 jobs:
-  # Определяем, что изменилось, чтобы не гонять лишние джобы
   changes:
     runs-on: ubuntu-latest
     outputs:
       backend: ${{ steps.filter.outputs.backend }}
       frontend: ${{ steps.filter.outputs.frontend }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: dorny/paths-filter@v3
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+      - uses: dorny/paths-filter@v4
         id: filter
         with:
+          # push: сравниваем только файлы этого пуша (before -> after), не весь бранч vs main.
+          # pull_request: base пустой -> dorny использует target-бранч автоматически.
+          base: ${{ github.event_name == 'push' && github.event.before || '' }}
           filters: |
             backend:
               - 'src/guild-service/**'
               - 'src/messaging-service/**'
               - 'src/voice-service/**'
               - 'src/websocket-gateway/**'
-              - '.github/workflows/**'
             frontend:
               - 'src/web/**'
-              - '.github/workflows/**'
 
-  # Build (only when backend changed)
   build-backend-services:
     needs: [changes]
     if: needs.changes.outputs.backend == 'true'
@@ -53,10 +54,10 @@ jobs:
 
     name: Build ${{ matrix.name }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Setup .NET 10
-        uses: actions/setup-dotnet@v4
+        uses: actions/setup-dotnet@v5
         with:
           dotnet-version: "10.0.x"
 
@@ -66,7 +67,6 @@ jobs:
       - name: Build
         run: dotnet build ${{ matrix.project }} -c Release --no-restore
 
-  # Test (only when backend changed)
   test-backend-services:
     needs: [changes, build-backend-services]
     if: needs.changes.outputs.backend == 'true'
@@ -86,33 +86,81 @@ jobs:
 
     name: Test ${{ matrix.name }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Setup .NET 10
-        uses: actions/setup-dotnet@v4
+        uses: actions/setup-dotnet@v5
         with:
           dotnet-version: "10.0.x"
 
       - name: Restore
         run: dotnet restore ${{ matrix.solution }}
 
-      - name: Test
+      - name: Test with coverage
         run: >
           dotnet test ${{ matrix.solution }}
           -c Release --no-restore
+          --collect:"XPlat Code Coverage"
+          --settings coverlet.runsettings
           --logger "trx;LogFileName=test-results.trx"
           --logger "console;verbosity=normal"
           --results-directory TestResults
 
       - name: Upload test results
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: test-results-${{ matrix.name }}
           path: TestResults/**/*.trx
           if-no-files-found: ignore
 
-  # Frontend CI (only when frontend changed)
+      - name: Upload coverage XML
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: coverage-${{ matrix.name }}
+          path: TestResults/**/coverage.cobertura.xml
+          if-no-files-found: ignore
+
+  coverage-report:
+    needs: [changes, test-backend-services]
+    if: >-
+      !failure() && !cancelled() &&
+      needs.changes.outputs.backend == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Download all coverage artifacts
+        uses: actions/download-artifact@v5
+        with:
+          pattern: coverage-*
+          path: coverage-xml
+          merge-multiple: false
+
+      - name: Install reportgenerator
+        run: dotnet tool install -g dotnet-reportgenerator-globaltool
+
+      - name: Generate HTML report + badges
+        run: |
+          reportgenerator \
+            -reports:"coverage-xml/**/coverage.cobertura.xml" \
+            -targetdir:"coverage-report" \
+            -reporttypes:"Html;Cobertura;Badges;MarkdownSummaryGithub" \
+            -title:"NexTalk Coverage" \
+            -assemblyfilters:"-*.Tests;-*Migrations*"
+
+      - name: Write summary to GitHub Step Summary
+        run: cat coverage-report/SummaryGithub.md >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload HTML report as artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: coverage-html-report
+          path: coverage-report/
+          retention-days: 30
+
+
   frontend-ci:
     needs: [changes]
     if: needs.changes.outputs.frontend == 'true'
@@ -122,10 +170,10 @@ jobs:
       run:
         working-directory: src/web
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Setup Node 24
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
           node-version: "24"
           cache: "npm"
@@ -140,10 +188,15 @@ jobs:
       - name: ESLint
         run: npm run lint
 
-  # Docker build & push (only on push to main, after all checks pass or are skipped)
+  # Docker build & push: всегда при пуше в main/deploy-k3s-ha, независимо от того что изменилось.
+  # GHA-кэш делает пересборку неизменившегося сервиса за ~30 сек - цена незначительна,
+  # зато все образы получают одинаковый SHA-тег
   docker-build-push:
     needs: [build-backend-services, test-backend-services, frontend-ci]
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    if: >-
+      !failure() && !cancelled() &&
+      github.event_name == 'push' &&
+      (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/deploy-k3s-ha')
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -171,13 +224,13 @@ jobs:
 
     name: Docker ${{ matrix.name }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
+        uses: docker/setup-buildx-action@v4
 
       - name: Log in to GHCR
-        uses: docker/login-action@v3
+        uses: docker/login-action@v4
         with:
           registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
@@ -185,16 +238,18 @@ jobs:
 
       - name: Extract metadata
         id: meta
-        uses: docker/metadata-action@v5
+        uses: docker/metadata-action@v6
         with:
           images: ${{ env.IMAGE_PREFIX }}/${{ matrix.image }}
           tags: |
             type=sha,prefix=
             type=ref,event=branch
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
             type=raw,value=latest,enable=${{ github.ref == 'refs/heads/main' }}
 
       - name: Build and push
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           context: ${{ matrix.context }}
           push: true
@@ -202,3 +257,70 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+          build-args: |
+            VITE_OIDC_CLIENT_ID=${{ secrets.VITE_OIDC_CLIENT_ID }}
+            VITE_OIDC_AUTHORITY=https://nextalk.fun
+            VITE_OIDC_REDIRECT_URI=https://nextalk.fun/callback
+            VITE_WS_URL=wss://nextalk.fun/hubs/chat
+            VITE_LIVEKIT_URL=wss://nextalk.fun/livekit
+            VITE_API_URL=https://nextalk.fun
+
+  trivy-scan:
+    needs: [docker-build-push]
+    if: >-
+      !failure() && !cancelled() &&
+      github.event_name == 'push' &&
+      (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/deploy-k3s-ha')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
+      packages: read
+
+    strategy:
+      fail-fast: false
+      matrix:
+        image: [guild-service, messaging-service, voice-service, websocket-gateway, web-spa]
+
+    name: Trivy ${{ matrix.image }}
+    steps:
+      # Pin на v0.36.0 - после supply-chain компрометации марта 2026 теги
+      # 0.0.1–0.34.2 (без v-префикса) признаны небезопасными. v0.35.0 был
+      # единственным защищенным во время инцидента, v0.36.0 - текущий.
+      # Доп. безопасность - пин на full commit SHA, см. advisory:
+      # https://github.com/aquasecurity/trivy/security/advisories/GHSA-69fq-xp46-6x23
+      - name: Short SHA
+        id: sha
+        run: echo "short=${GITHUB_SHA:0:7}" >> $GITHUB_OUTPUT
+
+      - name: Trivy table output (видно в логах)
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          image-ref: ${{ env.IMAGE_PREFIX }}/${{ matrix.image }}:${{ steps.sha.outputs.short }}
+          format: table
+          severity: HIGH,CRITICAL
+          ignore-unfixed: true
+          exit-code: '0'
+        env:
+          TRIVY_DB_REPOSITORY: ghcr.io/aquasecurity/trivy-db:2
+          TRIVY_JAVA_DB_REPOSITORY: ghcr.io/aquasecurity/trivy-java-db:1
+
+      - name: Run Trivy vulnerability scanner
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          image-ref: ${{ env.IMAGE_PREFIX }}/${{ matrix.image }}:${{ steps.sha.outputs.short }}
+          format: sarif
+          output: trivy-${{ matrix.image }}.sarif
+          severity: HIGH,CRITICAL
+          ignore-unfixed: true
+          exit-code: '0'
+        env:
+          TRIVY_DB_REPOSITORY: ghcr.io/aquasecurity/trivy-db:2
+          TRIVY_JAVA_DB_REPOSITORY: ghcr.io/aquasecurity/trivy-java-db:1
+
+      - name: Upload SARIF to GitHub Security
+        if: always()
+        uses: github/codeql-action/upload-sarif@v4
+        with:
+          sarif_file: trivy-${{ matrix.image }}.sarif
+          category: trivy-${{ matrix.image }}

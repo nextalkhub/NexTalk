@@ -9,7 +9,7 @@ namespace NexTalk.Messaging.Service.Infrastructure.Outbox;
 ///
 /// Мягкая блокировка через PublishedAt: воркер выставляет published_at перед записью в канал.
 /// После перезапуска события с published_at IS NOT NULL и processed_at IS NULL будут
-/// подняты повторно после истечения stale-порога — гарантия доставки at-least-once.
+/// подняты повторно после истечения stale-порога - гарантия доставки at-least-once.
 /// </summary>
 public sealed class OutboxWorker : BackgroundService
 {

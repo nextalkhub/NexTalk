@@ -1,69 +1,98 @@
-import React, {useEffect} from 'react'
-import {login, selectIsLoading, selectAuthError, selectIsAuthenticated, register} from '../../../shared/slices/authSlice.ts'
-import { GradientBackground } from '../../../shared/components/GradientBackground/GradientBackground'
-import { AuthCard } from '../components/AuthCard'
-import styles from './AuthPage.module.scss'
-import {useAppDispatch, useAppSelector} from "../../../store.ts";
-import {useNavigate} from "react-router-dom";
+import React, { useEffect, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
+import { useAppDispatch, useAppSelector } from '../../../store'
+import { login, selectAuthError, selectIsAuthenticated, selectIsLoading } from '../../../shared/slices/authSlice'
+import { ICheck, IShield } from '../../../shared/components/Icons/Icons'
 
 export const AuthPage: React.FC = () => {
-    const dispatch = useAppDispatch()
-    const isLoading = useAppSelector(selectIsLoading)
-    const error = useAppSelector(selectAuthError)
-    const navigate = useNavigate()
-    const isAuthenticated = useAppSelector(selectIsAuthenticated)
+  const navigate = useNavigate()
+  const dispatch = useAppDispatch()
 
-    useEffect(() => {
-        if (isAuthenticated) {
-            navigate('/servers')
-        }
-    }, [isAuthenticated, navigate])
+  const isAuth = useAppSelector(selectIsAuthenticated)
+  const authError = useAppSelector(selectAuthError)
+  const isAuthLoading = useAppSelector(selectIsLoading)
+  const [localLoading, setLocalLoading] = useState(false)
 
-
-    const handleLogin = async () => {
-        try {
-            await dispatch(login()).unwrap()
-
-            if (import.meta.env.VITE_USE_AUTH_MOCK === 'true') {
-                navigate('/servers')
-            }
-        } catch (e) {
-            console.error(e)
-        }
+  useEffect(() => {
+    if (isAuth) {
+      const returnUrl = sessionStorage.getItem('return_url')
+      const target = returnUrl && returnUrl.startsWith('/') ? returnUrl : '/servers'
+      sessionStorage.removeItem('return_url')
+      navigate(target, { replace: true })
     }
+  }, [isAuth, navigate])
 
-    const handleRegister = async () => {
-        if (import.meta.env.VITE_USE_AUTH_MOCK === 'true') {
-            try {
-                await dispatch(register()).unwrap()
-                navigate('/servers')
-            } catch (e) {
-                console.error(e)
-            }
-            return
-        }
-
-        // OIDC
-        const authUrl = new URL(import.meta.env.VITE_OIDC_AUTHORITY + '/oauth/v2/authorize')
-        authUrl.searchParams.set('client_id', import.meta.env.VITE_OIDC_CLIENT_ID)
-        authUrl.searchParams.set('redirect_uri', import.meta.env.VITE_OIDC_REDIRECT_URI)
-        authUrl.searchParams.set('response_type', 'code')
-        authUrl.searchParams.set('scope', 'openid profile email offline_access')
-        authUrl.searchParams.set('prompt', 'create')
-
-        window.location.href = authUrl.toString()
+  const handleLogin = async () => {
+    setLocalLoading(true)
+    try {
+      await dispatch(login()).unwrap()
+    } catch {
+      setLocalLoading(false)
     }
+  }
 
-    return (
-        <GradientBackground>
-            <div className={styles.container}>
-                <AuthCard
-                    onLogin={handleLogin}
-                    onRegister={handleRegister}
-                    isLoading={isLoading}
-                    error={error || undefined}
-                />
-            </div>
-        </GradientBackground>
-    )
+  const busy = localLoading || isAuthLoading
+
+  return (
+    <div className="auth-page">
+      <div className="auth-card">
+        <div className="auth-mark">N</div>
+        <h1>Войти в NexTalk</h1>
+        <p className="sub">
+          Авторизация через Zitadel. NexTalk не хранит ваш пароль -
+          им управляет ваш identity provider.
+        </p>
+
+        <div className="auth-features">
+          <div className="auth-feature">
+            <span className="ic"><ICheck /></span>
+            <span>OpenID Connect с PKCE - без секрета на клиенте</span>
+          </div>
+          <div className="auth-feature">
+            <span className="ic"><ICheck /></span>
+            <span>Подпись JWT проверяется на каждом сервисе</span>
+          </div>
+          <div className="auth-feature">
+            <span className="ic"><ICheck /></span>
+            <span>2FA, восстановление пароля - настраиваются в Zitadel</span>
+          </div>
+        </div>
+
+        <button
+          type="button"
+          className="btn-primary-lg"
+          onClick={handleLogin}
+          disabled={busy}
+        >
+          {busy ? (
+            <>
+              <span
+                className="callback-spinner"
+                style={{ width: 18, height: 18, margin: 0, borderWidth: 2 }}
+              />
+              Перенаправляем в Zitadel...
+            </>
+          ) : (
+            <>
+              <IShield />
+              Продолжить через Zitadel
+            </>
+          )}
+        </button>
+
+        {authError && (
+          <div className="auth-error">
+            <strong>Ошибка входа.</strong> {authError}
+          </div>
+        )}
+
+        <div className="auth-foot">
+          <span className="chip mono">
+            <span className="dot online" />
+            zitadel · OIDC
+          </span>
+        </div>
+      </div>
+    </div>
+  )
 }

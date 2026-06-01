@@ -17,10 +17,13 @@ using OpenTelemetry.Resources;
 using OpenTelemetry.Trace;
 using Polly;
 using Prometheus;
+using Prometheus.DotNetRuntime;
 using Serilog;
 using Serilog.Enrichers.Span;
 using StackExchange.Redis;
 using IPNetwork = System.Net.IPNetwork;
+
+try { DotNetRuntimeStatsBuilder.Customize().StartCollecting(); } catch (InvalidOperationException) { }
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -171,22 +174,30 @@ builder.Services.AddSwaggerGen(c =>
     });
 });
 
-// Redis — lazy: IConnectionMultiplexer создаётся при первом resolve, не при регистрации.
-// Это позволяет тестам подменить регистрацию до того, как соединение будет установлено.
-var redisConnectionString = builder.Configuration.GetConnectionString("Redis")
-    ?? throw new InvalidOperationException("ConnectionStrings:Redis is not configured");
+// Redis - ленивая фабрика: ConnectionMultiplexer создается при первом resolve.
+// Это позволяет тестам подменить IConnectionMultiplexer / IConnectionManager до того,
+// как соединение с Redis будет реально установлено.
 builder.Services.AddSingleton<IConnectionMultiplexer>(_ =>
-    ConnectionMultiplexer.Connect(redisConnectionString));
+    ConnectionMultiplexer.Connect(
+        builder.Configuration.GetConnectionString("Redis")
+        ?? throw new InvalidOperationException("ConnectionStrings:Redis is not configured")));
 
-// SignalR - userId маппинг из JWT sub claim через SubClaimUserIdProvider
-builder.Services.AddSignalR()
-    .AddStackExchangeRedis(redisConnectionString);
+// SignalR - userId маппинг из JWT sub claim через SubClaimUserIdProvider.
+// Redis backplane подключается так же лениво - строка читается только при resolve.
+builder.Services.AddSingleton<UserIdHubFilter>();
+builder.Services.AddSignalR(o => o.AddFilter<UserIdHubFilter>())
+    .AddStackExchangeRedis(builder.Configuration.GetConnectionString("Redis") ?? "localhost:6379");
 builder.Services.AddSingleton<IUserIdProvider, SubClaimUserIdProvider>();
 
 // Presence state (Redis-backed, shared across replicas)
 builder.Services.AddSingleton<IConnectionManager, RedisConnectionManager>();
 builder.Services.AddSingleton<IPresenceTracker, RedisPresenceTracker>();
 builder.Services.AddHostedService<PresenceMonitor>();
+
+// DAU/WAU/MAU: уникальные пользователи через Redis sorted set
+builder.Services.AddSingleton<UserActivityService>();
+builder.Services.AddSingleton<IUserActivityService>(sp => sp.GetRequiredService<UserActivityService>());
+builder.Services.AddHostedService(sp => sp.GetRequiredService<UserActivityService>());
 
 // ChatHub is transient (one instance per connection), handler must be stateless
 builder.Services.AddTransient<SendMessageHandler>();
@@ -273,9 +284,7 @@ builder.Services.AddHttpClient<MessagingServiceClient>(c =>
         pipeline.AddTimeout(TimeSpan.FromSeconds(2));
     });
 
-builder.Services.AddHealthChecks()
-    .AddUrlGroup(new Uri($"{guildUrl}/healthz"), name: "guild-service", tags: ["ready"])
-    .AddUrlGroup(new Uri($"{messagingUrl}/healthz"), name: "messaging-service", tags: ["ready"]);
+builder.Services.AddHealthChecks();
 
 var app = builder.Build();
 
@@ -312,10 +321,13 @@ app.UseHttpMetrics();
 
 app.UseSerilogRequestLogging(opts =>
     opts.EnrichDiagnosticContext = (dc, ctx) =>
+    {
         dc.Set("CorrelationId",
             ctx.Request.Headers["X-Request-Id"].FirstOrDefault()
             ?? ctx.Request.Headers["X-Correlation-Id"].FirstOrDefault()
-            ?? ctx.TraceIdentifier));
+            ?? ctx.TraceIdentifier);
+        dc.Set("UserId", ctx.User?.FindFirst("sub")?.Value ?? "");
+    });
 
 app.MapHealthChecks("/healthz", new HealthCheckOptions { Predicate = _ => false })
     .AllowAnonymous();
@@ -330,6 +342,12 @@ BroadcastEndpoints.Map(app);
 DisconnectEndpoints.Map(app);
 
 app.MapHub<ChatHub>("/hubs/chat");
+
+// Принудительная инициализация - метрики регистрируются сразу, не дожидаясь первого события.
+_ = NexTalkMetrics.ActiveConnections;
+_ = NexTalkMetrics.DailyActiveUsers;
+_ = NexTalkMetrics.WeeklyActiveUsers;
+_ = NexTalkMetrics.MonthlyActiveUsers;
 
 app.Run();
 

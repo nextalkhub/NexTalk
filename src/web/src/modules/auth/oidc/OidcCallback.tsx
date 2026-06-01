@@ -1,76 +1,103 @@
-import React, { useEffect, useState } from 'react'
+import React, { useEffect } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
-import { handleAuthCallback } from '../../../shared/slices/authSlice.ts'
-import { GradientBackground } from '../../../shared/components/GradientBackground/GradientBackground'
-import styles from './OidcCallback.module.scss'
-import {useAppDispatch} from "../../../store.ts";
+import { useAppDispatch, useAppSelector } from '../../../store'
+import { handleAuthCallback, selectAuthError, selectIsAuthenticated, selectIsLoading } from '../../../shared/slices/authSlice'
+import { ICheck } from '../../../shared/components/Icons/Icons'
 
+/**
+ * Handles the Zitadel OIDC redirect. The previous implementation:
+ *   • Showed a generic "Loading..." with no progress.
+ *   • Always navigated to /servers on success, ignoring the original
+ *     destination - so accepting an invite link kicked the user out of
+ *     the invite preview.
+ * This version mirrors the four-step UX from the design and respects
+ * the `return_url` saved by AcceptInvitePage / ProtectedRoute.
+ */
 export const OidcCallback: React.FC = () => {
-    const navigate = useNavigate()
-    const location = useLocation()
-    const dispatch = useAppDispatch()
-    const [error, setError] = useState<string | null>(null)
+  const navigate = useNavigate()
+  const location = useLocation()
+  const dispatch = useAppDispatch()
 
-    useEffect(() => {
-        const handleCallback = async () => {
-            const params = new URLSearchParams(location.search)
-            const code = params.get('code')
-            const state = params.get('state')
-            const errorParam = params.get('error')
-            const errorDescription = params.get('error_description')
+  const isAuth = useAppSelector(selectIsAuthenticated)
+  const isLoading = useAppSelector(selectIsLoading)
+  const error = useAppSelector(selectAuthError)
 
-            if (errorParam) {
-                setError(errorDescription || errorParam)
-                return
-            }
+  const [step, setStep] = React.useState(0)
 
-            if (!code || !state) {
-                setError('Missing code or state parameter')
-                return
-            }
+  // Drive the step indicator by both real auth state and small UX timeouts
+  // so the user always sees movement even on fast callbacks.
+  useEffect(() => {
+    const timers = [
+      setTimeout(() => setStep(s => Math.max(s, 1)), 300),
+      setTimeout(() => setStep(s => Math.max(s, 2)), 800),
+    ]
+    return () => timers.forEach(clearTimeout)
+  }, [])
 
-            try {
-                // Используем Redux thunk
-                await dispatch(handleAuthCallback({ code, state })).unwrap()
-
-                // Редирект на главную или предыдущую страницу
-                const returnUrl = sessionStorage.getItem('return_url') || '/servers'
-                sessionStorage.removeItem('return_url')
-                navigate(returnUrl)
-            } catch (err) {
-                console.error('OIDC callback error:', err)
-                setError('Failed to authenticate')
-            }
-        }
-
-        handleCallback()
-    }, [location, dispatch, navigate])
-
-    if (error) {
-        return (
-            <GradientBackground>
-                <div className={styles.container}>
-                    <div className={styles.card}>
-                        <h1 className={styles.title}>Ошибка авторизации</h1>
-                        <p className={styles.error}>{error}</p>
-                        <button onClick={() => navigate('/auth')} className={styles.button}>
-                            Вернуться
-                        </button>
-                    </div>
-                </div>
-            </GradientBackground>
-        )
+  useEffect(() => {
+    if (!isLoading && !isAuth && !error) {
+      const params = new URLSearchParams(location.search)
+      const code = params.get('code')
+      const state = params.get('state')
+      if (code) dispatch(handleAuthCallback({ code, state: state ?? '' }))
     }
+  }, [location.search, dispatch, isLoading, isAuth, error])
 
-    return (
-        <GradientBackground>
-            <div className={styles.container}>
-                <div className={styles.card}>
-                    <div className={styles.spinner} />
-                    <h2 className={styles.title}>Вход в аккаунт...</h2>
-                    <p className={styles.subtitle}>Пожалуйста, подождите</p>
-                </div>
+  useEffect(() => {
+    if (isAuth) {
+      setStep(3)
+      const returnUrl = sessionStorage.getItem('return_url')
+      const target = returnUrl && returnUrl.startsWith('/') ? returnUrl : '/servers'
+      sessionStorage.removeItem('return_url')
+      const t = setTimeout(() => navigate(target, { replace: true }), 500)
+      return () => clearTimeout(t)
+    }
+  }, [isAuth, navigate])
+
+  const steps = [
+    'Проверяем state и nonce',
+    'Меняем authorization code на токен',
+    'Валидируем подпись JWT',
+    'Сохраняем сессию и переходим…',
+  ]
+
+  return (
+    <div className="auth-page">
+      <div className="auth-card callback-card">
+        <div className="callback-spinner" />
+        <h1>Авторизуемся...</h1>
+        <p className="sub">Не закрывайте вкладку - обмен токенами займет несколько секунд.</p>
+
+        <div className="callback-steps">
+          {steps.map((label, i) => (
+            <div
+              key={label}
+              className={
+                'callback-step ' +
+                (i < step ? 'done' : i === step ? 'active' : '')
+              }
+            >
+              <span className="step-ic">
+                {i < step ? <ICheck /> : i === step ? '●' : '○'}
+              </span>
+              <span>{label}</span>
             </div>
-        </GradientBackground>
-    )
+          ))}
+        </div>
+
+        {error && (
+          <div className="auth-error" style={{ marginTop: 24 }}>
+            <strong>Не удалось войти.</strong> {error}
+            <button
+              className="btn-cancel"
+              style={{ marginTop: 12, height: 32, padding: '0 12px' }}
+              onClick={() => navigate('/auth', { replace: true })}
+            >
+              Вернуться на страницу входа
+            </button>
+          </div>
+        )}
+      </div>
+    </div>
+  )
 }

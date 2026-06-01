@@ -22,7 +22,7 @@ const initialState: AuthState = {
     user: null,
     tokens: null,
     isAuthenticated: false,
-    isLoading: false,
+    isLoading: true, // держим true до завершения initializeAuth
     error: null,
 }
 
@@ -54,40 +54,16 @@ export const login = createAsyncThunk(
             }
         }
 
-        sessionStorage.setItem('return_url', window.location.pathname)
+        // Не перезаписываем return_url если он уже установлен (например, AcceptInvitePage
+        // сохранила /invite/... до редиректа на /auth).
+        if (!sessionStorage.getItem('return_url')) {
+            sessionStorage.setItem('return_url', window.location.pathname)
+        }
         await oidcService.login()
         return null
     }
 )
 
-export const register = createAsyncThunk(
-    'auth/register',
-    async () => {
-        // if (import.meta.env.VITE_USE_AUTH_MOCK === 'true') {
-        //     await new Promise(res => setTimeout(res, 300))
-        //
-        //     const newUser = {
-        //         id: Date.now().toString(),
-        //         name,
-        //         nickname,
-        //         email,
-        //         createdAt: new Date(Date.now())
-        //     }
-        //
-        //     localStorage.setItem('mock_user', JSON.stringify(newUser))
-        //
-        //     return {
-        //         user: newUser,
-        //         tokens: {
-        //             access_token: 'mock-token',
-        //             expires_in: 3600,
-        //         },
-        //     }
-        // }
-        //
-        // throw new Error('Register not implemented')
-    }
-)
 
 export const logout = createAsyncThunk(
     'auth/logout',
@@ -233,21 +209,6 @@ const authSlice = createSlice({
             state.error = action.error.message || 'Login failed'
         })
 
-        builder.addCase(register.pending, (state) => {
-            state.isLoading = true
-            state.error = null
-        })
-        // builder.addCase(register.fulfilled, (state, action) => {
-        //     state.isLoading = false
-        //     state.user = action.payload.user
-        //     state.tokens = action.payload.tokens
-        //     state.isAuthenticated = true
-        // })
-        builder.addCase(register.rejected, (state, action) => {
-            state.isLoading = false
-            state.error = action.error.message || 'Register failed'
-        })
-
         builder.addCase(initializeAuth.pending, (state) => {
             state.isLoading = true
         })
@@ -294,10 +255,15 @@ const authSlice = createSlice({
             state.isAuthenticated = false
         })
 
+        builder.addCase(logout.pending, (state) => {
+            // блокируем ProtectedRoute пока страница не уйдет на Zitadel logout
+            state.isLoading = true
+        })
         builder.addCase(logout.fulfilled, (state) => {
             state.user = null
             state.tokens = null
             state.isAuthenticated = false
+            state.isLoading = false
             state.error = null
         })
     },

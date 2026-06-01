@@ -7,7 +7,7 @@ namespace NexTalk.Voice.Service.Infrastructure;
 /// Поддерживает двунаправленный поиск: userId → сессия и channelId → множество участников.
 /// Singleton: все состояние живет в памяти процесса - при рестарте сервиса сбрасывается.
 /// </summary>
-public sealed class SessionStore
+public sealed class SessionStore : ISessionStore
 {
     private readonly ConcurrentDictionary<string, VoiceSession> _userToSession = new();
 

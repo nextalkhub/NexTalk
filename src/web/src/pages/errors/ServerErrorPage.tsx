@@ -1,64 +1,50 @@
 import React from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Button } from '../../shared/components/Button/Button'
-import { GradientBackground } from '../../shared/components/GradientBackground/GradientBackground'
-import styles from './ErrorPage.module.scss'
+import { IHome, IArrowOut } from '../../shared/components/Icons/Icons'
 
-interface ServerErrorPageProps {
-    error?: Error
-    resetError?: () => void
+interface Props {
+  code?: string
+  message?: string
 }
 
-export const ServerErrorPage: React.FC<ServerErrorPageProps> = ({
-                                                                    error,
-                                                                    resetError
-                                                                }) => {
-    const navigate = useNavigate()
-
-    const handleRetry = () => {
-        if (resetError) {
-            resetError()
-        }
-        window.location.reload()
-    }
-
-    const handleGoHome = () => {
-        if (resetError) {
-            resetError()
-        }
-        navigate('/servers')
-    }
-
-    const isDev = import.meta.env.DEV
-
-    return (
-        <GradientBackground>
-            <div className={styles.container}>
-                <div className={styles.card}>
-                    <h1 className={styles.code}>500</h1>
-                    <h2 className={styles.title}>Внутренняя ошибка сервера</h2>
-
-                    <p className={styles.message}>
-                        Что-то пошло не так на нашей стороне. Мы уже работаем над исправлением.
-                    </p>
-
-                    {error && isDev && (
-                        <div className={styles.errorDetails}>
-                            <strong>Детали ошибки:</strong>
-                            <pre>{error.message}</pre>
-                        </div>
-                    )}
-
-                    <div className={styles.actions}>
-                        <Button variant="primary" onClick={handleRetry}>
-                            Попробовать снова
-                        </Button>
-                        <Button variant="secondary" onClick={handleGoHome}>
-                            На главную
-                        </Button>
-                    </div>
-                </div>
-            </div>
-        </GradientBackground>
-    )
+export const ServerErrorPage: React.FC<Props> = ({ code = '503', message }) => {
+  const navigate = useNavigate()
+  return (
+    <div className="system-page">
+      <div className="system-card">
+        <div
+          className="system-code"
+          style={{
+            background: 'linear-gradient(135deg, #FF5A6E, #F5C451)',
+            WebkitBackgroundClip: 'text',
+            backgroundClip: 'text',
+            color: 'transparent',
+          }}
+        >
+          {code}
+        </div>
+        <h1>{message || 'Сервис временно недоступен'}</h1>
+        <p>
+          Один из микросервисов не отвечает. Polly Circuit Breaker откроется и автоматически
+          восстановит соединение в ближайшие 15 секунд. Если ничего не меняется - посмотрите
+          статус-страницу.
+        </p>
+        <div style={{ display: 'flex', gap: 10, justifyContent: 'center' }}>
+          <button className="home-link" onClick={() => navigate('/servers')}>
+            <IHome />
+            На главную
+          </button>
+          <a
+            className="home-link"
+            href="#"
+            style={{ background: 'rgba(255,255,255,.06)', color: 'var(--fg-0)' }}
+            onClick={e => e.preventDefault()}
+          >
+            <IArrowOut />
+            status.nextalk.io
+          </a>
+        </div>
+      </div>
+    </div>
+  )
 }

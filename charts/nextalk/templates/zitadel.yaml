@@ -6,7 +6,7 @@ metadata:
   namespace: {{ .Values.namespace }}
 spec:
   serviceName: zitadel
-  replicas: 1
+  replicas: {{ .Values.zitadel.replicas }}
   selector:
     matchLabels:
       app: zitadel
@@ -15,15 +15,28 @@ spec:
       labels:
         app: zitadel
     spec:
+      enableServiceLinks: false
       securityContext:
-        runAsUser: 0
+        # Zitadel-образ собран под UID 1000, поэтому fsGroup тоже 1000 -
+        # чтобы /zitadel/bootstrap (PVC) принадлежал нужной группе.
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+        seccompProfile:
+          type: RuntimeDefault
       initContainers:
         - name: wait-for-postgres
           image: postgres:17-alpine
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
           command:
             - sh
             - -c
-            - until pg_isready -h postgres -p 5432 -U postgres; do echo "waiting for postgres..."; sleep 3; done
+            - until pg_isready -h {{ .Values.db.host }} -p {{ .Values.db.port }} -U {{ .Values.postgres.user }}; do echo "waiting for postgres..."; sleep 3; done
           env:
             - name: PGPASSWORD
               valueFrom:
@@ -32,9 +45,14 @@ spec:
                   key: postgres-password
       containers:
         - name: api
-          image: ghcr.io/zitadel/zitadel:v4.13.1
+          image: "{{ .Values.zitadel.image.repository }}:{{ .Values.zitadel.image.tag }}"
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: false
+            capabilities:
+              drop: ["ALL"]
           command:
-            - zitadel
+            - /app/zitadel
             - start-from-init
             - --masterkey
             - $(ZITADEL_MASTERKEY)
@@ -62,8 +80,9 @@ spec:
                 configMapKeyRef:
                   name: nextalk-config
                   key: ZITADEL_PUBLIC_SCHEME
-            - name: ZITADEL_PORT
-              value: "8080"
+            # ZITADEL_PORT по умолчанию 8080 - не задаем.
+            # Zitadel сам собирает issuer/discovery URL из ExternalDomain
+            # + ExternalSecure; ExternalPort при дефолтных 443/80 опускается.
             - name: ZITADEL_EXTERNALDOMAIN
               value: "$(ZITADEL_DOMAIN)"
             - name: ZITADEL_EXTERNALSECURE
@@ -71,6 +90,7 @@ spec:
                 configMapKeyRef:
                   name: nextalk-config
                   key: ZITADEL_EXTERNALSECURE
+            # TLS терминируется на ingress-nginx → внутри Zitadel HTTP.
             - name: ZITADEL_TLS_ENABLED
               value: "false"
             - name: ZITADEL_DATABASE_POSTGRES_DSN
@@ -93,28 +113,37 @@ spec:
                   key: LOGIN_CLIENT_PAT_EXPIRATION
             - name: ZITADEL_DEFAULTINSTANCE_FEATURES_LOGINV2_REQUIRED
               value: "true"
+            # URL'ы login UI без явного :port (Zitadel docs: ExternalPort
+            # опускается из публичных URL при 443/80). Артефакт `:8080` из
+            # docker-compose снят - в проде домен идет чистым.
             - name: ZITADEL_DEFAULTINSTANCE_FEATURES_LOGINV2_BASEURI
-              value: "$(ZITADEL_PUBLIC_SCHEME)://$(ZITADEL_DOMAIN):$(ZITADEL_EXTERNALPORT)/ui/v2/login/"
+              value: "$(ZITADEL_PUBLIC_SCHEME)://$(ZITADEL_DOMAIN)/ui/v2/login/"
             - name: ZITADEL_OIDC_DEFAULTLOGINURLV2
-              value: "$(ZITADEL_PUBLIC_SCHEME)://$(ZITADEL_DOMAIN):$(ZITADEL_EXTERNALPORT)/ui/v2/login/login?authRequest="
+              value: "$(ZITADEL_PUBLIC_SCHEME)://$(ZITADEL_DOMAIN)/ui/v2/login/login?authRequest="
             - name: ZITADEL_OIDC_DEFAULTLOGOUTURLV2
-              value: "$(ZITADEL_PUBLIC_SCHEME)://$(ZITADEL_DOMAIN):$(ZITADEL_EXTERNALPORT)/ui/v2/login/logout?post_logout_redirect="
+              value: "$(ZITADEL_PUBLIC_SCHEME)://$(ZITADEL_DOMAIN)/ui/v2/login/logout?post_logout_redirect="
             - name: ZITADEL_SAML_DEFAULTLOGINURLV2
-              value: "$(ZITADEL_PUBLIC_SCHEME)://$(ZITADEL_DOMAIN):$(ZITADEL_EXTERNALPORT)/ui/v2/login/login?samlRequest="
+              value: "$(ZITADEL_PUBLIC_SCHEME)://$(ZITADEL_DOMAIN)/ui/v2/login/login?samlRequest="
             - name: ZITADEL_LOGSTORE_ACCESS_STDOUT_ENABLED
               valueFrom:
                 configMapKeyRef:
                   name: nextalk-config
                   key: ZITADEL_ACCESS_LOG_STDOUT_ENABLED
+            - name: ZITADEL_INSTRUMENTATION_METRIC_EXPORTER_TYPE
+              value: prometheus
           volumeMounts:
             - name: bootstrap
               mountPath: /zitadel/bootstrap
+          startupProbe:
+            exec:
+              command: ["/app/zitadel", "ready"]
+            failureThreshold: 30
+            periodSeconds: 5
           readinessProbe:
             exec:
               command: ["/app/zitadel", "ready"]
-            initialDelaySeconds: 20
             periodSeconds: 10
-            failureThreshold: 12
+            failureThreshold: 3
           livenessProbe:
             exec:
               command: ["/app/zitadel", "ready"]
@@ -130,7 +159,12 @@ spec:
               memory: 512Mi
 
         - name: login
-          image: ghcr.io/zitadel/zitadel-login:v4.13.1
+          image: "{{ .Values.zitadel.loginImage.repository }}:{{ .Values.zitadel.loginImage.tag }}"
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: false
+            capabilities:
+              drop: ["ALL"]
           ports:
             - containerPort: 3000
               name: login
@@ -146,18 +180,15 @@ spec:
                 configMapKeyRef:
                   name: nextalk-config
                   key: ZITADEL_DOMAIN
-            - name: ZITADEL_EXTERNALPORT
-              valueFrom:
-                configMapKeyRef:
-                  name: nextalk-config
-                  key: ZITADEL_EXTERNALPORT
             - name: ZITADEL_PUBLIC_SCHEME
               valueFrom:
                 configMapKeyRef:
                   name: nextalk-config
                   key: ZITADEL_PUBLIC_SCHEME
+            # SSR login → API через localhost:8080, но снаружи URL'ы должны
+            # быть на публичном домене. Host без :port (443/80 опущен).
             - name: CUSTOM_REQUEST_HEADERS
-              value: "Host:$(ZITADEL_DOMAIN):$(ZITADEL_EXTERNALPORT),X-Forwarded-Proto:$(ZITADEL_PUBLIC_SCHEME)"
+              value: "Host:$(ZITADEL_DOMAIN),X-Forwarded-Proto:$(ZITADEL_PUBLIC_SCHEME)"
           volumeMounts:
             - name: bootstrap
               mountPath: /zitadel/bootstrap

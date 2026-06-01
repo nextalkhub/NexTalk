@@ -1,0 +1,31 @@
+---
+# Базовая настройка ВСЕХ серверов: пакеты, sysctl, swap, ufw.
+# Запускается первым, на голых VPS.
+#
+# Запуск:
+#   ansible-playbook -i inventory/hosts.ini playbooks/bootstrap.yml --ask-vault-pass
+
+- name: Bootstrap всех хостов (common + ufw + ssh_keys)
+  hosts: all
+  become: true
+  gather_facts: true
+  roles:
+    - common
+    - ufw
+    - ssh_keys
+
+# bastion (worker-1) - единственный SSH-эндпоинт извне.
+# Дополнительно ставим fail2ban на этот хост.
+# ssh_keys уже раскатаны выше - здесь только защита от перебора.
+- name: SSH-hardening на bastion
+  hosts: bastion
+  become: true
+  gather_facts: true
+  tasks:
+    - name: Установить fail2ban (re-run роли с override fail2ban)
+      ansible.builtin.include_role:
+        name: ssh_keys
+      vars:
+        ssh_keys_install_fail2ban: true
+        # ВНИМАНИЕ: переключить в true только после раскатки ключей и проверки!
+        ssh_keys_disable_passwords: false

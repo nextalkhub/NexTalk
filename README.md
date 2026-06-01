@@ -3,6 +3,8 @@
 Платформа для командного общения. Аналог Discord.
 Микросервисная архитектура с Kubernetes, Zitadel (IdP), Nginx Ingress и паттернами отказоустойчивости.
 
+[![CI](https://github.com/nextalkhub/NexTalk/actions/workflows/ci-cd.yml/badge.svg)](https://github.com/nextalkhub/NexTalk/actions/workflows/ci-cd.yml)
+
 ## Навигация по проекту
 
 | Вам нужно | Идите сюда |
@@ -15,10 +17,10 @@
 | Увидеть структуру БД | [schema.md](docs/schema.md), [schema.dbml](docs/schema.dbml) |
 | Найти функциональные требования | [§5 FR](#5-функциональные-требования-fr) |
 | Найти нефункциональные требования | [§8 NFR](#8-нефункциональные-требования-nfr) |
-| Увидеть план работ | [tasks.md](docs/tasks.md) |
 | Увидеть тест-кейсы | [test-case.md](docs/test-case.md) |
 | Понять, как сервисы общаются | [§6 Сервисы](#6-сервисы-системы) |
 | Понять отказоустойчивость | [§7 Отказоустойчивость](#7-отказоустойчивость) |
+| Запустить chaos/load тесты | [§0-C Chaos-тестирование](#вариант-c---chaos--load-тестирование) |
 | Увидеть, что НЕ входит в MVP | [§11 За рамками](#11-за-рамками-mvp) |
 
 ---
@@ -127,79 +129,63 @@ docker compose down -v     # остановить + удалить данные
 
 ---
 
-### Вариант B - Kubernetes (k3s)
+### Вариант B - Kubernetes (k3s, production-like)
 
-#### Требования
+Полный деплой на VPS через Ansible. Поднимает k3s кластер, PostgreSQL, Redis, Zitadel, все сервисы и observability-стек.
 
-| Инструмент | Версия | Зачем |
-|:--|:--|:--|
-| k3s | v1.30+ | Легкий кластер (1 нода) |
-| kubectl | 1.30+ | Управление кластером |
-| Git | любая | Клонирование репозитория |
+#### Три шага до запуска
 
-#### Установка k3s (если еще нет)
+**Шаг 1 - SSH-доступ к нодам**
+
+Ansible должен уметь подключаться к каждой ноде по SSH. Как именно организован доступ - через bastion, VPN, Tailscale или прямые IP - не важно. Главная проверка:
 
 ```bash
-# Установить k3s без Traefik (используем Nginx Ingress Controller)
-curl -sfL https://get.k3s.io | INSTALL_K3S_EXEC="--disable=traefik" sh -
-
-# Настроить kubeconfig
-mkdir -p ~/.kube
-sudo cp /etc/rancher/k3s/k3s.yaml ~/.kube/config
-sudo chown $USER ~/.kube/config
-
-# Установить Nginx Ingress Controller
-kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/controller-v1.11.0/deploy/static/provider/cloud/deploy.yaml
-kubectl wait --namespace ingress-nginx --for=condition=ready pod \
-  --selector=app.kubernetes.io/component=controller --timeout=120s
+cd infra/ansible
+ansible all -i inventory/hosts.ini -m ping   # все ноды отвечают "pong"
 ```
 
-#### Запуск через Helm
+Подробная инструкция по сетевой топологии и SSH: [docs/runbook-deploy.md](docs/runbook-deploy.md).
+
+**Шаг 2 - Заполни `hosts.ini`**
 
 ```bash
-helm install nextalk charts/nextalk/ \
-  --namespace nextalk --create-namespace \
-  --set zitadel.domain=<ваш-домен> \
-  --set postgres.password=<пароль>
-
-helm status nextalk -n nextalk
+cp infra/ansible/inventory/hosts.ini.example infra/ansible/inventory/hosts.ini
+# Открой hosts.ini, замени CHANGE_ME на реальные IP нод
 ```
 
-Или через `make`:
+**Шаг 3 - Заполни секреты**
 
 ```bash
-make helm-install
-make helm-upgrade   # при обновлении values
+cp infra/ansible/inventory/group_vars/vault.yml.example \
+   infra/ansible/inventory/group_vars/vault.yml
+# Открой vault.yml, замени REPLACE_ME на сгенерированные значения
+# (команды для генерации - в runbook-deploy.md §4.2)
+
+ansible-vault encrypt infra/ansible/inventory/group_vars/vault.yml
 ```
 
-#### Без внешнего registry (локально / k3s без интернета)
+#### Запуск
 
 ```bash
-# Собрать образы и импортировать прямо в containerd k3s
-make import
-
-# Затем деплоить
-make deploy
+bash deploy.sh --ask-vault-pass
 ```
 
-#### Полезные команды Makefile
+Или напрямую через Ansible:
 
 ```bash
-make                          # список всех команд
-make logs SERVICE=guild-service   # tail логов конкретного сервиса
-make probe                    # тест Redis cache hit/miss (авто-определяет NODE_IP)
-make probe NODE_IP=1.2.3.4    # то же, но с явным IP
-make teardown                 # удалить весь namespace (деструктивно!)
+cd infra/ansible
+ansible-playbook -i inventory/hosts.ini playbooks/site.yml --ask-vault-pass
 ```
 
-После запуска (NODE_IP - IP вашей k3s-ноды):
+Подробная пошаговая инструкция с проверками и частыми проблемами: [docs/runbook-deploy.md](docs/runbook-deploy.md).
+
+После деплоя:
 
 | Адрес | Что там |
 |:--|:--|
-| http://`<NODE_IP>`/ui/v2/login | Zitadel - логин |
-| http://`<NODE_IP>`/api/guilds | Guild Service |
-| http://`<NODE_IP>`/monitoring/grafana | Grafana дашборды |
-| http://`<NODE_IP>`/monitoring/kibana | Kibana (логи) |
+| https://nextalk.fun | Фронтенд |
+| https://auth.nextalk.fun | Zitadel - логин |
+| https://nextalk.fun/api/guilds | Guild Service |
 
 #### Проверка Redis-кэша между репликами Guild Service
 
@@ -232,13 +218,73 @@ helm uninstall nextalk -n nextalk      # через Helm
 | Инструмент | Что делает |
 |:--|:--|
 | **Prometheus** | Scrape `/metrics` со всех .NET-сервисов каждые 15 сек |
-| **Grafana** | Дашборд: RPS, latency p50/p95, error rate 4xx/5xx, requests in flight |
-| **Serilog** | JSON-логи на stdout, поле `MachineName` идентифицирует Pod |
-| **Filebeat** | DaemonSet, собирает JSON-логи с нод, шипит в Elasticsearch |
-| **Kibana** | Поиск и фильтрация логов; Elastic Alert при `log.level: error` → email |
+| **Grafana** | Дашборды: RPS, latency p50/p95, error rate 4xx/5xx, pod restarts |
+| **Serilog** | JSON-логи на stdout, `CompactJsonFormatter`, поле `MachineName` = Pod |
+| **Alloy** | DaemonSet, читает `/var/log/pods/nextalk_*` на каждой ноде, шипит в Loki |
+| **Loki** | Хранение и поиск логов; cross-link с Tempo через TraceId/SpanId |
 
-Настройка Elastic Alert: [docs/elk-alert-setup.md](docs/elk-alert-setup.md)  
-Grafana дашборд: [grafana/nextalk-dashboard.json](grafana/nextalk-dashboard.json)
+Архитектура логирования: [docs/observability-logs.md](docs/observability-logs.md)  
+Grafana дашборд: [infra/observability/grafana/provisioning/dashboards/nextalk-overview.json](infra/observability/grafana/provisioning/dashboards/nextalk-overview.json)
+
+---
+
+### Вариант C - Chaos / Load тестирование
+
+Chaos и нагрузочные тесты запускаются на `control-plane-1` (kubectl + k6 уже под рукой).
+
+#### Установка k6 и скриптов (одноразово)
+
+```bash
+# Добавить vault-секреты (если еще нет)
+ansible-vault edit infra/ansible/inventory/group_vars/all/vault.yml --ask-vault-pass
+# vault_k6_grafana_password: <пароль Grafana admin>
+# vault_k6_test_token: <JWT тестового пользователя>
+
+# Установить k6 и скопировать скрипты
+ansible-playbook -i infra/ansible/inventory/hosts.ini infra/ansible/playbooks/k6.yml --ask-vault-pass
+```
+
+#### Запуск тестов
+
+```bash
+# Все сценарии (baseline → SC-01..SC-07 → spike)
+bash /opt/nextalk-chaos/run-all.sh
+
+# Один сценарий
+ONLY_SCENARIO=SC-01 bash /opt/nextalk-chaos/run-all.sh
+
+# Без baseline/spike (только chaos loop)
+SKIP_BASELINE=1 SKIP_SPIKE=1 bash /opt/nextalk-chaos/run-all.sh
+```
+
+#### Сценарии
+
+| Сценарий | Что проверяет |
+|:--|:--|
+| SC-01 | messaging-service scale=0 → circuit breaker → восстановление |
+| SC-02 | guild-service недоступен → graceful degradation |
+| SC-03 | Redis restart (SSH на db-vps) → автопереподключение |
+| SC-04 | Убийство одного pod ws-gateway (из 2 реплик) → k8s failover |
+| SC-05 | messaging-service 0→1→3→1 под companion-нагрузкой |
+| SC-06 | Cordon cp-2 → etcd-кворум сохранен, API доступен |
+| SC-07 | Rolling restart всех deployment'ов → zero downtime |
+| SC-08 | PostgreSQL restart → сервисы переподключаются автоматически |
+| SC-09 | ws-gateway scale=0 → PresenceMonitor чистит stale данные, OutboxWorker копит события |
+| SC-10 | messaging-service падает, ws-gateway жив → outbox flush после восстановления |
+| SC-11 | Redis outage 60s → ws-gateway CrashLoopBackOff → rollout restart после Redis |
+| SC-12 | LiveKit scale=0 → guild/messaging не затронуты, voice-service pods не крашатся |
+| SC-13 | guild-service падает → новые WS-соединения невозможны, существующие живут |
+| SC-14 | Drain worker-ноды → поды эвакуируются, после uncordon все healthy |
+| SC-08 | PostgreSQL restart → сервисы переподключаются автоматически |
+| SC-09 | ws-gateway scale=0 → PresenceMonitor чистит stale данные, OutboxWorker копит события |
+| SC-10 | messaging-service падает, ws-gateway жив → outbox flush после восстановления |
+| SC-11 | Redis outage 60s → ws-gateway CrashLoopBackOff → rollout restart после Redis |
+| SC-12 | LiveKit scale=0 → guild/messaging не затронуты, voice-service pods не крашатся |
+| SC-13 | guild-service падает → новые WS-соединения невозможны, существующие живут |
+| SC-14 | Drain worker-ноды → поды эвакуируются, после uncordon все healthy |
+
+Результаты и метрики - в [Grafana](https://grafana.nextalk.fun) (аннотации проставляются автоматически).  
+Документация: [tests/chaos/CHAOS_TESTING.md](tests/chaos/CHAOS_TESTING.md)
 
 ---
 
@@ -423,7 +469,7 @@ docker-compose → k8s. Те же Docker-образы, другой оркест
 | 5 | **Voice Service** | ASP.NET | LiveKit-токены, управление комнатами |
 | 6 | **Zitadel** | Go | IdP: OIDC, регистрация, логин, JWT |
 | 7 | **PostgreSQL** | PostgreSQL 17 | 2 схемы (guild, messaging) + БД Zitadel |
-| 8 | **Redis** | Redis | Distributed cache (Guild Service) |
+| 8 | **Redis** | Redis | SignalR backplane (WS Gateway), voice sessions, presence/activity |
 | 9 | **LiveKit** | Go | SFU + встроенный TURN |
 | 10 | **Prometheus** | Prometheus | Сбор метрик /metrics |
 | 11 | **Grafana** | Grafana | Дашборды, визуализация |
@@ -620,12 +666,19 @@ docker-compose → k8s. Те же Docker-образы, другой оркест
 |`POST`|`/api/guilds/{guildId}/channels`|Создать канал|
 |`GET`|`/api/guilds/{guildId}/channels`|Список каналов|
 |`DELETE`|`/api/guilds/{guildId}/channels/{channelId}`|Удалить канал (Owner/Admin)|
+|`PATCH`|`/api/guilds/{guildId}`|Обновить название сервера (Owner)|
+|`PATCH`|`/api/guilds/{guildId}/channels/{channelId}`|Переименовать канал (Owner/Admin)|
 |`POST`|`/api/guilds/{guildId}/invites`|Создать инвайт|
+|`GET`|`/api/guilds/{guildId}/invites`|Список инвайтов|
+|`DELETE`|`/api/guilds/{guildId}/invites/{code}`|Удалить инвайт|
+|`GET`|`/api/invites/{code}`|Информация об инвайте (предпросмотр сервера)|
 |`POST`|`/api/invites/{code}/accept`|Принять инвайт|
 |`GET`|`/api/guilds/{guildId}/members`|Список участников|
 |`PUT`|`/api/guilds/{guildId}/members/{userId}/role`|Назначить роль|
 |`DELETE`|`/api/guilds/{guildId}/members/{userId}`|Кик участника|
 |`POST`|`/api/guilds/{guildId}/members/{userId}/ban`|Бан участника|
+|`GET`|`/api/guilds/{guildId}/bans`|Список банов|
+|`DELETE`|`/api/guilds/{guildId}/bans/{userId}`|Разбанить участника|
 
 #### Internal эндпоинты
 
@@ -691,7 +744,7 @@ Outbox Pattern: в одной транзакции `INSERT message + INSERT out
 |`DELETE`|`/internal/voice/{userId}/disconnect`|Принудительное отключение пользователя (при бане)|
 |`DELETE`|`/internal/voice/channel/{channelId}/disconnect-all`|Отключить всех из комнаты (при удалении канала)|
 
-Генерирует JWT для LiveKit. Управляет комнатами через LiveKit Server API. In-memory SessionStore (ConcurrentDictionary). Нет собственной схемы БД.
+Генерирует JWT для LiveKit. Управляет комнатами через LiveKit Server API. RedisSessionStore (Hash+Set, DB=3, TTL=8h) — stateless при N репликах. Нет собственной схемы БД.
 
 ---
 
@@ -860,8 +913,8 @@ Polly Circuit Breaker на каждом `HttpClient`:
 
 | Данные                 | Где                                 | Зачем                |
 | ---------------------- | ----------------------------------- | -------------------- |
-| Presence (кто онлайн)  | WS Gateway, ConcurrentDictionary    | Heartbeat TTL        |
-| Voice sessions         | Voice Service, ConcurrentDictionary | Кто в каких каналах  |
+| Presence (кто онлайн)  | WS Gateway, Redis DB=2 (sorted set) | Heartbeat TTL        |
+| Voice sessions         | Voice Service, Redis DB=3 (hash+set)| Кто в каких каналах  |
 | Rate Limiting counters | Каждый сервис, in-memory            | Per-user ограничение |
 | Circuit Breaker state  | Polly in-memory                     | Состояние CB         |
 
@@ -914,7 +967,7 @@ Polly Circuit Breaker на каждом `HttpClient`:
 - Последние 50 сообщений + cursor-pagination вверх
 - При потере WS - banner "Соединение потеряно. Обновите страницу (F5)"
 - Аватары - первая буква имени, цвет по хэшу userId
-- Desktop only (CSS Grid, без мобильного адаптива)
+- Мобильная адаптация: drawer, swipe-жесты, safe-area, breakpoint-aware layout
 - Логин/регистрация - UI Zitadel (кастомизация цветов/лого)
 
 ---

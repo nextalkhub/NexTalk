@@ -1,0 +1,13 @@
+---
+# Observability stack на observability-vps через docker compose.
+#
+# Запуск:
+#   ansible-playbook -i inventory/hosts.ini playbooks/observability.yml
+
+- name: Docker + observability на observability-vps
+  hosts: observability
+  become: true
+  gather_facts: true
+  roles:
+    - docker
+    - observability

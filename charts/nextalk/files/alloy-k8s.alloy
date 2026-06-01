@@ -1,0 +1,126 @@
+// ─────────────────────────────────────────────────────────────
+// Kubernetes Pod Log Collection via /var/log/pods (hostPath)
+//
+// discovery.kubernetes не используется - не требует доступа
+// к Kubernetes API (10.43.0.1:443), недоступному с control-plane
+// нод при hostNetwork: true.
+//
+// Метаданные (namespace, pod, container) извлекаются из пути:
+//   /var/log/pods/<ns>_<pod>_<uid>/<container>/<n>.log
+//
+// hostNetwork: true оставлен - нужен для доступа к Loki
+// (10.19.0.41:3100) из host network namespace.
+// ─────────────────────────────────────────────────────────────
+
+// 1. Найти файлы логов namespace nextalk на текущей ноде
+local.file_match "pods" {
+  path_targets = [{
+    __path__ = "/var/log/pods/nextalk_*/*/*.log",
+    job      = "nextalk",
+  }]
+  sync_period = "10s"
+}
+
+// 2. Извлечь метки из пути файла
+discovery.relabel "pods" {
+  targets = local.file_match.pods.targets
+
+  // namespace (группа 1)
+  rule {
+    source_labels = ["__path__"]
+    regex         = `/var/log/pods/([^_/]+)_([^_/]+)_[^/]+/([^/]+)/[0-9]+\.log`
+    replacement   = "$1"
+    target_label  = "namespace"
+  }
+
+  // pod name (группа 2)
+  rule {
+    source_labels = ["__path__"]
+    regex         = `/var/log/pods/([^_/]+)_([^_/]+)_[^/]+/([^/]+)/[0-9]+\.log`
+    replacement   = "$2"
+    target_label  = "pod"
+  }
+
+  // container name (группа 3)
+  rule {
+    source_labels = ["__path__"]
+    regex         = `/var/log/pods/([^_/]+)_([^_/]+)_[^/]+/([^/]+)/[0-9]+\.log`
+    replacement   = "$3"
+    target_label  = "container"
+  }
+
+  // service = container name (совпадает с app-лейблом для сервисов NexTalk)
+  rule {
+    source_labels = ["__path__"]
+    regex         = `/var/log/pods/([^_/]+)_([^_/]+)_[^/]+/([^/]+)/[0-9]+\.log`
+    replacement   = "$3"
+    target_label  = "service"
+  }
+}
+
+// 3. Читать файлы
+loki.source.file "pods" {
+  targets    = discovery.relabel.pods.output
+  forward_to = [loki.process.cri.receiver]
+}
+
+// 4. Снять CRI-префикс containerd: <ts> stdout F <message>
+loki.process "cri" {
+  forward_to = [loki.process.serilog.receiver]
+
+  stage.cri {}
+}
+
+// 5. Парсинг Serilog Compact JSON.
+// drop_malformed = false: не-JSON строки (LiveKit, Prometheus, Zitadel)
+// проходят с дефолтным level=Information, timestamp=now.
+loki.process "serilog" {
+  forward_to = [loki.write.obs.receiver]
+
+  stage.json {
+    drop_malformed = false
+    expressions = {
+      _level        = `"@l"`,
+      _timestamp    = `"@t"`,
+      _trace_id     = "TraceId",
+      _span_id      = "SpanId",
+      _request_path = "RequestPath",
+    }
+  }
+
+  stage.drop {
+    source     = "_request_path"
+    expression = "^/(healthz|readyz|metrics)"
+  }
+
+  stage.template {
+    source   = "_level"
+    template = "{{ if .Value }}{{ .Value }}{{ else }}Information{{ end }}"
+  }
+
+  stage.labels {
+    values = {
+      level = "_level",
+    }
+  }
+
+  stage.structured_metadata {
+    values = {
+      trace_id = "_trace_id",
+      span_id  = "_span_id",
+    }
+  }
+
+  stage.timestamp {
+    source           = "_timestamp"
+    format           = "RFC3339Nano"
+    fallback_formats = ["2006-01-02T15:04:05.9999999Z07:00", "RFC3339"]
+  }
+}
+
+// 6. Push в Loki
+loki.write "obs" {
+  endpoint {
+    url = sys.env("LOKI_URL") + "/loki/api/v1/push"
+  }
+}

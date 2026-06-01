@@ -30,6 +30,10 @@ public class WsGatewayFactory : WebApplicationFactory<Program>
                 ["Zitadel:MetadataAddress"] = "http://test-authority/.well-known/openid-configuration",
                 ["Services:GuildService"] = "http://localhost:19997",
                 ["Services:MessagingService"] = "http://localhost:19996",
+                // Фейковый Redis: abortConnect=false - не бросает при недоступности.
+                // Нужен чтобы IConnectionMultiplexer-фабрика не кидала InvalidOperationException.
+                // UserActivityService заменяется на no-op ниже, поэтому реального Redis не нужно.
+                ["ConnectionStrings:Redis"] = "localhost:16379,abortConnect=false,connectTimeout=50,syncTimeout=50",
             }));
 
         builder.ConfigureTestServices(services =>
@@ -56,16 +60,20 @@ public class WsGatewayFactory : WebApplicationFactory<Program>
                 opts.BackchannelHttpHandler = null;
             });
 
-            // Заменяем Redis-реализации на in-memory — Redis недоступен в тестовом окружении.
+            // Заменяем Redis-реализации на in-memory - Redis недоступен в тестовом окружении.
             services.RemoveAll<IConnectionManager>();
             services.RemoveAll<IPresenceTracker>();
             services.AddSingleton<IConnectionManager, ConnectionManager>();
             services.AddSingleton<IPresenceTracker, PresenceTracker>();
 
-            // Заменяем ZitadelClaimsEnricher на no-op — в тестах нет Zitadel,
+            // Заменяем ZitadelClaimsEnricher на no-op - в тестах нет Zitadel,
             // HTTP-вызов к userinfo завис бы на DNS-таймауте (30+ с).
             services.RemoveAll<IClaimsTransformation>();
             services.AddTransient<IClaimsTransformation, PassThroughClaimsTransformation>();
+
+            // IUserActivityService → no-op (UserActivityService требует Redis, в тестах не нужен)
+            services.RemoveAll<IUserActivityService>();
+            services.AddSingleton<IUserActivityService, NullUserActivityService>();
 
             // Снимаем Redis SignalR backplane, оставляем только дефолтный in-memory lifetime manager.
             // AddStackExchangeRedis в Program.cs добавил RedisHubLifetimeManager<>; убираем все
@@ -92,4 +100,9 @@ file sealed class PassThroughClaimsTransformation : IClaimsTransformation
 {
     public Task<ClaimsPrincipal> TransformAsync(ClaimsPrincipal principal) =>
         Task.FromResult(principal);
+}
+
+file sealed class NullUserActivityService : IUserActivityService
+{
+    public Task RecordActivityAsync(string userId) => Task.CompletedTask;
 }

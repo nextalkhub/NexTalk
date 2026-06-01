@@ -1,131 +1,154 @@
-import React, { useEffect } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
+import React, { useContext, useEffect, useMemo, useRef } from 'react'
+import { useParams } from 'react-router-dom'
+import { TopBar } from '../../../shared/components/Layout/TopBar'
+import { MembersSidebar } from '../../../shared/components/Layout/MembersSidebar'
 import { MessageList } from '../../chat/components/MessageList'
 import { MessageInput } from '../../chat/components/MessageInput'
-import { ServerSidebar } from '../../../shared/components/Layout/ServerSidebar'
-import { ChannelSidebar } from '../components/ChannelSidebar'
-import { MembersSidebar } from '../../../shared/components/Layout/MembersSidebar'
-import { Button } from '../../../shared/components/Button/Button'
-import { Icon } from '../../../shared/components/Icon/Icon'
-import styles from './ChannelChatPage.module.scss'
-import {useAppDispatch, useAppSelector} from "../../../store.ts";
-import {selectUser} from "../../../shared/slices/authSlice.ts";
-import {fetchChannels} from "../../../shared/slices/channelSlice.ts";
-import {fetchMessages} from "../../../shared/slices/chatSlice.ts";
-import {useSignalR} from "../../../shared/hooks/useSignalR.ts";
+import { LayoutContext } from '../../../shared/components/Layout/AppShell'
+import { useAppDispatch, useAppSelector } from '../../../store'
+import { selectUser } from '../../../shared/slices/authSlice'
+import { fetchChannels } from '../../../shared/slices/channelSlice'
+import { fetchMessages, addOptimisticMessage } from '../../../shared/slices/chatSlice'
+import { useSignalR } from '../../../shared/hooks/useSignalR'
+import { useIsMobile } from '../../../shared/hooks/useBreakpoint'
 
 export const ChannelChatPage: React.FC = () => {
-    const { serverId, channelId } = useParams()
-    const navigate = useNavigate()
-    const user = useAppSelector(selectUser)
-    const dispatch = useAppDispatch()
-    const channels = useAppSelector(state => state.channels.channels)
-    const messages = useAppSelector(state => state.chat.messages)
+  const { serverId, channelId } = useParams()
+  const dispatch = useAppDispatch()
+  const user = useAppSelector(selectUser)
+  const channels = useAppSelector(state => state.channels.channels)
+  const messages = useAppSelector(state => state.chat.messages)
+  const { connection, isConnected } = useSignalR()
+  const { setHideRight } = useContext(LayoutContext)
+  const isMobile = useIsMobile()
+  const [showMembers, setShowMembers] = React.useState(!isMobile)
 
-    useEffect(() => {
-        if (serverId) dispatch(fetchChannels(serverId))
-    }, [serverId, dispatch])
-
-    useEffect(() => {
-        if (channelId && user) {
-            const userId = user.id
-            dispatch(fetchMessages({ channelId, userId }))
-        }
-    }, [channelId, dispatch, user])
-
-    const currentMessages =
-        messages[channelId || '']?.items || []
-    const currentChannel = channels.find(c => c.id === channelId)
-
-    const { connection } = useSignalR()
-
-    const handleSend = async (text: string) => {
-        if (!connection || !channelId || !user) return
-
-        console.log(
-            'current route channel:',
-            channelId
-        )
-
-        await connection.invoke(
-            'SendMessage',
-            channelId,
-            text,
-            crypto.randomUUID(),
-        )
+  const prevIsMobile = useRef(isMobile)
+  useEffect(() => {
+    if (prevIsMobile.current !== isMobile) {
+      prevIsMobile.current = isMobile
+      setShowMembers(!isMobile)
     }
+  }, [isMobile])
 
-    const handleInvite = () => {
-        if (serverId) {
-            navigate(`/servers/${serverId}/invite`)
-        }
+  const scrollRef = useRef<HTMLDivElement>(null)
+  const prevScrollHeight = useRef<number | null>(null)
+  const lastSentId = useRef<string | null>(null)
+
+  useEffect(() => {
+    setHideRight(!showMembers)
+  }, [showMembers, setHideRight])
+
+  useEffect(() => {
+    return () => setHideRight(false)
+  }, [setHideRight])
+
+  useEffect(() => {
+    if (serverId && serverId !== 'undefined') dispatch(fetchChannels(serverId))
+  }, [serverId, dispatch])
+
+  useEffect(() => {
+    if (channelId && user) {
+      dispatch(fetchMessages({ channelId, userId: user.id }))
     }
+  }, [channelId, dispatch, user])
 
-    if (!serverId) {
-        return (
-            <div className={styles.layout}>
-                <ServerSidebar />
-                <div className={styles.chatArea}>
-                    <div className={styles.loading}>Загрузка...</div>
-                </div>
-            </div>
-        )
+  const currentChannel = channels.find(c => c.id === channelId)
+  const channelState = messages[channelId ?? '']
+  const currentMessages = useMemo(() => channelState?.items ?? [], [channelState])
+  const isLoadingMessages = channelState?.loading ?? false
+  const hasMore = channelState?.hasMore ?? false
+
+  // Restore scroll position after older messages are prepended.
+  useEffect(() => {
+    if (!scrollRef.current || prevScrollHeight.current == null) return
+    const el = scrollRef.current
+    const delta = el.scrollHeight - prevScrollHeight.current
+    if (delta > 0) {
+      el.scrollTop = delta
     }
+    prevScrollHeight.current = null
+  }, [currentMessages.length])
 
-    if (!currentChannel || channels.length === 0) {
-        return (
-            <div className={styles.layout}>
-                <ServerSidebar />
-                <ChannelSidebar />
-                <div className={styles.chatArea}>
-                    <div className={styles.notFound}>
-                        <Icon name="message" size={48} />
-                        <p>Выберите канал</p>
-                        <Button variant="secondary" onClick={() => navigate('./../..')}>
-                            Вернуться назад
-                        </Button>
-                    </div>
-                </div>
-                <MembersSidebar />
-            </div>
-        )
+  useEffect(() => {
+    const last = currentMessages[currentMessages.length - 1]
+    if (!last) return
+    if (lastSentId.current === last.id) return
+    lastSentId.current = last.id
+    if (scrollRef.current) {
+      scrollRef.current.scrollTop = scrollRef.current.scrollHeight
     }
+  }, [currentMessages])
 
+  const handleLoadMore = () => {
+    if (!channelId || !user) return
+    if (!channelState?.nextCursor || isLoadingMessages) return
+    prevScrollHeight.current = scrollRef.current?.scrollHeight ?? null
+    dispatch(fetchMessages({
+      channelId,
+      userId: user.id,
+      cursor: channelState.nextCursor,
+    }))
+  }
+
+  const handleSend = async (text: string) => {
+    if (!connection || !isConnected || !channelId || !user) return
+    dispatch(addOptimisticMessage({
+      id: `opt_${crypto.randomUUID()}`,
+      channelId,
+      authorId: user.id,
+      authorName: user.name,
+      content: text,
+      createdAt: new Date().toISOString(),
+    }))
+    await connection.invoke('SendMessage', channelId, text, crypto.randomUUID())
+  }
+
+  if (!channelId || !currentChannel) {
     return (
-        <div className={styles.layout}>
-            <ServerSidebar />
-            <ChannelSidebar />
-
-            <div className={styles.chatArea}>
-                <div className={styles.header}>
-                    <div className={styles.title}>
-                        <Icon name="hash" size={20} />
-                        <span>{currentChannel.name}</span>
-                    </div>
-                    <Button
-                        variant="secondary"
-                        size="small"
-                        onClick={handleInvite}
-                    >
-                        <Icon name="plus" size={14} />
-                        Пригласить
-                    </Button>
-                </div>
-
-                <MessageList
-                    messages={currentMessages}
-                    currentUserId={user?.id}
-                />
-
-                <div className={styles.inputArea}>
-                    <MessageInput
-                        onSend={handleSend}
-                        placeholder={`Сообщение в #${currentChannel.name}`}
-                    />
-                </div>
+      <>
+        <TopBar showMembers={showMembers} onToggleMembers={() => setShowMembers(v => !v)} />
+        <main className="main">
+          <div className="empty-state">
+            <div className="icon-blob">
+              <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
+                <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+              </svg>
             </div>
-
-            <MembersSidebar />
-        </div>
+            <h2>Выберите канал</h2>
+            <p>Кликните по текстовому каналу в боковой панели, чтобы начать общение.</p>
+          </div>
+        </main>
+        <MembersSidebar />
+      </>
     )
+  }
+
+  return (
+    <>
+      <TopBar showMembers={showMembers} onToggleMembers={() => setShowMembers(v => !v)} />
+      <main className="main">
+        {isLoadingMessages && currentMessages.length === 0 ? (
+          <div className="empty-state">
+            <div style={{ color: 'var(--fg-3)', fontSize: 14 }}>Загрузка сообщений…</div>
+          </div>
+        ) : (
+          <MessageList
+            messages={currentMessages}
+            channelName={currentChannel.name}
+            isLoading={isLoadingMessages}
+            hasMore={hasMore}
+            onLoadMore={handleLoadMore}
+            scrollRef={scrollRef}
+          />
+        )}
+        <MessageInput
+          channelName={currentChannel.name}
+          onSend={handleSend}
+          isConnected={isConnected}
+        />
+      </main>
+      <MembersSidebar />
+    </>
+  )
 }

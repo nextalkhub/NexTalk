@@ -4,7 +4,7 @@ NODE_IP     ?= $(shell kubectl get nodes -o jsonpath='{.items[0].status.addresse
 
 .DEFAULT_GOAL := help
 
-.PHONY: help wait status logs images import probe \
+.PHONY: help wait status logs images import \
         helm-install helm-upgrade helm-uninstall teardown
 
 help: ## Показать эту справку
@@ -46,12 +46,3 @@ images: ## Собрать все Docker-образы локально
 import: images ## Собрать + импортировать образы в k3s containerd (без registry)
 	$(foreach svc,$(SERVICES),docker save nextalk/$(svc):latest | sudo k3s ctr images import -;)
 
-# ── Смоук-тест ───────────────────────────────────────────────────────
-
-probe: ## Проверить endpoint Redis cache hit/miss (нужен NODE_IP или NODE_IP=x.x.x.x)
-	@echo "--- запрос 1 (ожидается: источник=origin) ---"
-	curl -s http://$(NODE_IP)/api/guilds/probe
-	@echo ""
-	@echo "--- запрос 2 (ожидается: источник=cache) ---"
-	curl -s http://$(NODE_IP)/api/guilds/probe
-	@echo ""

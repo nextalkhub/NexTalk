@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.EntityFrameworkCore.Storage;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -60,7 +61,8 @@ public class MessagingServiceFactory : WebApplicationFactory<Program>
             foreach (var d in dbDescriptors) services.Remove(d);
 
             services.AddDbContext<MessagingDbContext>(opts =>
-                opts.UseInMemoryDatabase(_dbName, _dbRoot));
+                opts.UseInMemoryDatabase(_dbName, _dbRoot)
+                    .ConfigureWarnings(w => w.Ignore(InMemoryEventId.TransactionIgnoredWarning)));
 
             var clientDescriptors = services
                 .Where(d => d.ServiceType == typeof(IGuildServiceClient))

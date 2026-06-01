@@ -1,0 +1,12 @@
+---
+# Токен подключения. ОБЯЗАТЕЛЬНО заменить через ansible-vault или env.
+# Сгенерировать: openssl rand -hex 32
+k3s_token: "{{ vault_k3s_token | default('REPLACE_ME_WITH_VAULT') }}"
+
+# Что отключить в k3s. Traefik заменяется ingress-nginx, servicelb - на hostNetwork ingress.
+k3s_server_disable:
+  - traefik
+  - servicelb
+
+# TLS SAN для apiserver: VIP + IP каждой control-plane ноды.
+# Заполняется в roles/k3s_server из inventory.

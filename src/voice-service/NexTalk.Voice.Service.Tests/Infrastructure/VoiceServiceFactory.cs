@@ -7,10 +7,13 @@ using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.IdentityModel.Protocols;
 using Microsoft.IdentityModel.Protocols.OpenIdConnect;
 using Microsoft.IdentityModel.Tokens;
+using NexTalk.Voice.Service.Infrastructure;
 using NexTalk.Voice.Service.Shared;
+using StackExchange.Redis;
 
 namespace NexTalk.Voice.Service.Tests.Infrastructure;
 
@@ -31,10 +34,17 @@ public class VoiceServiceFactory : WebApplicationFactory<Program>
                 ["LiveKit:ApiKey"] = "test-api-key",
                 ["LiveKit:SecretKey"] = "test-api-secret-minimum-32-chars-long!",
                 ["LiveKit:TokenTtlMinutes"] = "60",
+                // Redis недоступен в тестах - подменяем ISessionStore на in-memory ниже.
+                ["ConnectionStrings:Redis"] = "localhost:6379",
             }));
 
         builder.ConfigureTestServices(services =>
         {
+            // Заменяем Redis-реализации на in-memory - Redis недоступен в тестах.
+            services.RemoveAll<IConnectionMultiplexer>();
+            services.RemoveAll<ISessionStore>();
+            services.AddSingleton<ISessionStore, SessionStore>();
+
             var zitadelEnricher = services.SingleOrDefault(d =>
                 d.ServiceType == typeof(IClaimsTransformation)
                 && d.ImplementationType == typeof(ZitadelClaimsEnricher));

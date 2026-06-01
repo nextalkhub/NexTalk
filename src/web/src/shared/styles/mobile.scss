@@ -1,0 +1,331 @@
+/* Responsive layout for NexTalk.
+   Strategy: progressive enhancement, no `!important` hammer.
+   - All base sizes already use clamp() in global.scss.
+   - This file only handles structural shifts (drawer, bottom sheet) and
+     small platform niceties (iOS zoom, safe-area insets).             */
+
+/* CSS variables that activate only on mobile so we don't pollute desktop */
+@media (max-width: 768px) {
+  :root {
+    --safe-top: env(safe-area-inset-top, 0px);
+    --safe-bot: env(safe-area-inset-bottom, 0px);
+    --tap: 44px;
+    --topbar-h: 52px;     /* slimmer header to keep more content visible */
+  }
+}
+
+/* ============================================================
+   TABLET (769px – 1024px) — hide members rail by default
+   ============================================================ */
+
+@media (min-width: 769px) and (max-width: 1024px) {
+  /* .no-right has specificity 0,2,0 — override it here too */
+  .app-shell,
+  .app-shell.no-right {
+    grid-template-columns: var(--rail-w) var(--side-w) 1fr 0;
+  }
+  .app-shell .right { display: none; }
+
+  /* When the user explicitly opens members, slide in as overlay */
+  .app-shell.is-members-open .right {
+    display: flex;
+    position: fixed;
+    right: 0;
+    top: var(--topbar-h);
+    bottom: 0;
+    width: min(360px, 80vw);
+    z-index: 50;
+    box-shadow: -20px 0 40px -20px rgba(0,0,0,.5);
+    animation: slide-from-right .22s ease;
+  }
+  @keyframes slide-from-right {
+    from { transform: translateX(100%); }
+    to   { transform: translateX(0); }
+  }
+}
+
+/* ============================================================
+   PHONE (≤ 768px) — single column with overlay panels
+   ============================================================ */
+
+@media (max-width: 768px) {
+
+  /* No tap highlight, no accidental text selection on chrome */
+  .app-shell, .top, .side, .rail, .right { -webkit-tap-highlight-color: transparent; }
+
+  /* ---- Shell collapses to single column ---- */
+  /* .no-right has higher specificity (0,2,0) than .app-shell (0,1,0) — override both */
+  .app-shell,
+  .app-shell.no-right {
+    grid-template-columns: 1fr;
+    grid-template-rows: calc(var(--topbar-h) + var(--safe-top)) 1fr;
+    grid-template-areas:
+      "top"
+      "main";
+  }
+  .app-shell .rail,
+  .app-shell .side {
+    display: none;
+  }
+
+  /* ---- Drawer (rail + side) opens as overlay ---- */
+  .app-shell.is-drawer-open .rail,
+  .app-shell.is-drawer-open .side {
+    display: flex;
+    position: fixed;
+    top: 0;
+    bottom: 0;
+    height: 100dvh;
+    z-index: 60;
+  }
+  .app-shell.is-drawer-open .rail {
+    left: 0;
+    width: 64px;
+    animation: slide-from-left .25s cubic-bezier(.4,0,.2,1);
+  }
+  .app-shell.is-drawer-open .side {
+    left: 64px;
+    width: calc(100vw - 64px);
+    max-width: 380px;
+    animation: slide-from-left .25s cubic-bezier(.4,0,.2,1);
+  }
+  @keyframes slide-from-left {
+    from { transform: translateX(-100%); }
+    to   { transform: translateX(0); }
+  }
+
+  /* The side has its own resize handle for desktop; hide on phone */
+  .side-resize-handle { display: none; }
+
+  /* ---- Mobile backdrop, shared by drawer & bottom sheets ---- */
+  .mobile-backdrop {
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,.55);
+    z-index: 55;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity .22s;
+  }
+  .app-shell.is-drawer-open .mobile-backdrop,
+  .app-shell.is-members-open .mobile-backdrop {
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+  /* ---- Top bar ---- */
+  .top {
+    padding: var(--safe-top) 6px 0;
+    height: auto;
+    min-height: calc(var(--topbar-h) + var(--safe-top));
+    gap: 4px;
+  }
+  .top-left { min-width: 0; gap: 6px; overflow: hidden; }
+  .top-breadcrumb { min-width: 0; }
+  .top-breadcrumb .crumb-server,
+  .top-breadcrumb .crumb-sep { display: none; }
+  .top-breadcrumb .crumb-channel {
+    font-size: 16px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    min-width: 0;
+  }
+  .top .icon-btn,
+  .top button { min-width: var(--tap); min-height: var(--tap); }
+  .top .mobile-menu-btn { display: inline-flex; }
+
+  /* ---- Chat scroll ---- */
+  .chat-scroll { padding: 12px 12px 4px; }
+  .msg { grid-template-columns: 44px 1fr; }
+  .msg-avatar { width: 36px; height: 36px; }
+  .chat-welcome { padding: 22px 4px 16px; }
+  .chat-welcome h2 { font-size: 22px; }
+
+  /* ---- Composer ---- */
+  .composer-wrap { padding: 0; }
+  .composer-foot { display: none; }   /* keyboard hint not needed on touch */
+  .composer {
+    margin: 0;
+    border-radius: 0;
+    border-left: 0;
+    border-right: 0;
+    border-bottom: 0;
+    padding-bottom: max(8px, var(--safe-bot));
+    background: var(--bg-2);
+  }
+  .composer-textarea {
+    font-size: 16px;     /* prevents iOS zoom on focus */
+    min-height: 36px;
+    max-height: 140px;
+  }
+  .composer-send {
+    width: 38px;
+    height: 38px;
+    border-radius: 12px;
+  }
+
+  /* ---- Voice stage ---- */
+  /* Grid columns are already responsive in global.scss; bump min cell width down */
+  .voice-grid {
+    grid-template-columns: repeat(auto-fit, minmax(min(160px, 100%), 1fr));
+    grid-auto-rows: minmax(120px, 1fr);
+  }
+  .voice-grid:has(> .voice-tile:only-child) {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  /* Voice controls — STICKY at bottom of the stage, always reachable */
+  .voice-controls {
+    position: sticky;
+    bottom: 0;
+    margin: 0 calc(clamp(12px, 2vw, 24px) * -1) calc(var(--safe-bot) * -1);
+    border-radius: 14px 14px 0 0;
+    border-left: 0;
+    border-right: 0;
+    border-bottom: 0;
+    padding-bottom: max(12px, var(--safe-bot));
+    flex-wrap: nowrap;
+    gap: 8px;
+  }
+  .vc-info { min-width: 0; flex-shrink: 1; overflow: hidden; }
+  .vc-status { font-size: 11px; }
+  .vc-stats { display: none; }   /* save space, info is in chips above grid */
+  .vc-buttons { gap: 6px; }
+  .vc-btn { width: 42px; height: 42px; }
+  .vc-btn.is-leave { padding: 0 12px; gap: 4px; font-size: 12px; }
+
+  /* ---- Members panel as bottom sheet ---- */
+  .app-shell .right {
+    position: fixed;
+    left: 0; right: 0; bottom: 0; top: auto;
+    width: 100vw;
+    height: min(78vh, 78dvh);
+    border-left: 0;
+    border-top: 1px solid var(--bd-1);
+    border-radius: 22px 22px 0 0;
+    z-index: 60;
+    transform: translateY(100%);
+    transition: transform .28s cubic-bezier(.4,0,.2,1);
+    box-shadow: 0 -20px 40px -10px rgba(0,0,0,.5);
+    display: none;
+  }
+  .app-shell.is-members-open .right {
+    display: flex;
+    transform: translateY(0);
+  }
+  .app-shell.is-members-open .right::before {
+    content: "";
+    position: absolute;
+    top: 8px; left: 50%;
+    transform: translateX(-50%);
+    width: 36px; height: 4px;
+    background: var(--bd-3);
+    border-radius: 999px;
+    z-index: 2;
+  }
+  .members-summary { padding-top: 22px; }
+
+  /* ---- Settings ---- */
+  .settings-layout { grid-template-columns: 1fr; }
+  .settings-nav {
+    border-right: 0;
+    border-bottom: 1px solid var(--bd-1);
+    padding: 8px 10px 12px;
+    overflow-y: visible;
+  }
+  .settings-nav-item { min-height: var(--tap); font-size: 14.5px; }
+  .settings-content { padding: 22px 16px 32px; }
+  .settings-section-head h1 { font-size: 22px; }
+  .settings-row { flex-wrap: wrap; gap: 12px; }
+  .settings-row .info { max-width: 100%; }
+
+  /* Tables collapse to cards on phone */
+  .dt-head { display: none; }
+  .dt-row {
+    grid-template-columns: auto 1fr auto !important;
+    grid-template-areas:
+      "av  main actions"
+      ".   meta meta";
+    gap: 4px 12px;
+    padding: 14px;
+  }
+  .dt-row > *:nth-child(1) { grid-area: av; }
+  .dt-row > *:nth-child(2) { grid-area: main; }
+  .dt-row > *:nth-child(n+3) { grid-area: meta; font-size: 12px; color: var(--fg-2); }
+  .dt-row .row-actions { grid-area: actions; }
+
+  /* ---- Modals slide up from bottom on phone ---- */
+  .modal-backdrop { align-items: flex-end; padding: 0; }
+  .modal {
+    width: 100%;
+    max-width: 100%;
+    border-radius: 22px 22px 0 0;
+    max-height: 92dvh;
+    overflow-y: auto;
+    padding-bottom: max(20px, var(--safe-bot));
+    animation: slide-up .28s cubic-bezier(.4,0,.2,1);
+  }
+  @keyframes slide-up {
+    from { transform: translateY(100%); }
+    to   { transform: translateY(0); }
+  }
+  .modal::before {
+    content: "";
+    display: block;
+    width: 36px; height: 4px;
+    margin: 8px auto 0;
+    background: var(--bd-3);
+    border-radius: 999px;
+  }
+  .modal-head { padding-top: 14px; }
+  .modal-foot { flex-direction: column-reverse; gap: 8px; }
+  .modal-foot button { width: 100%; height: 48px; border-radius: 12px; }
+  .modal .radio-cards { grid-template-columns: 1fr; }
+
+  /* ---- Auth & invite full-screen on phone ---- */
+  .auth-page { padding: 0; align-items: stretch; }
+  .auth-card {
+    width: 100%;
+    max-width: 100%;
+    min-height: 100dvh;
+    border-radius: 0;
+    border: 0;
+    padding: calc(40px + var(--safe-top)) 22px calc(40px + var(--safe-bot));
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+  }
+  .invite-card { justify-content: flex-start; }
+  .invite-banner { margin: -40px -22px 24px; border-radius: 0; }
+  .invite-actions { flex-direction: column-reverse; gap: 10px; }
+  .invite-actions button { width: 100%; height: 48px; }
+  .invite-detail-grid { grid-template-columns: 1fr; }
+
+  /* ---- Home page ---- */
+  .home { padding: 24px 18px; }
+  .home-mark { width: 80px; height: 80px; font-size: 36px; border-radius: 24px; }
+  .home h1 { font-size: 28px; }
+  .home-cards { grid-template-columns: 1fr; gap: 10px; }
+  .home-card { padding: 16px; }
+
+  /* ---- Profile ---- */
+  .profile-shell { padding: 0; }
+  .profile-card-big {
+    max-width: 100%;
+    border-radius: 0;
+    border-left: 0;
+    border-right: 0;
+  }
+  .profile-field { grid-template-columns: 1fr; gap: 4px; }
+
+  /* ---- System pages ---- */
+  .system-page { padding: 24px; }
+  .system-code { font-size: 88px; }
+}
+
+/* ============================================================
+   Hide mobile-only UI on desktop
+   ============================================================ */
+.mobile-menu-btn,
+.mobile-back-btn {
+  display: none;
+}

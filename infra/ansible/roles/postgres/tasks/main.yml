@@ -1,0 +1,235 @@
+---
+# Установка PostgreSQL из официального PGDG-репозитория Debian/Ubuntu.
+# Документация: https://www.postgresql.org/download/linux/ubuntu/
+#
+# acl      - Ansible требует для become_user: postgres (передача temp-файлов).
+# locales  - нужен для создания БД с lc_collate/lc_ctype = en_US.UTF-8.
+# libpq-dev - требование community.postgresql Ansible-модулей (docs.ansible.com).
+
+- name: Установить prerequisites
+  ansible.builtin.apt:
+    name:
+      - curl
+      - ca-certificates
+      - gnupg
+      - lsb-release
+      - acl
+      - locales
+      - libpq-dev
+    state: present
+    update_cache: true
+  tags: [postgres]
+
+- name: Сгенерировать локаль en_US.UTF-8
+  community.general.locale_gen:
+    name: en_US.UTF-8
+    state: present
+  tags: [postgres]
+
+- name: Создать директорию для apt keyrings
+  ansible.builtin.file:
+    path: /etc/apt/keyrings
+    state: directory
+    mode: '0755'
+  tags: [postgres]
+
+- name: Импортировать GPG-ключ PGDG
+  ansible.builtin.get_url:
+    url: https://www.postgresql.org/media/keys/ACCC4CF8.asc
+    dest: /etc/apt/keyrings/postgresql.asc
+    mode: '0644'
+  tags: [postgres]
+
+- name: Добавить APT-репозиторий PGDG
+  ansible.builtin.apt_repository:
+    repo: >-
+      deb [signed-by=/etc/apt/keyrings/postgresql.asc]
+      https://apt.postgresql.org/pub/repos/apt
+      {{ ansible_distribution_release }}-pgdg main
+    state: present
+    filename: pgdg
+    update_cache: true
+  tags: [postgres]
+
+- name: Установить PostgreSQL {{ postgresql_version }}
+  ansible.builtin.apt:
+    name:
+      - "postgresql-{{ postgresql_version }}"
+      - "postgresql-client-{{ postgresql_version }}"
+      - "postgresql-contrib-{{ postgresql_version }}"
+      - python3-psycopg2
+    state: present
+  tags: [postgres]
+
+# На Ubuntu PGDG пакет создает кластер автоматически, но при сбое initdb
+# (например, нет нужной локали) кластер остается в невалидном состоянии.
+# Явно пересоздаем если PG_VERSION нет.
+- name: Проверить наличие data-директории кластера
+  ansible.builtin.stat:
+    path: "/var/lib/postgresql/{{ postgresql_version }}/main/PG_VERSION"
+  register: pg_data_stat
+  tags: [postgres]
+
+- name: Проверить наличие config-директории кластера
+  ansible.builtin.stat:
+    path: "/etc/postgresql/{{ postgresql_version }}/main"
+  register: pg_conf_stat
+  tags: [postgres]
+
+# Кластер валиден только если есть оба: data (PG_VERSION) и config (/etc/postgresql/N/main).
+- name: Остановить и удалить кластер если data или config отсутствуют
+  ansible.builtin.command: "pg_dropcluster --stop {{ postgresql_version }} main"
+  when: not pg_data_stat.stat.exists or not pg_conf_stat.stat.exists
+  failed_when: false
+  tags: [postgres]
+
+- name: Удалить data-директорию кластера если она невалидна
+  ansible.builtin.file:
+    path: "/var/lib/postgresql/{{ postgresql_version }}/main"
+    state: absent
+  when: not pg_data_stat.stat.exists or not pg_conf_stat.stat.exists
+  tags: [postgres]
+
+- name: Удалить config-директорию кластера если она невалидна
+  ansible.builtin.file:
+    path: "/etc/postgresql/{{ postgresql_version }}/main"
+    state: absent
+  when: not pg_data_stat.stat.exists or not pg_conf_stat.stat.exists
+  tags: [postgres]
+
+- name: Создать кластер PostgreSQL с локалью en_US.UTF-8
+  ansible.builtin.command: "pg_createcluster --locale en_US.UTF-8 {{ postgresql_version }} main"
+  args:
+    creates: "/var/lib/postgresql/{{ postgresql_version }}/main/PG_VERSION"
+  tags: [postgres]
+
+# Конфиг деплоится ДО старта сервиса: pg_common читает data_directory из postgresql.conf
+# при запуске - без него сервис падает с "Invalid data directory".
+- name: Положить postgresql.conf
+  ansible.builtin.template:
+    src: postgresql.conf.j2
+    dest: "/etc/postgresql/{{ postgresql_version }}/main/postgresql.conf"
+    owner: postgres
+    group: postgres
+    mode: '0644'
+  notify: restart postgres
+  tags: [postgres, config]
+
+- name: Положить pg_hba.conf
+  ansible.builtin.template:
+    src: pg_hba.conf.j2
+    dest: "/etc/postgresql/{{ postgresql_version }}/main/pg_hba.conf"
+    owner: postgres
+    group: postgres
+    mode: '0640'
+  notify: reload postgres
+  tags: [postgres, config]
+
+- name: Включить и запустить postgresql
+  ansible.builtin.systemd:
+    name: "postgresql@{{ postgresql_version }}-main"
+    enabled: true
+    state: started
+  tags: [postgres]
+
+# Применяем накопившиеся handlers (restart/reload если конфиг изменился на уже запущенном инстансе).
+- name: Прогнать handlers сейчас
+  ansible.builtin.meta: flush_handlers
+  tags: [postgres]
+
+- name: Создать пользователей
+  community.postgresql.postgresql_user:
+    name: "{{ item.name }}"
+    password: "{{ item.password }}"
+    role_attr_flags: LOGIN
+    state: present
+    login_unix_socket: /var/run/postgresql
+  loop: "{{ postgres_users }}"
+  no_log: true
+  become: true
+  become_user: postgres
+  tags: [postgres, users]
+
+- name: Создать БД
+  community.postgresql.postgresql_db:
+    name: "{{ item.name }}"
+    owner: "{{ item.owner }}"
+    encoding: UTF-8
+    lc_collate: en_US.UTF-8
+    lc_ctype: en_US.UTF-8
+    template: template0
+    state: present
+    login_unix_socket: /var/run/postgresql
+  loop: "{{ postgres_databases }}"
+  become: true
+  become_user: postgres
+  tags: [postgres, db]
+
+# ─── Мониторинг: postgres_exporter ───────────────────────────────────────────
+
+- name: Создать роль prometheus в PostgreSQL
+  community.postgresql.postgresql_user:
+    name: prometheus
+    role_attr_flags: LOGIN,NOSUPERUSER,NOCREATEDB,NOCREATEROLE
+    state: present
+    login_unix_socket: /var/run/postgresql
+  become: true
+  become_user: postgres
+  tags: [postgres, monitoring]
+
+- name: Выдать pg_monitor prometheus
+  community.postgresql.postgresql_membership:
+    group: pg_monitor
+    target_roles: [prometheus]
+    state: present
+    login_unix_socket: /var/run/postgresql
+  become: true
+  become_user: postgres
+  tags: [postgres, monitoring]
+
+- name: Разрешить prometheus подключаться к каждой БД
+  community.postgresql.postgresql_privs:
+    db: "{{ item.name }}"
+    privs: CONNECT
+    type: database
+    role: prometheus
+    state: present
+    login_unix_socket: /var/run/postgresql
+  loop: "{{ postgres_databases }}"
+  become: true
+  become_user: postgres
+  tags: [postgres, monitoring]
+
+- name: Установить экспортеры Prometheus (postgres, node)
+  ansible.builtin.apt:
+    name:
+      - prometheus-postgres-exporter
+      - prometheus-node-exporter
+    state: present
+  tags: [postgres, monitoring]
+
+- name: Настроить DATA_SOURCE_NAME для postgres_exporter
+  ansible.builtin.lineinfile:
+    path: /etc/default/prometheus-postgres-exporter
+    regexp: '^DATA_SOURCE_NAME='
+    line: "DATA_SOURCE_NAME='user=prometheus host=/run/postgresql dbname=postgres'"
+    create: true
+    owner: root
+    group: root
+    mode: '0640'
+  notify: restart postgres-exporter
+  tags: [postgres, monitoring]
+
+- name: Включить и запустить prometheus-postgres-exporter
+  ansible.builtin.systemd:
+    name: prometheus-postgres-exporter
+    enabled: true
+    state: started
+  tags: [postgres, monitoring]
+
+- name: Включить и запустить prometheus-node-exporter
+  ansible.builtin.systemd:
+    name: prometheus-node-exporter
+    enabled: true
+    state: started
+  tags: [postgres, monitoring]

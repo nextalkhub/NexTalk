@@ -58,7 +58,7 @@ public sealed class ZitadelUserInfoService
                 Username: r.TryGetProperty("preferred_username", out var u) ? u.GetString() ?? "" : "",
                 Email:    r.TryGetProperty("email",              out var e) ? e.GetString() ?? "" : "");
 
-            // Кэшируем до истечения access_token — 1 вызов на пользователя за сессию.
+            // Кэшируем до истечения access_token - 1 вызов на пользователя за сессию.
             _cache.Set(key, info, tokenExpiry);
             return info;
         }

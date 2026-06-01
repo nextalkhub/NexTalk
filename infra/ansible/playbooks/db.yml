@@ -1,0 +1,14 @@
+---
+# Установка PostgreSQL + Redis на db-vps.
+#
+# Запуск:
+#   ansible-playbook -i inventory/hosts.ini playbooks/db.yml --ask-vault-pass
+
+- name: PostgreSQL и Redis на db-vps
+  hosts: db
+  become: true
+  gather_facts: true
+  roles:
+    - postgres
+    - redis
+    - ufw

@@ -169,6 +169,7 @@ public class CreateChannelEndpointTests(GuildServiceFactory factory) : IClassFix
             new { name = "music", type = "voice" });
 
         var body = await response.Content.ReadFromJsonAsync<ChannelCreatedResponse>();
+        Assert.NotNull(body);
 
         using (var scope = factory.Services.CreateScope())
         {

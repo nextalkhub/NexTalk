@@ -1,0 +1,84 @@
+name: Deploy to k3s
+
+# Manual trigger по умолчанию. Auto-deploy на main можно включить позже,
+# раскомментив workflow_run ниже.
+on:
+  workflow_dispatch:
+    inputs:
+      image_tag:
+        description: "Тег образов для деплоя (sha из ghcr или semver)"
+        required: true
+        type: string
+
+  # workflow_run:
+  #   workflows: ["CI / CD"]
+  #   types: [completed]
+  #   branches: [main]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    # if: github.event.workflow_run.conclusion == 'success'  # для workflow_run
+    environment: production
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Install Ansible
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ansible
+          ansible-galaxy collection install -r infra/ansible/requirements.yml
+
+      - name: Setup SSH (deploy key + known_hosts bastion)
+        env:
+          DEPLOY_KEY: ${{ secrets.ANSIBLE_SSH_PRIVATE_KEY }}
+          BASTION_HOST: ${{ secrets.BASTION_HOST }}
+        run: |
+          mkdir -p ~/.ssh
+          echo "$DEPLOY_KEY" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          # known_hosts для bastion - чтобы не словить host-key prompt.
+          ssh-keyscan -H "$BASTION_HOST" >> ~/.ssh/known_hosts
+
+      - name: Write vault password
+        env:
+          VAULT_PASSWORD: ${{ secrets.ANSIBLE_VAULT_PASSWORD }}
+        run: |
+          echo "$VAULT_PASSWORD" > ~/.ansible_vault_pass
+          chmod 600 ~/.ansible_vault_pass
+
+      - name: Write encrypted vault.yml from secret
+        env:
+          VAULT_YML: ${{ secrets.ANSIBLE_VAULT_YML }}
+        run: |
+          # vault.yml - ansible-vault-зашифрованный файл, gitignored.
+          # Хранится в GH secret целиком (двойной слой: GH secrets + ansible-vault).
+          # Расшифровывается на этапе helm-deploy через ANSIBLE_VAULT_PASSWORD_FILE.
+          echo "$VAULT_YML" > infra/ansible/inventory/group_vars/vault.yml
+          chmod 600 infra/ansible/inventory/group_vars/vault.yml
+
+      - name: Render hosts.ini from secret
+        env:
+          HOSTS_INI: ${{ secrets.ANSIBLE_HOSTS_INI }}
+        run: |
+          # hosts.ini хранится целиком в secret - там реальные приватные IP,
+          # их в репо класть нельзя.
+          echo "$HOSTS_INI" > infra/ansible/inventory/hosts.ini
+
+      - name: Write kubeconfig from secret
+        env:
+          KUBECONFIG_B64: ${{ secrets.KUBECONFIG_B64 }}
+        run: |
+          # kubeconfig получен через playbooks/k3s.yml (см. role k3s_server),
+          # сохранен в GH secret в base64 (gh secret set KUBECONFIG_B64 < kubeconfig | base64).
+          # helm-deploy playbook ожидает его по пути infra/ansible/kubeconfig.
+          echo "$KUBECONFIG_B64" | base64 -d > infra/ansible/kubeconfig
+          chmod 600 infra/ansible/kubeconfig
+
+      - name: Run helm-deploy playbook
+        working-directory: infra/ansible
+        env:
+          ANSIBLE_VAULT_PASSWORD_FILE: /home/runner/.ansible_vault_pass
+        run: |
+          ansible-playbook -i inventory/hosts.ini playbooks/helm-deploy.yml \
+            --extra-vars "image_tag=${{ inputs.image_tag }}"

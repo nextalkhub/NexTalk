@@ -1,4 +1,5 @@
 using System.Net.Http.Json;
+using System.Text.Json;
 
 namespace NexTalk.Messaging.Service.Infrastructure;
 
@@ -9,6 +10,10 @@ namespace NexTalk.Messaging.Service.Infrastructure;
 /// </summary>
 public class WsGatewayClient
 {
+    // camelCase: frontend ожидает event.payload.userId, а не event.payload.UserId.
+    // BroadcastEndpoints передает JsonElement дальше как есть, поэтому case фиксируется здесь.
+    private static readonly JsonSerializerOptions JsonOpts = new(JsonSerializerDefaults.Web);
+
     private readonly HttpClient _http;
     private readonly ILogger<WsGatewayClient> _logger;
 
@@ -32,7 +37,7 @@ public class WsGatewayClient
             HttpMethod.Post,
             $"/internal/broadcast/guild/{guildId}")
         {
-            Content = JsonContent.Create(new { Type = eventType, Payload = payload })
+            Content = JsonContent.Create(new { type = eventType, payload }, options: JsonOpts)
         };
         request.Headers.TryAddWithoutValidation("X-Correlation-Id", correlationId);
 

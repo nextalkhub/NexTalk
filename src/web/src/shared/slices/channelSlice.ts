@@ -1,7 +1,7 @@
 import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit'
 import { axiosInstance } from '../../processes/axiosInstance.ts'
-import {Channel} from "../types";
-import {getGuildChannels} from "../../processes/channels/getGuildChannels.ts";
+import { Channel } from '../types'
+import { getGuildChannels } from '../../processes/channels/getGuildChannels.ts'
 
 interface ChannelState {
     channels: Channel[]
@@ -17,9 +17,22 @@ const initialState: ChannelState = {
 
 export const fetchChannels = createAsyncThunk(
     'channels/fetch',
-    async (serverId: string) => {
+    async (serverId: string) => await getGuildChannels(serverId)
+)
 
-        return await getGuildChannels(serverId);
+export const createChannel = createAsyncThunk(
+    'channels/create',
+    async ({ serverId, name, type }: { serverId: string; name: string; type: 'text' | 'voice' }) => {
+        const res = await axiosInstance.post(`/api/guilds/${serverId}/channels`, { name, type })
+        return res.data as Channel
+    }
+)
+
+export const renameChannelThunk = createAsyncThunk(
+    'channels/rename',
+    async ({ serverId, channelId, name }: { serverId: string; channelId: string; name: string }) => {
+        const res = await axiosInstance.patch(`/api/guilds/${serverId}/channels/${channelId}`, { name })
+        return res.data as Channel
     }
 )
 
@@ -31,46 +44,39 @@ const channelSlice = createSlice({
             state.currentChannelId = action.payload
         },
         addChannel: (state, action: PayloadAction<Channel>) => {
-            const exists = state.channels.some(
-                c => c.id === action.payload.id
-            )
-
-            if (!exists) {
+            if (!state.channels.some(c => c.id === action.payload.id)) {
                 state.channels.push(action.payload)
             }
-        }
+        },
+        removeChannel: (state, action: PayloadAction<string>) => {
+            state.channels = state.channels.filter(c => c.id !== action.payload)
+            if (state.currentChannelId === action.payload) {
+                state.currentChannelId = null
+            }
+        },
+        removeChannelsByServer: (state, action: PayloadAction<string>) => {
+            state.channels = state.channels.filter(c => c.serverId !== action.payload)
+        },
     },
     extraReducers: builder => {
         builder
-            .addCase(fetchChannels.pending, (state) => {
-                state.loading = true
-            })
+            .addCase(fetchChannels.pending, state => { state.loading = true })
             .addCase(fetchChannels.fulfilled, (state, action) => {
                 state.loading = false
                 state.channels = action.payload
             })
-            .addCase(fetchChannels.rejected, (state) => {
-                state.loading = false
-            })
+            .addCase(fetchChannels.rejected, state => { state.loading = false })
             .addCase(createChannel.fulfilled, (state, action) => {
-                state.channels.push(action.payload)
+                if (!state.channels.some(c => c.id === action.payload.id)) {
+                    state.channels.push(action.payload)
+                }
+            })
+            .addCase(renameChannelThunk.fulfilled, (state, action) => {
+                const idx = state.channels.findIndex(c => c.id === action.payload.id)
+                if (idx !== -1) state.channels[idx] = action.payload
             })
     }
 })
 
-export const createChannel = createAsyncThunk(
-    'channels/create',
-    async (data: { serverId: string; name: string; type: 'text' | 'voice' }) => {
-        const { serverId, name, type } = data
-
-        const res = await axiosInstance.post(`/api/guilds/${serverId}/channels`, {
-            name,
-            type,
-        })
-
-        return res.data
-    }
-)
-
-export const { setCurrentChannel, addChannel } = channelSlice.actions
+export const { setCurrentChannel, addChannel, removeChannel, removeChannelsByServer } = channelSlice.actions
 export default channelSlice.reducer

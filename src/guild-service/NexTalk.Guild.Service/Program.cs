@@ -6,25 +6,31 @@ using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Caching.Distributed;
 using Microsoft.Extensions.Http.Resilience;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using NexTalk.Guild.Service.Features.Channels.CreateChannel;
 using NexTalk.Guild.Service.Features.Channels.DeleteChannel;
 using NexTalk.Guild.Service.Features.Channels.GetChannels;
+using NexTalk.Guild.Service.Features.Channels.RenameChannel;
 using NexTalk.Guild.Service.Features.Guilds.CreateGuild;
 using NexTalk.Guild.Service.Features.Guilds.DeleteGuild;
 using NexTalk.Guild.Service.Features.Guilds.GetUserGuilds;
 using NexTalk.Guild.Service.Features.Internal.CheckChannelAccess;
 using NexTalk.Guild.Service.Features.Internal.GetGuildMembers;
 using NexTalk.Guild.Service.Features.Internal.GetUserGuildsInternal;
+using NexTalk.Guild.Service.Features.Guilds.UpdateGuild;
 using NexTalk.Guild.Service.Features.Invites.AcceptInvite;
 using NexTalk.Guild.Service.Features.Invites.CreateInvite;
+using NexTalk.Guild.Service.Features.Invites.DeleteInvite;
+using NexTalk.Guild.Service.Features.Invites.GetGuildInvites;
+using NexTalk.Guild.Service.Features.Invites.GetInviteInfo;
 using NexTalk.Guild.Service.Features.Members.AssignRole;
 using NexTalk.Guild.Service.Features.Members.BanMember;
+using NexTalk.Guild.Service.Features.Members.GetBans;
 using NexTalk.Guild.Service.Features.Members.GetMembers;
 using NexTalk.Guild.Service.Features.Members.KickMember;
+using NexTalk.Guild.Service.Features.Members.UnbanMember;
 using NexTalk.Guild.Service.Infrastructure;
 using NexTalk.Guild.Service.Shared;
 using NexTalk.Guild.Service.Shared.Exceptions;
@@ -32,10 +38,13 @@ using OpenTelemetry.Resources;
 using OpenTelemetry.Trace;
 using Polly;
 using Prometheus;
+using Prometheus.DotNetRuntime;
 using Serilog;
 using Serilog.Enrichers.Span;
 using Swashbuckle.AspNetCore.SwaggerGen;
 using IPNetwork = System.Net.IPNetwork;
+
+try { DotNetRuntimeStatsBuilder.Customize().StartCollecting(); } catch (InvalidOperationException) { }
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -73,14 +82,7 @@ builder.Services.Configure<ForwardedHeadersOptions>(options =>
     options.KnownIPNetworks.Add(new IPNetwork(IPAddress.Parse("10.0.0.0"), 8));
 });
 
-var redisConnectionString = builder.Configuration.GetConnectionString("Redis")!;
 var pgConnectionString = builder.Configuration.GetConnectionString("PostgresConnection")!;
-
-builder.Services.AddStackExchangeRedisCache(opts =>
-{
-    opts.Configuration = redisConnectionString;
-    opts.InstanceName = "nextalk:";
-});
 
 builder.Services.AddDbContext<GuildDbContext>(opts =>
     opts.UseNpgsql(pgConnectionString).UseSnakeCaseNamingConvention());
@@ -173,22 +175,29 @@ builder.Services.AddScoped<RbacService>();
 builder.Services.AddScoped<CreateGuildHandler>();
 builder.Services.AddScoped<GetUserGuildsHandler>();
 builder.Services.AddScoped<DeleteGuildHandler>();
+builder.Services.AddScoped<UpdateGuildHandler>();
 
 // Channel handlers
 builder.Services.AddScoped<CreateChannelHandler>();
 builder.Services.AddScoped<DeleteChannelHandler>();
 builder.Services.AddScoped<GetChannelsHandler>();
+builder.Services.AddScoped<RenameChannelHandler>();
 
 // Invite handlers
 builder.Services.AddScoped<IInviteRepository, InviteRepository>();
 builder.Services.AddScoped<CreateInviteHandler>();
 builder.Services.AddScoped<AcceptInviteHandler>();
+builder.Services.AddScoped<GetGuildInvitesHandler>();
+builder.Services.AddScoped<GetInviteInfoHandler>();
+builder.Services.AddScoped<DeleteInviteHandler>();
 
 // Member handlers
 builder.Services.AddScoped<GetMembersHandler>();
 builder.Services.AddScoped<AssignRoleHandler>();
 builder.Services.AddScoped<KickMemberHandler>();
 builder.Services.AddScoped<BanMemberHandler>();
+builder.Services.AddScoped<GetBansHandler>();
+builder.Services.AddScoped<UnbanMemberHandler>();
 
 // Internal handlers
 builder.Services.AddScoped<CheckChannelAccessHandler>();
@@ -306,10 +315,11 @@ builder.Services.AddSwaggerGen(c =>
 });
 
 builder.Services.AddHealthChecks()
-    .AddNpgSql(pgConnectionString, tags: ["ready"])
-    .AddRedis(redisConnectionString, tags: ["ready"]);
+    .AddNpgSql(pgConnectionString, tags: ["ready"]);
 
 var app = builder.Build();
+
+MigrateDatabase(app);
 
 if (app.Environment.IsDevelopment())
 {
@@ -323,8 +333,6 @@ if (app.Environment.IsDevelopment())
         c.RoutePrefix = "swagger";
         c.DocumentTitle = "Guild Service API";
     });
-
-    MigrateDatabase(app);
 }
 
 app.UseForwardedHeaders();
@@ -338,6 +346,7 @@ app.UseExceptionHandler(exApp => exApp.Run(async ctx =>
         ex is NotFoundException ? (StatusCodes.Status404NotFound, ex.Message) :
         ex is ForbiddenException ? (StatusCodes.Status403Forbidden, ex.Message) :
         ex is BadRequestException ? (StatusCodes.Status400BadRequest, ex.Message) :
+        ex is GoneException ? (StatusCodes.Status410Gone, ex.Message) :
         (StatusCodes.Status500InternalServerError, "An unexpected error occurred.");
 
     if (status == StatusCodes.Status500InternalServerError)
@@ -354,30 +363,40 @@ app.UseHttpMetrics();
 
 app.UseSerilogRequestLogging(opts =>
     opts.EnrichDiagnosticContext = (dc, ctx) =>
+    {
         dc.Set("CorrelationId",
             ctx.Request.Headers["X-Request-Id"].FirstOrDefault()
             ?? ctx.Request.Headers["X-Correlation-Id"].FirstOrDefault()
-            ?? ctx.TraceIdentifier));
+            ?? ctx.TraceIdentifier);
+        dc.Set("UserId", ctx.User?.FindFirst("sub")?.Value ?? "");
+    });
 
 // Guild endpoints
 CreateGuildEndpoint.Map(app);
 GetUserGuildsEndpoint.Map(app);
 DeleteGuildEndpoint.Map(app);
+UpdateGuildEndpoint.Map(app);
 
 // Channel endpoints
 CreateChannelEndpoint.Map(app);
 DeleteChannelEndpoint.Map(app);
 GetChannelsEndpoint.Map(app);
+RenameChannelEndpoint.Map(app);
 
 // Invite endpoints
 CreateInviteEndpoint.Map(app);
 AcceptInviteEndpoint.Map(app);
+GetGuildInvitesEndpoint.Map(app);
+GetInviteInfoEndpoint.Map(app);
+DeleteInviteEndpoint.Map(app);
 
 // Member endpoints
 GetMembersEndpoint.Map(app);
 AssignRoleEndpoint.Map(app);
 KickMemberEndpoint.Map(app);
 BanMemberEndpoint.Map(app);
+GetBansEndpoint.Map(app);
+UnbanMemberEndpoint.Map(app);
 
 // Internal-эндпоинты
 var internalEndpoints = app.MapGroup("").AllowAnonymous();
@@ -392,33 +411,6 @@ app.MapHealthChecks("/readyz", new HealthCheckOptions
     Predicate = check => check.Tags.Contains("ready")
 }).AllowAnonymous();
 app.MapMetrics().AllowAnonymous();
-
-// multiple guild-service replicas share the same Redis db=1.
-//
-// Positive case (cache hit):  key exists → returns cached value from Redis.
-// Negative case (cache miss): key absent → origin computes value, stores in Redis,
-//                              next request (even on another pod) gets cache hit.
-app.MapGet("/guilds/probe", async (IDistributedCache cache, ILogger<Program> logger) =>
-{
-    const string key = "guild:probe";
-
-    var cached = await cache.GetStringAsync(key);
-    if (cached is not null)
-    {
-        logger.LogInformation("Cache hit for key {Key}: {Value}", key, cached);
-        return Results.Ok(new { source = "cache", value = cached });
-    }
-
-    var value = $"set by {Environment.MachineName} at {DateTimeOffset.UtcNow:O}";
-    await cache.SetStringAsync(key, value, new DistributedCacheEntryOptions
-    {
-        AbsoluteExpirationRelativeToNow = TimeSpan.FromSeconds(30)
-    });
-
-    logger.LogInformation("Cache miss for key {Key}, stored by {Instance}", key, Environment.MachineName);
-    return Results.Ok(new { source = "origin", value });
-}).ExcludeFromDescription().AllowAnonymous();
-
 
 app.Run();
 
@@ -437,7 +429,7 @@ static void MigrateDatabase(WebApplication app)
 internal sealed class ExcludeNonPublicEndpointsFilter : IDocumentFilter
 {
     private static readonly string[] ExcludedPrefixes =
-        ["/internal", "/metrics", "/healthz", "/readyz", "/guilds/probe"];
+        ["/internal", "/metrics", "/healthz", "/readyz"];
 
     public void Apply(OpenApiDocument swaggerDoc, DocumentFilterContext context)
     {

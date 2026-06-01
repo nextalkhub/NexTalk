@@ -1,0 +1,21 @@
+---
+# Файрвол правил для control-plane нод k3s.
+# Открыто только из приватной сети 10.19.0.0/16.
+#
+# Порты k3s/etcd: https://docs.k3s.io/installation/requirements#networking
+#   6443/tcp       - kube-apiserver
+#   2379-2380/tcp  - etcd client/peer (между control-plane нодами)
+#   10250/tcp      - kubelet
+#   8472/udp       - flannel vxlan (CNI)
+#   51820/udp      - flannel wireguard (если включен)
+
+ufw_extra_rules:
+  - { rule: allow, port: '6443',       proto: tcp, src: "{{ private_network_cidr }}", comment: 'k3s apiserver' }
+  # Поды (kubernetes_sd_configs, Prometheus) обращаются к k8s API из pod CIDR
+  - { rule: allow, port: '6443',       proto: tcp, src: "{{ k3s_cluster_cidr }}", comment: 'k3s apiserver (pod cidr)' }
+  - { rule: allow, port: '2379:2380',  proto: tcp, src: "{{ private_network_cidr }}", comment: 'etcd' }
+  - { rule: allow, port: '10250',      proto: tcp, src: "{{ private_network_cidr }}", comment: 'kubelet' }
+  # metrics-server поды ходят из pod CIDR (10.42.0.0/16), не из node CIDR
+  - { rule: allow, port: '10250',      proto: tcp, src: "{{ k3s_cluster_cidr }}", comment: 'kubelet (pod cidr)' }
+  - { rule: allow, port: '8472',       proto: udp, src: "{{ private_network_cidr }}", comment: 'flannel vxlan' }
+  - { rule: allow, port: '51820',      proto: udp, src: "{{ private_network_cidr }}", comment: 'flannel wg (опц.)' }

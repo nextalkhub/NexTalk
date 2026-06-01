@@ -1,0 +1,5 @@
+---
+ansible_host: "{{ public_ip }}"
+ansible_ssh_common_args: >-
+  -o StrictHostKeyChecking=no
+  -o UserKnownHostsFile=/dev/null

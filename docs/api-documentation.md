@@ -78,8 +78,8 @@ Authorization: Bearer <JWT>
 ```
 
 **Ошибки:**
-- `400` — Сервер с таким именем уже существует
-- `401` — Не авторизован
+- `400` - Сервер с таким именем уже существует
+- `401` - Не авторизован
 
 ---
 
@@ -121,8 +121,8 @@ Authorization: Bearer <JWT>
 ```
 
 **Ошибки:**
-- `403` — Вы не владелец сервера
-- `404` — Сервер не найден
+- `403` - Вы не владелец сервера
+- `404` - Сервер не найден
 
 ---
 
@@ -146,7 +146,7 @@ Authorization: Bearer <JWT>
 **Параметры:**
 | Поле | Тип | Значения | Описание |
 |------|-----|----------|---------|
-| `name` | string | — | Имя канала (1–32 символа) |
+| `name` | string | - | Имя канала (1–32 символа) |
 | `type` | string | `text`, `voice` | Тип канала |
 
 **Ответ (201 Created):**
@@ -238,7 +238,7 @@ Authorization: Bearer <JWT>
 {
   "id": "018e9e5f-2b7a-7000-8000-000000000001",
   "code": "AB12CD34EF56",
-  "url": "https://nexttalk.example.com/invite/AB12CD34EF56",
+  "url": "https://nextalk.fun/invite/AB12CD34EF56",
   "guildId": "550e8400-e29b-41d4-a716-446655440000",
   "expiresAt": "2026-05-19T10:00:00Z",
   "maxUses": 5,
@@ -269,8 +269,8 @@ Authorization: Bearer <JWT>
 ```
 
 **Ошибки:**
-- `400` — Исчерпан лимит использований
-- `404` — Приглашение не найдено или истекло
+- `400` - Исчерпан лимит использований
+- `404` - Приглашение не найдено или истекло
 
 ---
 
@@ -357,7 +357,7 @@ Authorization: Bearer <JWT>
 
 | Поле | Тип | Значения |
 |------|-----|----------|
-| `role` | string | `Member`, `Admin`, `Owner` (без учёта регистра) |
+| `role` | string | `Member`, `Admin`, `Owner` (без учета регистра) |
 
 **Ответ (200 OK):**
 ```json
@@ -368,9 +368,207 @@ Authorization: Bearer <JWT>
 ```
 
 **Ошибки:**
-- `400` — Неверное значение роли
-- `403` — Недостаточно прав (Admin не может назначить Owner)
-- `404` — Участник не найден
+- `400` - Неверное значение роли
+- `403` - Недостаточно прав (Admin не может назначить Owner)
+- `404` - Участник не найден
+
+---
+
+#### 13. GetBans (GET)
+
+Список забаненных участников
+
+```http
+GET /guilds/{guildId}/bans
+Authorization: Bearer <JWT>
+```
+
+**Ответ (200 OK):**
+```json
+[
+  {
+    "userId": "550e8400-e29b-41d4-a716-446655440005",
+    "bannedAt": "2026-05-18T11:00:00Z"
+  }
+]
+```
+
+---
+
+#### 14. UnbanMember (DELETE)
+
+Снятие бана
+
+```http
+DELETE /guilds/{guildId}/bans/{targetUserId}
+Authorization: Bearer <JWT>
+```
+
+**Ответ (204 No Content):**
+```
+(пустой)
+```
+
+**Ошибки:**
+- `403` - Недостаточно прав
+- `404` - Бан не найден
+
+---
+
+#### 15. UpdateGuild (PATCH)
+
+Переименование сервера
+
+```http
+PATCH /guilds/{guildId}
+Content-Type: application/json
+Authorization: Bearer <JWT>
+
+{
+  "name": "new-name"
+}
+```
+
+**Ответ (200 OK):**
+```json
+{
+  "id": "550e8400-e29b-41d4-a716-446655440000",
+  "name": "new-name"
+}
+```
+
+**Ошибки:**
+- `403` - Не владелец
+
+---
+
+#### 16. RenameChannel (PATCH)
+
+Переименование канала
+
+```http
+PATCH /guilds/{guildId}/channels/{channelId}
+Content-Type: application/json
+Authorization: Bearer <JWT>
+
+{
+  "name": "new-channel-name"
+}
+```
+
+**Ответ (200 OK):**
+```json
+{
+  "id": "550e8400-e29b-41d4-a716-446655440010",
+  "name": "new-channel-name"
+}
+```
+
+---
+
+### Приглашения (расширенные)
+
+#### 17. GetInviteInfo (GET)
+
+Предпросмотр приглашения до принятия
+
+```http
+GET /invites/{code}
+```
+
+> Не требует авторизации - позволяет показать название сервера до входа.
+
+**Ответ (200 OK):**
+```json
+{
+  "code": "AB12CD34EF56",
+  "guildId": "550e8400-e29b-41d4-a716-446655440000",
+  "guildName": "my-awesome-guild",
+  "expiresAt": "2026-05-19T10:00:00Z",
+  "maxUses": 5,
+  "usesCount": 2
+}
+```
+
+**Ошибки:**
+- `404` - Приглашение не найдено или истекло
+
+---
+
+#### 18. GetGuildInvites (GET)
+
+Список всех активных приглашений сервера
+
+```http
+GET /guilds/{guildId}/invites
+Authorization: Bearer <JWT>
+```
+
+**Ответ (200 OK):**
+```json
+[
+  {
+    "id": "018e9e5f-2b7a-7000-8000-000000000001",
+    "code": "AB12CD34EF56",
+    "expiresAt": "2026-05-19T10:00:00Z",
+    "maxUses": 5,
+    "usesCount": 2,
+    "createdAt": "2026-05-18T10:00:00Z"
+  }
+]
+```
+
+---
+
+#### 19. DeleteInvite (DELETE)
+
+Удаление приглашения
+
+```http
+DELETE /guilds/{guildId}/invites/{code}
+Authorization: Bearer <JWT>
+```
+
+**Ответ (204 No Content):**
+```
+(пустой)
+```
+
+---
+
+### Внутренние эндпоинты (Internal)
+
+Вызываются только другими микросервисами (WS Gateway, Voice Service). Не проксируются через Nginx.
+
+#### CheckChannelAccess (GET)
+
+```http
+GET /internal/channels/{channelId}/access?userId={userId}
+```
+
+**Ответ (200 OK):**
+```json
+{
+  "hasAccess": true,
+  "guildId": "550e8400-e29b-41d4-a716-446655440000"
+}
+```
+
+#### GetGuildMembers (GET)
+
+```http
+GET /internal/guilds/{guildId}/members
+```
+
+**Ответ (200 OK):** массив участников (userId, role).
+
+#### GetUserGuilds (GET)
+
+```http
+GET /internal/users/{userId}/guilds
+```
+
+**Ответ (200 OK):** массив guildId, в которых состоит пользователь.
 
 ---
 
@@ -380,7 +578,7 @@ Authorization: Bearer <JWT>
 
 ### Сообщения
 
-#### 1. CreateMessage (POST) — ВНУТРЕННИЙ
+#### 1. CreateMessage (POST) - ВНУТРЕННИЙ
 
 Создание сообщения (вызывается только WS Gateway)
 
@@ -445,7 +643,7 @@ Authorization: Bearer <JWT>
 | Параметр | Тип | По умолчанию | Диапазон | Описание |
 |----------|-----|-------------|---------|---------|
 | `limit` | integer | 50 | 1–100 | Кол-во сообщений на странице |
-| `cursor` | UUID | — | — | ID последнего полученного сообщения (для следующей страницы) |
+| `cursor` | UUID | - | - | ID последнего полученного сообщения (для следующей страницы) |
 
 **Ответ (200 OK):**
 ```json
@@ -483,8 +681,8 @@ Authorization: Bearer <JWT>
 ```
 
 **Ошибки:**
-- `403` — Нет прав на удаление
-- `404` — Сообщение не найдено
+- `403` - Нет прав на удаление
+- `404` - Сообщение не найдено
 
 ---
 
@@ -521,14 +719,14 @@ Authorization: Bearer <JWT>
 
 **Результаты:**
 - Проверка членства в гильдии и доступа к каналу
-- Создание LiveKit комнаты (если ещё не существует)
+- Создание LiveKit комнаты (если еще не существует)
 - Генерация JWT токена для прямого подключения к SFU
 - Оповещение участников гильдии через WS Gateway (`voice.joined`)
 
 **Ошибки:**
-- `400` — Канал не является голосовым
-- `403` — Нет доступа к каналу
-- `404` — Канал не найден
+- `400` - Канал не является голосовым
+- `403` - Нет доступа к каналу
+- `404` - Канал не найден
 
 ---
 
@@ -552,7 +750,7 @@ Authorization: Bearer <JWT>
 
 ---
 
-#### 3. DisconnectChannel (DELETE) — ВНУТРЕННИЙ
+#### 3. DisconnectChannel (DELETE) - ВНУТРЕННИЙ
 
 Принудительное отключение всех пользователей канала (при удалении канала)
 
@@ -568,7 +766,7 @@ X-Correlation-Id: trace-123
 
 ---
 
-#### 4. DisconnectUser (DELETE) — ВНУТРЕННИЙ
+#### 4. DisconnectUser (DELETE) - ВНУТРЕННИЙ
 
 Принудительное отключение пользователя
 
@@ -586,12 +784,12 @@ X-Correlation-Id: trace-123
 
 ## WebSocket Gateway
 
-**URL подключения:** `ws://localhost:5004/hub/chat` или `wss://nexttalk.example.com/hub/chat` (production)
+**URL подключения:** `ws://localhost:5004/hubs/chat` или `wss://nextalk.fun/hubs/chat` (production)
 
 Используется **SignalR**. Для аутентификации передайте JWT через query-параметр `access_token`:
 
 ```
-wss://nexttalk.example.com/hub/chat?access_token=<JWT_ACCESS_TOKEN>
+wss://nextalk.fun/hubs/chat?access_token=<JWT_ACCESS_TOKEN>
 ```
 
 ### Подключение (JavaScript / TypeScript)
@@ -600,7 +798,7 @@ wss://nexttalk.example.com/hub/chat?access_token=<JWT_ACCESS_TOKEN>
 import * as signalR from '@microsoft/signalr';
 
 const connection = new signalR.HubConnectionBuilder()
-  .withUrl('/hub/chat', { accessTokenFactory: () => jwtToken })
+  .withUrl('/hubs/chat', { accessTokenFactory: () => jwtToken })
   .withAutomaticReconnect()
   .build();
 
@@ -634,6 +832,7 @@ await connection.start();
   "payload": {
     "id": "018e9e5f-2b7a-7000-8000-000000000001",
     "channelId": "550e8400-e29b-41d4-a716-446655440010",
+    "guildId": "550e8400-e29b-41d4-a716-446655440000",
     "authorId": "550e8400-e29b-41d4-a716-446655440002",
     "authorName": "John Doe",
     "content": "Hello everyone!",
@@ -680,6 +879,151 @@ await connection.start();
   "payload": {
     "userId": "550e8400-e29b-41d4-a716-446655440002",
     "channelId": "550e8400-e29b-41d4-a716-446655440011"
+  }
+}
+```
+
+#### member.joined
+
+Новый участник вошел в сервер
+
+```json
+{
+  "type": "member.joined",
+  "payload": {
+    "userId": "550e8400-e29b-41d4-a716-446655440004",
+    "displayName": "Alice",
+    "username": "alice",
+    "guildId": "550e8400-e29b-41d4-a716-446655440000"
+  }
+}
+```
+
+#### member.left
+
+Участник покинул сервер
+
+```json
+{
+  "type": "member.left",
+  "payload": {
+    "userId": "550e8400-e29b-41d4-a716-446655440004",
+    "guildId": "550e8400-e29b-41d4-a716-446655440000"
+  }
+}
+```
+
+#### member.kicked
+
+Участник исключен из сервера
+
+```json
+{
+  "type": "member.kicked",
+  "payload": {
+    "userId": "550e8400-e29b-41d4-a716-446655440004",
+    "guildId": "550e8400-e29b-41d4-a716-446655440000"
+  }
+}
+```
+
+#### member.banned
+
+Участник забанен
+
+```json
+{
+  "type": "member.banned",
+  "payload": {
+    "userId": "550e8400-e29b-41d4-a716-446655440004",
+    "guildId": "550e8400-e29b-41d4-a716-446655440000"
+  }
+}
+```
+
+#### role.assigned
+
+Роль участника изменена
+
+```json
+{
+  "type": "role.assigned",
+  "payload": {
+    "userId": "550e8400-e29b-41d4-a716-446655440004",
+    "role": "Admin",
+    "guildId": "550e8400-e29b-41d4-a716-446655440000"
+  }
+}
+```
+
+#### channel.created
+
+Новый канал создан
+
+```json
+{
+  "type": "channel.created",
+  "payload": {
+    "id": "550e8400-e29b-41d4-a716-446655440012",
+    "guildId": "550e8400-e29b-41d4-a716-446655440000",
+    "name": "announcements",
+    "type": "text"
+  }
+}
+```
+
+#### channel.updated
+
+Канал переименован
+
+```json
+{
+  "type": "channel.updated",
+  "payload": {
+    "id": "550e8400-e29b-41d4-a716-446655440012",
+    "guildId": "550e8400-e29b-41d4-a716-446655440000",
+    "name": "announcements-new",
+    "type": "text"
+  }
+}
+```
+
+#### channel.deleted
+
+Канал удален
+
+```json
+{
+  "type": "channel.deleted",
+  "payload": {
+    "channelId": "550e8400-e29b-41d4-a716-446655440012",
+    "guildId": "550e8400-e29b-41d4-a716-446655440000"
+  }
+}
+```
+
+#### guild.deleted
+
+Сервер удален
+
+```json
+{
+  "type": "guild.deleted",
+  "payload": {
+    "guildId": "550e8400-e29b-41d4-a716-446655440000"
+  }
+}
+```
+
+#### guild.force.disconnect
+
+Принудительное отключение от сервера (бан или кик)
+
+```json
+{
+  "type": "guild.force.disconnect",
+  "payload": {
+    "guildId": "550e8400-e29b-41d4-a716-446655440000"
   }
 }
 ```
@@ -741,4 +1085,30 @@ await connection.invoke('SendMessage', channelId, content, idempotencyKey);
 
 ```javascript
 await connection.invoke('Heartbeat');
+```
+
+#### GetOnlineUsers
+
+Получение списка userId онлайн-участников
+
+```javascript
+const userIds = await connection.invoke('GetOnlineUsers');
+// returns: string[]
+```
+
+#### JoinGuildGroup
+
+Подписка на события сервера (вызывать при открытии сервера)
+
+```javascript
+const ok = await connection.invoke('JoinGuildGroup', guildId);
+// returns: bool
+```
+
+#### LeaveGuildGroup
+
+Отписка от событий сервера
+
+```javascript
+await connection.invoke('LeaveGuildGroup', guildId);
 ```

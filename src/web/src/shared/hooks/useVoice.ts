@@ -15,12 +15,15 @@ import { VoiceParticipant } from '../types'
 
 export const useVoice = () => {
     const roomRef = useRef<Room | null>(null)
-    const connectingRef = useRef(false)
+    // Каждый новый join инкрементирует счетчик; устаревшие попытки сравнивают с ним и молча выходят.
+    const connectGenRef = useRef(0)
     const speakingIdsRef = useRef<Set<string>>(new Set())
+    const audioCleanups = useRef<Map<string, () => void>>(new Map())
 
     const [participants, setParticipants] = useState<VoiceParticipant[]>([])
     const [isConnected, setIsConnected] = useState(false)
     const [isMuted, setIsMuted] = useState(false)
+    const [isDeafened, setIsDeafened] = useState(false)
     const [isLocalSpeaking, setIsLocalSpeaking] = useState(false)
     const [hasMicrophonePermission, setHasMicrophonePermission] = useState<boolean | null>(null)
 
@@ -37,206 +40,178 @@ export const useVoice = () => {
         }
     }, [])
 
+    const cleanupAudio = useCallback(() => {
+        audioCleanups.current.forEach(fn => fn())
+        audioCleanups.current.clear()
+    }, [])
+
     const syncParticipants = useCallback(() => {
         const room = roomRef.current
         if (!room) return
 
         const list = Array.from(
             room.remoteParticipants.values()
-        ).map((p: RemoteParticipant) => {
-            return {
-                userId: p.identity,
-                username: p.name || p.identity,
-                isMuted: !p.isMicrophoneEnabled,
-                isDeafened: false,
-                isSpeaking: speakingIdsRef.current.has(p.identity),
-            }
-        })
+        ).map((p: RemoteParticipant) => ({
+            userId: p.identity,
+            username: p.name || p.identity,
+            isMuted: !p.isMicrophoneEnabled,
+            isDeafened: false,
+            isSpeaking: speakingIdsRef.current.has(p.identity),
+        }))
 
         setParticipants(list)
     }, [])
 
-    const attachAudioTrack = (
-        track: RemoteTrack,
-    ) => {
+    const attachAudioTrack = (track: RemoteTrack, trackSid: string) => {
         if (track.kind !== Track.Kind.Audio) return
 
         const audioElement = track.attach()
-
         audioElement.autoplay = true
         audioElement.style.display = 'none'
-
         document.body.appendChild(audioElement)
 
-        return () => {
+        audioCleanups.current.set(trackSid, () => {
             track.detach(audioElement)
             audioElement.remove()
-        }
+        })
     }
 
     const joinVoice = useCallback(
-        async (
-            channelId: string,
-            _: { id: string; name: string }
-        ) => {
+        async (channelId: string, _: { id: string; name: string }) => {
+            const gen = ++connectGenRef.current
 
-            if (connectingRef.current) return
-
+            // Отключаем текущую комнату (это прерывает незавершенный room.connect()).
             if (roomRef.current) {
                 roomRef.current.disconnect()
                 roomRef.current = null
             }
 
-            connectingRef.current = true
+            cleanupAudio()
 
             try {
-                const response =
-                    await joinVoiceChannel(channelId)
+                const response = await joinVoiceChannel(channelId)
+                if (gen !== connectGenRef.current) return // вытеснено следующим join
 
-                const room = new Room()
+                const room = new Room({
+                    adaptiveStream: true,
+                    dynacast: true,
+                    audioCaptureDefaults: {
+                        echoCancellation: true,
+                        noiseSuppression: true,
+                        autoGainControl: true,
+                    },
+                })
 
                 roomRef.current = room
 
-                room.on(
-                    RoomEvent.ParticipantConnected,
-                    syncParticipants
-                )
+                room.on(RoomEvent.ParticipantConnected, syncParticipants)
+                room.on(RoomEvent.ParticipantDisconnected, syncParticipants)
+                room.on(RoomEvent.TrackMuted, syncParticipants)
+                room.on(RoomEvent.TrackUnmuted, syncParticipants)
 
-                room.on(
-                    RoomEvent.ParticipantDisconnected,
-                    syncParticipants
-                )
-
-                room.on(
-                    RoomEvent.TrackMuted,
-                    syncParticipants
-                )
-
-                room.on(
-                    RoomEvent.TrackUnmuted,
-                    syncParticipants
-                )
-
-                room.on(
-                    RoomEvent.ActiveSpeakersChanged,
-                    (speakers: Participant[]) => {
-
-                        const ids = new Set(
-                            speakers.map(
-                                s => s.identity
-                            )
-                        )
-
-                        speakingIdsRef.current = ids
-
-                        setIsLocalSpeaking(
-                            ids.has(
-                                room.localParticipant.identity
-                            )
-                        )
-
-                        syncParticipants()
-                    }
-                )
+                room.on(RoomEvent.ActiveSpeakersChanged, (speakers: Participant[]) => {
+                    const ids = new Set(speakers.map(s => s.identity))
+                    speakingIdsRef.current = ids
+                    setIsLocalSpeaking(ids.has(room.localParticipant.identity))
+                    syncParticipants()
+                })
 
                 room.on(
                     RoomEvent.TrackSubscribed,
-                    (
-                        track: RemoteTrack,
-                        _: RemoteTrackPublication,
-                        participant: RemoteParticipant
-                    ) => {
-
-                        console.log(
-                            'audio subscribed:',
-                            participant.identity
-                        )
-
-                        attachAudioTrack(track)
+                    (track: RemoteTrack, pub: RemoteTrackPublication) => {
+                        console.log('audio subscribed:', pub.trackSid)
+                        attachAudioTrack(track, pub.trackSid)
                     }
                 )
 
                 room.on(
-                    RoomEvent.Disconnected,
-                    () => {
-                        speakingIdsRef.current =
-                            new Set()
-
-                        roomRef.current = null
-
-                        setParticipants([])
-                        setIsConnected(false)
-                        setIsLocalSpeaking(false)
-                        setIsMuted(false)
+                    RoomEvent.TrackUnsubscribed,
+                    (_track: RemoteTrack, pub: RemoteTrackPublication) => {
+                        const cleanup = audioCleanups.current.get(pub.trackSid)
+                        if (cleanup) {
+                            cleanup()
+                            audioCleanups.current.delete(pub.trackSid)
+                        }
                     }
                 )
 
-                await room.connect(
-                    response.liveKitUrl,
-                    response.token
-                )
+                room.on(RoomEvent.Disconnected, () => {
+                    speakingIdsRef.current = new Set()
+                    roomRef.current = null
+                    cleanupAudio()
+                    setParticipants([])
+                    setIsConnected(false)
+                    setIsLocalSpeaking(false)
+                    setIsMuted(false)
+                })
 
-                const hasPermission = await checkMicrophonePermission()
+                await room.connect(response.liveKitUrl, response.token)
 
-                if (hasPermission) {
-                    try {
-                        await room.localParticipant.setMicrophoneEnabled(true)
-                        setIsMuted(false)
-                    } catch (err) {
-                        console.error('Failed to enable microphone:', err)
-                        setIsMuted(true)
-                    }
-                } else {
+                // Проверяем снова после async - мог прийти новый join пока ждали.
+                if (gen !== connectGenRef.current) {
+                    room.disconnect()
+                    return
+                }
+
+                try {
+                    await room.localParticipant.setMicrophoneEnabled(true)
+                    setHasMicrophonePermission(true)
+                    setIsMuted(false)
+                } catch (err) {
+                    console.warn('Microphone permission denied:', err)
+                    setHasMicrophonePermission(false)
                     setIsMuted(true)
-                    console.warn('Microphone permission denied, cannot send audio')
                 }
 
                 setIsConnected(true)
-
                 syncParticipants()
 
             } catch (err) {
-                console.error(
-                    'Voice connect error:',
-                    err
-                )
-            }
-            finally {
-                connectingRef.current = false
+                // Если gen устарел - это ожидаемый abort от disconnect(), не логируем.
+                if (gen !== connectGenRef.current) return
+                console.error('Voice connect error:', err)
             }
         },
-        [syncParticipants, checkMicrophonePermission]
+        [syncParticipants, cleanupAudio]
     )
 
     const leaveVoice = useCallback(
         async (channelId: string) => {
-
-            const room = roomRef.current
-
-            if (!room) return
+            connectGenRef.current++
 
             try {
                 await leaveVoiceChannel(channelId)
-            }
-            catch (err) {
+            } catch (err) {
                 console.error(err)
             }
 
-            room.disconnect()
-
-            roomRef.current = null
+            if (roomRef.current) {
+                roomRef.current.disconnect()
+                roomRef.current = null
+            }
+            cleanupAudio()
 
             setParticipants([])
             setIsConnected(false)
             setIsLocalSpeaking(false)
             setIsMuted(false)
+            setIsDeafened(false)
         },
-        []
+        [cleanupAudio]
     )
+
+    const toggleDeafen = useCallback(() => {
+        setIsDeafened(prev => {
+            const next = !prev
+            document.querySelectorAll<HTMLAudioElement>('body > audio').forEach(el => {
+                el.muted = next
+            })
+            return next
+        })
+    }, [])
 
     const toggleMic = useCallback(async () => {
         const room = roomRef.current
-
         if (!room) return
 
         if (hasMicrophonePermission === false) {
@@ -255,6 +230,7 @@ export const useVoice = () => {
                 setIsMuted(true)
             } else {
                 await room.localParticipant.setMicrophoneEnabled(true)
+                setHasMicrophonePermission(true)
                 setIsMuted(false)
             }
         } catch (err) {
@@ -270,10 +246,12 @@ export const useVoice = () => {
         participants,
         isConnected,
         isMuted,
+        isDeafened,
         isLocalSpeaking,
         hasMicrophonePermission,
         joinVoice,
         leaveVoice,
         toggleMic,
+        toggleDeafen,
     }
 }

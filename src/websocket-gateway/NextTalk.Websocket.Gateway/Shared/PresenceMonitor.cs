@@ -3,11 +3,6 @@ using Microsoft.Extensions.Options;
 
 namespace NextTalk.Websocket.Gateway.Shared;
 
-/// <summary>
-/// Фоновый сервис, сканирующий PresenceTracker каждые 10 секунд.
-/// Пользователи, чей последний heartbeat превысил OfflineTimeout, помечаются офлайн
-/// и из guild-группы получают событие presence.offline
-/// </summary>
 public sealed class PresenceMonitor : BackgroundService
 {
     private static readonly TimeSpan ScanInterval = TimeSpan.FromSeconds(10);
@@ -42,27 +37,25 @@ public sealed class PresenceMonitor : BackgroundService
             foreach (var userId in staleUsers)
             {
                 // Только под, который физически удалил запись, рассылает событие.
-                // Остальные реплики тоже видят stale-пользователей, но Remove вернёт false —
+                // Остальные реплики тоже видят stale-пользователей, но Remove вернет false -
                 // атомарность ZREM гарантирует ровно один broadcast на пользователя.
                 if (!_tracker.Remove(userId))
                     continue;
 
-                var entry = _connections.Get(userId);
-                if (entry is not null)
+                var guildIds = _connections.GetGuildIds(userId);
+                foreach (var guildId in guildIds)
                 {
-                    foreach (var guildId in entry.GuildIds)
-                    {
-                        await _hubContext.Clients
-                            .Group(ChatHub.GuildGroup(guildId))
-                            .SendAsync(
-                                "GatewayEvent",
-                                new { Type = "presence.offline", Payload = new { UserId = userId } },
-                                stoppingToken);
-                    }
+                    await _hubContext.Clients
+                        .Group(ChatHub.GuildGroup(guildId))
+                        .SendAsync(
+                            "GatewayEvent",
+                            new { Type = "presence.offline", Payload = new { UserId = userId } },
+                            stoppingToken);
                 }
 
                 _logger.LogDebug("User {UserId} went offline: heartbeat timeout", userId);
             }
+
         }
     }
 }

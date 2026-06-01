@@ -13,16 +13,19 @@ public static class DisconnectEndpoints
                 var logger = loggerFactory.CreateLogger(nameof(DisconnectEndpoints));
                 logger.LogInformation("Force disconnect: user={UserId} guild={GuildId}", userId, guildId);
 
-                var entry = connections.Get(userId);
-                if (entry is not null)
+                var connectionIds = connections.GetConnectionIds(userId);
+                foreach (var connId in connectionIds)
                 {
-                    // Уведомляем пользователя о бане
                     await hub.Clients
-                        .Client(entry.ConnectionId)
+                        .Client(connId)
                         .SendAsync("GatewayEvent", new { Type = "guild.force.disconnect", Payload = new { GuildId = guildId } });
 
-                    await hub.Groups.RemoveFromGroupAsync(entry.ConnectionId, ChatHub.GuildGroup(guildId));
+                    await hub.Groups.RemoveFromGroupAsync(connId, ChatHub.GuildGroup(guildId));
                 }
+
+                // Гильдия больше не в наборе пользователя - иначе PresenceMonitor пришлет
+                // в нее presence.offline после disconnect, а юзер уже не участник.
+                connections.RemoveGuild(userId, guildId);
 
                 // Уведомляем участников гильдии
                 await hub.Clients

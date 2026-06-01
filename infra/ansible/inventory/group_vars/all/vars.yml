@@ -1,0 +1,43 @@
+---
+# Общие переменные для всех хостов
+
+ansible_user: root
+ansible_python_interpreter: /usr/bin/python3
+
+# SSH: bastion = worker-1 (публичный IP).
+# Все остальные хосты идут через ProxyJump.
+# Переопределяется per-host: bastion сам в себя не прыгает.
+ansible_ssh_common_args: >-
+  -o StrictHostKeyChecking=no
+  -o UserKnownHostsFile=/dev/null
+  -o "ProxyCommand=ssh -W %h:%p -i ~/.ssh/nextalk_deploy -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null root@{{ hostvars['worker-1'].public_ip | default(hostvars['worker-1'].ansible_host) }}"
+
+# Приватная сеть Beget
+private_network_cidr: "10.19.0.0/16"
+
+# worker-1 выступает NAT-шлюзом для приватных нод (control-plane + db).
+# Приватные ноды маршрутизируют интернет-трафик через этот IP.
+nat_gateway_ip: "10.19.0.21"
+
+# Стабильный endpoint для k3s apiserver - HAProxy нода.
+# Все ноды (cp-2/cp-3, workers, kubectl) подключаются сюда.
+k3s_api_endpoint: "{{ hostvars[groups['haproxy'][0]]['ansible_host'] }}"
+
+# Версии (актуальные на момент написания плейбуков)
+k3s_channel: "stable"
+postgresql_version: "18"
+
+# Интерфейс приватной сети Beget. Если ip a показывает другое имя - поменять.
+private_iface: "eth1"
+
+# Service / Pod CIDR k3s (defaults). Используется в TLS-SAN и сетевых проверках.
+k3s_cluster_cidr: "10.42.0.0/16"
+k3s_service_cidr: "10.43.0.0/16"
+
+# TLS-провайдер для NexTalk: cloudflare | letsencrypt
+# cloudflare  - Origin Certificate из Cloudflare Dashboard, хранится в
+#               infra/ansible/inventory/group_vars/all/certs/origin.crt + origin.key
+# letsencrypt - cert-manager выписывает сертификат автоматически
+tls_provider: "letsencrypt"
+tls_email: "korsakovdanil123@yandex.ru"
+tls_certs_dir: "{{ playbook_dir }}/../inventory/group_vars/all/certs"

@@ -21,9 +21,12 @@ using OpenTelemetry.Resources;
 using OpenTelemetry.Trace;
 using Polly;
 using Prometheus;
+using Prometheus.DotNetRuntime;
 using Serilog;
 using Serilog.Enrichers.Span;
 using IPNetwork = System.Net.IPNetwork;
+
+try { DotNetRuntimeStatsBuilder.Customize().StartCollecting(); } catch (InvalidOperationException) { }
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -216,6 +219,8 @@ builder.Services.AddHealthChecks()
 
 var app = builder.Build();
 
+MigrateDatabase(app);
+
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
@@ -228,8 +233,6 @@ if (app.Environment.IsDevelopment())
         c.RoutePrefix = "swagger";
         c.DocumentTitle = "Messaging Service API";
     });
-
-    MigrateDatabase(app);
 }
 
 app.UseForwardedHeaders();
@@ -261,10 +264,13 @@ app.UseHttpMetrics();
 
 app.UseSerilogRequestLogging(opts =>
     opts.EnrichDiagnosticContext = (dc, ctx) =>
+    {
         dc.Set("CorrelationId",
             ctx.Request.Headers["X-Request-Id"].FirstOrDefault()
             ?? ctx.Request.Headers["X-Correlation-Id"].FirstOrDefault()
-            ?? ctx.TraceIdentifier));
+            ?? ctx.TraceIdentifier);
+        dc.Set("UserId", ctx.User?.FindFirst("sub")?.Value ?? "");
+    });
 
 CreateMessageEndpoint.Map(app);
 
@@ -279,6 +285,8 @@ app.MapHealthChecks("/readyz", new HealthCheckOptions
     Predicate = check => check.Tags.Contains("ready")
 }).AllowAnonymous();
 app.MapMetrics().AllowAnonymous();
+
+_ = NexTalkMetrics.MessagesCreated;
 
 app.Run();
 
