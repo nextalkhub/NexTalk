@@ -11,6 +11,7 @@ import {
 
 import { joinVoiceChannel } from '../../processes/voice/joinVoiceChannel'
 import { leaveVoiceChannel } from '../../processes/voice/leaveVoiceChannel'
+import { loadPrefs } from '../prefs/prefs'
 import { VoiceParticipant } from '../types'
 
 export const useVoice = () => {
@@ -92,12 +93,14 @@ export const useVoice = () => {
                 const response = await joinVoiceChannel(channelId)
                 if (gen !== connectGenRef.current) return // вытеснено следующим join
 
+                // Настройки захвата берем из клиентских prefs (вкладка "Звук").
+                const prefs = loadPrefs()
                 const room = new Room({
                     adaptiveStream: true,
                     dynacast: true,
                     audioCaptureDefaults: {
-                        echoCancellation: true,
-                        noiseSuppression: true,
+                        echoCancellation: prefs.echoCancellation,
+                        noiseSuppression: prefs.noiseSuppression,
                         autoGainControl: true,
                     },
                 })

@@ -13,7 +13,6 @@ export interface Prefs {
   fontScale: number
   echoCancellation: boolean
   noiseSuppression: boolean
-  pushToTalk: boolean
   desktopNotifications: boolean
   newMessageSound: boolean
 }
@@ -24,7 +23,6 @@ export const DEFAULTS: Prefs = {
   fontScale: 14,
   echoCancellation: true,
   noiseSuppression: true,
-  pushToTalk: false,
   desktopNotifications: true,
   newMessageSound: false,
 }
@@ -84,7 +82,7 @@ const THEME_VARS: Record<ThemeId, Record<string, string>> = {
 export function applyPrefs(p: Prefs): void {
   const root = document.documentElement
   root.dataset.theme = p.theme
-  root.dataset.density = 'comfortable'
+  root.dataset.density = p.density
   root.style.setProperty('font-size', `${p.fontScale}px`)
   const vars = THEME_VARS[p.theme]
   Object.entries(vars).forEach(([k, v]) => root.style.setProperty(k, v))

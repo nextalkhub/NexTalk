@@ -10,6 +10,11 @@ import { loadPrefs, savePrefs, applyPrefs, PALETTES, type Prefs } from '../../..
 
 type Tab = 'appearance' | 'audio' | 'notifications' | 'session'
 
+const ZITADEL_PROFILE_URL =
+  (import.meta as ImportMeta & { env?: Record<string, string> }).env?.VITE_ZITADEL_URL
+    ? `${(import.meta as ImportMeta & { env: Record<string, string> }).env.VITE_ZITADEL_URL}/ui/console/users/me`
+    : 'https://zitadel.cloud'
+
 export const AppSettingsPage: React.FC = () => {
   const navigate = useNavigate()
   const user = useAppSelector(selectUser)
@@ -167,103 +172,29 @@ const AppearanceTab: React.FC<{
 const AudioTab: React.FC<{
   prefs: Prefs
   update: <K extends keyof Prefs>(k: K, v: Prefs[K]) => void
-}> = ({ prefs, update }) => {
-  const [devices, setDevices] = useState<MediaDeviceInfo[]>([])
+}> = ({ prefs, update }) => (
+  <>
+    <div className="settings-section-head">
+      <h1>Звук</h1>
+      <p>Обработка микрофона для голосовых каналов. Применяется при следующем подключении.</p>
+    </div>
 
-  useEffect(() => {
-    const load = async () => {
-      try {
-        await navigator.mediaDevices.getUserMedia({ audio: true })
-        const list = await navigator.mediaDevices.enumerateDevices()
-        setDevices(list.filter(d => d.kind === 'audioinput' || d.kind === 'audiooutput'))
-      } catch {
-        // permission denied — leave empty
-      }
-    }
-    load()
-  }, [])
-
-  const inputs  = devices.filter(d => d.kind === 'audioinput')
-  const outputs = devices.filter(d => d.kind === 'audiooutput')
-
-  return (
-    <>
-      <div className="settings-section-head">
-        <h1>Звук</h1>
-        <p>Настройки микрофона и наушников для голосовых каналов.</p>
+    <div className="settings-row">
+      <div className="info">
+        <div className="info-h">Эхоподавление</div>
+        <div className="info-s">Подавляет эхо от динамиков (echoCancellation).</div>
       </div>
-
-      <div className="settings-field">
-        <label className="settings-label">Микрофон</label>
-        {inputs.length > 0 ? (
-          <select className="settings-input">
-            {inputs.map(d => (
-              <option key={d.deviceId} value={d.deviceId}>
-                {d.label || 'Микрофон без названия'}
-              </option>
-            ))}
-          </select>
-        ) : (
-          <div className="ro-field">
-            <span style={{ color: 'var(--fg-2)' }}>Доступ к микрофону не предоставлен</span>
-            <button
-              className="btn-cancel"
-              style={{ height: 32, padding: '0 12px' }}
-              onClick={async () => {
-                try {
-                  await navigator.mediaDevices.getUserMedia({ audio: true })
-                  const list = await navigator.mediaDevices.enumerateDevices()
-                  setDevices(list.filter(d => d.kind === 'audioinput' || d.kind === 'audiooutput'))
-                } catch { /* ignore */ }
-              }}
-            >
-              Запросить доступ
-            </button>
-          </div>
-        )}
+      <Toggle on={prefs.echoCancellation} onChange={v => update('echoCancellation', v)} />
+    </div>
+    <div className="settings-row">
+      <div className="info">
+        <div className="info-h">Шумоподавление</div>
+        <div className="info-s">Отсекает фоновый шум (noiseSuppression).</div>
       </div>
-
-      <div className="settings-field">
-        <label className="settings-label">Наушники / выход</label>
-        {outputs.length > 0 ? (
-          <select className="settings-input">
-            {outputs.map(d => (
-              <option key={d.deviceId} value={d.deviceId}>
-                {d.label || 'Выход без названия'}
-              </option>
-            ))}
-          </select>
-        ) : (
-          <div className="ro-field" style={{ color: 'var(--fg-2)' }}>
-            Браузер не отдаёт список устройств вывода.
-          </div>
-        )}
-      </div>
-
-      <div className="settings-row">
-        <div className="info">
-          <div className="info-h">Эхоподавление</div>
-          <div className="info-s">Обрабатывается в браузере (acousticEchoCancellation).</div>
-        </div>
-        <Toggle on={prefs.echoCancellation} onChange={v => update('echoCancellation', v)} />
-      </div>
-      <div className="settings-row">
-        <div className="info">
-          <div className="info-h">Шумоподавление</div>
-          <div className="info-s">Обрабатывается в браузере (noiseSuppression).</div>
-        </div>
-        <Toggle on={prefs.noiseSuppression} onChange={v => update('noiseSuppression', v)} />
-      </div>
-      <div className="settings-row">
-        <div className="info">
-          <div className="info-h">Push-to-talk</div>
-          <div className="info-s">Микрофон активен только пока удерживается клавиша.</div>
-        </div>
-        <Toggle on={prefs.pushToTalk} onChange={v => update('pushToTalk', v)} />
-      </div>
-    </>
-  )
-}
+      <Toggle on={prefs.noiseSuppression} onChange={v => update('noiseSuppression', v)} />
+    </div>
+  </>
+)
 
 const NotificationsTab: React.FC<{
   prefs: Prefs
@@ -361,9 +292,10 @@ const SessionTab: React.FC<{
           </div>
         </div>
         <a
-          href="#"
+          href={ZITADEL_PROFILE_URL}
+          target="_blank"
+          rel="noopener noreferrer"
           className="profile-zitadel-btn"
-          onClick={e => e.preventDefault()}
         >
           Открыть Zitadel
         </a>
