@@ -2,7 +2,7 @@ import React, { useContext, useEffect } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { TopBar } from '../../../shared/components/Layout/TopBar'
 import { avatarBg } from '../../../shared/components/Avatar/Avatar'
-import { IMic, IMicOff, IHeadset, IPhoneOff } from '../../../shared/components/Icons/Icons'
+import { IMic, IMicOff, IHeadset, IHeadsetOff, IPhoneOff } from '../../../shared/components/Icons/Icons'
 import { LayoutContext } from '../../../shared/components/Layout/AppShell'
 import { useAppSelector } from '../../../store'
 import { selectUser } from '../../../shared/slices/authSlice'
@@ -133,7 +133,7 @@ export const VoiceChannelPage: React.FC = () => {
                 title={isDeafened ? 'Включить наушники' : 'Выключить наушники'}
                 onClick={toggleDeafen}
               >
-                <IHeadset />
+                {isDeafened ? <IHeadsetOff /> : <IHeadset />}
               </button>
               <button className="vc-btn is-leave" onClick={handleDisconnect}>
                 <IPhoneOff />
