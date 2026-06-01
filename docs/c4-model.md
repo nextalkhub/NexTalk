@@ -1699,6 +1699,12 @@ modelConnections:
   targetId: comp-postgres
   direction: outgoing
 
+- id: conn-guild-redis
+  name: Redis :6379
+  originId: deploy-guild
+  targetId: comp-redis
+  direction: outgoing
+
 - id: conn-messaging-pg
   name: PostgreSQL :5432
   originId: deploy-messaging
@@ -1709,18 +1715,6 @@ modelConnections:
   name: PostgreSQL :5432 (zitadel db)
   originId: sts-zitadel
   targetId: comp-postgres
-  direction: outgoing
-
-- id: conn-voice-redis
-  name: Redis :6379 (db 3)
-  originId: deploy-voice
-  targetId: comp-redis
-  direction: outgoing
-
-- id: conn-ws-redis
-  name: Redis :6379 (db 2)
-  originId: deploy-ws
-  targetId: comp-redis
   direction: outgoing
 
 - id: conn-livekit-redis
