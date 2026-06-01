@@ -8,10 +8,10 @@ import { useAppSelector } from '../../../store'
 import { selectUser } from '../../../shared/slices/authSlice'
 import { getInitials } from '../../../shared/utils/initials'
 
-const ZITADEL_PROFILE_URL =
-  (import.meta as ImportMeta & { env?: Record<string, string> }).env?.VITE_ZITADEL_URL
-    ? `${(import.meta as ImportMeta & { env: Record<string, string> }).env.VITE_ZITADEL_URL}/ui/console/users/me`
-    : '#'
+// Консоль нашего Zitadel - тот же authority, что и для OIDC-логина.
+const ZITADEL_PROFILE_URL = import.meta.env.VITE_OIDC_AUTHORITY
+  ? `${import.meta.env.VITE_OIDC_AUTHORITY}/ui/console/users/me`
+  : '#'
 
 export const ProfilePage: React.FC = () => {
   const navigate = useNavigate()

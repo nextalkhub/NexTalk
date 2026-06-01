@@ -1,11 +1,13 @@
 import React, { useEffect, useState } from 'react'
 import { useNavigate, useParams, useLocation } from 'react-router-dom'
-import { IHash, ISpeaker, IPlus, IGear, ILogout, IMic, IMicOff, IHeadset, IPhoneOff } from '../../../shared/components/Icons/Icons'
+import { IHash, ISpeaker, IPlus, IGear, ILogout, IMic, IMicOff, IHeadset, IHeadsetOff, IPhoneOff } from '../../../shared/components/Icons/Icons'
 import { Avatar } from '../../../shared/components/Avatar/Avatar'
 import { useGlobalModal } from '../../../shared/components/Layout/ModalProvider'
 import { useAppDispatch, useAppSelector } from '../../../store'
 import { fetchChannels, setCurrentChannel } from '../../../shared/slices/channelSlice'
 import { fetchMembers } from '../../../shared/slices/memberSlice'
+import { setChannelParticipants } from '../../../shared/slices/voiceSlice'
+import { getVoiceParticipants } from '../../../processes/voice/getVoiceParticipants'
 import { selectCurrentServer, selectServers, setCurrentServer } from '../../../shared/slices/serverSlice'
 import { useVoiceContext } from '../../../shared/contexts/VoiceContext'
 import { selectUser } from '../../../shared/slices/authSlice'
@@ -65,6 +67,19 @@ export const ChannelSidebar: React.FC = () => {
   useEffect(() => {
     if (serverId && serverId !== 'undefined') dispatch(fetchMembers(serverId))
   }, [serverId, dispatch])
+
+  // Первичная синхронизация участников голосовых каналов. Gateway-события
+  // voice.joined/left получают только уже подключенные клиенты, поэтому при
+  // загрузке состояние подтягиваем явно - иначе ранее зашедшие не видны.
+  const voiceChannelIdsKey = channels.filter(c => c.type === 'voice').map(c => c.id).join(',')
+  useEffect(() => {
+    if (!voiceChannelIdsKey) return
+    voiceChannelIdsKey.split(',').forEach(id => {
+      getVoiceParticipants(id)
+        .then(userIds => dispatch(setChannelParticipants({ channelId: id, userIds })))
+        .catch(() => { /* best-effort: отсутствие данных не критично */ })
+    })
+  }, [voiceChannelIdsKey, dispatch])
 
   const [createOpen, setCreateOpen] = useState(false)
   const [collapsedText, setCollapsedText] = useState(false)
@@ -236,11 +251,15 @@ export const ChannelSidebar: React.FC = () => {
                             <div key={userId} className="voice-user-row">
                               <Avatar str={name} size={22} />
                               <span className="nm">{name}</span>
-                              {isDeafened && (
-                                <span className="voice-user-status deafened" title="Наушники выключены"><IHeadset /></span>
-                              )}
-                              {isMuted && !isDeafened && (
-                                <span className="voice-user-status muted" title="Микрофон выключен"><IMicOff /></span>
+                              {(isDeafened || isMuted) && (
+                                <span className="voice-user-statuses">
+                                  {isDeafened && (
+                                    <span className="voice-user-status deafened" title="Наушники выключены"><IHeadsetOff /></span>
+                                  )}
+                                  {isMuted && (
+                                    <span className="voice-user-status muted" title="Микрофон выключен"><IMicOff /></span>
+                                  )}
+                                </span>
                               )}
                             </div>
                           )
@@ -286,7 +305,9 @@ const SelfStatus: React.FC<SelfStatusProps> = ({ user, onOpenSettings }) => {
 
   return (
     <div className="side-self">
-      <Avatar str={user.name} size={32} />
+      <div className="side-self-av">
+        <Avatar str={user.name} size={32} />
+      </div>
       <div className="side-self-text">
         <div className="side-self-name">{user.name}</div>
         <div className="side-self-status">
@@ -347,7 +368,7 @@ const VoiceStatusBar: React.FC<VoiceStatusBarProps> = ({
             title={isDeafened ? 'Включить наушники' : 'Отключить наушники'}
             onClick={onToggleDeafen}
           >
-            <IHeadset />
+            {isDeafened ? <IHeadsetOff /> : <IHeadset />}
           </button>
           <button className="vsb-btn is-leave" title="Покинуть голосовой канал" onClick={onLeave}>
             <IPhoneOff />

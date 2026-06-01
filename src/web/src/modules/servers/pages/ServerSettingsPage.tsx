@@ -773,7 +773,7 @@ const InvitesTab: React.FC<{
 }
 
 const BansTab: React.FC<{
-  bans: { userId: string; bannedBy: string; reason: string | null; bannedAt: string }[]
+  bans: { userId: string; displayName: string | null; username: string | null; bannedBy: string; reason: string | null; bannedAt: string }[]
   loading: boolean
   onUnban: (userId: string) => void
   resolveName: (userId: string) => string
@@ -795,15 +795,17 @@ const BansTab: React.FC<{
           <span style={{ justifySelf: 'end' }}>Действия</span>
         </div>
         {bans.map(ban => {
-          const display = resolveName(ban.userId)
-          const isUuid = display === ban.userId
+          // Имя из снимка на момент бана; если его нет (старый бан) - пробуем резолвить, иначе fallback.
+          const resolved = resolveName(ban.userId)
+          const display = ban.displayName || (resolved !== ban.userId ? resolved : '')
+          const handle = ban.username ? `@${ban.username}` : ''
           return (
             <div key={ban.userId} className="dt-row dt-bans">
               <div className="nm-cell">
-                <Avatar str={display} size={32} />
+                <Avatar str={display || ban.userId} size={32} />
                 <div className="stack">
-                  <span className="nm">{isUuid ? 'Неизвестный пользователь' : display}</span>
-                  <span className="hn">{isUuid ? ban.userId.slice(0, 8) + '...' : ''}</span>
+                  <span className="nm">{display || 'Неизвестный пользователь'}</span>
+                  <span className="hn">{handle || (display ? '' : ban.userId.slice(0, 8) + '...')}</span>
                 </div>
               </div>
               <div className="reason">

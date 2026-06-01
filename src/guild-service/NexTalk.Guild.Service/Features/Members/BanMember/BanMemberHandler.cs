@@ -39,6 +39,8 @@ public class BanMemberHandler
         {
             GuildId = cmd.GuildId,
             UserId = cmd.TargetUserId,
+            DisplayName = target.DisplayName,
+            Username = target.Username,
             BannedBy = cmd.CallerId,
             BannedAt = DateTimeOffset.UtcNow
         };

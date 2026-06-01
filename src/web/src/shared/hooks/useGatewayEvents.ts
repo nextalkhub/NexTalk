@@ -9,6 +9,7 @@ import { addChannel, removeChannel, removeChannelsByServer, setCurrentChannel } 
 import { clearMembers, memberBanned, memberJoined, memberKicked, memberLeft } from '../slices/memberSlice.ts'
 import { removeServer } from '../slices/serverSlice.ts'
 import { userOffline, userOnline } from '../slices/presenceSlice.ts'
+import { notifyNewMessage } from '../utils/notify.ts'
 
 // SignalR JsonHubProtocol сериализует анонимные C#-объекты в camelCase, поэтому
 // payload-ы здесь зеркалят свойства камеля. PascalCase оставляли по ошибке.
@@ -148,6 +149,10 @@ export const useGatewayEvents = () => {
                         content: event.payload.content,
                         createdAt: event.payload.createdAt,
                     }))
+                    // Уведомление только о чужих сообщениях и только когда вкладка скрыта.
+                    if (!currentUser || event.payload.authorId !== currentUser.id) {
+                        notifyNewMessage(event.payload.authorName, event.payload.content)
+                    }
                     break
 
                 case 'voice.joined':

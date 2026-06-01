@@ -196,6 +196,7 @@ a { color: inherit; text-decoration: none; }
 .voice-user-row .av { width: 22px; height: 22px; border-radius: 999px; font-size: 10px; flex-shrink: 0; }
 .voice-user-row .nm { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .voice-user-row .muted-icon { color: var(--live); }
+.voice-user-statuses { display: inline-flex; align-items: center; gap: 4px; flex-shrink: 0; }
 .voice-user-status { display: inline-flex; align-items: center; flex-shrink: 0; }
 .voice-user-status.muted { color: var(--live); opacity: .9; }
 .voice-user-status.deafened { color: var(--fg-3); opacity: .8; }
@@ -213,8 +214,10 @@ a { color: inherit; text-decoration: none; }
 .vsb-btn.is-leave { color: #EF4444; }
 .vsb-btn.is-leave:hover { background: rgba(239,68,68,.12); }
 .side-self { display: flex; align-items: center; gap: 10px; padding: 10px 12px; background: var(--bg-1); border-top: 1px solid var(--bd-1); flex-shrink: 0; }
-.side-self .av { width: 32px; height: 32px; border-radius: 999px; display: inline-flex; align-items: center; justify-content: center; font-weight: 600; font-size: 12px; color: white; position: relative; flex-shrink: 0; }
-.side-self .av::after { content: ""; position: absolute; bottom: -1px; right: -1px; width: 11px; height: 11px; border-radius: 999px; background: var(--ok); border: 2px solid var(--bg-1); }
+.side-self .av { width: 32px; height: 32px; border-radius: 999px; display: inline-flex; align-items: center; justify-content: center; font-weight: 600; font-size: 12px; color: white; flex-shrink: 0; }
+/* Точку онлайна вешаем на обёртку, а не на .av: у .av overflow:hidden, иначе её срезает круг аватара. */
+.side-self-av { position: relative; display: inline-flex; flex-shrink: 0; }
+.side-self-av::after { content: ""; position: absolute; bottom: -1px; right: -1px; width: 12px; height: 12px; border-radius: 999px; background: var(--ok); border: 2.5px solid var(--bg-1); }
 .side-self-text { flex: 1; min-width: 0; }
 .side-self-name { font-size: 13px; font-weight: 600; }
 .side-self-status { font-size: 11px; color: var(--fg-2); margin-top: 1px; }
@@ -362,6 +365,7 @@ a { color: inherit; text-decoration: none; }
   background: radial-gradient(800px 400px at 50% 30%,rgba(var(--brand-1-rgb),.08),transparent 70%), var(--bg-3);
   min-height: 0;
   overflow: hidden;
+  position: relative;
 }
 .voice-stage-meta { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; }
 .voice-stage-meta-left { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; min-width: 0; }
@@ -380,9 +384,16 @@ a { color: inherit; text-decoration: none; }
   align-content: start;
   min-height: 0;
 }
+/* Solo participant: a single comfortably-sized card centred in both axes,
+   instead of a thin strip pinned to the top of an empty stage. */
 .voice-grid:has(> .voice-tile:only-child) {
-  grid-template-columns: minmax(0, min(420px, 100%));
+  grid-template-columns: min(560px, 100%);
+  grid-auto-rows: auto;
   justify-content: center;
+  align-content: center;
+}
+.voice-grid:has(> .voice-tile:only-child) > .voice-tile {
+  min-height: clamp(240px, 46vh, 420px);
 }
 
 .voice-tile {
@@ -488,6 +499,40 @@ a { color: inherit; text-decoration: none; }
 }
 .vc-btn.is-leave:hover { background: #FF4F66; }
 
+/* Reactions bar in the controls dock */
+.vc-reactions { display: flex; gap: 4px; flex-wrap: wrap; justify-content: center; }
+.vc-reaction-btn {
+  width: 36px; height: 36px; border-radius: 999px;
+  background: var(--bg-5); border: 1px solid var(--bd-2);
+  font-size: 18px; line-height: 1; cursor: pointer; flex-shrink: 0;
+  display: inline-flex; align-items: center; justify-content: center;
+  transition: transform .1s, background .15s;
+}
+.vc-reaction-btn:hover:not(:disabled) { background: rgba(255,255,255,.10); transform: translateY(-2px) scale(1.12); }
+.vc-reaction-btn:disabled { opacity: .4; cursor: not-allowed; }
+
+/* Flying reactions over the stage — each shows the emoji and who sent it */
+.voice-reactions-layer { position: absolute; inset: 0; overflow: hidden; pointer-events: none; z-index: 5; }
+.voice-reaction {
+  position: absolute; bottom: 92px;
+  display: flex; flex-direction: column; align-items: center; gap: 4px;
+  will-change: transform, opacity;
+  animation: reaction-float 4.5s cubic-bezier(.22,.61,.36,1) forwards;
+}
+.voice-reaction .emoji { font-size: clamp(32px, 4vw, 46px); line-height: 1; filter: drop-shadow(0 4px 10px rgba(0,0,0,.45)); }
+.voice-reaction .who {
+  font-size: 11px; font-weight: 600; color: var(--fg-0);
+  background: rgba(0,0,0,.55); border: 1px solid var(--bd-2);
+  padding: 1px 8px; border-radius: 999px; max-width: 140px;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+@keyframes reaction-float {
+  0%   { opacity: 0; transform: translate(-50%, 24px) scale(.5); }
+  12%  { opacity: 1; transform: translate(-50%, 0) scale(1); }
+  78%  { opacity: 1; }
+  100% { opacity: 0; transform: translate(-50%, -240px) scale(1); }
+}
+
 /* === Members panel === */
 .members-list { padding: 8px 4px 12px; display: flex; flex-direction: column; gap: 2px; }
 .members-section-h { display: flex; align-items: center; justify-content: space-between; padding: 14px 14px 6px; font-family: var(--font-mono); font-size: 10.5px; text-transform: uppercase; letter-spacing: .08em; color: var(--fg-3); }
@@ -495,7 +540,7 @@ a { color: inherit; text-decoration: none; }
 .member-row:hover { background: rgba(255,255,255,.04); }
 .member-row.offline { opacity: .5; }
 .member-row .av-wrap { position: relative; flex-shrink: 0; }
-.member-row .av-wrap::after { content: ""; position: absolute; bottom: -1px; right: -1px; width: 10px; height: 10px; border-radius: 999px; border: 2px solid var(--bg-2); }
+.member-row .av-wrap::after { content: ""; position: absolute; bottom: -1px; right: -1px; width: 12px; height: 12px; border-radius: 999px; border: 2.5px solid var(--bg-2); }
 .member-row.online  .av-wrap::after { background: var(--ok); }
 .member-row.idle    .av-wrap::after { background: var(--warn); }
 .member-row.dnd     .av-wrap::after { background: var(--live); }
@@ -505,11 +550,6 @@ a { color: inherit; text-decoration: none; }
 .member-row .nm { font-size: 13px; color: var(--fg-0); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .member-row .role-tag { font-family: var(--font-mono); font-size: 9px; color: var(--brand-2); padding: 1px 5px; background: rgba(var(--brand-2-rgb),.10); border: 1px solid rgba(var(--brand-2-rgb),.25); border-radius: 4px; letter-spacing: .04em; display: inline-block; margin-left: 6px; }
 .member-row .role-tag.owner { color: var(--warn); background: rgba(245,196,81,.10); border-color: rgba(245,196,81,.25); }
-.member-voice-icons { display: flex; gap: 3px; flex-shrink: 0; margin-left: auto; }
-.mvc { display: inline-flex; align-items: center; justify-content: center; width: 16px; height: 16px; font-size: 11px; opacity: .7; }
-.mvc.active { color: var(--ok); opacity: .85; }
-.mvc.muted { color: #EF4444; opacity: .9; }
-.mvc.deafened { color: #EF4444; opacity: .9; }
 .you-tag { display: inline-flex; align-items: center; height: 14px; padding: 0 5px; border-radius: 3px; font-size: 9px; font-weight: 700; font-family: var(--font-mono); letter-spacing: .04em; background: rgba(var(--brand-1-rgb),.12); color: var(--brand-1); border: 1px solid rgba(var(--brand-1-rgb),.25); margin-left: 4px; vertical-align: middle; }
 .guild-settings-btn { margin-left: auto; width: 28px; height: 28px; border-radius: 8px; background: rgba(0,0,0,.28); border: 1px solid rgba(255,255,255,.18); color: white; display: inline-flex; align-items: center; justify-content: center; z-index: 1; flex-shrink: 0; transition: background .15s; }
 .guild-settings-btn:hover { background: rgba(0,0,0,.45); }

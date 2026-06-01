@@ -27,8 +27,15 @@ const voiceSlice = createSlice({
                 state.channelParticipants[channelId] = list.filter(id => id !== userId)
             }
         },
+        // Первичная синхронизация: заменяет список участников канала целиком.
+        // Real-time события voice.joined/left получают только уже подключенные
+        // клиенты, поэтому позже зашедший должен подтянуть актуальное состояние сам.
+        setChannelParticipants(state, action: PayloadAction<{ channelId: string; userIds: string[] }>) {
+            const { channelId, userIds } = action.payload
+            state.channelParticipants[channelId] = userIds
+        },
     },
 })
 
-export const { voiceParticipantJoined, voiceParticipantLeft } = voiceSlice.actions
+export const { voiceParticipantJoined, voiceParticipantLeft, setChannelParticipants } = voiceSlice.actions
 export default voiceSlice.reducer

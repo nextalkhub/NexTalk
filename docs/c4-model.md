@@ -1349,8 +1349,9 @@ modelObjects:
   name: Cloudflare
   type: system
   parentId: env-prod
-  description: DNS proxy, WAF, DDoS protection. Origin Certificate TLS. TCP:443 → worker-1.
-  caption: External CDN + WAF
+  external: true
+  description: 'DNS-only (grey-cloud): не проксирует трафик, без WAF/CDN/DDoS-прокси и без TLS termination. Отдаёт A-записи на публичные IP всех 3 воркеров (round-robin DNS). Клиент подключается к воркерам напрямую.'
+  caption: External DNS (DNS-only)
   tagIds: [tag-external]
 
 # ── HAProxy VPS ─────────────────────────────────────────────────────────────
@@ -1406,23 +1407,23 @@ modelObjects:
   name: worker-1 (10.19.0.21, public)
   type: app
   parentId: cluster-k3s
-  description: k3s agent. Bastion - единственный публичный IP. Входящий трафик :443 от Cloudflare. SSH ProxyJump для всего кластера.
+  description: k3s agent. Публичный IP. Входящий трафик :443 напрямую от клиентов (Cloudflare = DNS-only, round-robin). Также bastion - SSH ProxyJump для всего кластера.
   caption: Worker + Bastion
   tagIds: [tag-worker]
 
 - id: node-worker-2
-  name: worker-2 (10.19.0.22)
+  name: worker-2 (10.19.0.22, public)
   type: app
   parentId: cluster-k3s
-  description: k3s agent. Только приватная сеть. Трафик через worker-1 NAT.
+  description: k3s agent. Публичный IP. Принимает входящий трафик :443 напрямую (Cloudflare round-robin DNS).
   caption: Worker
   tagIds: [tag-worker]
 
 - id: node-worker-3
-  name: worker-3 (10.19.0.23)
+  name: worker-3 (10.19.0.23, public)
   type: app
   parentId: cluster-k3s
-  description: k3s agent. Только приватная сеть. Трафик через worker-1 NAT.
+  description: k3s agent. Публичный IP. Принимает входящий трафик :443 напрямую (Cloudflare round-robin DNS).
   caption: Worker
   tagIds: [tag-worker]
 
@@ -1431,7 +1432,7 @@ modelObjects:
   name: ingress-nginx (DaemonSet, ×3)
   type: app
   parentId: cluster-k3s
-  description: По одному поду на каждом worker. Принимает :443 → routing по host/path → ClusterIP сервисы. TLS termination с Cloudflare Origin Certificate.
+  description: По одному поду на каждом worker. Принимает :443 → routing по host/path → ClusterIP сервисы. TLS termination с Let's Encrypt сертификатом.
   caption: DaemonSet - ingress controller
   tagIds: [tag-daemonset, tag-ns-nextalk]
 
@@ -1641,13 +1642,27 @@ modelObjects:
 
 modelConnections:
 
-# ── Cloudflare → Worker ──────────────────────────────────────────────────────
-- id: conn-cf-worker
-  name: TCP :443
+# ── Cloudflare DNS → Workers (round-robin A records) ─────────────────────────
+- id: conn-cf-worker-1
+  name: DNS A :443
   originId: ext-cloudflare
   targetId: node-worker-1
   direction: outgoing
-  description: Origin Certificate TLS. Cloudflare terminates TLS с клиентом, передает на worker-1 с Origin Cert.
+  description: 'A-запись round-robin: домен резолвится на публичный IP worker-1. Трафик идёт напрямую client → worker (не через Cloudflare).'
+
+- id: conn-cf-worker-2
+  name: DNS A :443
+  originId: ext-cloudflare
+  targetId: node-worker-2
+  direction: outgoing
+  description: 'A-запись round-robin: домен резолвится на публичный IP worker-2.'
+
+- id: conn-cf-worker-3
+  name: DNS A :443
+  originId: ext-cloudflare
+  targetId: node-worker-3
+  direction: outgoing
+  description: 'A-запись round-robin: домен резолвится на публичный IP worker-3.'
 
 # ── ingress → services ───────────────────────────────────────────────────────
 - id: conn-ingress-guild
@@ -1699,6 +1714,12 @@ modelConnections:
   targetId: comp-postgres
   direction: outgoing
 
+- id: conn-guild-redis
+  name: Redis :6379
+  originId: deploy-guild
+  targetId: comp-redis
+  direction: outgoing
+
 - id: conn-messaging-pg
   name: PostgreSQL :5432
   originId: deploy-messaging
@@ -1709,18 +1730,6 @@ modelConnections:
   name: PostgreSQL :5432 (zitadel db)
   originId: sts-zitadel
   targetId: comp-postgres
-  direction: outgoing
-
-- id: conn-voice-redis
-  name: Redis :6379 (db 3)
-  originId: deploy-voice
-  targetId: comp-redis
-  direction: outgoing
-
-- id: conn-ws-redis
-  name: Redis :6379 (db 2)
-  originId: deploy-ws
-  targetId: comp-redis
   direction: outgoing
 
 - id: conn-livekit-redis

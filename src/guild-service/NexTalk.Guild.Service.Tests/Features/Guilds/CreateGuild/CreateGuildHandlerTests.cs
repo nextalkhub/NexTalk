@@ -21,7 +21,7 @@ public class CreateGuildHandlerTests
         var ownerId = Guid.NewGuid().ToString();
         var cmd = new CreateGuildCommand("My Server", ownerId, "John", "john");
 
-        var guildId = await new CreateGuildHandler(db, NullLogger<CreateGuildHandler>.Instance).HandleAsync(cmd);
+        var guildId = (await new CreateGuildHandler(db, NullLogger<CreateGuildHandler>.Instance).HandleAsync(cmd)).Id;
 
         var guild = await db.Guilds.FindAsync(guildId);
         Assert.NotNull(guild);
@@ -36,7 +36,7 @@ public class CreateGuildHandlerTests
         var ownerId = Guid.NewGuid().ToString();
         var cmd = new CreateGuildCommand("Test", ownerId, "Alice", "alice");
 
-        var guildId = await new CreateGuildHandler(db, NullLogger<CreateGuildHandler>.Instance).HandleAsync(cmd);
+        var guildId = (await new CreateGuildHandler(db, NullLogger<CreateGuildHandler>.Instance).HandleAsync(cmd)).Id;
 
         var member = await db.Members.SingleAsync(m => m.GuildId == guildId);
         Assert.Equal(ownerId, member.UserId);
@@ -51,7 +51,7 @@ public class CreateGuildHandlerTests
         await using var db = CreateDb();
         var cmd = new CreateGuildCommand("Test", Guid.NewGuid().ToString(), "User", "user");
 
-        var guildId = await new CreateGuildHandler(db, NullLogger<CreateGuildHandler>.Instance).HandleAsync(cmd);
+        var guildId = (await new CreateGuildHandler(db, NullLogger<CreateGuildHandler>.Instance).HandleAsync(cmd)).Id;
 
         var channel = await db.Channels.SingleAsync(c => c.GuildId == guildId);
         Assert.Equal("general", channel.Name);
@@ -64,7 +64,7 @@ public class CreateGuildHandlerTests
         await using var db = CreateDb();
         var cmd = new CreateGuildCommand("Test", Guid.NewGuid().ToString(), "User", "user");
 
-        var guildId = await new CreateGuildHandler(db, NullLogger<CreateGuildHandler>.Instance).HandleAsync(cmd);
+        var guildId = (await new CreateGuildHandler(db, NullLogger<CreateGuildHandler>.Instance).HandleAsync(cmd)).Id;
 
         Assert.Equal(1, await db.Guilds.CountAsync(g => g.Id == guildId));
         Assert.Equal(1, await db.Members.CountAsync(m => m.GuildId == guildId));
@@ -72,14 +72,19 @@ public class CreateGuildHandlerTests
     }
 
     [Fact]
-    public async Task Handle_ReturnsNewGuildId()
+    public async Task Handle_ReturnsFullGuild()
     {
         await using var db = CreateDb();
-        var cmd = new CreateGuildCommand("Test", Guid.NewGuid().ToString(), "User", "user");
+        var ownerId = Guid.NewGuid().ToString();
+        var cmd = new CreateGuildCommand("Test", ownerId, "User", "user");
 
-        var guildId = await new CreateGuildHandler(db, NullLogger<CreateGuildHandler>.Instance).HandleAsync(cmd);
+        // Хендлер должен вернуть полный объект (id+name+ownerId), а не только id -
+        // иначе клиент покажет новую гильдию без названия до перезагрузки.
+        var result = await new CreateGuildHandler(db, NullLogger<CreateGuildHandler>.Instance).HandleAsync(cmd);
 
-        Assert.NotEqual(Guid.Empty, guildId);
-        Assert.True(await db.Guilds.AnyAsync(g => g.Id == guildId));
+        Assert.NotEqual(Guid.Empty, result.Id);
+        Assert.Equal("Test", result.Name);
+        Assert.Equal(ownerId, result.OwnerId);
+        Assert.True(await db.Guilds.AnyAsync(g => g.Id == result.Id));
     }
 }

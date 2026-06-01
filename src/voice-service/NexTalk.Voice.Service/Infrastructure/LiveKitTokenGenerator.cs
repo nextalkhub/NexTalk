@@ -31,6 +31,8 @@ public sealed class LiveKitTokenGenerator
                 CanPublish = true,
                 CanSubscribe = true,
                 CanPublishData = true,
+                // Нужно для трансляции собственного состояния (deafened) через attributes.
+                CanUpdateOwnMetadata = true,
             })
             .WithTtl(TimeSpan.FromMinutes(_ttlMinutes));
 

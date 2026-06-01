@@ -2,7 +2,7 @@ import React, { useContext, useEffect } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { TopBar } from '../../../shared/components/Layout/TopBar'
 import { avatarBg } from '../../../shared/components/Avatar/Avatar'
-import { IMic, IMicOff, IHeadset, IPhoneOff } from '../../../shared/components/Icons/Icons'
+import { IMic, IMicOff, IHeadset, IHeadsetOff, IPhoneOff } from '../../../shared/components/Icons/Icons'
 import { LayoutContext } from '../../../shared/components/Layout/AppShell'
 import { useAppSelector } from '../../../store'
 import { selectUser } from '../../../shared/slices/authSlice'
@@ -12,6 +12,8 @@ import { getInitials } from '../../../shared/utils/initials'
 import type { Member } from '../../../shared/types'
 
 const pluralPeople = (n: number) => pluralize(n, 'участник', 'участника', 'участников')
+
+const REACTION_EMOJIS = ['👍', '❤️', '😂', '🎉', '😮', '🔥', '👏', '😢']
 
 export const VoiceChannelPage: React.FC = () => {
   const navigate = useNavigate()
@@ -23,12 +25,14 @@ export const VoiceChannelPage: React.FC = () => {
     joinVoice,
     leaveVoice,
     participants,
+    reactions,
     isMuted,
     isDeafened,
     isConnected,
     isLocalSpeaking,
     toggleMic,
     toggleDeafen,
+    sendReaction,
     hasMicrophonePermission,
   } = useVoiceContext()
 
@@ -63,6 +67,7 @@ export const VoiceChannelPage: React.FC = () => {
         isSelf: true,
         isSpeaking: isLocalSpeaking,
         isMuted: isMuted || hasMicrophonePermission === false,
+        isDeafened,
       }
     : null
 
@@ -72,6 +77,7 @@ export const VoiceChannelPage: React.FC = () => {
     isSelf: false,
     isSpeaking: p.isSpeaking,
     isMuted: p.isMuted,
+    isDeafened: p.isDeafened,
   }))
 
   const allTiles = selfTile ? [selfTile, ...remoteTiles] : remoteTiles
@@ -99,6 +105,15 @@ export const VoiceChannelPage: React.FC = () => {
             </div>
           </div>
 
+          <div className="voice-reactions-layer" aria-hidden="true">
+            {reactions.map(r => (
+              <div key={r.id} className="voice-reaction" style={{ left: `${r.left}%` }}>
+                <span className="emoji">{r.emoji}</span>
+                <span className="who">{r.senderName}</span>
+              </div>
+            ))}
+          </div>
+
           {allTiles.length === 0 ? (
             <div className="empty-state" style={{ flex: 1 }}>
               <div className="icon-blob"><IMic /></div>
@@ -120,6 +135,19 @@ export const VoiceChannelPage: React.FC = () => {
                 {isConnected ? 'Голосовой чат' : 'Подключение...'}
               </div>
             </div>
+            <div className="vc-reactions">
+              {REACTION_EMOJIS.map(emoji => (
+                <button
+                  key={emoji}
+                  className="vc-reaction-btn"
+                  title="Отправить реакцию"
+                  onClick={() => sendReaction(emoji)}
+                  disabled={!isConnected}
+                >
+                  {emoji}
+                </button>
+              ))}
+            </div>
             <div className="vc-buttons">
               <button
                 className={`vc-btn${isMuted ? ' is-muted' : ''}`}
@@ -133,7 +161,7 @@ export const VoiceChannelPage: React.FC = () => {
                 title={isDeafened ? 'Включить наушники' : 'Выключить наушники'}
                 onClick={toggleDeafen}
               >
-                <IHeadset />
+                {isDeafened ? <IHeadsetOff /> : <IHeadset />}
               </button>
               <button className="vc-btn is-leave" onClick={handleDisconnect}>
                 <IPhoneOff />
@@ -153,13 +181,15 @@ interface TileProps {
   isSelf: boolean
   isSpeaking: boolean
   isMuted: boolean
+  isDeafened: boolean
 }
 
-const VoiceTile: React.FC<TileProps> = ({ id, name, isSelf, isSpeaking, isMuted }) => (
+const VoiceTile: React.FC<TileProps> = ({ id, name, isSelf, isSpeaking, isMuted, isDeafened }) => (
   <div className={`voice-tile${isSelf ? ' is-self' : ''}${isSpeaking ? ' is-speaking' : ''}`}>
-    {isMuted && (
+    {(isDeafened || isMuted) && (
       <div className="voice-tile-indicator">
-        <span className="ind muted" title="Микрофон выключен"><IMicOff /></span>
+        {isDeafened && <span className="ind muted" title="Наушники выключены"><IHeadsetOff /></span>}
+        {isMuted && <span className="ind muted" title="Микрофон выключен"><IMicOff /></span>}
       </div>
     )}
     <span

@@ -11,7 +11,11 @@ import {
 
 import { joinVoiceChannel } from '../../processes/voice/joinVoiceChannel'
 import { leaveVoiceChannel } from '../../processes/voice/leaveVoiceChannel'
-import { VoiceParticipant } from '../types'
+import { loadPrefs } from '../prefs/prefs'
+import { VoiceParticipant, VoiceReaction } from '../types'
+
+// Реакция держится на экране ~4.5с, потом удаляется.
+const REACTION_TTL_MS = 4500
 
 export const useVoice = () => {
     const roomRef = useRef<Room | null>(null)
@@ -19,8 +23,12 @@ export const useVoice = () => {
     const connectGenRef = useRef(0)
     const speakingIdsRef = useRef<Set<string>>(new Set())
     const audioCleanups = useRef<Map<string, () => void>>(new Map())
+    // Имя локального пользователя - нужно для собственных реакций (publishData не возвращается отправителю).
+    const localUserRef = useRef<{ id: string; name: string } | null>(null)
+    const reactionTimers = useRef<Set<ReturnType<typeof setTimeout>>>(new Set())
 
     const [participants, setParticipants] = useState<VoiceParticipant[]>([])
+    const [reactions, setReactions] = useState<VoiceReaction[]>([])
     const [isConnected, setIsConnected] = useState(false)
     const [isMuted, setIsMuted] = useState(false)
     const [isDeafened, setIsDeafened] = useState(false)
@@ -55,11 +63,26 @@ export const useVoice = () => {
             userId: p.identity,
             username: p.name || p.identity,
             isMuted: !p.isMicrophoneEnabled,
-            isDeafened: false,
+            // deafened другие узнают через attributes (LiveKit раздаёт их всем,
+            // включая позже подключившихся).
+            isDeafened: p.attributes?.['deafened'] === '1',
             isSpeaking: speakingIdsRef.current.has(p.identity),
         }))
 
         setParticipants(list)
+    }, [])
+
+    // Добавляет реакцию в список и снимает её по таймауту. left - случайная
+    // позиция по горизонтали, чтобы одновременные реакции не накладывались.
+    const pushReaction = useCallback((r: Omit<VoiceReaction, 'id' | 'left'>) => {
+        const id = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
+        const left = 12 + Math.random() * 76
+        setReactions(prev => [...prev, { ...r, id, left }])
+        const timer = setTimeout(() => {
+            setReactions(prev => prev.filter(x => x.id !== id))
+            reactionTimers.current.delete(timer)
+        }, REACTION_TTL_MS)
+        reactionTimers.current.add(timer)
     }, [])
 
     const attachAudioTrack = (track: RemoteTrack, trackSid: string) => {
@@ -68,6 +91,14 @@ export const useVoice = () => {
         const audioElement = track.attach()
         audioElement.autoplay = true
         audioElement.style.display = 'none'
+
+        // Применяем выбранное устройство вывода, если задано и поддерживается браузером.
+        const speakerId = loadPrefs().speakerDeviceId
+        if (speakerId) {
+            const sinkable = audioElement as HTMLAudioElement & { setSinkId?: (id: string) => Promise<void> }
+            sinkable.setSinkId?.(speakerId).catch(() => { /* не поддерживается - игнор */ })
+        }
+
         document.body.appendChild(audioElement)
 
         audioCleanups.current.set(trackSid, () => {
@@ -77,8 +108,9 @@ export const useVoice = () => {
     }
 
     const joinVoice = useCallback(
-        async (channelId: string, _: { id: string; name: string }) => {
+        async (channelId: string, user: { id: string; name: string }) => {
             const gen = ++connectGenRef.current
+            localUserRef.current = user
 
             // Отключаем текущую комнату (это прерывает незавершенный room.connect()).
             if (roomRef.current) {
@@ -92,12 +124,15 @@ export const useVoice = () => {
                 const response = await joinVoiceChannel(channelId)
                 if (gen !== connectGenRef.current) return // вытеснено следующим join
 
+                // Настройки захвата берем из клиентских prefs (вкладка "Звук").
+                const prefs = loadPrefs()
                 const room = new Room({
                     adaptiveStream: true,
                     dynacast: true,
                     audioCaptureDefaults: {
-                        echoCancellation: true,
-                        noiseSuppression: true,
+                        deviceId: prefs.micDeviceId || undefined,
+                        echoCancellation: prefs.echoCancellation,
+                        noiseSuppression: prefs.noiseSuppression,
                         autoGainControl: true,
                     },
                 })
@@ -108,6 +143,7 @@ export const useVoice = () => {
                 room.on(RoomEvent.ParticipantDisconnected, syncParticipants)
                 room.on(RoomEvent.TrackMuted, syncParticipants)
                 room.on(RoomEvent.TrackUnmuted, syncParticipants)
+                room.on(RoomEvent.ParticipantAttributesChanged, syncParticipants)
 
                 room.on(RoomEvent.ActiveSpeakersChanged, (speakers: Participant[]) => {
                     const ids = new Set(speakers.map(s => s.identity))
@@ -135,11 +171,28 @@ export const useVoice = () => {
                     }
                 )
 
+                // Реакции-смайлики приходят через data channel. Отправителя берем
+                // из participant.identity, имя - из payload (отправитель знает своё).
+                room.on(RoomEvent.DataReceived, (payload: Uint8Array, participant) => {
+                    try {
+                        const msg = JSON.parse(new TextDecoder().decode(payload))
+                        if (msg?.type !== 'reaction' || typeof msg.emoji !== 'string') return
+                        pushReaction({
+                            emoji: msg.emoji,
+                            senderId: participant?.identity ?? msg.senderId ?? '',
+                            senderName: msg.senderName || participant?.name || 'Участник',
+                        })
+                    } catch {
+                        // чужой/битый пакет - игнорируем
+                    }
+                })
+
                 room.on(RoomEvent.Disconnected, () => {
                     speakingIdsRef.current = new Set()
                     roomRef.current = null
                     cleanupAudio()
                     setParticipants([])
+                    setReactions([])
                     setIsConnected(false)
                     setIsLocalSpeaking(false)
                     setIsMuted(false)
@@ -172,7 +225,7 @@ export const useVoice = () => {
                 console.error('Voice connect error:', err)
             }
         },
-        [syncParticipants, cleanupAudio]
+        [syncParticipants, cleanupAudio, pushReaction]
     )
 
     const leaveVoice = useCallback(
@@ -191,7 +244,11 @@ export const useVoice = () => {
             }
             cleanupAudio()
 
+            reactionTimers.current.forEach(clearTimeout)
+            reactionTimers.current.clear()
+
             setParticipants([])
+            setReactions([])
             setIsConnected(false)
             setIsLocalSpeaking(false)
             setIsMuted(false)
@@ -200,12 +257,38 @@ export const useVoice = () => {
         [cleanupAudio]
     )
 
+    // Отправляет реакцию всем в комнате и сразу показывает её себе
+    // (publishData не доставляет пакет обратно отправителю).
+    const sendReaction = useCallback((emoji: string) => {
+        const room = roomRef.current
+        const me = localUserRef.current
+        if (!room) return
+
+        const payload = new TextEncoder().encode(JSON.stringify({
+            type: 'reaction',
+            emoji,
+            senderId: me?.id ?? room.localParticipant.identity,
+            senderName: me?.name ?? room.localParticipant.name ?? 'Вы',
+        }))
+        room.localParticipant.publishData(payload, { reliable: false }).catch(() => { /* best-effort */ })
+
+        pushReaction({
+            emoji,
+            senderId: me?.id ?? room.localParticipant.identity,
+            senderName: me?.name ?? 'Вы',
+        })
+    }, [pushReaction])
+
     const toggleDeafen = useCallback(() => {
         setIsDeafened(prev => {
             const next = !prev
             document.querySelectorAll<HTMLAudioElement>('body > audio').forEach(el => {
                 el.muted = next
             })
+            // Транслируем состояние остальным участникам комнаты.
+            roomRef.current?.localParticipant
+                .setAttributes({ deafened: next ? '1' : '0' })
+                .catch(() => { /* best-effort: грант canUpdateOwnMetadata обязателен */ })
             return next
         })
     }, [])
@@ -244,6 +327,7 @@ export const useVoice = () => {
 
     return {
         participants,
+        reactions,
         isConnected,
         isMuted,
         isDeafened,
@@ -253,5 +337,6 @@ export const useVoice = () => {
         leaveVoice,
         toggleMic,
         toggleDeafen,
+        sendReaction,
     }
 }
