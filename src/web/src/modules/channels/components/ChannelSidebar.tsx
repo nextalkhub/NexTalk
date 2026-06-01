@@ -301,7 +301,9 @@ const SelfStatus: React.FC<SelfStatusProps> = ({ user, onOpenSettings }) => {
 
   return (
     <div className="side-self">
-      <Avatar str={user.name} size={32} />
+      <div className="side-self-av">
+        <Avatar str={user.name} size={32} />
+      </div>
       <div className="side-self-text">
         <div className="side-self-name">{user.name}</div>
         <div className="side-self-status">
