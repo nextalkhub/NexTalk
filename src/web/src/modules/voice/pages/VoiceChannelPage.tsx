@@ -188,9 +188,8 @@ const VoiceTile: React.FC<TileProps> = ({ id, name, isSelf, isSpeaking, isMuted,
   <div className={`voice-tile${isSelf ? ' is-self' : ''}${isSpeaking ? ' is-speaking' : ''}`}>
     {(isDeafened || isMuted) && (
       <div className="voice-tile-indicator">
-        {isDeafened
-          ? <span className="ind muted" title="Наушники выключены"><IHeadsetOff /></span>
-          : <span className="ind muted" title="Микрофон выключен"><IMicOff /></span>}
+        {isDeafened && <span className="ind muted" title="Наушники выключены"><IHeadsetOff /></span>}
+        {isMuted && <span className="ind muted" title="Микрофон выключен"><IMicOff /></span>}
       </div>
     )}
     <span

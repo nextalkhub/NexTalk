@@ -196,6 +196,7 @@ a { color: inherit; text-decoration: none; }
 .voice-user-row .av { width: 22px; height: 22px; border-radius: 999px; font-size: 10px; flex-shrink: 0; }
 .voice-user-row .nm { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .voice-user-row .muted-icon { color: var(--live); }
+.voice-user-statuses { display: inline-flex; align-items: center; gap: 4px; flex-shrink: 0; }
 .voice-user-status { display: inline-flex; align-items: center; flex-shrink: 0; }
 .voice-user-status.muted { color: var(--live); opacity: .9; }
 .voice-user-status.deafened { color: var(--fg-3); opacity: .8; }

@@ -251,11 +251,15 @@ export const ChannelSidebar: React.FC = () => {
                             <div key={userId} className="voice-user-row">
                               <Avatar str={name} size={22} />
                               <span className="nm">{name}</span>
-                              {isDeafened && (
-                                <span className="voice-user-status deafened" title="Наушники выключены"><IHeadsetOff /></span>
-                              )}
-                              {isMuted && !isDeafened && (
-                                <span className="voice-user-status muted" title="Микрофон выключен"><IMicOff /></span>
+                              {(isDeafened || isMuted) && (
+                                <span className="voice-user-statuses">
+                                  {isDeafened && (
+                                    <span className="voice-user-status deafened" title="Наушники выключены"><IHeadsetOff /></span>
+                                  )}
+                                  {isMuted && (
+                                    <span className="voice-user-status muted" title="Микрофон выключен"><IMicOff /></span>
+                                  )}
+                                </span>
                               )}
                             </div>
                           )
