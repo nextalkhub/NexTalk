@@ -2,6 +2,8 @@ import { axiosInstance } from '../axiosInstance'
 
 export interface BanDto {
   userId: string
+  displayName: string | null
+  username: string | null
   bannedBy: string
   reason: string | null
   bannedAt: string

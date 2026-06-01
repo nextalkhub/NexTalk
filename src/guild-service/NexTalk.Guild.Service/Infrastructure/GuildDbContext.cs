@@ -77,6 +77,8 @@ public class GuildDbContext : DbContext
             e.ToTable("bans");
             e.HasKey(b => new { b.GuildId, b.UserId });
             e.Property(b => b.UserId).IsRequired().HasMaxLength(36);
+            e.Property(b => b.DisplayName).HasMaxLength(100);
+            e.Property(b => b.Username).HasMaxLength(100);
             e.Property(b => b.BannedBy).IsRequired().HasMaxLength(36);
             e.Property(b => b.Reason).HasMaxLength(500);
             e.Property(b => b.BannedAt).HasDefaultValueSql("now()");

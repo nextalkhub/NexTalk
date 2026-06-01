@@ -15,7 +15,7 @@ public class GetBansHandler
         _rbac = rbac;
     }
 
-    public record BanDto(string UserId, string BannedBy, string? Reason, DateTimeOffset BannedAt);
+    public record BanDto(string UserId, string? DisplayName, string? Username, string BannedBy, string? Reason, DateTimeOffset BannedAt);
 
     public async Task<IReadOnlyList<BanDto>> HandleAsync(GetBansQuery query, CancellationToken ct = default)
     {
@@ -24,7 +24,7 @@ public class GetBansHandler
         return await _db.Bans
             .Where(b => b.GuildId == query.GuildId)
             .OrderByDescending(b => b.BannedAt)
-            .Select(b => new BanDto(b.UserId, b.BannedBy, b.Reason, b.BannedAt))
+            .Select(b => new BanDto(b.UserId, b.DisplayName, b.Username, b.BannedBy, b.Reason, b.BannedAt))
             .ToListAsync(ct);
     }
 }
