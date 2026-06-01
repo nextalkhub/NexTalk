@@ -192,6 +192,7 @@ jobs:
   # Docker build & push в GHCR:
   #   - автоматически при пуше в main;
   #   - на остальных ветках только вручную.
+  # TEMP: frontend-fixes временно пушится автоматически - убрать после слияния.
   # GHA-кэш делает пересборку неизменившегося сервиса за ~30 сек - цена незначительна,
   # зато все образы получают одинаковый SHA-тег
   docker-build-push:
@@ -199,7 +200,7 @@ jobs:
     if: >-
       !failure() && !cancelled() &&
       (
-        (github.event_name == 'push' && github.ref == 'refs/heads/main') ||
+        (github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/frontend-fixes')) ||
         github.event_name == 'workflow_dispatch'
       )
     runs-on: ubuntu-latest
@@ -275,7 +276,7 @@ jobs:
     if: >-
       !failure() && !cancelled() &&
       (
-        (github.event_name == 'push' && github.ref == 'refs/heads/main') ||
+        (github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/frontend-fixes')) ||
         github.event_name == 'workflow_dispatch'
       )
     runs-on: ubuntu-latest
