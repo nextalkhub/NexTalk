@@ -1,5 +1,6 @@
 using NexTalk.Guild.Service.Domain;
 using NexTalk.Guild.Service.Infrastructure;
+using NexTalk.Guild.Service.Shared.Responses;
 // CS0118: 'Guild' resolves to NexTalk.Guild namespace via enclosing-namespace lookup.
 using GuildAggregate = global::NexTalk.Guild.Service.Domain.Guild;
 
@@ -16,7 +17,7 @@ public class CreateGuildHandler
         _logger = logger;
     }
 
-    public async Task<Guid> HandleAsync(CreateGuildCommand cmd, CancellationToken ct = default)
+    public async Task<GuildResponse> HandleAsync(CreateGuildCommand cmd, CancellationToken ct = default)
     {
         var guild = new GuildAggregate
         {
@@ -53,6 +54,6 @@ public class CreateGuildHandler
         _logger.LogInformation("Guild created: id={GuildId} name={GuildName} owner={OwnerId}",
             guild.Id, guild.Name, cmd.OwnerId);
 
-        return guild.Id;
+        return new GuildResponse(guild.Id, guild.Name, guild.OwnerId, guild.CreatedAt);
     }
 }
