@@ -1,6 +1,6 @@
 import React, { createContext, useCallback, useContext, useRef, useState } from 'react'
 import { useVoice } from '../hooks/useVoice'
-import type { VoiceParticipant } from '../types'
+import type { VoiceParticipant, VoiceReaction } from '../types'
 
 interface VoiceCtx {
   activeChannelId: string | null
@@ -10,10 +10,12 @@ interface VoiceCtx {
   isLocalSpeaking: boolean
   hasMicrophonePermission: boolean | null
   participants: VoiceParticipant[]
+  reactions: VoiceReaction[]
   joinVoice: (channelId: string, user: { id: string; name: string }) => Promise<void>
   leaveVoice: (channelId: string) => Promise<void>
   toggleMic: () => void
   toggleDeafen: () => void
+  sendReaction: (emoji: string) => void
 }
 
 const VoiceContext = createContext<VoiceCtx>({
@@ -24,10 +26,12 @@ const VoiceContext = createContext<VoiceCtx>({
   isLocalSpeaking: false,
   hasMicrophonePermission: null,
   participants: [],
+  reactions: [],
   joinVoice: async () => {},
   leaveVoice: async () => {},
   toggleMic: () => {},
   toggleDeafen: () => {},
+  sendReaction: () => {},
 })
 
 export const VoiceSessionProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {

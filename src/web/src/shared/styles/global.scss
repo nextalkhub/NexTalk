@@ -362,6 +362,7 @@ a { color: inherit; text-decoration: none; }
   background: radial-gradient(800px 400px at 50% 30%,rgba(var(--brand-1-rgb),.08),transparent 70%), var(--bg-3);
   min-height: 0;
   overflow: hidden;
+  position: relative;
 }
 .voice-stage-meta { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; }
 .voice-stage-meta-left { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; min-width: 0; }
@@ -494,6 +495,40 @@ a { color: inherit; text-decoration: none; }
   border-radius: 12px; font-weight: 600; font-size: 13px; gap: 6px;
 }
 .vc-btn.is-leave:hover { background: #FF4F66; }
+
+/* Reactions bar in the controls dock */
+.vc-reactions { display: flex; gap: 4px; flex-wrap: wrap; justify-content: center; }
+.vc-reaction-btn {
+  width: 36px; height: 36px; border-radius: 999px;
+  background: var(--bg-5); border: 1px solid var(--bd-2);
+  font-size: 18px; line-height: 1; cursor: pointer; flex-shrink: 0;
+  display: inline-flex; align-items: center; justify-content: center;
+  transition: transform .1s, background .15s;
+}
+.vc-reaction-btn:hover:not(:disabled) { background: rgba(255,255,255,.10); transform: translateY(-2px) scale(1.12); }
+.vc-reaction-btn:disabled { opacity: .4; cursor: not-allowed; }
+
+/* Flying reactions over the stage — each shows the emoji and who sent it */
+.voice-reactions-layer { position: absolute; inset: 0; overflow: hidden; pointer-events: none; z-index: 5; }
+.voice-reaction {
+  position: absolute; bottom: 92px;
+  display: flex; flex-direction: column; align-items: center; gap: 4px;
+  will-change: transform, opacity;
+  animation: reaction-float 4.5s cubic-bezier(.22,.61,.36,1) forwards;
+}
+.voice-reaction .emoji { font-size: clamp(32px, 4vw, 46px); line-height: 1; filter: drop-shadow(0 4px 10px rgba(0,0,0,.45)); }
+.voice-reaction .who {
+  font-size: 11px; font-weight: 600; color: var(--fg-0);
+  background: rgba(0,0,0,.55); border: 1px solid var(--bd-2);
+  padding: 1px 8px; border-radius: 999px; max-width: 140px;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+@keyframes reaction-float {
+  0%   { opacity: 0; transform: translate(-50%, 24px) scale(.5); }
+  12%  { opacity: 1; transform: translate(-50%, 0) scale(1); }
+  78%  { opacity: 1; }
+  100% { opacity: 0; transform: translate(-50%, -240px) scale(1); }
+}
 
 /* === Members panel === */
 .members-list { padding: 8px 4px 12px; display: flex; flex-direction: column; gap: 2px; }

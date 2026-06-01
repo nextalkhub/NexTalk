@@ -13,6 +13,8 @@ import type { Member } from '../../../shared/types'
 
 const pluralPeople = (n: number) => pluralize(n, 'участник', 'участника', 'участников')
 
+const REACTION_EMOJIS = ['👍', '❤️', '😂', '🎉', '😮', '🔥', '👏', '😢']
+
 export const VoiceChannelPage: React.FC = () => {
   const navigate = useNavigate()
   const { serverId, channelId } = useParams<{ serverId: string; channelId: string }>()
@@ -23,12 +25,14 @@ export const VoiceChannelPage: React.FC = () => {
     joinVoice,
     leaveVoice,
     participants,
+    reactions,
     isMuted,
     isDeafened,
     isConnected,
     isLocalSpeaking,
     toggleMic,
     toggleDeafen,
+    sendReaction,
     hasMicrophonePermission,
   } = useVoiceContext()
 
@@ -99,6 +103,15 @@ export const VoiceChannelPage: React.FC = () => {
             </div>
           </div>
 
+          <div className="voice-reactions-layer" aria-hidden="true">
+            {reactions.map(r => (
+              <div key={r.id} className="voice-reaction" style={{ left: `${r.left}%` }}>
+                <span className="emoji">{r.emoji}</span>
+                <span className="who">{r.senderName}</span>
+              </div>
+            ))}
+          </div>
+
           {allTiles.length === 0 ? (
             <div className="empty-state" style={{ flex: 1 }}>
               <div className="icon-blob"><IMic /></div>
@@ -119,6 +132,19 @@ export const VoiceChannelPage: React.FC = () => {
                 <span className={`dot ${isConnected ? 'online' : 'idle'}`} />
                 {isConnected ? 'Голосовой чат' : 'Подключение...'}
               </div>
+            </div>
+            <div className="vc-reactions">
+              {REACTION_EMOJIS.map(emoji => (
+                <button
+                  key={emoji}
+                  className="vc-reaction-btn"
+                  title="Отправить реакцию"
+                  onClick={() => sendReaction(emoji)}
+                  disabled={!isConnected}
+                >
+                  {emoji}
+                </button>
+              ))}
             </div>
             <div className="vc-buttons">
               <button

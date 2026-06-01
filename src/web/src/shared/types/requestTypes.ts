@@ -102,6 +102,16 @@ export interface VoiceParticipant {
     isSpeaking: boolean
 }
 
+// Всплывающая реакция-смайлик в голосовом канале (через LiveKit data channel).
+export interface VoiceReaction {
+    id: string
+    emoji: string
+    senderId: string
+    senderName: string
+    // позиция по горизонтали в процентах, чтобы реакции не накладывались
+    left: number
+}
+
 export interface VoiceRoomInfo {
     channelId: string
     guildId: string
