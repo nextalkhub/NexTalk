@@ -10,10 +10,10 @@ import { loadPrefs, savePrefs, applyPrefs, PALETTES, type Prefs } from '../../..
 
 type Tab = 'appearance' | 'audio' | 'notifications' | 'session'
 
-const ZITADEL_PROFILE_URL =
-  (import.meta as ImportMeta & { env?: Record<string, string> }).env?.VITE_ZITADEL_URL
-    ? `${(import.meta as ImportMeta & { env: Record<string, string> }).env.VITE_ZITADEL_URL}/ui/console/users/me`
-    : 'https://zitadel.cloud'
+// Консоль нашего Zitadel - тот же authority, что и для OIDC-логина.
+const ZITADEL_PROFILE_URL = import.meta.env.VITE_OIDC_AUTHORITY
+  ? `${import.meta.env.VITE_OIDC_AUTHORITY}/ui/console/users/me`
+  : '#'
 
 export const AppSettingsPage: React.FC = () => {
   const navigate = useNavigate()
@@ -131,40 +131,6 @@ const AppearanceTab: React.FC<{
           </button>
         ))}
       </div>
-    </div>
-
-    <div className="settings-row">
-      <div className="info">
-        <div className="info-h">Плотность интерфейса</div>
-        <div className="info-s">Расстояние между элементами в списках и каналах.</div>
-      </div>
-      <div style={{ display: 'flex', gap: 6 }}>
-        {(['cozy', 'comfortable', 'airy'] as const).map(d => (
-          <button
-            key={d}
-            type="button"
-            onClick={() => update('density', d)}
-            className={`chip${prefs.density === d ? ' is-brand' : ''}`}
-            style={{ cursor: 'pointer', padding: '4px 12px', height: 28 }}
-          >
-            {d === 'cozy' ? 'Cozy' : d === 'comfortable' ? 'Обычная' : 'Воздушная'}
-          </button>
-        ))}
-      </div>
-    </div>
-
-    <div className="settings-row">
-      <div className="info">
-        <div className="info-h">Размер шрифта</div>
-        <div className="info-s">Текущее значение: {Math.round(prefs.fontScale * 100)}%.</div>
-      </div>
-      <input
-        type="range"
-        min="0.9" max="1.15" step="0.01"
-        value={prefs.fontScale}
-        onChange={e => update('fontScale', parseFloat(e.target.value))}
-        style={{ width: 160 }}
-      />
     </div>
   </>
 )
