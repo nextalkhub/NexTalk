@@ -1,6 +1,6 @@
 import React from 'react'
 import { useNavigate } from 'react-router-dom'
-import { IHome, IArrowOut } from '../../shared/components/Icons/Icons'
+import { IHome, IRefresh } from '../../shared/components/Icons/Icons'
 
 interface Props {
   code?: string
@@ -26,23 +26,21 @@ export const ServerErrorPage: React.FC<Props> = ({ code = '503', message }) => {
         <h1>{message || 'Сервис временно недоступен'}</h1>
         <p>
           Один из микросервисов не отвечает. Polly Circuit Breaker откроется и автоматически
-          восстановит соединение в ближайшие 15 секунд. Если ничего не меняется - посмотрите
-          статус-страницу.
+          восстановит соединение в ближайшие 15 секунд. Попробуйте обновить страницу.
         </p>
         <div style={{ display: 'flex', gap: 10, justifyContent: 'center' }}>
           <button className="home-link" onClick={() => navigate('/servers')}>
             <IHome />
             На главную
           </button>
-          <a
+          <button
             className="home-link"
-            href="#"
             style={{ background: 'rgba(255,255,255,.06)', color: 'var(--fg-0)' }}
-            onClick={e => e.preventDefault()}
+            onClick={() => window.location.reload()}
           >
-            <IArrowOut />
-            status.nextalk.io
-          </a>
+            <IRefresh />
+            Обновить
+          </button>
         </div>
       </div>
     </div>
