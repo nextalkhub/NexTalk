@@ -12,6 +12,7 @@ using NexTalk.Voice.Service.Features.Internal.DisconnectChannel;
 using NexTalk.Voice.Service.Features.Internal.DisconnectUser;
 using NexTalk.Voice.Service.Features.Voice.Join;
 using NexTalk.Voice.Service.Features.Voice.Leave;
+using NexTalk.Voice.Service.Features.Voice.Participants;
 using NexTalk.Voice.Service.Infrastructure;
 using NexTalk.Voice.Service.Shared;
 using NexTalk.Voice.Service.Shared.Exceptions;
@@ -298,6 +299,7 @@ app.UseSerilogRequestLogging(opts =>
 // Публичные эндпоинты (требуют JWT).
 JoinVoiceEndpoint.Map(app);
 LeaveVoiceEndpoint.Map(app);
+GetParticipantsEndpoint.Map(app);
 
 // Internal-эндпоинты (сетевой trust, без JWT).
 DisconnectUserEndpoint.Map(app);
