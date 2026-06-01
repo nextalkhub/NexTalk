@@ -172,29 +172,105 @@ const AppearanceTab: React.FC<{
 const AudioTab: React.FC<{
   prefs: Prefs
   update: <K extends keyof Prefs>(k: K, v: Prefs[K]) => void
-}> = ({ prefs, update }) => (
-  <>
-    <div className="settings-section-head">
-      <h1>Звук</h1>
-      <p>Обработка микрофона для голосовых каналов. Применяется при следующем подключении.</p>
-    </div>
+}> = ({ prefs, update }) => {
+  const [devices, setDevices] = useState<MediaDeviceInfo[]>([])
 
-    <div className="settings-row">
-      <div className="info">
-        <div className="info-h">Эхоподавление</div>
-        <div className="info-s">Подавляет эхо от динамиков (echoCancellation).</div>
+  const loadDevices = async () => {
+    try {
+      await navigator.mediaDevices.getUserMedia({ audio: true })
+      const list = await navigator.mediaDevices.enumerateDevices()
+      setDevices(list.filter(d => d.kind === 'audioinput' || d.kind === 'audiooutput'))
+    } catch {
+      // доступ не дан — оставляем пустым
+    }
+  }
+
+  useEffect(() => { loadDevices() }, [])
+
+  const inputs  = devices.filter(d => d.kind === 'audioinput')
+  const outputs = devices.filter(d => d.kind === 'audiooutput')
+
+  // Вывод переключаем сразу на уже играющих аудио-элементах (setSinkId),
+  // вход применяется при следующем подключении к каналу.
+  const applyOutput = (deviceId: string) => {
+    document.querySelectorAll<HTMLAudioElement>('body > audio').forEach(el => {
+      const sinkable = el as HTMLAudioElement & { setSinkId?: (id: string) => Promise<void> }
+      sinkable.setSinkId?.(deviceId).catch(() => { /* не поддерживается — игнор */ })
+    })
+  }
+
+  return (
+    <>
+      <div className="settings-section-head">
+        <h1>Звук</h1>
+        <p>Устройства и обработка микрофона для голосовых каналов.</p>
       </div>
-      <Toggle on={prefs.echoCancellation} onChange={v => update('echoCancellation', v)} />
-    </div>
-    <div className="settings-row">
-      <div className="info">
-        <div className="info-h">Шумоподавление</div>
-        <div className="info-s">Отсекает фоновый шум (noiseSuppression).</div>
+
+      <div className="settings-field">
+        <label className="settings-label">Микрофон</label>
+        {inputs.length > 0 ? (
+          <select
+            className="settings-input"
+            value={prefs.micDeviceId}
+            onChange={e => update('micDeviceId', e.target.value)}
+          >
+            <option value="">Системный по умолчанию</option>
+            {inputs.map(d => (
+              <option key={d.deviceId} value={d.deviceId}>
+                {d.label || 'Микрофон без названия'}
+              </option>
+            ))}
+          </select>
+        ) : (
+          <div className="ro-field">
+            <span style={{ color: 'var(--fg-2)' }}>Доступ к микрофону не предоставлен</span>
+            <button className="btn-cancel" style={{ height: 32, padding: '0 12px' }} onClick={loadDevices}>
+              Запросить доступ
+            </button>
+          </div>
+        )}
+        <div className="info-s" style={{ marginTop: 4 }}>Применяется при следующем подключении к каналу.</div>
       </div>
-      <Toggle on={prefs.noiseSuppression} onChange={v => update('noiseSuppression', v)} />
-    </div>
-  </>
-)
+
+      <div className="settings-field">
+        <label className="settings-label">Наушники / выход</label>
+        {outputs.length > 0 ? (
+          <select
+            className="settings-input"
+            value={prefs.speakerDeviceId}
+            onChange={e => { update('speakerDeviceId', e.target.value); applyOutput(e.target.value) }}
+          >
+            <option value="">Системный по умолчанию</option>
+            {outputs.map(d => (
+              <option key={d.deviceId} value={d.deviceId}>
+                {d.label || 'Выход без названия'}
+              </option>
+            ))}
+          </select>
+        ) : (
+          <div className="ro-field" style={{ color: 'var(--fg-2)' }}>
+            Браузер не отдаёт список устройств вывода.
+          </div>
+        )}
+      </div>
+
+      <div className="settings-row">
+        <div className="info">
+          <div className="info-h">Эхоподавление</div>
+          <div className="info-s">Подавляет эхо от динамиков (echoCancellation).</div>
+        </div>
+        <Toggle on={prefs.echoCancellation} onChange={v => update('echoCancellation', v)} />
+      </div>
+      <div className="settings-row">
+        <div className="info">
+          <div className="info-h">Шумоподавление</div>
+          <div className="info-s">Отсекает фоновый шум (noiseSuppression).</div>
+        </div>
+        <Toggle on={prefs.noiseSuppression} onChange={v => update('noiseSuppression', v)} />
+      </div>
+    </>
+  )
+}
 
 const NotificationsTab: React.FC<{
   prefs: Prefs

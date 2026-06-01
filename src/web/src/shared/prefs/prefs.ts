@@ -13,6 +13,9 @@ export interface Prefs {
   fontScale: number
   echoCancellation: boolean
   noiseSuppression: boolean
+  // '' = системное устройство по умолчанию
+  micDeviceId: string
+  speakerDeviceId: string
   desktopNotifications: boolean
   newMessageSound: boolean
 }
@@ -23,6 +26,8 @@ export const DEFAULTS: Prefs = {
   fontScale: 14,
   echoCancellation: true,
   noiseSuppression: true,
+  micDeviceId: '',
+  speakerDeviceId: '',
   desktopNotifications: true,
   newMessageSound: false,
 }
