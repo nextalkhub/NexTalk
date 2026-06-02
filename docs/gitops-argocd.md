@@ -135,10 +135,9 @@ git push
 
 ## 8. Ограничения
 
-- **`tls.provider: cloudflare`**: при cloudflare-провайдере origin-сертификат
-  раньше создавал Ansible. В GitOps его нужно так же запечатать в SealedSecret.
-  По умолчанию провайдер `letsencrypt`, cert-manager выписывает сертификат сам -
-  этот путь работает без доработок.
+- **TLS**: используется `tls.provider: letsencrypt` - cert-manager выписывает
+  сертификат сам, в GitOps работает без доработок. Cloudflare у нас только DNS,
+  сертификаты он не выдает; ветка `tls.provider: cloudflare` в чарте не задействована.
 - **Push в main из CI**: `gitops-bump-tag` пушит в `main`. Если на `main` включена
   branch protection с обязательным PR - дать боту исключение или вынести bump в PR.
 - **kubeseal-ключ**: приватный ключ контроллера живет в кластере. Потеря кластера =
