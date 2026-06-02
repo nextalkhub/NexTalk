@@ -31,7 +31,8 @@ infra/ansible/
 │   ├── observability.yml     # observability stack на observability-vps
 │   ├── k3s.yml               # k3s HA (3 CP + 3 workers)
 │   ├── cluster-addons.yml    # ingress-nginx + cert-manager + metrics-server
-│   └── helm-deploy.yml       # деплой Helm-чарта nextalk
+│   ├── argocd.yml            # ArgoCD + sealed-secrets + регистрация приложения (GitOps)
+│   └── seal-secrets.yml      # запечатать секреты vault → argocd/sealed/
 ├── roles/
 │   ├── common/               # пакеты, sysctl, swap, time
 │   ├── ufw/                  # файрвол (правила из group_vars)
@@ -84,9 +85,13 @@ make db          # postgres + redis
 make observability  # prometheus + loki + tempo + grafana
 make k3s         # k3s HA
 make addons      # ingress-nginx + cert-manager
-make helm        # деплой приложений
+make argocd      # ArgoCD + sealed-secrets, регистрация приложения (GitOps)
+make seal        # запечатать секреты vault → argocd/sealed/ (затем git commit/push)
 make smoke       # smoke-тесты
 ```
+
+Приложение деплоит ArgoCD из git, не Ansible. После `make argocd` нужен
+однократный `make seal` + commit секретов - см. [docs/gitops-argocd.md](../../docs/gitops-argocd.md).
 
 ## Vault: альтернатива --ask-vault-pass
 

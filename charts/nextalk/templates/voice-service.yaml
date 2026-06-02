@@ -26,7 +26,7 @@ spec:
         {{- toYaml .Values.podSecurityContext | nindent 8 }}
       containers:
         - name: voice-service
-          image: "{{ .Values.voiceService.image.repository }}:{{ .Values.voiceService.image.tag }}"
+          image: "{{ .Values.voiceService.image.repository }}:{{ .Values.imageTag }}"
           imagePullPolicy: {{ .Values.voiceService.image.pullPolicy }}
           securityContext:
             {{- toYaml .Values.containerSecurityContext | nindent 12 }}

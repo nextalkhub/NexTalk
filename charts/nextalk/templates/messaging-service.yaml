@@ -26,7 +26,7 @@ spec:
         {{- toYaml .Values.podSecurityContext | nindent 8 }}
       containers:
         - name: messaging-service
-          image: "{{ .Values.messagingService.image.repository }}:{{ .Values.messagingService.image.tag }}"
+          image: "{{ .Values.messagingService.image.repository }}:{{ .Values.imageTag }}"
           imagePullPolicy: {{ .Values.messagingService.image.pullPolicy }}
           securityContext:
             {{- toYaml .Values.containerSecurityContext | nindent 12 }}

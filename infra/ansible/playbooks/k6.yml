@@ -1,7 +1,7 @@
 ---
 # Установка k6 и развертывание chaos/load-test скриптов локально.
 #
-# Запускается так же, как cluster-addons.yml и helm-deploy.yml - на localhost,
+# Запускается так же, как cluster-addons.yml и argocd.yml - на localhost,
 # без SSH в кластер. k6 ставится в WSL/Linux, скрипты копируются локально,
 # kubectl использует тот же kubeconfig что и остальные плейбуки.
 #

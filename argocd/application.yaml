@@ -6,18 +6,21 @@ metadata:
 spec:
   project: nextalk
 
-  source:
-    repoURL: https://github.com/nextalkhub/NexTalk.git
-    targetRevision: main
-    path: charts/nextalk
-    helm:
-      releaseName: nextalk
-      # Override values for the target environment.
-      # Secrets should be managed via Sealed Secrets or external-secrets, not here.
-      values: |
-        zitadel:
-          domain: "localhost"
-          externalPort: "80"
+  # Два source'а одного репозитория (multi-source, ArgoCD >= 2.6):
+  #   1) Helm-чарт приложения. Секреты НЕ рендерятся - в values.yaml
+  #      secrets.create=false, поэтому чувствительные значения не приходят
+  #      из git в открытом виде.
+  #   2) Зашифрованные секреты (SealedSecret). Контроллер sealed-secrets
+  #      расшифрует их в Secret nextalk-secrets уже внутри кластера.
+  sources:
+    - repoURL: https://github.com/nextalkhub/NexTalk.git
+      targetRevision: main
+      path: charts/nextalk
+      helm:
+        releaseName: nextalk
+    - repoURL: https://github.com/nextalkhub/NexTalk.git
+      targetRevision: main
+      path: argocd/sealed
 
   destination:
     server: https://kubernetes.default.svc
@@ -25,7 +28,15 @@ spec:
 
   syncPolicy:
     automated:
-      prune: true       # delete k8s resources removed from the chart
-      selfHeal: true    # revert manual changes in the cluster
+      prune: true       # удалять ресурсы, убранные из чарта
+      selfHeal: true    # откатывать ручные правки в кластере
     syncOptions:
-      - CreateNamespace=true
+      # namespace создает сам чарт (templates/namespace.yaml с PSA-меткой
+      # privileged), поэтому CreateNamespace здесь не нужен.
+      - ApplyOutOfSyncOnly=true
+    retry:
+      limit: 5
+      backoff:
+        duration: 10s
+        factor: 2
+        maxDuration: 3m

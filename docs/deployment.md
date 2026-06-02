@@ -342,7 +342,10 @@ Retention под 40 GB диск:
 | `observability.yml`   | docker-compose: Prometheus + Loki + Tempo + Grafana                    | observability-vps       |
 | `k3s.yml`             | k3s HA install (cp + workers через HAProxy)                            | control-plane + workers |
 | `cluster-addons.yml`  | ingress-nginx (DaemonSet) + metrics-server + CoreDNS fix + cert-manager | localhost (kubectl)    |
-| `helm-deploy.yml`     | `helm upgrade --install nextalk ./charts/nextalk`                      | localhost (kubectl)     |
+| `argocd.yml`          | ArgoCD + sealed-secrets, регистрация Application (приложение дальше деплоит ArgoCD из git) | localhost (kubectl) |
+| `seal-secrets.yml`    | запечатать секреты `vault` → `argocd/sealed/` (`kubeseal`)             | localhost (kubectl)     |
+
+Приложение разворачивается по GitOps - см. [gitops-argocd.md](gitops-argocd.md). `helm-deploy.yml` удален: его роль (`helm upgrade`) взял ArgoCD.
 
 ### Inventory
 
@@ -419,7 +422,9 @@ Beget не дает floating public IP. Внешний HA через 3 A-records
 
 ### 11.11 Достижимость k3s API с CI-runner
 
-Kubeconfig указывает на `10.19.0.51` (приватная Beget-сеть) - runner из интернета не достучится. Варианты: SSH-tunnel через bastion, self-hosted runner внутри Beget, делегировать helm-task через ProxyJump.
+Решено переходом на GitOps: CI больше не ходит в кластер. Он публикует образы и
+коммитит `imageTag` в git, а ArgoCD внутри кластера сам тянет изменения из
+репозитория - входящий доступ из интернета к API не нужен. См. [gitops-argocd.md](gitops-argocd.md).
 
 ---
 

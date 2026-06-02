@@ -40,17 +40,24 @@
 
 ## Деплой
 
-```bash
-# Из infra/ansible:
-make helm
+Чарт разворачивает ArgoCD по GitOps - вручную `helm upgrade` в прод не делаем.
+Bootstrap (из `infra/ansible`):
 
-# Или вручную:
-helm upgrade --install nextalk charts/nextalk \
-  --namespace nextalk --create-namespace \
-  -f vault-rendered.yaml
+```bash
+make argocd   # ArgoCD + sealed-secrets + регистрация Application
+make seal     # секреты vault -> argocd/sealed/nextalk-secrets.yaml -> git
 ```
 
-`vault-rendered.yaml` рендерится из `inventory/group_vars/vault.yml` на этапе `helm-deploy.yml` playbook.
+Секреты не лежат в `values.yaml`: при `secrets.create=false` (дефолт) `templates/secrets.yaml`
+не рендерится, а `Secret nextalk-secrets` приходит из SealedSecret. Полный разбор -
+[docs/gitops-argocd.md](../../docs/gitops-argocd.md).
+
+Локальный рендер для отладки:
+
+```bash
+helm template nextalk charts/nextalk            # GitOps-режим (без секрета)
+helm template nextalk charts/nextalk -s templates/secrets.yaml --set secrets.create=true -f secret-values.yaml
+```
 
 ## Что вне чарта
 

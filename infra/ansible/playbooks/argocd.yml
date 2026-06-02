@@ -1,0 +1,118 @@
+---
+# Установка ArgoCD + sealed-secrets и регистрация приложения NexTalk (GitOps).
+# Заменяет helm-deploy.yml: теперь приложение деплоит не Ansible, а ArgoCD,
+# который синхронизирует charts/nextalk из git.
+#
+# Запускается ОДИН РАЗ после cluster-addons.yml (нужен kubeconfig + ingress).
+#
+# Порядок bootstrap'а приложения:
+#   1. make argocd   - этот плейбук: ставит ArgoCD, sealed-secrets, AppProject + Application.
+#   2. make seal     - seal-secrets.yml: запечатывает секреты в argocd/sealed/nextalk-secrets.yaml.
+#   3. git add/commit/push argocd/sealed/nextalk-secrets.yaml  - ArgoCD подхватит секрет.
+# После этого ArgoCD сам разворачивает и обновляет приложение.
+#
+# Запуск (с локалки, где есть kubeconfig):
+#   ansible-playbook -i inventory/hosts.ini playbooks/argocd.yml
+
+- name: ArgoCD + sealed-secrets bootstrap
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  become: false
+  vars:
+    kubeconfig: "{{ playbook_dir }}/../kubeconfig"
+    argocd_dir: "{{ playbook_dir }}/../../../argocd"
+    # Версии чартов пинуем. Бампить осознанно.
+    #   argo-cd >= 5.x ставит ArgoCD >= 2.6 с поддержкой multi-source Application.
+    sealed_secrets_chart_version: "2.16.2"
+    argocd_chart_version: "7.7.11"
+  tasks:
+    # ── sealed-secrets controller ────────────────────────────────────────────
+    - name: Добавить Helm-репо sealed-secrets
+      kubernetes.core.helm_repository:
+        name: sealed-secrets
+        repo_url: https://bitnami-labs.github.io/sealed-secrets
+      tags: [argocd, sealed-secrets]
+
+    # Контроллер в kube-system, имя релиза sealed-secrets - его же передаем
+    # kubeseal через --controller-name/--controller-namespace (seal-secrets.yml).
+    - name: Установить sealed-secrets controller
+      kubernetes.core.helm:
+        name: sealed-secrets
+        chart_ref: sealed-secrets/sealed-secrets
+        chart_version: "{{ sealed_secrets_chart_version }}"
+        release_namespace: kube-system
+        create_namespace: false
+        kubeconfig: "{{ kubeconfig }}"
+        values:
+          fullnameOverride: sealed-secrets
+      tags: [argocd, sealed-secrets]
+
+    - name: Дождаться готовности sealed-secrets controller
+      ansible.builtin.command: >-
+        kubectl --kubeconfig={{ kubeconfig }}
+        wait deployment/sealed-secrets
+        -n kube-system
+        --for=condition=Available
+        --timeout=180s
+      changed_when: false
+      tags: [argocd, sealed-secrets]
+
+    # ── ArgoCD ────────────────────────────────────────────────────────────────
+    - name: Добавить Helm-репо argo
+      kubernetes.core.helm_repository:
+        name: argo
+        repo_url: https://argoproj.github.io/argo-helm
+      tags: [argocd]
+
+    - name: Установить ArgoCD
+      kubernetes.core.helm:
+        name: argocd
+        chart_ref: argo/argo-cd
+        chart_version: "{{ argocd_chart_version }}"
+        release_namespace: argocd
+        create_namespace: true
+        kubeconfig: "{{ kubeconfig }}"
+        # Сервер за нашим ingress-nginx, который сам терминирует TLS,
+        # поэтому ArgoCD-server слушает HTTP (insecure) внутри кластера.
+        values:
+          configs:
+            params:
+              server.insecure: true
+      tags: [argocd]
+
+    - name: Дождаться готовности argocd-repo-server (CRD + контроллеры подняты)
+      ansible.builtin.command: >-
+        kubectl --kubeconfig={{ kubeconfig }}
+        wait deployment/argocd-repo-server
+        -n argocd
+        --for=condition=Available
+        --timeout=240s
+      changed_when: false
+      tags: [argocd]
+
+    # ── Регистрация приложения ────────────────────────────────────────────────
+    # AppProject раньше Application: Application ссылается на project nextalk.
+    - name: Применить AppProject nextalk
+      ansible.builtin.command: >-
+        kubectl --kubeconfig={{ kubeconfig }} apply -f {{ argocd_dir }}/project.yaml
+      register: proj_apply
+      changed_when: "'unchanged' not in proj_apply.stdout"
+      tags: [argocd, app]
+
+    - name: Применить Application nextalk
+      ansible.builtin.command: >-
+        kubectl --kubeconfig={{ kubeconfig }} apply -f {{ argocd_dir }}/application.yaml
+      register: app_apply
+      changed_when: "'unchanged' not in app_apply.stdout"
+      tags: [argocd, app]
+
+    - name: Памятка по секретам
+      ansible.builtin.debug:
+        msg:
+          - "ArgoCD установлен и приложение nextalk зарегистрировано."
+          - "Дальше запечатай секреты и закоммить их, иначе поды не стартуют:"
+          - "  make seal"
+          - "  git add ../../argocd/sealed/nextalk-secrets.yaml && git commit -m 'secrets: sealed' && git push"
+          - "Пароль admin: kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath='{.data.password}' | base64 -d"
+      tags: [argocd, app]

@@ -4,7 +4,7 @@ ANSIBLE      = ansible-playbook -i $(INVENTORY) $(VAULT_PASS)
 
 .DEFAULT_GOAL := help
 
-.PHONY: help galaxy ping bootstrap ssh gre-nat haproxy db observability k3s addons helm deploy smoke clean-kubeconfig
+.PHONY: help galaxy ping bootstrap ssh gre-nat haproxy db observability k3s addons argocd seal deploy smoke clean-kubeconfig
 
 help: ## Показать эту справку
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) \
@@ -40,8 +40,11 @@ k3s: ## k3s HA кластер (3 CP + 3 workers)
 addons: ## ingress-nginx + cert-manager
 	ansible-playbook -i $(INVENTORY) playbooks/cluster-addons.yml
 
-helm: ## Деплой приложений NexTalk через Helm
-	$(ANSIBLE) playbooks/helm-deploy.yml
+argocd: ## ArgoCD + sealed-secrets, регистрация приложения (GitOps)
+	ansible-playbook -i $(INVENTORY) playbooks/argocd.yml
+
+seal: ## Запечатать секреты vault -> argocd/sealed/nextalk-secrets.yaml
+	$(ANSIBLE) playbooks/seal-secrets.yml
 
 deploy: ## Всё сразу (site.yml)
 	$(ANSIBLE) playbooks/site.yml

@@ -1,9 +1,10 @@
 # =======================================================================
 # NexTalk Helm chart values.
 #
-# Файл НЕ содержит секретов. Все пароли, masterkey, livekit-ключи
-# и acme-email подкатываются на этапе деплоя через -f vault-rendered.yaml
-# (см. infra/ansible/playbooks/helm-deploy.yml).
+# Файл НЕ содержит секретов. Пароли, masterkey и livekit-ключи приходят из
+# SealedSecret (argocd/sealed/), который собирает `make seal` из ansible-vault.
+# Не-секретный prod-конфиг (domain, db.host, imageTag) живет прямо здесь -
+# это источник правды для ArgoCD. См. docs/gitops-argocd.md.
 #
 # Перед деплоем должны быть переопределены:
 #   db.host, db.redisHost           - приватные IP db-vps
@@ -19,6 +20,20 @@ namespace: nextalk
 
 # Внешний домен кластера. Используется в Ingress и Zitadel.
 domain: "nextalk.fun"
+
+# Общий тег образов пяти наших сервисов (guild/messaging/voice/ws/web).
+# CI обновляет это поле на SHA коммита при пуше в main - ArgoCD подхватывает
+# изменение из git. Все пять сервисов собираются из одного коммита, поэтому
+# тег один на всех. Сторонние образы (zitadel, livekit) держат свои версии ниже.
+imageTag: "0.1.0"
+
+# Создавать ли Secret nextalk-secrets из values этого чарта.
+#   false (по умолчанию, GitOps) - секрет приходит из SealedSecret в git,
+#          ArgoCD не рендерит чувствительные значения из values.
+#   true   - чарт сам создает Secret из values (нужно при сборке SealedSecret
+#          через `helm template -s templates/secrets.yaml`, см. seal-secrets.yml).
+secrets:
+  create: false
 
 # -----------------------------------------------------------------------
 # Сеть. Один CIDR - используется в NetworkPolicy egress правилах
@@ -46,22 +61,25 @@ tls:
   secretName: "nextalk-tls"
   # --- Только для provider: letsencrypt ---
   issuer: "letsencrypt-prod"
-  # email подкатывается через helm-secrets.values.yaml.j2 из tls_email (vars.yml)
-  email: ""
+  # Email для уведомлений Let's Encrypt о просрочке. Не секрет (попадает в
+  # ClusterIssuer). В GitOps хранится прямо здесь, а не подкатывается Ansible.
+  email: "korsakovdanil123@yandex.ru"
 
 # -----------------------------------------------------------------------
 # DB VPS (Beget приватная сеть)
 # -----------------------------------------------------------------------
 db:
-  host: ""               # Приватный IP db-vps
+  # Приватный IP db-vps (не секрет, RFC1918). В GitOps - источник правды здесь;
+  # должен совпадать с ansible_host группы [db] в inventory/hosts.ini.
+  host: "10.19.0.31"
   port: "5432"
   # sslmode для подключений к Postgres.
   # prefer - TLS если сервер поддерживает, иначе plain. БД в приватной сети
   # Beget без TLS пока (roadmap: настроить TLS на db-vps и переключить на require).
   sslmode: "prefer"
-  redisHost: ""          # Тот же db-vps или отдельный
+  redisHost: "10.19.0.31" # Тот же db-vps или отдельный
   redisPort: "6379"
-  redisPassword: ""      # Подкатить через vault, совпадает с REDIS_PASSWORD в infra/db/.env
+  redisPassword: ""      # Секрет: приходит из SealedSecret, не из git в открытом виде
 
 # -----------------------------------------------------------------------
 # PostgreSQL credentials (хранятся в Secret nextalk-secrets)
@@ -169,33 +187,28 @@ guildService:
   replicas: 2
   image:
     repository: "ghcr.io/nextalkhub/nextalk/guild-service"
-    tag: "0.1.0"
     pullPolicy: IfNotPresent
 
 messagingService:
   replicas: 2
   image:
     repository: "ghcr.io/nextalkhub/nextalk/messaging-service"
-    tag: "0.1.0"
     pullPolicy: IfNotPresent
 
 voiceService:
   replicas: 2
   image:
     repository: "ghcr.io/nextalkhub/nextalk/voice-service"
-    tag: "0.1.0"
     pullPolicy: IfNotPresent
 
 websocketGateway:
   replicas: 2
   image:
     repository: "ghcr.io/nextalkhub/nextalk/websocket-gateway"
-    tag: "0.1.0"
     pullPolicy: IfNotPresent
 
 webSpa:
   replicas: 2
   image:
     repository: "ghcr.io/nextalkhub/nextalk/web-spa"
-    tag: "0.1.0"
     pullPolicy: IfNotPresent

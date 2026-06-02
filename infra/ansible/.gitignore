@@ -12,7 +12,7 @@ collections/
 kubeconfig
 *.kubeconfig
 
-# Отрендеренный helm-deploy секретный values (см. playbooks/helm-deploy.yml)
+# Отрендеренный секретный values для запечатывания (см. playbooks/seal-secrets.yml)
 .helm-secrets.values.yaml
 
 # TLS-сертификаты (Cloudflare Origin и прочие)

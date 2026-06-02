@@ -417,7 +417,7 @@ ssh -i ~/.ssh/nextalk_deploy -L 6443:10.19.0.51:6443 -N -f root@<worker-1-public
 kubectl --kubeconfig=infra/ansible/kubeconfig --server=https://127.0.0.1:6443 --insecure-skip-tls-verify get nodes
 ```
 
-> Туннель живет до закрытия терминала. При следующей сессии открывай заново. Для cluster-addons и helm-deploy он тоже нужен.
+> Туннель живет до закрытия терминала. При следующей сессии открывай заново. Для cluster-addons, argocd и seal он тоже нужен (kubectl/helm/kubeseal ходят в кластер).
 
 **Частые проблемы:**
 - `control-plane-2 не присоединяется`: HAProxy не healthy или `vault_k3s_token` разный. Откат: `ssh control-plane-N '/usr/local/bin/k3s-uninstall.sh'` и заново.
@@ -481,14 +481,19 @@ tls:
 ```
 LE prod дает **5 сертификатов в неделю на домен** - если HTTP-01 не пройдет несколько раз, ты заблокирован на неделю.
 
-### 6.2 Запуск helm-deploy
+### 6.2 Деплой через ArgoCD (GitOps)
+
+Приложение разворачивает ArgoCD, а не Ansible. Полный разбор - [gitops-argocd.md](gitops-argocd.md).
 
 ```bash
-ansible-playbook -i inventory/hosts.ini playbooks/helm-deploy.yml \
-  -e image_tag=0.1.0
+make argocd   # ArgoCD + sealed-secrets + регистрация Application
+make seal     # секреты vault -> argocd/sealed/nextalk-secrets.yaml
+git add ../../argocd/sealed/nextalk-secrets.yaml && git commit -m "secrets: sealed" && git push
 ```
-**Время:** 5-10 мин (atomic + wait, до 10 мин).
-**Что делает:** рендерит [helm-secrets.values.yaml.j2](../infra/ansible/playbooks/templates/helm-secrets.values.yaml.j2) во временный `.helm-secrets.values.yaml` (gitignored), запускает `helm upgrade --install nextalk` с values.yaml + secrets файлом, `--set image.tag=0.1.0` для 5 сервисов.
+**Время:** установка 3-5 мин, затем ArgoCD синхронизирует приложение (~5-10 мин).
+**Что делает:** ставит ArgoCD + контроллер sealed-secrets, регистрирует Application
+`nextalk`. `make seal` запечатывает секреты из vault в `SealedSecret`. После пуша
+ArgoCD рендерит `charts/nextalk` (тег из `imageTag` в `values.yaml`) и применяет.
 
 **Проверка сразу:**
 ```bash
@@ -532,8 +537,9 @@ tls:
 kubectl delete certificate nextalk-tls auth-nextalk-tls -n nextalk
 kubectl delete secret nextalk-tls auth-nextalk-tls -n nextalk
 
-# Reapply
-ansible-playbook -i inventory/hosts.ini playbooks/helm-deploy.yml -e image_tag=0.1.0
+# Закоммить правку issuer в git - ArgoCD применит сам. Либо форсировать синк:
+git add charts/nextalk/values.yaml && git commit -m "tls: prod issuer" && git push
+argocd app sync nextalk    # опционально, не дожидаясь авто-синка
 ```
 
 **Проверка:**

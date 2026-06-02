@@ -1,6 +1,6 @@
 # Pre-deployment checklist
 
-Проверка перед `ansible-playbook playbooks/site.yml` либо ручным `helm-deploy.yml`. Каждый пункт - самодостаточный: команда + ожидаемый результат + что чинить если не так + ссылка на исходник. Можно отдавать другому агенту по одному пункту.
+Проверка перед `ansible-playbook playbooks/site.yml` (инфра + ArgoCD). Каждый пункт - самодостаточный: команда + ожидаемый результат + что чинить если не так + ссылка на исходник. Можно отдавать другому агенту по одному пункту.
 
 Все пути - от корня репо (там, куда ты склонировал проект).
 
@@ -58,7 +58,7 @@ Reference: [deployment.md §7.2](deployment.md#72-dns-записи).
 - `ghcr.io/nextalkhub/nextalk/web-spa:<tag>`
 
 **Проверка:** `docker manifest inspect ghcr.io/nextalkhub/nextalk/guild-service:<tag>` для каждого - не возвращает 404.
-**Если не так:** прогнать CI workflow по сборке (ищи `.github/workflows/ci*.yml` / `build*.yml`) на нужном коммите. Без всех 5 образов helm-deploy упадет на ImagePullBackOff.
+**Если не так:** прогнать CI workflow по сборке (ищи `.github/workflows/ci*.yml`) на нужном коммите. Без всех 5 образов ArgoCD оставит поды в ImagePullBackOff.
 
 ### 0.5 Репо ghcr.io/nextalkhub/nextalk/* публичный
 
@@ -148,31 +148,29 @@ helm lint charts/nextalk
 **Ожидаемо:** `0 chart(s) failed`.
 **Если не так:** ошибки в шаблонах. Чинить указанный файл.
 
-### 3.2 `helm template` со всеми обязательными values рендерится
+### 3.2 `helm template` рендерится в обоих режимах
 
-Без vault-values чарт **обязан упасть** на `required` для `db.host`, `db.redisHost`, `tls.email` - это валидация.
-
-С полными values (как в deploy):
+GitOps-режим (как рендерит ArgoCD) - без секрета, не-секретный конфиг уже в `values.yaml`:
 ```bash
-ansible-playbook -i infra/ansible/inventory/hosts.ini infra/ansible/playbooks/helm-deploy.yml --tags helm --check
+helm template nextalk charts/nextalk
 ```
-Или вручную: рендерить [helm-secrets.values.yaml.j2](../infra/ansible/playbooks/templates/helm-secrets.values.yaml.j2) и
-```bash
-helm template charts/nextalk -f charts/nextalk/values.yaml -f /tmp/secrets.yaml
-```
-**Ожидаемо:** валидный YAML, нет `<no value>` в Secret'ах.
-**Если не так:** недостающий ключ в `vault.yml` либо в [helm-secrets.values.yaml.j2](../infra/ansible/playbooks/templates/helm-secrets.values.yaml.j2). Полный список `required`-полей по чарту (упадут если пусты):
+**Ожидаемо:** валидный YAML, объект `Secret nextalk-secrets` НЕ создается (`secrets.create=false`), но ссылки на него (`secretKeyRef`/volume) есть - он придет из SealedSecret.
 
-| Поле | Где |
+Seal-режим (рендер секрета для запечатывания) - на vault-значениях:
+```bash
+helm template nextalk charts/nextalk -s templates/secrets.yaml --set secrets.create=true -f /tmp/secret-values.yaml
+```
+**Ожидаемо:** один `Secret`, нет `<no value>`.
+**Если не так:** недостающий ключ в `vault.yml` либо в [helm-secrets.values.yaml.j2](../infra/ansible/playbooks/templates/helm-secrets.values.yaml.j2). `required`-поля секрета (упадут если пусты при `secrets.create=true`):
+
+| Поле | Источник |
 |:--|:--|
-| `postgres.password` | [secrets.yaml:9](../charts/nextalk/templates/secrets.yaml#L9) |
-| `db.host` | [secrets.yaml:15](../charts/nextalk/templates/secrets.yaml#L15) |
-| `db.redisPassword` | [secrets.yaml:18](../charts/nextalk/templates/secrets.yaml#L18) |
-| `livekit.apiKey` | [secrets.yaml:19](../charts/nextalk/templates/secrets.yaml#L19) |
-| `livekit.secretKey` | [secrets.yaml:20](../charts/nextalk/templates/secrets.yaml#L20) |
-| `zitadel.masterkey` | [secrets.yaml:21](../charts/nextalk/templates/secrets.yaml#L21) |
-| `db.redisHost` | [guild-service.yaml](../charts/nextalk/templates/guild-service.yaml), [websocket-gateway.yaml](../charts/nextalk/templates/websocket-gateway.yaml), [livekit.yaml](../charts/nextalk/templates/livekit.yaml) |
-| `tls.email` | [clusterissuer.yaml:13,31](../charts/nextalk/templates/clusterissuer.yaml#L13) |
+| `postgres.password` | vault |
+| `db.redisPassword` | vault |
+| `livekit.apiKey`, `livekit.secretKey` | vault |
+| `zitadel.masterkey` | vault |
+
+Не-секретные `db.host`, `db.redisHost`, `tls.email` теперь в [values.yaml](../charts/nextalk/values.yaml) (GitOps), не в `required`.
 
 ---
 
@@ -301,7 +299,7 @@ sudo k3s crictl pull ghcr.io/nextalkhub/nextalk/guild-service:<tag>
 
 ### 5.2 cert-manager доступен и ClusterIssuer применится
 
-После helm-deploy чарт создаст `ClusterIssuer letsencrypt-prod` и `letsencrypt-staging` ([clusterissuer.yaml](../charts/nextalk/templates/clusterissuer.yaml)). На случай первичной валидации - сначала рекомендую переключить [values.yaml:37](../charts/nextalk/values.yaml#L37) на `letsencrypt-staging`, провалидировать HTTP-01 челлендж (LE rate-limit: 5 серт / неделю на prod), потом вернуть на prod.
+После синка ArgoCD чарт создаст `ClusterIssuer letsencrypt-prod` и `letsencrypt-staging` ([clusterissuer.yaml](../charts/nextalk/templates/clusterissuer.yaml)). На случай первичной валидации - сначала рекомендую переключить [values.yaml:37](../charts/nextalk/values.yaml#L37) на `letsencrypt-staging`, провалидировать HTTP-01 челлендж (LE rate-limit: 5 серт / неделю на prod), потом вернуть на prod.
 
 ### 5.3 DNS пропагирован (см. 0.2)
 
@@ -309,18 +307,21 @@ sudo k3s crictl pull ghcr.io/nextalkhub/nextalk/guild-service:<tag>
 
 ---
 
-## Фаза 6. Helm deploy
+## Фаза 6. Деплой через ArgoCD (GitOps)
 
 ### 6.1 Запуск
 
 С локалки (требует kubeconfig из 4.3 + vault.yml расшифрован):
 ```bash
-ansible-playbook -i infra/ansible/inventory/hosts.ini \
-  infra/ansible/playbooks/helm-deploy.yml \
-  -e image_tag=<sha-или-semver>
+cd infra/ansible
+make argocd   # ArgoCD + sealed-secrets + регистрация Application
+make seal     # секреты vault -> argocd/sealed/nextalk-secrets.yaml
+git add ../../argocd/sealed/nextalk-secrets.yaml && git commit -m "secrets: sealed" && git push
 ```
-**Что делает:** рендерит [helm-secrets.values.yaml.j2](../infra/ansible/playbooks/templates/helm-secrets.values.yaml.j2) во временный файл `.helm-secrets.values.yaml` ([gitignored](../infra/ansible/.gitignore#L16)), запускает `helm upgrade --install nextalk` с двумя `-f` (values.yaml + rendered secrets) + `--set image.tag=...` для всех 5 сервисов. `atomic: true` + `wait: true` + `timeout: 10m` - при ошибке откатит.
-Reference: [helm-deploy.yml](../infra/ansible/playbooks/helm-deploy.yml).
+**Что делает:** ставит ArgoCD и контроллер sealed-secrets, регистрирует Application `nextalk`.
+`make seal` рендерит Secret из чарта на vault-значениях и запечатывает `kubeseal`.
+После пуша ArgoCD синхронизирует `charts/nextalk` (тег из `imageTag`). Откат - `git revert`.
+Reference: [argocd.yml](../infra/ansible/playbooks/argocd.yml), [gitops-argocd.md](gitops-argocd.md).
 
 ### 6.2 Проверки сразу после
 

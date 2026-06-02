@@ -4,12 +4,21 @@ metadata:
   name: nextalk
   namespace: argocd
 spec:
-  description: NexTalk - real-time messaging platform
+  description: NexTalk - real-time messaging platform (GitOps via ArgoCD)
   sourceRepos:
     - 'https://github.com/nextalkhub/NexTalk.git'
   destinations:
     - namespace: nextalk
       server: https://kubernetes.default.svc
+  # Кластерные (не-namespaced) ресурсы, которые создает чарт. Все остальные
+  # cluster-scoped ресурсы ArgoCD заблокирует. Namespaced-ресурсы разрешены
+  # по умолчанию (namespaceResourceWhitelist не задан) в пределах nextalk.
   clusterResourceWhitelist:
     - group: ''
       kind: Namespace
+    - group: 'rbac.authorization.k8s.io'
+      kind: ClusterRole
+    - group: 'rbac.authorization.k8s.io'
+      kind: ClusterRoleBinding
+    - group: 'cert-manager.io'
+      kind: ClusterIssuer

@@ -331,3 +331,33 @@ jobs:
         with:
           sarif_file: trivy-${{ matrix.image }}.sarif
           category: trivy-${{ matrix.image }}
+
+  # GitOps write-back: после публикации образов записываем SHA-тег в git.
+  # ArgoCD видит коммит в charts/nextalk/values.yaml (imageTag) и синхронизирует
+  # кластер - это и есть доставка новой версии. Раньше тег подставлял Ansible
+  # флагом -e image_tag; теперь источник правды о версии - git.
+  # [skip ci] в сообщении не дает воркфлоу зациклиться на собственном пуше.
+  gitops-bump-tag:
+    needs: [docker-build-push]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: main
+
+      - name: Обновить imageTag на текущий SHA
+        run: |
+          SHA="${GITHUB_SHA:0:7}"
+          sed -i -E 's/^imageTag: .*/imageTag: "'"$SHA"'"/' charts/nextalk/values.yaml
+          if git diff --quiet -- charts/nextalk/values.yaml; then
+            echo "imageTag уже $SHA - коммитить нечего"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add charts/nextalk/values.yaml
+          git commit -m "chore: imageTag -> $SHA [skip ci]"
+          git push origin main

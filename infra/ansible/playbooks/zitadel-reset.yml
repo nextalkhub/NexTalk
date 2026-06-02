@@ -3,7 +3,7 @@
 #
 # Нужен когда namespace nextalk пересоздавался (PVC bootstrap удален),
 # но БД zitadel осталась - start-from-init не пишет PAT повторно.
-# После прогона: перезапустить под zitadel-0 (helm-deploy или kubectl delete pod).
+# После прогона: перезапустить под zitadel-0 (kubectl delete pod zitadel-0 -n nextalk).
 #
 # Запуск:
 #   ansible-playbook -i inventory/hosts.ini playbooks/zitadel-reset.yml
