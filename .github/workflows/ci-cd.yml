@@ -332,15 +332,10 @@ jobs:
           sarif_file: trivy-${{ matrix.image }}.sarif
           category: trivy-${{ matrix.image }}
 
-  # GitOps write-back: после публикации образов записываем SHA-тег в git.
-  # ArgoCD видит коммит в charts/nextalk/values.yaml (imageTag) и синхронизирует
-  # кластер - это и есть доставка новой версии. Раньше тег подставлял Ansible
-  # флагом -e image_tag; теперь источник правды о версии - git.
-  # [skip ci] в сообщении не дает воркфлоу зациклиться на собственном пуше.
+  # GitOps write-back: пишем SHA-тег в charts/nextalk/values.yaml, ArgoCD синхронизирует кластер.
+  # always() нужен, чтобы джоб не пропускался, когда needs у docker-build-push были skipped.
   gitops-bump-tag:
     needs: [docker-build-push]
-    # always() переопределяет implicit success() - иначе если все needs у docker-build-push
-    # были skipped, GH Actions помечает его как skipped (не success) и bump не запускается.
     if: >-
       always() &&
       needs.docker-build-push.result == 'success' &&
@@ -348,13 +343,12 @@ jobs:
       github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     steps:
-      # GITHUB_TOKEN не может пушить в protected main. App-токен (1 час, repo-scoped)
-      # выпускается из App ID + private key; App добавлен в bypass-список ruleset main.
+      # App-токен умеет пушить в protected main (GITHUB_TOKEN - нет).
       - name: Выпустить GitHub App токен
         id: app-token
-        uses: actions/create-github-app-token@v1
+        uses: actions/create-github-app-token@v3
         with:
-          app-id: ${{ secrets.GITOPS_APP_ID }}
+          client-id: ${{ secrets.GITOPS_APP_CLIENT_ID }}
           private-key: ${{ secrets.GITOPS_APP_PRIVATE_KEY }}
 
       - uses: actions/checkout@v5
