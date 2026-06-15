@@ -183,7 +183,7 @@ kubectl scale deployment livekit -n nextalk --replicas=1
 | **SC-03** redis-restart | `systemctl restart redis-server` на db-vps | Все 4 сервиса здоровы через ~10s после перезапуска |
 | **SC-04** ws-gateway-pod-kill | `kubectl delete pod --force` одного pod websocket-gateway | k8s пересоздает pod, через ~15s 6/6 реплик снова ready |
 | **SC-05** scale-under-load | messaging: 0→1→3→1→ORIG под фоновой нагрузкой | Сервис принимает трафик при любом числе реплик ≥1 |
-| **SC-06** cp-node-cordon | cordon одной из 3 CP нод | k8s API работает, новые поды не планируются на cordoned ноду |
+| **SC-06** cp-node-cordon | cordon одной из 3 CP нод | нода стала unschedulable, kube-apiserver /readyz отвечает, приложение живо (cordon ≠ node-down, кворум etcd не тестируется) |
 | **SC-07** rolling-update | `kubectl rollout restart` всех 4 deployments | Ни одного downtime-момента в /api/guilds во время rolling restart |
 | **SC-08** postgres-restart | `systemctl restart postgresql` на db-vps | PostgreSQL встает через ~15s, все сервисы переподключаются сами |
 | **SC-09** ws-gateway-full-down | `websocket-gateway` → scale=0 на 40s | guild и messaging не затронуты; PresenceMonitor чистит stale presence за 30s |
@@ -192,7 +192,7 @@ kubectl scale deployment livekit -n nextalk --replicas=1
 | **SC-12** livekit-down | `livekit` → scale=0 | guild и messaging не затронуты; voice-service не крашится |
 | **SC-13** guild-down-ws-impact | `guild-service` → scale=0 | /api/guilds → 503; WS Gateway живой, новые WS-соединения невозможны |
 | **SC-14** worker-node-drain | `kubectl drain` первого worker-узла | Поды эвакуируются на оставшиеся узлы за ~30s, все deployments healthy |
-| **SC-15** hpa-autoscale | наблюдает HPA под нагрузкой k6 `ramp.js` | desired/реплики растут под нагрузкой (scale-up реально идёт), witness доступен ≥99%, пик реплик > старта |
+| **SC-15** hpa-autoscale | наблюдает HPA под нагрузкой k6 `ramp.js` | desired/реплики растут под нагрузкой (scale-up реально идет), witness доступен ≥99%, пик реплик > старта |
 
 **SC-15 не входит в `run-all.sh`** (companion 10 VU не вызовет scale-up). Это демо масштабируемости — запускается отдельно вместе с `ramp.js`. См. [Демонстрация на защите](#демонстрация-на-защите).
 
@@ -248,7 +248,27 @@ Thresholds:
 - `http_req_failed < 2%`
 - `p(95) < 1000ms`, `p(99) < 2000ms`
 
-В отличие от `spike.js` (резкий пик — проверка выживания) рампа даёт HPA время среагировать: на дашборде видно, как `desired` растёт и реплики догоняют.
+В отличие от `spike.js` (резкий пик — проверка выживания) рампа дает HPA время среагировать: на дашборде видно, как `desired` растет и реплики догоняют.
+
+### ws-smoke.js
+
+**Когда:** как WebSocket-witness параллельно со сценариями по ws-gateway (SC-04, SC-07).
+
+Закрывает главный пробел покрытия: остальные тесты дергают HTTP, а ядро чата — WebSocket. Скрипт открывает настоящее SignalR-соединение (negotiate → handshake → `GetOnlineUsers`), т.е. проверяет, что real-time путь жив и round-trip работает во время сбоя.
+
+Thresholds:
+- `ws_connect_fail < 5%`
+- `ws_handshake_ok > 95%`
+- `ws_invoke_ok > 90%`
+
+```bash
+# панель 1 — WS-свидетель
+k6 run tests/chaos/k6/ws-smoke.js -e API_BASE=https://nextalk.fun -e TOKEN=<jwt> --out experimental-prometheus-rw
+# панель 2 — убиваем под ws-gateway
+SKIP_BASELINE=1 ONLY_SCENARIO=SC-04 bash run-all.sh
+```
+
+Если handshake/invoke rate держатся высокими — клиенты переподключаются, сообщения ходят.
 
 ### negative.js
 
@@ -291,9 +311,9 @@ k6 run tests/chaos/k6/negative.js \
 | `scale_and_wait <deploy> <n>` | `kubectl scale` + `wait_healthy` или `wait_down`. |
 | `kill_one_pod <deploy>` | Удаляет первый pod из deployment с `--force`. |
 | `running_pods <deploy>` | Число Running pods по label `app=<deploy>`. |
-| `hypothesis <text>` | Печатает steady-state гипотезу в начале сценария (что ожидаем ещё до сбоя). |
+| `hypothesis <text>` | Печатает steady-state гипотезу в начале сценария (что ожидаем еще до сбоя). |
 | `slo <text>` | Печатает SLO/abort-критерий эксперимента. |
-| `slo_monitor <url> [n] [interval] [min_pct]` | Меряет доступность witness-URL во время эксперимента; abort, если ниже порога (blast radius превышен). Даёт измеренный процент, а не «не упало». |
+| `slo_monitor <url> [n] [interval] [min_pct]` | Меряет доступность witness-URL во время эксперимента; abort, если ниже порога (blast radius превышен). Дает измеренный процент, а не «не упало». |
 | `log / warn / fail` | Вывод с цветом и временем. `fail` завершает скрипт с exit 1. |
 
 Все curl-запросы используют `--max-time 10` и `|| echo 000`, чтобы exit code 28 (timeout) не убивал скрипт через `set -e`.
@@ -343,12 +363,12 @@ k6 run tests/chaos/k6/ramp.js -e API_BASE=https://nextalk.fun -e TOKEN=<jwt> --o
 WATCH_SECONDS=600 ONLY_SCENARIO=SC-15 SKIP_BASELINE=1 SKIP_SPIKE=1 bash run-all.sh
 ```
 
-На дашборде (row «Kubernetes / Scaling»): RPS растёт → HPA `desired` ползёт вверх → `Replicas Ready` догоняют → p95 держится в SLO → после спада реплики возвращаются к 2 (через scaleDown-окно ~5 мин).
+На дашборде (row «Kubernetes / Scaling»): RPS растет → HPA `desired` ползет вверх → `Replicas Ready` догоняют → p95 держится в SLO → после спада реплики возвращаются к 2 (через scaleDown-окно ~5 мин).
 
 ### Что проговорить вслух
 
 1. **Steady state** — «в покое 2 реплики, p95 ~130ms, 0% ошибок» (цифра из spike: 0% на 49k запросов).
-2. **Гипотеза** перед каждым сценарием (её печатает сам скрипт).
+2. **Гипотеза** перед каждым сценарием (ее печатает сам скрипт).
 3. **Измеренный результат** — доступность witness в %, не «вроде живо».
 4. **Вывод** — таблица «гипотеза → измерение» по каждому эксперименту.
 

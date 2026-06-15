@@ -150,7 +150,7 @@ cordon_node()   { kubectl cordon   "$1"; log "Node $1 cordon'd"; }
 uncordon_node() { kubectl uncordon "$1"; log "Node $1 uncordon'd"; }
 
 # Заявляет гипотезу эксперимента (steady-state hypothesis). Печатается в начале.
-# Так преподаватель видит, ЧТО мы ожидаем, ещё ДО инъекции сбоя.
+# Так преподаватель видит, ЧТО мы ожидаем, еще ДО инъекции сбоя.
 hypothesis() {
     echo -e "${YELLOW}┌─ ГИПОТЕЗА ──────────────────────────────────${NC}"
     echo -e "${YELLOW}│${NC} $*"

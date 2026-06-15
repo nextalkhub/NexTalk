@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
-# SC-06: cordon cp-2, проверяем кворум etcd и доступность API-сервера.
-# Ожидаемое поведение:
-#   - при cordon cp-2 кластер продолжает работать (кворум сохранен: 3→2)
-#   - kubectl и приложение остаются доступны
-#   - uncordon → узел возвращается в ротацию без ручного вмешательства
+# SC-06: cordon одной control-plane ноды.
+# ВАЖНО: cordon лишь помечает ноду unschedulable - kubelet и etcd продолжают
+# работать, поэтому это НЕ тест кворума etcd (для него нужен реальный node-down).
+# Что проверяется: cordon применился (нода unschedulable), а API-сервер за HAProxy
+# и приложение остаются доступны; uncordon возвращает ноду в ротацию.
 
 set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -28,6 +28,9 @@ trap cleanup EXIT
 
 log "=== SC-06: cordon $NODE ==="
 
+hypothesis "Cordon одной CP-ноды не роняет кластер: нода становится unschedulable, но API-сервер (за HAProxy) и приложение остаются доступны."
+slo "нода unschedulable=true; kubectl-API отвечает; witness /api/guilds жив"
+
 # Проверяем текущее состояние узла
 NODE_STATUS=$(kubectl get node "$NODE" -o jsonpath='{.spec.unschedulable}' 2>/dev/null || echo "unknown")
 if [[ "$NODE_STATUS" == "true" ]]; then
@@ -39,23 +42,24 @@ assert_alive "${API_BASE}/api/guilds"
 grafana_region_start "SC-06: cordon $NODE" "chaos,sc-06"
 cordon_node "$NODE"
 
-log "Ждем 30s (наблюдаем etcd метрики в Grafana)..."
+log "Ждем 30s..."
 sleep 30
 
-# Кластер должен оставаться работоспособным
-log "Проверяем kubectl get nodes..."
-kubectl get nodes
-log "Проверяем k8s API..."
-kubectl get pods -n "$NAMESPACE" -o wide
+# 1. Cordon действительно применился (нода unschedulable).
+AFTER_CORDON=$(kubectl get node "$NODE" -o jsonpath='{.spec.unschedulable}' 2>/dev/null || echo "")
+if [[ "$AFTER_CORDON" != "true" ]]; then
+    fail "Cordon не применился: $NODE unschedulable=$AFTER_CORDON"
+fi
+log "$NODE unschedulable=true ✓"
 
-log "Проверяем /healthz приложения..."
+# 2. API-сервер за HAProxy жив, несмотря на выбывшую из планирования CP-ноду.
+if ! kubectl get --raw='/readyz' &>/dev/null; then
+    fail "kube-apiserver не отвечает на /readyz при cordon одной CP-ноды"
+fi
+log "kube-apiserver /readyz отвечает ✓"
+
+# 3. Приложение доступно.
 assert_alive "${API_BASE}/api/guilds"
-
-# Проверяем, что на cordoned-узле не запускают новые поды
-log "Проверяем, что новые pod'ы не scheduled на $NODE..."
-NEW_PODS=$(kubectl get pods -n "$NAMESPACE" -o wide \
-    --field-selector=status.phase!=Succeeded 2>/dev/null | grep "$NODE" | wc -l)
-log "Pod'ов на $NODE: $NEW_PODS (ожидается 0 новых)"
 
 grafana_region_end "SC-06: cordon $NODE" "chaos,sc-06"
 
