@@ -25,7 +25,7 @@ domain: "nextalk.fun"
 # CI обновляет это поле на SHA коммита при пуше в main - ArgoCD подхватывает
 # изменение из git. Все пять сервисов собираются из одного коммита, поэтому
 # тег один на всех. Сторонние образы (zitadel, livekit) держат свои версии ниже.
-imageTag: "db7e92d"
+imageTag: "e00348b"
 
 # Создавать ли Secret nextalk-secrets из values этого чарта.
 #   false (по умолчанию, GitOps) - секрет приходит из SealedSecret в git,
