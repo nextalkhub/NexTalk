@@ -339,7 +339,13 @@ jobs:
   # [skip ci] в сообщении не дает воркфлоу зациклиться на собственном пуше.
   gitops-bump-tag:
     needs: [docker-build-push]
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    # always() переопределяет implicit success() - иначе если все needs у docker-build-push
+    # были skipped, GH Actions помечает его как skipped (не success) и bump не запускается.
+    if: >-
+      always() &&
+      needs.docker-build-push.result == 'success' &&
+      github.event_name == 'push' &&
+      github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     permissions:
       contents: write
