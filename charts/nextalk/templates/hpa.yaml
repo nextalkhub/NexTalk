@@ -24,6 +24,7 @@ spec:
         target:
           type: Utilization
           averageUtilization: 80
+  {{- include "nextalk.hpaBehavior" . | nindent 2 }}
 
 ---
 apiVersion: autoscaling/v2
@@ -51,6 +52,7 @@ spec:
         target:
           type: Utilization
           averageUtilization: 80
+  {{- include "nextalk.hpaBehavior" . | nindent 2 }}
 
 ---
 apiVersion: autoscaling/v2
@@ -78,6 +80,7 @@ spec:
         target:
           type: Utilization
           averageUtilization: 80
+  {{- include "nextalk.hpaBehavior" . | nindent 2 }}
 
 ---
 # WebSocket Gateway: порог ниже (60%) - соединения долгоживущие,
@@ -107,3 +110,4 @@ spec:
         target:
           type: Utilization
           averageUtilization: 75
+  {{- include "nextalk.hpaBehavior" . | nindent 2 }}
