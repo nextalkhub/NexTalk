@@ -1,6 +1,6 @@
 ---
 # Cluster-addons: ingress-nginx + cert-manager.
-# Запускается ОДИН РАЗ после k3s.yml - оттуда уже есть kubeconfig.
+# Запускается один раз после k3s.yml - оттуда уже есть kubeconfig.
 #
 # ingress-nginx как DaemonSet с hostNetwork=true: трафик 80/443 идет
 # напрямую на воркера, без NodePort/LoadBalancer.
@@ -34,9 +34,7 @@
         repo_url: https://kubernetes.github.io/ingress-nginx
       tags: [addons, ingress]
 
-    # release-assets.githubusercontent.com заблокирован в РФ - chart download
-    # упадет по таймауту если ingress-nginx еще не установлен. Если DaemonSet
-    # уже есть - пропускаем: нет смысла перекачивать чарт при каждом запуске.
+    # Если DaemonSet уже есть - пропускаем: нет смысла перекачивать чарт при каждом запуске.
     - name: Проверить наличие DaemonSet ingress-nginx-controller
       ansible.builtin.command: >-
         kubectl --kubeconfig={{ kubeconfig }}

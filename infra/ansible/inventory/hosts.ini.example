@@ -1,7 +1,7 @@
 # Ansible inventory
 #
 # 1. Скопировать этот файл в hosts.ini.
-# 2. Подставь реальные private IP всех VPS.
+# 2. Подставить реальные private IP всех VPS.
 # 3. Подставить public IP трех worker'ов (для bastion и доступа извне).
 # 4. ansible_user - пользователь с правом sudo (по умолчанию root после bootstrap).
 #

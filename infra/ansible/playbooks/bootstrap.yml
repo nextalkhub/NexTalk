@@ -1,6 +1,5 @@
 ---
 # Базовая настройка ВСЕХ серверов: пакеты, sysctl, swap, ufw.
-# Запускается первым, на голых VPS.
 #
 # Запуск:
 #   ansible-playbook -i inventory/hosts.ini playbooks/bootstrap.yml --ask-vault-pass
@@ -27,5 +26,5 @@
         name: ssh_keys
       vars:
         ssh_keys_install_fail2ban: true
-        # ВНИМАНИЕ: переключить в true только после раскатки ключей и проверки!
+        # TODO: переключить в true только после раскатки ключей
         ssh_keys_disable_passwords: false

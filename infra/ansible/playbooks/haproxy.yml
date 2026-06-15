@@ -1,6 +1,5 @@
 ---
 # Установка HAProxy - TCP балансировщик для k3s apiserver.
-# Должен запускаться ДО k3s.yml.
 #
 # Запуск:
 #   ansible-playbook -i inventory/hosts.ini playbooks/haproxy.yml --ask-vault-pass
