@@ -13,6 +13,9 @@ source "${SCRIPT_DIR}/../lib/grafana.sh"
 
 log "=== SC-03: Redis restart (SSH → db-vps) ==="
 
+hypothesis "Перезапуск Redis (~10s) переживут все 4 сервиса: переподключатся сами, без рестарта подов."
+slo "witness /api/guilds доступен ≥ 99%; все деплойменты ready после восстановления"
+
 SSH="ssh ${SSH_OPTS} ${SSH_USER}@${DB_VPS}"
 
 # Проверяем SSH-доступ

@@ -301,6 +301,85 @@
       ],
       "title": "Requests In Progress (total)",
       "type": "stat"
+    },
+    {
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 33 },
+      "id": 20,
+      "title": "Kubernetes / Scaling",
+      "type": "row"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "description": "Готовые реплики автоскейлящихся сервисов. Падает при сбое/drain, растёт при нагрузке - наглядно для chaos и HPA-демо.",
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": { "lineWidth": 2, "lineInterpolation": "stepAfter", "fillOpacity": 5 },
+          "unit": "short",
+          "decimals": 0
+        },
+        "overrides": []
+      },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 34 },
+      "id": 21,
+      "options": { "tooltip": { "mode": "multi" }, "legend": { "displayMode": "table", "calcs": ["lastNotNull"] } },
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "${datasource}" },
+          "expr": "kube_deployment_status_replicas_available{namespace=\"nextalk\", deployment=~\"guild-service|messaging-service|voice-service|websocket-gateway\"}",
+          "legendFormat": "{{deployment}}",
+          "refId": "A"
+        }
+      ],
+      "title": "Replicas Ready (autoscaled services)",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "description": "HPA: current = сколько реплик сейчас, desired = сколько HPA хочет по метрикам, max = верхняя граница. desired > current = идёт scale-up.",
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": { "lineWidth": 2, "lineInterpolation": "stepAfter" },
+          "unit": "short",
+          "decimals": 0
+        },
+        "overrides": [
+          {
+            "matcher": { "id": "byRegexp", "options": ".*max" },
+            "properties": [
+              { "id": "custom.lineStyle", "value": { "fill": "dash", "dash": [8, 6] } },
+              { "id": "custom.lineWidth", "value": 1 }
+            ]
+          }
+        ]
+      },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 34 },
+      "id": 22,
+      "options": { "tooltip": { "mode": "multi" }, "legend": { "displayMode": "table", "calcs": ["lastNotNull"] } },
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "${datasource}" },
+          "expr": "kube_horizontalpodautoscaler_status_current_replicas{namespace=\"nextalk\"}",
+          "legendFormat": "{{horizontalpodautoscaler}} current",
+          "refId": "A"
+        },
+        {
+          "datasource": { "type": "prometheus", "uid": "${datasource}" },
+          "expr": "kube_horizontalpodautoscaler_status_desired_replicas{namespace=\"nextalk\"}",
+          "legendFormat": "{{horizontalpodautoscaler}} desired",
+          "refId": "B"
+        },
+        {
+          "datasource": { "type": "prometheus", "uid": "${datasource}" },
+          "expr": "kube_horizontalpodautoscaler_spec_max_replicas{namespace=\"nextalk\"}",
+          "legendFormat": "{{horizontalpodautoscaler}} max",
+          "refId": "C"
+        }
+      ],
+      "title": "HPA: current / desired / max",
+      "type": "timeseries"
     }
   ],
   "refresh": "30s",
@@ -346,5 +425,5 @@
   "timezone": "browser",
   "title": "NexTalk SRE",
   "uid": "nextalk-sre-v1",
-  "version": 1
+  "version": 2
 }

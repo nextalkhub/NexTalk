@@ -21,6 +21,9 @@ DEPLOYMENTS=(
 
 log "=== SC-07: rolling restart (zero downtime) ==="
 
+hypothesis "Rolling restart всех 4 сервисов (аналог деплоя новой версии) пройдёт без даунтайма: maxUnavailable=0 держит трафик."
+slo "witness /api/guilds доступен ≥ 99% на всём протяжении; k6 companion error rate < 5%"
+
 assert_alive "${API_BASE}/api/guilds"
 
 grafana_region_start "SC-07: rolling restart all" "chaos,sc-07"
