@@ -27,6 +27,9 @@ trap cleanup EXIT
 
 log "=== SC-14: drain worker node $NODE ==="
 
+hypothesis "Вывод worker-ноды на обслуживание (drain): поды эвакуируются на оставшиеся ноды за ~30s, сервис не падает."
+slo "witness /api/guilds доступен ≥ 99%; все деплойменты ready после эвакуации"
+
 NODE_STATUS=$(kubectl get node "$NODE" -o jsonpath='{.spec.unschedulable}' 2>/dev/null || echo "unknown")
 if [[ "$NODE_STATUS" == "true" ]]; then
     fail "Узел $NODE уже cordon'd - прерываем, чтобы не испортить prod"

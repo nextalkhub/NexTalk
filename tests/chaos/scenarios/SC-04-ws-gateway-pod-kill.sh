@@ -15,6 +15,9 @@ DEPLOY=websocket-gateway
 
 log "=== SC-04: ws-gateway pod kill ==="
 
+hypothesis "Убийство одного пода из 2: трафик уйдет на живую реплику, k8s пересоздаст убитый под — пользователь не заметит."
+slo "witness /api/guilds доступен ≥ 99%; реплики восстановлены до исходных"
+
 # Проверяем наличие ≥ 2 реплик
 CURRENT=$(running_pods "$DEPLOY")
 if (( CURRENT < 2 )); then

@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
-# SC-01: messaging-service недоступен.
-# Ожидаемое поведение:
-#   - circuit breaker в ws-gateway открывается после серии ошибок
-#   - /healthz кластера остается доступным
-#   - после восстановления сервиса запросы снова проходят
+# SC-01: messaging-service недоступен (scale=0).
+# Проверяет ИЗОЛЯЦИЮ сбоя:
+#   - пока messaging лежит, guild-service (/api/guilds) остаётся доступным
+#   - messaging действительно опущен в 0 реплик
+#   - после восстановления messaging-поды возвращаются
 
 set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -25,6 +25,9 @@ trap cleanup EXIT
 
 log "=== SC-01: messaging-service down ==="
 
+hypothesis "Падение messaging-service не затрагивает guild-service: /api/guilds остаётся доступным (изоляция сбоя)."
+slo "witness /api/guilds ≥ 99% во время отказа; messaging возвращается после восстановления"
+
 # 1. Baseline - сервис жив
 assert_alive "${API_BASE}/api/guilds"
 
@@ -44,7 +47,7 @@ log "Running pods messaging-service: $RUNNING (ожидается 0)"
 if [[ "$RUNNING" -eq 0 ]]; then
     log "Деградация подтверждена: 0 реплик messaging ✓"
 else
-    warn "Ожидалось 0 реплик, но запущено: $RUNNING"
+    fail "Ожидалось 0 реплик messaging, но запущено: $RUNNING"
 fi
 
 # 5. Восстановление

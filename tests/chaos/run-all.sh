@@ -3,7 +3,7 @@
 # Последовательность:
 #   1. Pre-flight checks
 #   2. Baseline k6 (5 min, 20 VU)
-#   3. Chaos loop: companion k6 фоном + сценарии SC-01..SC-07
+#   3. Chaos loop: companion k6 фоном + сценарии SC-01..SC-14 (SC-15 — отдельно, см. ниже)
 #   4. Spike k6 (финальный стресс)
 #   5. Итоговый отчет
 
@@ -207,6 +207,9 @@ if [[ -n "$ONLY_SCENARIO" ]]; then
 else
     # Все сценарии по порядку
     for script in "${SCENARIOS_DIR}"/SC-*.sh; do
+        # SC-15 (HPA autoscale) - демо масштабируемости, требует k6 ramp и ~10 мин.
+        # Не в авто-прогоне (companion 10 VU не вызовет scale-up). Запуск: ONLY_SCENARIO=SC-15.
+        [[ "$(basename "$script")" == SC-15-* ]] && continue
         [[ -f "$script" ]] && run_scenario "$script"
     done
 fi
