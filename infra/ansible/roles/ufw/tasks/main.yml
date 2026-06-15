@@ -5,6 +5,15 @@
   ansible.builtin.apt:
     name: ufw
     state: present
+    lock_timeout: 60
+  tags: [ufw]
+
+# Без этого ufw падает с "problem running ip6tables" на нодах без IPv6-модуля ядра.
+- name: Отключить IPv6 в ufw (ip6tables может отсутствовать)
+  ansible.builtin.lineinfile:
+    path: /etc/default/ufw
+    regexp: '^IPV6='
+    line: 'IPV6=no'
   tags: [ufw]
 
 - name: Выставить дефолтные политики

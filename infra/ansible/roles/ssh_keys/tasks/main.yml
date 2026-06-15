@@ -63,6 +63,7 @@
   ansible.builtin.apt:
     name: fail2ban
     state: present
+    lock_timeout: 60
   when: ssh_keys_install_fail2ban | bool
   tags: [ssh, fail2ban]
 

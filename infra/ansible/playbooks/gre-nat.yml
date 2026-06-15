@@ -9,6 +9,10 @@
 # Подсети туннелей:
 #   gre1: 172.16.0.1/30 (worker-1) ↔ 172.16.0.2/30 (observability-vps)
 #   gre2: 172.16.1.1/30 (worker-1) ↔ 172.16.1.2/30 (db-vps)
+#   gre3: 172.16.2.1/30 (worker-1) ↔ 172.16.2.2/30 (control-plane-1)
+#   gre4: 172.16.3.1/30 (worker-1) ↔ 172.16.3.2/30 (control-plane-2)
+#   gre5: 172.16.4.1/30 (worker-1) ↔ 172.16.4.2/30 (control-plane-3)
+#   gre6: 172.16.5.1/30 (worker-1) ↔ 172.16.5.2/30 (haproxy-vps)
 #
 # Запуск:
 #   ansible-playbook -i inventory/hosts.ini playbooks/gre-nat.yml
@@ -64,3 +68,107 @@
         gre_remote_ip: "10.19.0.21"
         gre_tunnel_ip: "172.16.1.2"
         gre_peer_tunnel_ip: "172.16.1.1"
+
+- name: GRE NAT - шлюз worker-1 (туннель к control-plane-1)
+  hosts: worker-1
+  become: true
+  roles:
+    - role: gre_nat
+      vars:
+        gre_nat_mode: gateway
+        gre_iface: gre3
+        gre_local_ip: "10.19.0.21"
+        gre_remote_ip: "10.19.0.11"
+        gre_tunnel_ip: "172.16.2.1"
+        gre_public_iface: eth0
+
+- name: GRE NAT - клиент control-plane-1
+  hosts: control-plane-1
+  become: true
+  roles:
+    - role: gre_nat
+      vars:
+        gre_nat_mode: client
+        gre_iface: gre3
+        gre_local_ip: "10.19.0.11"
+        gre_remote_ip: "10.19.0.21"
+        gre_tunnel_ip: "172.16.2.2"
+        gre_peer_tunnel_ip: "172.16.2.1"
+
+- name: GRE NAT - шлюз worker-1 (туннель к control-plane-2)
+  hosts: worker-1
+  become: true
+  roles:
+    - role: gre_nat
+      vars:
+        gre_nat_mode: gateway
+        gre_iface: gre4
+        gre_local_ip: "10.19.0.21"
+        gre_remote_ip: "10.19.0.12"
+        gre_tunnel_ip: "172.16.3.1"
+        gre_public_iface: eth0
+
+- name: GRE NAT - клиент control-plane-2
+  hosts: control-plane-2
+  become: true
+  roles:
+    - role: gre_nat
+      vars:
+        gre_nat_mode: client
+        gre_iface: gre4
+        gre_local_ip: "10.19.0.12"
+        gre_remote_ip: "10.19.0.21"
+        gre_tunnel_ip: "172.16.3.2"
+        gre_peer_tunnel_ip: "172.16.3.1"
+
+- name: GRE NAT - шлюз worker-1 (туннель к control-plane-3)
+  hosts: worker-1
+  become: true
+  roles:
+    - role: gre_nat
+      vars:
+        gre_nat_mode: gateway
+        gre_iface: gre5
+        gre_local_ip: "10.19.0.21"
+        gre_remote_ip: "10.19.0.13"
+        gre_tunnel_ip: "172.16.4.1"
+        gre_public_iface: eth0
+
+- name: GRE NAT - клиент control-plane-3
+  hosts: control-plane-3
+  become: true
+  roles:
+    - role: gre_nat
+      vars:
+        gre_nat_mode: client
+        gre_iface: gre5
+        gre_local_ip: "10.19.0.13"
+        gre_remote_ip: "10.19.0.21"
+        gre_tunnel_ip: "172.16.4.2"
+        gre_peer_tunnel_ip: "172.16.4.1"
+
+- name: GRE NAT - шлюз worker-1 (туннель к haproxy-vps)
+  hosts: worker-1
+  become: true
+  roles:
+    - role: gre_nat
+      vars:
+        gre_nat_mode: gateway
+        gre_iface: gre6
+        gre_local_ip: "10.19.0.21"
+        gre_remote_ip: "10.19.0.51"
+        gre_tunnel_ip: "172.16.5.1"
+        gre_public_iface: eth0
+
+- name: GRE NAT - клиент haproxy-vps
+  hosts: haproxy-vps
+  become: true
+  roles:
+    - role: gre_nat
+      vars:
+        gre_nat_mode: client
+        gre_iface: gre6
+        gre_local_ip: "10.19.0.51"
+        gre_remote_ip: "10.19.0.21"
+        gre_tunnel_ip: "172.16.5.2"
+        gre_peer_tunnel_ip: "172.16.5.1"

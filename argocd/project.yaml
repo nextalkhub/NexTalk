@@ -4,7 +4,7 @@ metadata:
   name: nextalk
   namespace: argocd
 spec:
-  description: NexTalk - real-time messaging platform (GitOps via ArgoCD)
+  description: NexTalk - real-time messaging platform
   sourceRepos:
     - 'https://github.com/nextalkhub/NexTalk.git'
   destinations:
