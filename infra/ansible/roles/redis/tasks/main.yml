@@ -8,6 +8,7 @@
     name: redis-server
     state: present
     update_cache: true
+    lock_timeout: 60
   tags: [redis]
 
 - name: Положить redis.conf
@@ -33,6 +34,7 @@
   ansible.builtin.apt:
     name: prometheus-redis-exporter
     state: present
+    lock_timeout: 60
   tags: [redis, monitoring]
 
 - name: Настроить параметры redis_exporter

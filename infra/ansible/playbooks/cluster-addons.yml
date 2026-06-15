@@ -1,6 +1,6 @@
 ---
 # Cluster-addons: ingress-nginx + cert-manager.
-# Запускается ОДИН РАЗ после k3s.yml - оттуда уже есть kubeconfig.
+# Запускается один раз после k3s.yml - оттуда уже есть kubeconfig.
 #
 # ingress-nginx как DaemonSet с hostNetwork=true: трафик 80/443 идет
 # напрямую на воркера, без NodePort/LoadBalancer.
@@ -8,7 +8,9 @@
 # cert-manager + Let's Encrypt: ClusterIssuer лежит в Helm-чарте
 # (charts/nextalk/templates/clusterissuer.yaml).
 #
-# Запуск (с локалки, где есть kubeconfig):
+# Перед запуском открыть SSH-туннель к HAProxy:
+#   ssh -L 6443:10.19.0.51:6443 -i ~/.ssh/nextalk_deploy root@<bastion_public_ip> -N
+# Запуск:
 #   ansible-playbook -i inventory/hosts.ini playbooks/cluster-addons.yml
 
 - name: Cluster addons (ingress-nginx + cert-manager)
@@ -32,9 +34,7 @@
         repo_url: https://kubernetes.github.io/ingress-nginx
       tags: [addons, ingress]
 
-    # release-assets.githubusercontent.com заблокирован в РФ - chart download
-    # упадет по таймауту если ingress-nginx еще не установлен. Если DaemonSet
-    # уже есть - пропускаем: нет смысла перекачивать чарт при каждом запуске.
+    # Если DaemonSet уже есть - пропускаем: нет смысла перекачивать чарт при каждом запуске.
     - name: Проверить наличие DaemonSet ingress-nginx-controller
       ansible.builtin.command: >-
         kubectl --kubeconfig={{ kubeconfig }}
@@ -59,7 +59,7 @@
               enabled: true
             dnsPolicy: ClusterFirstWithHostNet
             service:
-              enabled: false  # нам не нужен Service типа LoadBalancer
+              enabled: false
             nodeSelector:
               kubernetes.io/os: linux
               node-role.kubernetes.io/worker: ""
@@ -80,33 +80,43 @@
         repo_url: https://kubernetes-sigs.github.io/metrics-server/
       tags: [addons, metrics-server]
 
-    # Если metrics-server был установлен вручную (kubectl apply), Helm не может
-    # усыновить его ресурсы без меток. Удаляем старую установку, чтобы Helm
-    # поставил заново. На свежем кластере команда вернет "ok" без изменений.
-    - name: Удалить metrics-server вне Helm (миграция на Helm-управление)
+    # spec.selector в Deployment immutable - helm upgrade не может поменять labels
+    # при смене версии чарта. Сносим старый релиз (Helm или ручной), ставим заново.
+    - name: Проверить наличие Helm-релиза metrics-server
+      ansible.builtin.command: >-
+        helm status metrics-server -n kube-system --kubeconfig={{ kubeconfig }}
+      register: ms_helm_status
+      failed_when: false
+      changed_when: false
+      tags: [addons, metrics-server]
+
+    - name: Удалить Helm-релиз metrics-server (пересоздание при смене chart)
+      kubernetes.core.helm:
+        name: metrics-server
+        release_namespace: kube-system
+        kubeconfig: "{{ kubeconfig }}"
+        state: absent
+      when: ms_helm_status.rc == 0
+      tags: [addons, metrics-server]
+
+    - name: Удалить metrics-server установленный вне Helm
       ansible.builtin.shell: |
-        MANAGED=$(kubectl --kubeconfig={{ kubeconfig }} get serviceaccount metrics-server \
-          -n kube-system -o jsonpath='{.metadata.labels.app\.kubernetes\.io/managed-by}' 2>/dev/null || echo "notfound")
-        if [ "$MANAGED" = "Helm" ] || [ "$MANAGED" = "notfound" ]; then
-          echo "ok"
-        else
-          kubectl --kubeconfig={{ kubeconfig }} delete --ignore-not-found \
-            serviceaccount/metrics-server \
-            clusterrole/system:aggregated-metrics-reader \
-            clusterrole/system:metrics-server \
-            clusterrolebinding/metrics-server:system:auth-delegator \
-            clusterrolebinding/system:metrics-server \
-            service/metrics-server \
-            deployment/metrics-server \
-            -n kube-system
-          kubectl --kubeconfig={{ kubeconfig }} delete --ignore-not-found \
-            rolebinding/metrics-server-auth-reader -n kube-system
-          kubectl --kubeconfig={{ kubeconfig }} delete --ignore-not-found \
-            apiservice/v1beta1.metrics.k8s.io
-          echo "deleted"
-        fi
-      register: ms_migration
-      changed_when: '"deleted" in ms_migration.stdout'
+        kubectl --kubeconfig={{ kubeconfig }} delete --ignore-not-found \
+          serviceaccount/metrics-server \
+          clusterrole/system:aggregated-metrics-reader \
+          clusterrole/system:metrics-server \
+          clusterrolebinding/metrics-server:system:auth-delegator \
+          clusterrolebinding/system:metrics-server \
+          service/metrics-server \
+          deployment/metrics-server \
+          -n kube-system
+        kubectl --kubeconfig={{ kubeconfig }} delete --ignore-not-found \
+          rolebinding/metrics-server-auth-reader -n kube-system
+        kubectl --kubeconfig={{ kubeconfig }} delete --ignore-not-found \
+          apiservice/v1beta1.metrics.k8s.io
+        echo "done"
+      changed_when: false
+      when: ms_helm_status.rc != 0
       tags: [addons, metrics-server]
 
     - name: Установить metrics-server
@@ -116,7 +126,6 @@
         release_namespace: kube-system
         create_namespace: false
         kubeconfig: "{{ kubeconfig }}"
-        force: true
         values:
           args:
             - --kubelet-insecure-tls

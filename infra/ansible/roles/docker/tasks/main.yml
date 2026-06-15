@@ -12,6 +12,7 @@
       - containerd
       - runc
     state: absent
+    lock_timeout: 60
   tags: [docker]
 
 - name: Установить prerequisites
@@ -22,6 +23,7 @@
       - gnupg
     state: present
     update_cache: true
+    lock_timeout: 60
   tags: [docker]
 
 - name: Создать директорию для keyring
@@ -59,6 +61,7 @@
       - docker-buildx-plugin
       - docker-compose-plugin
     state: present
+    lock_timeout: 60
   tags: [docker]
 
 - name: Включить и запустить docker

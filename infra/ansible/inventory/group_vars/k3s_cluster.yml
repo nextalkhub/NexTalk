@@ -4,9 +4,12 @@
 k3s_token: "{{ vault_k3s_token | default('REPLACE_ME_WITH_VAULT') }}"
 
 # Что отключить в k3s. Traefik заменяется ingress-nginx, servicelb - на hostNetwork ingress.
+# metrics-server отключён - встроенный k3s-аддон использует k8s-app selector,
+# Helm-чарт kubernetes-sigs использует app.kubernetes.io/name: конфликт immutable field.
 k3s_server_disable:
   - traefik
   - servicelb
+  - metrics-server
 
 # TLS SAN для apiserver: VIP + IP каждой control-plane ноды.
 # Заполняется в roles/k3s_server из inventory.

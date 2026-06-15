@@ -6,6 +6,7 @@
   ansible.builtin.apt:
     update_cache: true
     cache_valid_time: 86400
+    lock_timeout: 60
   tags: [common, apt]
 
 - name: Установить базовые пакеты
@@ -26,6 +27,7 @@
       - python3-pip
       - chrony
     state: present
+    lock_timeout: 60
   tags: [common, apt]
 
 - name: Выставить timezone в UTC

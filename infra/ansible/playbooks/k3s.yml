@@ -2,7 +2,7 @@
 # Установка k3s HA + HAProxy.
 #
 # Порядок:
-#   1. HAProxy уже развернут через haproxy.yml (запускается отдельно до k3s.yml).
+#   1. HAProxy уже развернут через haproxy.yml.
 #   2. На первой control-plane ноде: установить k3s server с cluster-init.
 #   3. На остальных control-plane нодах: установить k3s server через HAProxy.
 #   4. На воркерах: установить k3s agent.

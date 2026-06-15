@@ -1,18 +1,19 @@
 ---
-# Установка ArgoCD + sealed-secrets и регистрация приложения NexTalk (GitOps).
-# Заменяет helm-deploy.yml: теперь приложение деплоит не Ansible, а ArgoCD,
-# который синхронизирует charts/nextalk из git.
+# Установка ArgoCD + sealed-secrets и регистрация приложения NexTalk.
+# Приложение деплоит ArgoCD, который синхронизирует charts/nextalk из git.
 #
-# Запускается ОДИН РАЗ после cluster-addons.yml (нужен kubeconfig + ingress).
+# Запускается один раз после cluster-addons.yml (нужен kubeconfig + ingress).
+#
+# Перед запуском открыть SSH-туннель к HAProxy:
+#   ssh -L 6443:10.19.0.51:6443 -i ~/.ssh/nextalk_deploy root@<bastion_public_ip> -N
+# Запуск:
+#   ansible-playbook -i inventory/hosts.ini playbooks/argocd.yml
 #
 # Порядок bootstrap'а приложения:
 #   1. make argocd   - этот плейбук: ставит ArgoCD, sealed-secrets, AppProject + Application.
 #   2. make seal     - seal-secrets.yml: запечатывает секреты в argocd/sealed/nextalk-secrets.yaml.
 #   3. git add/commit/push argocd/sealed/nextalk-secrets.yaml  - ArgoCD подхватит секрет.
 # После этого ArgoCD сам разворачивает и обновляет приложение.
-#
-# Запуск (с локалки, где есть kubeconfig):
-#   ansible-playbook -i inventory/hosts.ini playbooks/argocd.yml
 
 - name: ArgoCD + sealed-secrets bootstrap
   hosts: localhost

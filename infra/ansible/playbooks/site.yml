@@ -1,26 +1,28 @@
 ---
-# Полный оркестратор: разворачивает ВСе с нуля.
+# Полный оркестратор: разворачивает все с нуля.
 #
 # Запуск:
 #   ansible-playbook -i inventory/hosts.ini playbooks/site.yml --ask-vault-pass
 #
-# Порядок осознанный:
-#   1. bootstrap.yml      - пакеты, sysctl, ufw на всех нодах.
-#   2. gre-nat.yml        - GRE-туннель для VPS без интернета (obs-vps через worker-1).
+# Порядок выполнения:
+#   1. gre-nat.yml        - GRE-туннель для VPS без интернета.
+#   2. bootstrap.yml      - пакеты, sysctl, ufw на всех нодах.
 #   3. haproxy.yml        - HAProxy (балансировщик apiserver) до k3s.
 #   4. db.yml             - Postgres + Redis.
 #   5. observability.yml  - observability stack.
 #   6. k3s.yml            - кластер k3s (cp + workers через HAProxy).
 #   7. cluster-addons.yml - ingress-nginx + cert-manager.
 #   8. argocd.yml         - ArgoCD + sealed-secrets, регистрация приложения.
+#                           Перед запуском #7 и #8 поднять SSH-туннель вручную:
+#                           ssh -L 6443:10.19.0.51:6443 -i ~/.ssh/nextalk_deploy root@<bastion_public_ip> -N
 #
-# Приложение NexTalk дальше деплоит ArgoCD из git (GitOps), а не Ansible.
-# После site.yml нужен ОДНОКРАТНЫЙ ручной шаг, чтобы поды получили секреты:
+# Приложение NexTalk дальше деплоит ArgoCD из git
+# После site.yml нужен однократный ручной шаг, чтобы поды получили секреты:
 #   make seal && git add ../../argocd/sealed/nextalk-secrets.yaml \
 #     && git commit -m 'secrets: sealed' && git push
 
-- import_playbook: bootstrap.yml
 - import_playbook: gre-nat.yml
+- import_playbook: bootstrap.yml
 - import_playbook: haproxy.yml
 - import_playbook: db.yml
 - import_playbook: observability.yml
