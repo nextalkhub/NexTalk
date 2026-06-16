@@ -28,6 +28,7 @@ groups:
             model:
               type: threshold
               refId: C
+              expression: A
               conditions:
                 - evaluator:
                     params: [1]
@@ -72,6 +73,7 @@ groups:
             model:
               type: threshold
               refId: C
+              expression: A
               conditions:
                 - evaluator:
                     params: [5]
@@ -113,6 +115,7 @@ groups:
             model:
               type: threshold
               refId: C
+              expression: A
               conditions:
                 - evaluator:
                     params: [0]
@@ -154,6 +157,7 @@ groups:
             model:
               type: threshold
               refId: C
+              expression: A
               conditions:
                 - evaluator:
                     params: [7]
@@ -198,6 +202,7 @@ groups:
             model:
               type: threshold
               refId: C
+              expression: A
               conditions:
                 - evaluator:
                     params: [1.0]
