@@ -7,6 +7,19 @@
 # Документация: https://docs.k3s.io/installation/configuration
 # HA с embedded etcd: https://docs.k3s.io/datastore/ha-embedded
 
+# Пустой или неверный токен в config ломает рестарт ноды (bootstrap зашифрован
+# другим токеном), поэтому проверяем до записи config.yaml.
+- name: Проверить, что k3s-токен задан
+  ansible.builtin.assert:
+    that:
+      - k3s_token is defined
+      - k3s_token | length > 8
+    fail_msg: >-
+      k3s_token не задан или слишком короткий. Запусти с --ask-vault-pass и проверь,
+      что vault_k3s_token совпадает с токеном кластера
+      (/var/lib/rancher/k3s/server/token на любой CP-ноде).
+  tags: [k3s, k3s_server]
+
 # Beget выдает нодам DNS 198.18.18.18 (Beget-внутренний резолвер).
 # Из pod-сети через flannel VXLAN он недоступен - CoreDNS возвращает SERVFAIL.
 # Создаем отдельный resolv.conf с публичным DNS до старта k3s.
