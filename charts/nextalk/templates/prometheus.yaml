@@ -117,6 +117,13 @@ data:
         static_configs:
           - targets: ["localhost:9090"]
 
+      # cert-manager - метрики сертификатов (certmanager_certificate_expiration_timestamp_seconds).
+      # Живёт в namespace cert-manager, скрейпим по cross-namespace ClusterIP-сервису.
+      # Нужно для Grafana-алерта TLS Certificate Expiring Soon.
+      - job_name: cert-manager
+        static_configs:
+          - targets: ["cert-manager.cert-manager.svc.cluster.local:9402"]
+
 ---
 apiVersion: v1
 kind: PersistentVolumeClaim
