@@ -127,11 +127,29 @@ livekit:
 # Observability (Obs VPS, Beget приватная сеть)
 # -----------------------------------------------------------------------
 observability:
-  otelEndpoint: "http://10.19.0.41:4317"
+  # Сервисы шлют трейсы в in-cluster OTel Collector (tail-sampling), а не напрямую
+  # в Tempo - иначе obs-vps захлёбывается под нагрузкой. Если otelCollector выключен,
+  # верни сюда "http://10.19.0.41:4317", чтобы слать в Tempo напрямую.
+  otelEndpoint: "http://otel-collector:4317"
+  # Куда коллектор отдаёт отобранные трейсы (OTLP-приём Tempo на obs-vps).
+  tempoOtlpEndpoint: "10.19.0.41:4317"
   lokiUrl: "http://10.19.0.41:3100"
-  # Tempo HTTP API (для UI и query). OTLP-прием идет по otelEndpoint.
+  # Tempo HTTP API (для UI и query).
   tempoUrl: "http://10.19.0.41:3200"
   prometheusRemoteWriteUrl: "http://10.19.0.41:9090/api/v1/write"
+
+# -----------------------------------------------------------------------
+# OpenTelemetry Collector с tail-sampling: держит все ошибки + медленные,
+# остальное прореживает. Разгружает obs-vps, не теряя важные трейсы.
+# -----------------------------------------------------------------------
+otelCollector:
+  enabled: true
+  image:
+    repository: otel/opentelemetry-collector-contrib
+    tag: "0.123.0"   # tailsamplingprocessor есть только в contrib; тег сверить с актуальным
+  slowThresholdMs: 1000       # трейсы дольше 1s оставляем целиком
+  sampleRestPercent: 10       # из остального (быстрые, без ошибок) берём 10%
+  expectedTracesPerSec: 500   # для аллокации памяти tail-sampling под пиковую нагрузку
 
 # -----------------------------------------------------------------------
 # In-cluster Prometheus (scrape + remote_write на Obs VPS)
