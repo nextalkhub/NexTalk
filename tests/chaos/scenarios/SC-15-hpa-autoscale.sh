@@ -86,8 +86,8 @@ while (( elapsed < WATCH_SECONDS )); do
 
     # Витнес-проба (доступность сервиса под растущей нагрузкой).
     code=$(curl -sk -o /dev/null -w "%{http_code}" --max-time 10 "${API_BASE}/api/guilds" || echo 000)
-    (( samples++ ))
-    if [[ "$code" -ge 200 && "$code" -lt 500 ]]; then (( ok++ )); else warn "witness $code на t=${elapsed}s"; fi
+    samples=$((samples+1))
+    if [[ "$code" -ge 200 && "$code" -lt 500 ]]; then ok=$((ok+1)); else warn "witness $code на t=${elapsed}s"; fi
 
     now=$(sum_replicas)
     (( now > PEAK_REPLICAS )) && PEAK_REPLICAS=$now

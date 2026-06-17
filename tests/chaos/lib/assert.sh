@@ -171,7 +171,7 @@ slo_monitor() {
     log "Мониторим доступность witness ${url} (${samples}×${interval}s, SLO ≥ ${min_pct}%)..."
     for (( i=1; i<=samples; i++ )); do
         code=$(curl -sk -o /dev/null -w "%{http_code}" --max-time 10 "$url" || echo 000)
-        if [[ "$code" -ge 200 && "$code" -lt 500 ]]; then (( ok++ )); fi
+        if [[ "$code" -ge 200 && "$code" -lt 500 ]]; then ok=$((ok+1)); fi
         sleep "$interval"
     done
     local pct=$(( ok * 100 / samples ))
